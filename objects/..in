@@ -1,8 +1,0 @@
- iop=-2      + 
-    kitscf=0 + 
-igeom=1 iform=1 nsav15=4 ipubo=1jop=-1
-MNDO file from the CCP1 GUI
-6 0.0 0  0.0 0  0.0 0 
-1 1.0 0  1.0 0  0.0 0 
-17 1.0 0  0.0 0  0.0 0 
-0 0.0 0 0.0 0 0.0 0
