@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<cml>
+
+ <molecule>
+  <atomArray>
+   <atom id="C1" elementType="C" x3="0.1980881465" y3="0.7653445267" z3="0.0"/>
+   <atom id="C2" elementType="C" x3="-0.84466085" y3="-0.1516605091" z3="0.0"/>
+   <atom id="C3" elementType="C" x3="-2.1593766125" y3="0.2978893704" z3="0.0"/>
+   <atom id="C4" elementType="C" x3="-2.4439788856" y3="1.653502782" z3="0.0"/>
+   <atom id="C5" elementType="C" x3="-1.3917450854" y3="2.5632908224" z3="0.0"/>
+   <atom id="C6" elementType="C" x3="-0.777879278E-01" y3="2.1290278667" z3="0.0"/>
+   <atom id="O1" elementType="O" x3="1.4950767868" y3="0.3908367523" z3="0.0"/>
+   <atom id="H1" elementType="H" x3="-0.6323087936" y3="-1.2139073922" z3="0.0"/>
+   <atom id="H2" elementType="H" x3="-2.964534741" y3="-0.4253261641" z3="0.0"/>
+   <atom id="H3" elementType="H" x3="-3.4683146865" y3="1.9994456642" z3="0.0"/>
+   <atom id="H4" elementType="H" x3="-1.5972764512" y3="3.6259301151" z3="0.0"/>
+   <atom id="H5" elementType="H" x3="0.7468126636" y3="2.82776609" z3="0.0"/>
+   <atom id="H6" elementType="H" x3="1.5669475592" y3="-0.5518020567" z3="0.0"/>
+  </atomArray>
+ </molecule>
+
+</cml>

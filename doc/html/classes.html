@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>CCP1GUI Classes and Design</title>
+  </head>
+
+  <body>
+    <h1>CCP1GUI Classes and Design</h1>
+
+<H3> Classes and Inheritance</H3>
+	</H3><P>We make heavy use of the object-oriented nature of python
+with the intention that adapting and extending the GUI should be
+possible by creating new classes which can inherit much of the
+functionality of the existing code. 
+
+A particular example of this philosophy
+is the successive inheritance from the classes as follows:</P>
+<UL>
+<B><I><LI>Calc</B></I>; a generic computational chemistry calculation. At
+present little data is held in this structure.
+</P>
+<UL>
+<B><I><LI>QMCalc; </B></I>incorporating all attributes of the <B><I>Calc</B></I>
+class and including generic QM data and control structures, such as level
+of theory and basis set specification.</P>
+<ul>
+<B><I><LI>GAMESSUKCalc</B></I>; containing the code specific to GAMESS-UK 
+input file generation, recovery of calculation results). In future the
+corresponding classes for other QM codes may be implemented in the same
+way</p>
+<B><I><LI>MopacCalc</B></I>; the same, for MOPAC</p>
+
+</ul>
+<B><I><LI>ChemShellCalc</B></I>
+This class is not specialised for either QM or MM, since the code-specific
+data is held by the interfaces for the different QM and MM modules.</p>
+<ul>
+</UL>
+</UL>
+</UL>
+
+<p> As similar Class heirarchy is used for the Objects responsible for 
+the user interactions needed to set the parameters, the calculation editor
+objects. These functions are handled by a separate classes to help in the
+provision of a simple save/restore function for the calculation objects. 
+We have chosen to use the generic Python serialisation module <tt>pickle</tt>
+to create file representations of the objects and it is not possible to pickle
+objects that contain Tkinter GUI elements.
+
+
+<p> The editor objects corresponding to the calculation objects listed above
+have the following names and functions:
+
+<UL>
+<B><I><LI>CalcEd</B></I>; Implementation of the notebook widget used for 
+setting up the calculation parameters, and some of the more general
+pages (TitlePage, a simple TaskPage, MoleculePage, ResultsPage, JobPage).
+
+</P>
+<UL>
+<B><I><LI>QMCalcEd; </B></I>  Currently adds a basis set selector to
+the Task page to the notebook.
+
+<ul>
+<B><I><LI>GAMESSUKCalcEd</B></I>;
+Creates all remaining pages.
+Information provided here includes a number of dictionaries used by the
+GUI to ensure that only valid choices are made available in the GUI, for
+example the elements of the dictionary self.theories[key] hold the list
+of theoretical methods available for a particular type of job, specified by
+key (key = "energy". "optimise internal coord." etc).
+
+</p>
+<B><I><LI>MopacCalcEd</B></I>; the same, for MOPAC</p>
+
+</ul>
+<B><I><LI>ChemShellCalcEd</B></I>
+Allows the selection of the QM and MM codes ot be used, and allows
+editors to be opened up to set these parameters</p>
+<ul>
+</UL>
+</UL>
+</UL>
+
+
+<p>
+Another important example is the implementation of the 
+visualisation classes. In this case the higher level classes
+are used to handle generic information on how to represent
+the resulting data (including the widgets required for user
+interactions) and the lower level, derived classes are concerned
+with the way a particular graphics or visualisation code 
+deals with that data.
+
+<UL>
+<B><I><LI>Visualiser</B></I>A base object with a dialog widget
+</P>
+<UL>
+<B><I><LI>MoleculeVisualiser</B></I> Adds the particular interface elements
+needed to control the representation of a molecular structure.</p>
+<ul>
+<B><I><LI>PymolMoleculeVisualiser</B></I> The code needed to render the
+molecule to the corresponding graphics package, in this case PyMOL</p>
+<B><I><LI>VtkMoleculeVisualiser</B></I> Corresponding code for the 
+Vtk back end </p>
+</ul>
+</ul>
+<UL>
+<B><I><LI>OrbitalVisualiser</B></I> Adds the particular interface elements
+needed to control the representation of a molecular orbital.</p>
+<ul>
+<B><I><LI>PymolOrbitalVisualiser</B></I>Adds PyMOL API instructions to create a surface 
+representation of an orbital</p>
+<B><I><LI>VtkOrbitalVisualiser</B></I> Corresponding code for the 
+Vtk back end.</p>
+</ul>
+</ul>
+<ul>
+<B><I><LI>VibrationVisualiser</B></I> Adds the particular interface elements
+needed to control the representation and animation of a vibrational mode </p>
+<ul>
+<B><I><LI>PymolVibrationVisualiser</B></I> The code needed to render the
+a vibration in PyMOL.</p>
+<B><I><LI>VtkVibrationVisualiser</B></I> Corresponding code for the 
+Vtk back end</p>
+</ul>
+</UL>
+    <hr>
+    <address><a href="mailto:ps96@PS96PORT"></a></address>
+<!-- Created: Thu Mar 04 07:36:40 GMT Standard Time 2004 -->
+<!-- hhmts start -->
+<!-- hhmts end -->
+  </body>
+</html>

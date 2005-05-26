@@ -1,0 +1,155 @@
+Theory Tab
+
+Guess Group
+
+Any SCF calculation requires a guess to be made as to the form of molecular
+orbitals or eigenvectors used as a starting point for the iterative process.
+The guess menu tool can be used to select between the three main methods
+offered by GAMESS.
+
+  * Compute - the guess is calculated using an initial property of the
+    molecule. The available options are:
+   
+      + atoms - the guess is based on concatenating the 1-particle density
+        matrices for each of the component atoms of the molecular system.
+       
+      + atorbs - the starting orbitals are constructed as a concatenation of
+        the atomic orbitals of the atoms. This is not generally recommended,
+        but is useful for subsequent valence bond calculations and for
+        calculations on atoms.
+       
+      + hcore - diagonalise the 1-electron (core) Hamiltonian. This is the most
+        general mechanism available, but is also the least reliable in that the
+        resulting MOs may often not exhibit the required ordering.
+       
+      + minguess - construct and diagonalise a Huckel type matrix. This option
+        is limited to minimal basis sets (e.g. STO3G), but in such cases often
+        leads to a reliable set of MOs.
+       
+      + extguess - limited to split-valence basis sets (e.g., 3-21G, 4-31G
+        etc.), leading in general to a reliable set of orbitals.
+       
+  * Dumpfile - the Dumpfile method uses a set of orbitals that have been
+    calculated during a previous run of the calculation and stored in the
+    dumpfile (which is connected to the GAMESS-UK output stream ed3). The
+    orbitals are read from the dumpfile at the section specified by the counter
+    tool. If an UHF, GVB or UDFT calculation is performed, two sections will
+    need to be specified, one for the alpha orbitals and one for the beta. If,
+    for example, the calculation that created the dumpfile was a UHF
+    calculation, and the current one is one of RHF, GVB or UDFT, then both a
+    and b sections for the current calculation will need to point at the
+    section where the orbitals were stored by the foregoing RHF calculation
+    (the default for RHF calculations being section1).
+   
+      + Section a/b - the section where the vectors for the alpha or beta can be
+        found.
+       
+    For an explanation of how to specify the dumpfile for a calculation see the
+    File Path Group in the Job Tab.
+   
+  * GETQ - this uses a set of orbitals from a foreign dumpfile. A foreign
+    dumpfile is the dumpfile from a calculation where, for example, the
+    geometry of the molecule may be different to the current run, the symmetry
+    adapted option was different or a smaller basis set was used. In fact the
+    only similarities required to use a dumpfile from a previous calcualtion
+    using the GETQ option, is that the ordering of the nuclei presented in the
+    z-matrix definition lines be the same for both. If the GETQ option is
+    selected, the block and section of the dumpfile where the orbtials were
+    written to needs to be specified:
+   
+      + Block a/b - the block of the dumpfile where the vectors for the alpha or beta
+        can be found.
+       
+      + Section a/b - the section where the vectors for the alpha or beta can be
+        found.
+       
+    For an explanation of how to specify the foreign dumpfile for a calculation
+    see the File Path Group in the Job Tab.
+   
+SCF Options
+
+The group of options here determine the base SCF calculation options as
+follows:
+
+  * SCF Method This determines the type of SCF calculation that will be
+    undertaken. The available options are:
+   
+      + RHF - a Restricted Hartree-Fock calculation (closed shell).
+       
+      + UHF - an Unrestricted Hartree-Fock calculation (open shell).
+       
+      + GVB - a Generalised Valence Bond calculation.
+      + DFT - a Density Functional Theory calculation (closed shell).
+       
+      + UDFT - an unrestricted Density Functional Theory calculation (open
+        shell).
+       
+      + Direct RHF - perform a RHF calculation but recalculate the integrals as
+        needed.
+       
+      + Direct UHF - perform a UHF calculation but recalculate the integrals as
+        needed.
+       
+      + Direct GVB - perform a GVB calculation but recalculate the integrals as
+        needed.
+       
+      + Direct DFT - perform a DFT calculation but recalculate the integrals as
+        needed.
+       
+      + Direct UDFT - perform a UDFT calculation but recalculate the integrals
+        as needed.
+       
+  * Max. Cycles - this sets the maximum number of SCF iterations that will be
+    carried out if the calculation has not already converged or run out of time
+    by then.
+   
+  * Threshold - this specifies the 'accuracy' of the calculation by determining
+    when to stop the SCF iterations. This occurs when the value of the tester
+    is equal to 10^-n, where n is the value specified in the threshold field
+    (the tester value is the largest absolute value of the occupied/virtual
+    block of the Fock matrix in the Molecular Orbital basis).
+   
+  * Bypass SCF - if a previous calculation has been carried out the molecule
+    and the resulting vectors saved in the GAMESS-UK dumpfile, selecting the
+    bypass options causes these results to be used negating the need for a
+    fresh SCF calculation.
+   
+  * SCF Level Shifters The tools in this group control the level shifters that
+    can be used to control the convergence of an SCF calculation. The level
+    shifters work by artificially raising the energy of the virtual orbitals E
+    Hartrees above the occupied orbitals, thereby artificially stabilising the
+    iterative process and improving convergence. The available options are:
+   
+      + Initial Levelshifter Value - the difference in energy (in Hartrees)
+        between the virtual and occupied orbitals for the first n cycles.
+       
+      + Cycle to change on - the SCF iteration at which the levelshifter value
+        will be altered.
+       
+      + Final Levelshifter Value - the energy difference between the virtual
+        and occupied orbitals until the DIIS solver is in operation.
+       
+Post SCF Options
+
+This is used to select amongst the post-SCF calculations available within
+GAMESS-UK. The options are:
+
+  * MCSCF - multi-configuration SCF.
+   
+  * MP2 - second-order Mo/ller-Plesset perturbation.
+   
+  * MP3 - third-order Mo/ller-Plesset perturbation.
+   
+  * CCSD - coupled-cluster single and double substitution.
+   
+  * CCSD(T) - coupled-cluster single, double and a quasi-perturbative estimate
+    for connected triple excitations.
+   
+  * Direct CI - direct configuration interaction.
+   
+  * MRDCI - multi-reference single- and double-excitation configuration
+    interaction.
+   
+  * Direct MP2 - as standard MP2 but recalculate the integrals as needed, as
+    opposed to keeping them in memory
+   

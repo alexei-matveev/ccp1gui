@@ -1,0 +1,92 @@
+View Menu
+=========
+It is possible to view the same molecule in a variety of different
+ways. The Gui does this by creating different 'view objects', which
+are different graphical representations of the same molecule.
+
+View objects are grouped together under the View Menu according to the
+molecule to which they belong. Selecting a particular molecule from
+the View Menu opens a drop-down menu that lists the available views
+for that molecule and the operations that can be carried out on that
+view. The operations are:
+
+Show/Hide Molecule View
+------------------
+This is used to show or hide a particular view of a molecule.
+
+Adjust Molecule View
+--------------------
+This is where the properties of a particular view can be changed. For
+information on the 'Adjust Molecule View' window that appears when
+this option is selected, press F1 when the window is displayed.
+
+New Molecule View
+-----------------
+This creates a new view object for the molecule. The view can then be
+adjusted by selecting the view from the menu and selecting 'Adjust
+Molecule View' as above.
+
+
+Viewing the results of calculations
+===================================
+When a calculation is carried out on a molecule, the result is often
+the value of a certain molecular property (the electrostatic
+potential or value of the wavefunction for the HOMO, for example) at a
+particular point in space.  This property can be represented by a grid
+of points, the associated value of each point being proportional to the
+magnitude of the property at that point.
+
+The GUI has a number of visualisers that can be used to view such a
+grid in a number of different ways.
+
+Irregular View
+--------------
+This is the closest view to the 'raw' data and consists of a grid of
+points with their associated values. The size of the points can also
+be altered as can their opacity and the colour mapping.
+
+Density View
+------------
+This defines a single isosurface for a specified positive value of the
+grid. The contour height (which defines the positive value to which
+the surface is mapped) is adjustable, as is its colour and opacity.
+
+Orbital View
+------------
+This is similar to density view, except that a pair of isosurfaces are
+drawn, one for a specified positive value and another for a specified
+negative value. 
+
+Coloured Isosurface
+-------------------
+The coloured isosurface representation creates an isosurface at a
+specified contour height. This surface can then be coloured according
+to the value of one of the other properties at points on this surface.
+
+Cut Slice View
+--------------
+The cut slice view creates a 2-dimensional 'canvas' that can be
+moved through the molecule, with the values of the function at the
+point the slice is taken displayed on the canvas as contours or a
+colourmap.
+
+The size, orientation and position of the slice may be specified, as
+well as the colour and contour properties.
+
+An optional 2D-representation of the canvas can also be
+created. Selecting this option opens up a separate window displaying a
+front-view of the canvas, which can be saved to the current directory
+as the file 'out2d.jpeg'.
+
+
+
+Show/Hide All
+--------------------
+Show All and Hide All affect the visibility of all graphical
+representations.
+
+Centre on Selected
+-------------------
+Changes the origin for viewing and rotations of the centroid
+of the selected atoms.
+

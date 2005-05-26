@@ -1,0 +1,61 @@
+Properties Tab
+
+The options here define the molecular properties to be calculated by GAMESS-UK.
+The upper half of the tab is used to control the graphical options that are to
+be plotted. The magnitudes of these particular molecular properties are mapped
+to a grid, the properties of which can be specified with the Edit Grid option.
+The molecular properties that can be calculated are:
+
+  * Difference Density - this calculates the difference between the total
+    electron density associated with a molecule and the sum of the electron
+    densities of the atoms which constitute the molecule, but which are assumed
+    to have undergone no interactions with each other, and have remained
+    undistorted as in the free state. As such, it provides an indication of the
+    overall rearrangement of density which occurs when the atoms come together
+    upon molecular formation.
+   
+  * Potential - the value of the electrostatic potential created by the
+    electronic distribution and nuclear charge of the molecule.
+   
+  * HOMO/LUMO - the Highest Occupied Molecular Orbital and the Lowest
+    Unoccupied Molecular Orbital.
+   
+  * HOMOn/LUMOn - the n^th orbital in energy below the HOMO and the n^th
+    orbital above the LUMO.
+   
+  * Charge Density - the electron density associated with the molecule.
+   
+  * Difference Density - this calculates the difference between the total
+    electron density associated with a molecule and the sum of the electron
+    densities of the atoms which constitute the molecule, but which are assumed
+    to have undergone no interactions with each other, and have remained
+    undistorted as in the free state. As such, it provides an indication of the
+    overall rearrangement of density which occurs when the atoms come together
+    upon molecular formation.
+   
+  * Potential - the value of the electrostatic potential created by the
+    electronic distribution and nuclear charge of the molecule.
+   
+The options in lower half of the tab determine that GAMESS-UK should calculate
+the force constants that determine the vibrational frequencies of the molecule.
+This can be done in two ways namely:
+
+  * Finite Difference - this indicates that GAMESS-UK will calculate the force
+    constants numerically by taking finite differences of the gradient using a
+    one-point formula.
+  * Analytic - this option is a combination of tasks, requesting integral
+    generation, SCF, gradient evaluation (with additional evaluation of
+    derivative Fock operators), integral transformation, solution of the
+    coupled Hartree-Fock (CHF) equations, calculation of the two-electron
+    second derivative contribution and, finally, determination of the projected
+    harmonic frequencies. This approach is generally more accurate than the
+    numerical approach, but is only vialable for SCF and DFT wavefunctions,
+    together with MP2 closed-shell wavefunctions.
+   
+    NB: the above options are only applicable if the geometry of the molecule
+    has already been optimised in a previous calculation or if an optimisation
+    is carried out as part of the current calculation.
+
+Edit Grid
+
+Display the Grid Editor Window

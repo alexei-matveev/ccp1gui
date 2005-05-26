@@ -1,0 +1,20 @@
+Left Mouse  
+
+   Rotates image
+   Toggle selection of an atom
+   Clicking away from an atom will clear selection
+
+Shift Left
+   Pan/translate image.
+
+Right Mouse
+
+   Vertical motion scales the image
+   Clicking on an atom will give local geometry information
+   for that atom
+
+f  Fit image to window
+r  Reset View
+p  Atom Pick
+s  Surface Representations
+w  Wireframe Representations

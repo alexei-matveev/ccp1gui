@@ -1,0 +1,120 @@
+
+
+
+
+Basic Windows install
+
+1) Install the following
+
+    Python 2.1
+    Pmw
+        http://pmw.sourceforge.net/doc/starting.html
+    Numeric Python
+        http://www.pfdubois.com/numpy/
+
+    Scientific Python
+       http://starship.python.net/~hinsen/ScientificPython/
+       Installed ScientificPython-2.4.3.tar.gz by extracting to a local directory
+       run setup.py install
+        - John ran setup.py build & copied the Scientific directory under
+        build/lib to Lib/site-packages in the Python21 installation directory
+    Pythonwin
+       http://starship.python.net/crew/mhammond/win32/Downloads.html
+    PyXML (needed for CML processing)
+       http://pyxml.sourceforge.net/topics/download.html
+    VTK
+        You can use the distribution from Kitware, installed in the default
+        location of c:\Progam Files\vtk42
+
+2) Unpack the python_dev directory into c:\python_dev
+
+3) you can use the "Properties" item on the Taskbar menu to add ccp1gui.bat
+   to your start menu
+
+   The program should run without any further changes
+
+For Python 2.2
+
+    VTK (Les Schaffer DLLs)
+      unpack core (non-python) DLLs somewhere convenient (e.g. c:\vtk4)
+      PATH - to include this directory  c:\vtk4 
+
+      move contents of ...\site-packages\ to c:\Python22\Lib\site-packages
+
+      PYTHON_PATH should be OK in this case 
+          ?? maybe should point to core DLLS
+
+   If not installing in site-packages
+      PYTHON_PATH should include both VTK and core DLLs
+
+Notes..
+  John had to remove python and tcl/tk from the cygwin installation.
+
+Environment Variables set by the Control Panel/System/Advanced/Environment
+PATH
+c:\pythonNest\python21\.;C:\PROGRA~1\vtk42\bin;C:\Tcl\bin;C:\PROGRAMS\Tcl\bin;%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem
+PYTHONHOME
+c:\PythonNest\Python21\.
+PYTHONPATH
+c:\PythonNest\python21\bin;c:\PythonNest\python21\lib;c:\progra~1\vtk42\Wrapping\Python;c:\progra~1\vtk42\Wrapping\Python\vtk\tk;c:\progra~1\vtk42\bin;c:\cygwin\home\john\python_dev
+
+Linux Installation
+
+
+
+
+Red Hat 7
+=========
+
+
+Red Hat 9
+=========
+
+Installing OpenGL support 
+Use default python (2.2.2)
+Numeric Python
+Scientific Python  Install from source 
+VTK RPMs from Lyon Site
+Pmw distribution - Unpack into python dev
+
+
+Suse
+====
+For Suse ?? VTK build already completed
+
+
+Other Operating Systems
+=======================
+
+VTK builds
+
+ensure you install the ?? package 
+include python wrappers
+
+
+
+1. Environment Issues
+
+1.0 Dependencies
+
+Pmw 1.1 or later
+PYTHONPATH must include python_dev 
+   plus any VTK requirements
+
+1.1 UNIX
+--------
+
+rungamess available
+
+1.2 Windows
+-----------
+PYTHONPATH must include python_dev (plus any VTK requirements)
+See install.txt
+
+Chemshell installation in c:\chemsh
+   require cygwin/bin in PATH
+
+2. Getting Started
+
+   See tkmolview.gettingstarted.txt
+

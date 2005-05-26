@@ -1,0 +1,54 @@
+                               Edit Options Menu                               
+                                                                               
+Files
+
+  * At present, there are no editable attributes available here.
+
+Connectivity
+
+      + Connection Parameters
+       
+        The parameters here determine how the gui decides if two atoms are
+        bonded (assuming that the connectivity has not been specified in the
+        input file). The formula that is used to determine bonding is:
+       
+                  r[ij] < scale * (r[cov](i) + r[cov](j)) + tolerance          
+       
+        where r[ij] is the distance between the two atomic centres, r[cov](n)
+        the Van der Waals radius of the atom, scale the radius scale factor and
+        tolerance the tolerance.
+       
+          o Radius scale - this determines the radius scale in the above
+            formula.
+          o Tolerance - this determines the tolerance in the above
+            formula.
+
+      + Non-bonded Connection Parameters
+       
+        The parameters here determine how the gui decides if two non-bonded,
+        but adjacent atoms, are in contact with each other. This determined
+        using the same formula as for bondeded atoms and the same parameters
+        are adjustable.
+       
+Visualisation
+
+    Background Colour
+   
+      + Clicking on the 'Choose' button will open up a window allowing you to
+        choose the background colour for the 'canvas' on which the molecules
+        are displayed.
+      + You can either use the sliders to select the levels of Red, Green and
+        Blue components, or type in a hexadecimal value for the colour in the
+        'Selection:' box.
+   
+    Pick Tolerance
+   
+      + The Pick Tolerance tool allows you to change how close you have to
+        place the mouse pointer to an object in order to be able to select that
+        object.
+
+Developmental
+
+  * At present, there are no editable attributes available here. The Editing
+    Tool Panel is used to change various properties of the molecule displayed
+    in the main window.

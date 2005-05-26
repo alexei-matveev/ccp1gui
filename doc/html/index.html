@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>The CCP1 GUI Project</title>
+  </head>
+
+  <body>
+    <h1>The CCP1 GUI Project</h1>
+
+<H3> Introduction</H3>
+
+<p>The CCP1GUI project has arisen as a result of demand within the UK
+academic community (principally through CCP1) for a free, extensible
+Graphical User Interface (GUI) for community codes, particularly for
+teaching purposes. There is also a long-standing requirement for a
+graphical interface for the GAMESS-UK quantum chemistry programme,
+which we plan to satisfy using the CCP1 developments.</p>
+
+<p>The GUI has been built around the Python open-source programming
+language and the VTK visualisation toolkit, both of which have been
+ported to all the major operating system platforms. The GUI is
+therefore capable of running on all of these systems. Distributions of
+the GUI have already been successfully tested on Windows, and Suse and
+Redhat Linux distributions, and packages for these distributions are
+freely available from our ftp site.</p>
+
+<p>The design of the GUI makes the most of Python's high degree of
+object-orientation, including advanced features such as multiple
+inheritance that are not available in other object-oriented languages
+such as C++ and Java. The strong reliance on object orientation means
+that it is quick and easy to create interfaces to new computational
+chemistry codes as the need arises. The GUI already has a
+highly-featured interface for the GAMESS-UK program, and there are
+working interfaces for ChemShell and MOPAC.</p>
+
+<p align="center">
+<img src="images/screen.jpg" width=500></P>
+
+<p align="center">A screen shot of the molecular graphics viewer
+showing the notebook widget used to set the QM code options.</p>
+
+
+<h3>Supported file formats</h3>
+<p>From its inception, the GUI was intended to work with a number of
+different codes, so a variety of file formats are supported both for
+reading in molecular structures and outputting data. As well as
+conventional formats such as Z-matrix and PDB, there are
+programme-specific formats for CHARMM, ChemShell, XMol and Gaussian,
+as well as support for XML.</p>
+
+<h3>Editing Capabilities</h3>
+<p>The GUI has a suite of easy-to-use editing tools that allows
+complex molecules to be created using simple point-and-click
+operations. There is also a fully-functional Z-matrix editor that can
+be used to edit the atomic coordinates of a molecule in internal or
+Cartesian form. Symbolic variables (and constants) can be defined, and
+the editor can automatically generate a Z-matrix (including the
+requisite reordering of the atoms) which can subsequently be
+customised. Used in conjunction with the graphical tools this creates
+a powerful and flexible environment for building molecular
+structures.</p>
+
+<h3>Visualisation Tools</h3>
+<p>The GUI has powerful and highly customisable visualisation
+capabilities. It can create coloured 3D-surfaces, 2D-slices or grids
+of points mapped to a desired molecular property, and the colours and
+opacity are easily adapted to a given schema. Multiple representations
+of the various molecular properties for the same or different
+molecules can be created and overlaid to extract the maximum amount of
+information from the results of a calculation.</p>
+
+<p>The GUI can also be used to view the dynamic properties of a
+calculation, by animating molecular vibrations or creating a movie
+from the different steps in a geometry optimisation.</p>
+
+
+<h3>Driving GAMESS-UK</h3>
+<p>The GAMESS-UK interface for the GUI can be used to drive SCF, DFT
+or post Hartree-Fock calculations, or to undertake geometry
+optimisations, including transition state searches. There are options
+to configure everything from the convergence criteria of SCF
+calculations and geometry optimisations, to functionals and grid
+settings for DFT calculations. In addition, the interface includes a tool to
+configure the basis sets on individual atoms.</p>
+
+<p>The interface also provides access to the various analytical
+options offered by GAMESS-UK and the results of these calculations are
+automatically imported into the GUI for display with the visualisation
+tools.</p>
+
+<h3>e-Science Developments</h3>
+<p>Work is already underway to enable the GUI to exploit the latest
+developments in the field of e-Science. Initially these will allow the
+GUI to download molecular structures from databases around the world
+for viewing, or to serve as the inputs for calculations. As the
+e-Science Data Model matures however, it will become possible to not
+only download and view the results of calculations carried out with
+different codes, but to use the GUI to import the inputs to serve as a
+basis for new calculations.</p>
+
+
+
+<h2> Other Documentation Available</h2>
+<ul>
+
+<li>Read the <a href=install.html>Installation Documentation</a>.</li>
+
+<li>Download the GUI from our <a
+href=ftp://ftp.dl.ac.uk/qcg/ccp1gui>ftp site</a>.</li>
+
+<li> A description of the <a href=menus.html>menus</a> and shortcut
+keys for the GUI.</li>
+
+<li>A description of the options available in the <a
+href=gamessuk_menus.html>GAMESS-UK window</a>.</li>
+
+<li>A short tutorial on using the interface as a <a href=vis_tutorial.html>visualisation tool</a> (does not require any interfaced codes).
+
+<li>A list of the <a href=changes.html>changes</a> that have been made
+between each release of the GUI.</li>
+
+<li>A <a href=classes.html>summary of the design </a> of the GUI,
+outlining the main classes, of interest mainly to developers.</li>
+
+<li> Some  <a href=gamessuk_tutorial.html> examples </a> of runs using <a
+href="http://www.cfs.dl.ac.uk/">GAMESS-UK</a>.</li>
+
+<li>Some <a href=bugs.html>Known Bugs</a>. Read this before trying out
+the GUI, so you don't waste your time puzzling over things we haven't
+got round to fixing yet.</li>
+
+<li><a href=download.html> Licence conditions</a>.
+
+</ul>
+
+<h3> Related Links</h3>
+<dl>
+<dt><b>GAMESS-UK</b> - the GAMESS-UK <i>ab initio</i> quantum
+chemistry code.</dt>
+<dd><a href=http://www.cfs.dl.ac.uk>www.cfs.dl.ac.uk</a></dd>
+<dt><b>Python </b> - the Python open source programming language.</dt>
+<dd><a href=http://www.python.org>http://www.python.org</a></dd>
+<dt><b>PyMOL</b>PyMOL is a user-sponsored molecular modeling system with an OPEN-SOURCE foundation</dt>
+<dd><a href=http://www.pymol.org>http://www.pymol.org</a></dd>
+<dt><b>Tkinter</b> - a toolkit to use tkinter widgets within Python.</dt>
+<dd><a href=http://www.python.org/doc/life-preserver>
+http://www.python.org/doc/life-preserver/</a></dd>
+<dt><b>MMTK</b>The Molecular Modelling Toolkit (MMTK) is an Open Source program library for molecular simulation applications.</dt>
+<dd><a href=http://starship.python.net/crew/hinsen/MMTK/>
+href=http://starship.python.net/crew/hinsen/MMTK</a></dd>
+<dt><b>Scripps PMV</b> the Python-based Molecular Viewing Environment (PMV)</dt>
+<dd><a href=http://www.scripps.edu/~sanner/python/index.html>
+http://www.scripps.edu/~sanner/python/index.html</a></dd>
+<dt><b>PyOpenGL</b> PyOpenGL is the cross platform Python binding to OpenGL and related APIs.</dt>
+<dd><a href=http://pyopengl.sourceforge.net/>
+http://pyopengl.sourceforge.net/</a></dd>
+<dt><b>Pmw</b> - extended Tkinter widgets for use in Python applications.</dt>
+<dd><a
+href=http://pmw.sourceforge.net/>http://pmw.sourceforge.net</a></dd>
+<dt><b>VTK</b> - the Visualistion ToolKit graphics package.<dt>
+<dd><a href=http://www.vtk.org>www.vtk.org</a></dd>
+</dl>
+<hr>
+
+</body>
+</html>

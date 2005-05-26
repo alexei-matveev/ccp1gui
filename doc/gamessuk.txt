@@ -1,0 +1,14 @@
+
+                     GAMESS-UK Interface
+                     ===================
+
+Limitations:
+
+Currently a single basis set must be chosen for the whole
+molecule from a selection.
+
+Geometry Optimisation
+
+Select this on the Task page and make additional choices on
+the Optimisation Page
+

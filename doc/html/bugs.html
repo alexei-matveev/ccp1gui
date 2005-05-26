@@ -1,0 +1,91 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>CCP1 GUI: Known Bugs</title>
+  </head>
+
+  <body>
+
+<p>As the code is currently developmental there are many 
+deficiencies, and situations where the expected does not
+happen, or things that don't work. There is also a TODO
+file in the distribution with more pending developments.</p>
+
+<h2>Limitations</h2>
+
+These are unlikely to be lifted in the near future.
+<ul>
+<li> There is no undo facility.</li>
+<li> As the data held in the GUI is manipulated in python (an interpreted language) the code is too slow to be useful very large molecules. Depending
+on memory and CPU available, 1000 atoms should be OK. 10,000 will 
+probably be painful.</li>
+</ul>
+
+<h2>Real Bugs</h2>
+
+<h3>Main window</h3>
+<ul>
+
+<li> When zoomed right in to the image picking stops working.</li>
+
+<li> Operations which delete/move atoms can leave stray yellow dots
+(selection indication)</li>
+
+<li> You must close the GUI either with File->Close or the [x]
+box at the top right of the window, not Close on the window menu or Alt-F3.</li>
+
+</ul>
+
+<h3>MS Windows version only</h3>
+<ul>
+<li> The Idle Shell window is not compatible with the threaded
+     execution of codes such as GAMESS-UK.</li>
+</ul>
+
+<h3>Unix/Lunix version only</h3>
+<ul>
+<li> The Kill button on the job manager does not do anything,
+     you will need to use the unix kill command.</li>
+</ul>
+
+<h3>Z-Matrix editor</h3>
+<ul>
+
+<li> The AutoZ feature in the Zmatrix editor fails if the molecule is 
+     not connected by bonds into a single molecule (now properly trapped)</li>
+
+<li> Autoz fails when there are 180 degree angles in the system</li>
+
+<li> Sometimes the selection is lost unexpectedly. Check it is correct
+     before issuing a command (now only affects variable edits)</li>
+
+<li> Sometimes the selection box needs scrolling to get back to the 
+     atom of interest.</li>
+
+</ul>
+
+<h3>GAMESS-UK interface</h3>
+<ul>
+<li> Save calculations can be restored but at present they won't run
+     (they need linking into a job manager).</li>
+
+<li> Trapping of GAMESS-UK failures is inadequate, you may need to
+     check the output file to see what happened.</li>
+
+<li>If a molecule is placed in a grid before a calculation is undertaken
+and the <b>use symmetry</b> box is checked on the <b>Molecule Tab</b>
+of the GAMESS-UK interface, when the results of the calculation are
+returned the grid and the molecule will have slipped out of alignment.</li>
+
+</ul>
+
+<h3>Mopac Interface</h3>
+<ul>
+<li>Internal coordinates are not fed to MOPAC yet
+</ul>
+
+<hr>
+
+
+</body>
+</html>

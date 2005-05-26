@@ -1,0 +1,44 @@
+
+              Molecular Editing Capabilities 
+
+                  Manipulating Z-matrices
+
+The Z-matrix editor is accessed from the Edit Coords item on the main
+Edit menu.
+
+File Menu
+  Supports loading of a zmatrix in block format (GAMESS-UK punchfile
+  or chemshell).
+
+Edit
+----
+
+Select All Atoms
+Insert Atom
+Copy Atoms
+Cut Atoms
+Paste Atoms
+Delete Atoms
+r,x -> var
+theta,y -> var
+phi,z -> var
+
+==>sp3
+
+Select All Variables
+Delete Variables
+Toggle Variable/Constant
+
+Convert
+-------
+   Reorder Atoms
+
+   Autoz - generate an automatic (new) zmatrix 
+     Requires all atoms to be connected
+
+   Convert Selection to zmatrix/cartesian
+     - interchanges the type of definition. 
+     when switching to z-matrix the program will use any internal coordinates
+     that have been defined, if not, i1,i2,i3,r,theta,phi fields will all have
+     default values and will need to be filled in.
+

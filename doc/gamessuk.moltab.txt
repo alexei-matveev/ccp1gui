@@ -1,0 +1,121 @@
+Calc Menu
+=========
+
+Save...
+
+    * Save the currently selected options to a .clc file so that the
+      editing of the calculation can be postponed to a later time.
+
+Run
+    * Run a GAMESS-UK calculation with the currently selected options.
+
+Copy
+
+    * This copies the variables for the current calculation and opens
+      a fresh calculation window so that a new calculation can be set
+      up using the currently selected values as a basis (NOT ACTIVE AT
+      THE MOMENT).
+
+Write Inputfile
+
+    * Write a GAMESS-UK input file in the directory specified in the
+      Working Directory tool in the job tab. If no directory is
+      specified, the directory from which the CCP1GUI was started is
+      used. The output file will be saved with same name as the
+      molecule being edited, but with the suffix .in appended.
+
+Run Inputfile
+
+    * Run a GAMESS-UK calculation using the input file that was
+      written with the Write Inputfile option.
+
+Close
+
+    * Close the GAMESS-UK calculation window. Any unsaved changes will
+      be lost.
+
+Edit Menu
+
+Input
+
+    * Open the Inputfile that was written with the File -> Write
+      Inputfile in a simple text-editor window. Clicking Ok in the
+      editor window saves the results of the edit to file and Cancel
+      discards them.
+
+View Menu
+
+Input
+
+    * View the GAMESS-UK input file.
+
+Output
+
+    * View the GAMESS-UK output file for the current calculation.
+
+Results Summary
+
+    * View a summary of the results of the GAMESS-UK calculation as
+      extracted from the output file. The results will be displayed in
+      the Python terminal from which the CCP1Gui was run.
+
+Molecule Tab
+============
+
+The options in this tab set up some of the most basic and general
+options for the calculation.
+
+Options Group
+-------------
+
+This group sets the basic options for the calculation.
+
+    * Title - a title for the calculation can be entered here. This
+      will be displayed at the head of the GAMESS-UK output file.
+
+    * Task - this can be used to select the type of GAMESS-UK
+      calculation that will be undertaken.
+
+          o Energy - this undertakes a single-point integrals and SCF
+          calculation and corresponds to the GAMESS-UK runtype scf
+          option.
+
+          o Gradient This forces the computation of both the energy and the forces.
+          o Geometry Optimisation - this optimises the geometry of the
+          molecule by searching for a local minimum on the potential
+          energy surface. Additional optimisation options can be set
+          in the Optimisation tab.
+
+    * Charge - specify the overall charge on the molecule.
+
+    * SpinSpecify the spin multiplicity of the molecule.
+
+    * Check Spin - this just checks the spin multiplicity of the
+      molecule is consistent with the number of electrons in the
+      molecule.
+
+Basis Selector Group
+--------------------
+
+The tools in this group are used to select which basis sets are
+applied to which atoms in the molecule. The currently applied basis
+set is shown in the Current Basis Assignment window.
+
+    * Default Basis - this is used to select the basis set that is
+      applied to all the atoms, unless other basis sets are
+      specifically applied using the Assign by atom tool. The default
+      basis set for GAMESS-UK is the 3-21G split valence basis set.
+
+    * Assign by Atom - the tools in this group are used to apply
+      specific basis sets to atoms within a molecule.
+
+          o Clicking on the Assign Type button will apply the basis
+          set shown in the Choose Basis selector to the specified
+          atom. Any changes made in the Default Basis tool will now no
+          longer apply to this atom unless it is selected again and
+          the Clear Assignment button is pressed.
+
+          o If the basis set that you require is not available from
+          the menus, you can write or past the basis set specification
+          into the Custom Basis Specification window.
+

@@ -1,0 +1,356 @@
+		              Welcome to the CCP1GUI!
+			      =======================
+
+This is the CCP1 Graphical User Interface from Daresbury Laboratory's
+Quantum Chemistry Group.
+
+Below is a description of the different menus that are available from
+the main screen. Further help can be found be pressing F1 in an open
+window, within the 'Help' menu on the far right of the main screen or
+on the web at:
+
+       http://www.cse.clrc.ac.uk/qcg/ccp1gui/index.shtml.
+
+There should also be a collection of html helpfiles in the
+python_dev/doc/html folder within the main CCP1GUI distribution
+folder.
+
+Various example molecules can be found in the 'data' and
+python_dev/examples folders, and can be accessed by selecting File ->
+Open and then browsing to these folders.
+
+
+-------------------------------------------------------------------------
+                                 Key Bindings                                  
+                                                                               
+Left Mouse Button
+
+  * Rotates image.
+  * Toggle selection of an atom.
+  * Clicking away from an atom will clear selection.
+
+Shift Left Mouse Button
+
+  * Pan/translate image.
+
+Right Mouse Button
+
+  * Vertical motion scales the image.
+  * Clicking on an atom will give local geometry information for that atom.
+
+Key Strokes
+
++------------------------------+
+|Key|          Result          |
+|---+--------------------------|
+|f  |Fit image to window       |
+|---+--------------------------|
+|r  |Reset View                |
+|---+--------------------------|
+|p  |Atom Pick                 |
+|---+--------------------------|
+|s  |Surface Representations   |
+|---+--------------------------|
+|w  |Wireframe Representations |
++------------------------------+
+-------------------------------------------------------------------------------
+
+                                   File Menu                                   
+
+Open
+
+  * Load molecule coordinates from a file. Supported file formats are:
+      + .zmt (Z-matrix)
+      + .cml (Chemical Markup Language)
+      + .xml (XML)
+      + .pdb (Brookhaven Protein Databank)
+      + .pun (GAMESS-UK punch file)
+      + .c (ChemShell cartesian coordinates)
+      + .z (ChemShell Z-matrix file)
+      + .gjf (Gaussian Input File)
+      + .crd (CHARMM (Chemistry at HARvard Molecular Mechanics))
+      + .xyz (XMol file format)
+      + .msi (Molecular Simulations, Cerius 2)
+
+Save As
+
+  * Save the coordinates of the molecule to a text file. Supported formats are:
+      + .zmt (Z-matrix)
+      + .pdb (Brookhaven Protein Databank)
+      + .pun (cartesian coodinates in GAMESS-UK format)
+      + .cml (Chemical Markup Language)
+      + .msi (Molecular Simulations, Cerius 2)
+
+New Molecule
+
+  * Create a new molecule, (currently a single carbon with 4 attached X (i.e.
+    unidentified) atoms) and open the editing tools panel.
+
+                    ---------------------------------------                    
+
+Save Image
+
+  * Save the graphical image in the main window to file out.jpg in the current
+    working directory (the directory from which the GUI was started).
+
+                    ---------------------------------------                    
+
+Open Calc
+
+  * Opens a calculation window and restores the results of the chosen
+    calculation (.clc) file.
+
+                    ---------------------------------------                    
+
+Quit
+
+  * Exit the GUI.
+
+-------------------------------------------------------------------------------
+
+                                   Edit Menu                                   
+
+Edit Coords
+
+  * Opens the molecular coordinates editor on the chosen molecule. The
+    coordinates editor is used for editing the atomic coordinates of the
+    molecule in either Z-matrix or Cartesian form. For more help on the
+    Coordinates Editor, click here.
+
+Connect
+
+  * Determine the connectivity according to the parameters specified in Edit ->
+    Options -> Connectivty. You will need to do this if you have loaded in a
+    molecule in .pdb format.
+
+Extend
+
+  * Extend a periodic structure with more repeat units (periodic structures can
+    be read in from ChemShell unit cell format).
+
+Delete
+
+  * Delete the specified molecule.
+
+                    ---------------------------------------                    
+
+Editing Tools
+
+  * Opens a window with tools for molecular editing (point and click)
+    operations. More extensive help on the Editing Tools can be displayed by
+    pressing F1 when the Editing Tools window is displayed or clicking here.
+
+                    ---------------------------------------                    
+
+Select All
+
+  * Selects all the atoms of the selected molecule.
+
+Select by bonds
+
+  * Select all the atoms that are part of this molecular fragment (i.e. are
+    part of the same bonded network).
+
+                    ---------------------------------------                    
+
+Options
+
+  * Opens the Options panel, allowing adjustment of defaults and parameters
+    relating to the behaviour of the GUI. More extensive help can be displayed
+    by pressing F1 with this window displayed or clicking here.
+
+-------------------------------------------------------------------------------
+
+                                   View Menu                                   
+
+Viewing Molecules
+
+It is possible to view the same molecule in a variety of different ways. The
+Gui does this by creating different 'view objects', which are different
+graphical representations of the same molecule.
+
+View objects are grouped together under the View Menu according to the molecule
+to which they belong. Selecting a particular molecule from the View Menu opens
+a drop-down menu that lists the available views for that molecule and the
+operations that can be carried out on that view. The operations are:
+
+Show/Hide Molecule View
+
+  * This is used to show or hide a particular view of a molecule.
+
+Adjust Molecule View
+
+  * This is where the properties of a particular view can be changed. For
+    information on the Adjust Molecule View window that appears when this
+    option is selected, click here or press F1 when the window is displayed.
+
+New Molecule View
+
+  * This creates a new view object for the molecule. The view can then be
+    adjusted by selecting the view from the menu and selecting 'Adjust Molecule
+    View' as above.
+
+Viewing the results of calculations
+
+When a calculation is carried out on a molecule, the result often includes the
+value of a certain molecular property (the electrostatic potential or value of
+the HOMO wavefunction, for example) at a particular point in space. These types
+of property can be represented by a grid of points, the associated value of
+each point being proportional to the magnitude of the property at that point.
+
+Other properties can include the vibrational modes for a molecule, which can be
+represented by their normal coordinates.
+
+The GUI is equipped with visualisers that can be used to view both types of
+properties. For grid-based properties, the GUI can create contour maps or
+surfaces based on the grid, and for vibrational modes the GUI can animiate the
+individual modes. The individual visualisers are highly configurable. The
+following menu items list the visualisers and which of their properties can be
+adjusted together with an explanation of what this means.
+
+Irregular View
+
+  * This is the closest view to the 'raw' data and consists of a grid of points
+    with their associated values. The size of the points on the screen can be
+    altered as can their opacity and the colour mapping.
+
+Density View
+
+  * This defines a single isosurface for a specified positive value of the
+    grid. The contour height is adjustable, as is the colour and opacity.
+
+Orbital View
+
+  * This is similar to density view, except that a pair of isosurfaces are
+    drawn, one for a specified positive value and another for the corresponding
+    negative value.
+
+Coloured Isosurface
+
+  * The coloured isosurface representation creates an isosurface at a specified
+    contour height. This surface can then be coloured according to the value of
+    one of the other properties at points on this surface.
+
+An explanation of the individual view properties:
+
+  * Edit Colours - for surfaces that only have a single colour mapped to them,
+    clicking on this option brings up the below dialog box that can be used to
+    select the colour. The colour can be selected either by dragging the
+    sliders to mix in various Red Green and Blue components, or the hexadecimal
+    value of the colour can be entered in the selection box.
+
+  * Colour Mapping - this lists the upper and lower values of the grid that the
+    colour spectrum will be mapped to. The colour spectrum extends from blue to
+    red, so any point whose value is less than the value specified in Lo will
+    be coloured blue and any point whose value is greater than Hi will be
+    coloured red. Points whose value falls in between Lo and Hi will be
+    assigned a colour on the spectrum between blue and red, the exact colour
+    depending on where their value falls between the Lo and Hi values.
+
+      + Opacity - this determines how see-through the coloured surface will be.
+      + Contour Height - this is the point value that the surface or contour
+        will be mapped to; this effectively creates an isosurface mapped to the
+        value specified in the contour height box.
+      + Colour Field - this applies to the coloured isosurface tool, and
+        colours the isosurface according to the property specified here. For
+        example, an isosurface of the electron density can be displayed and
+        this can be then coloured according to the electrostatic potential.
+   
+    Cut Slice View
+   
+      + The cut slice view creates a 2-dimensional 'canvas' that can be moved
+        through the molecule, with the values of the function at the point the
+        slice is taken displayed on the canvas as contours or a colourmap. The
+        size, orientation and position of the slice can be specified by using
+        the Tran, Rot and Scale tools, which alter the position, orientation
+        and size respectively, of the grid components. The density of points,
+        or mesh, that the colour map or contours are mapped along any
+        particular axis can be specified with the nx, ny and nz tools.
+       
+        The options in the representations box determine which of the
+        properties area shown. If contours is selected, contours are displayed.
+        The maximum and minimum contour values, as well as the total number of
+        contours displayed can be specified with the Min Contour Height,Max
+        Contour Height and Number of Contour tools. If Colourmap is selected a 
+        colour map will be mapped on to the canvas as specified in the colour
+        mapping tool.
+       
+        The border around the slice can be toggled on and off with the border
+        tool.
+       
+        An optional 2D-representation of the canvas can also be created in a
+        separate window by selecting the 2D Representation. Selecting this
+        option opens up a separate window displaying a front-view of the
+        canvas, which can be saved to the current directory as the file 
+        out2d.jpeg.
+       
+    Vibrations
+   
+    If the one of the Frequencies options (finite difference or analytic) have
+    been selected from the Properties Tab in the GAMESS-UK widget, then the
+    vibrational frequencies of the molecule will be calculated, and the
+    individual frequencies listed under the Views menu. To view a vibration,
+    select the vibration from the views menu and a dialog box will be displayed.
+   
+    The first few tools are the same as those for the Adjust Molecule View Tool
+    . The additional vibration-specific tools are contained in the Animation
+    box. These are:
+   
+      + Start - animate the selected vibration.
+      + Stop - stop the animation.
+      + Number of Frames - this is the number of still images that will be
+        concatenated to create the animation.
+      + Amplitude - this determines the size of the vibration: the distance
+        from the equilibrium point of the vibration to its apex.
+      + Frame Delay - the time-step between each frame that is concatenated to
+        create the animation.
+   
+    Animation...
+   
+      + The animation tool brings up a set of controls that can be used to
+        display a movie by cycling through the sequence of images that have
+        been loaded into the CCP1GUI. There are buttons to 'play' the sequence
+        in a loop, go to the first or last frame, or move forward or backwards
+        a frame at a time.
+      
+      + The animation tool is particularly useful if you have carried out a
+        geometry optimisation under GAMESS-UK, as the geometry of the molecule
+        at each stage of the optimisation is saved to the punch file. Using the
+        animation tools, a movie showing the progression of the geometry
+        optimisation can be displayed.
+   
+    Show/Hide All
+   
+      + Show All and Hide All affect the visibility of all graphical
+        representations.
+   
+    Centre on Selected
+   
+      + Changes the origin for viewing and rotations of the centroid of the
+        selected atoms.
+   
+    ---------------------------------------------------------------------------
+   
+                                   Compute Menu                                
+                                                                               
+      + The compute menu is used to select a program with which to run a
+        calculation on the molecule. Currently, the GUI has control interfaces
+        for GAMESS-UK, Mopac and Chemshell. For help relating to the control
+        window for a particular program, press F1 when the window is
+        displayed.
+
+    ---------------------------------------------------------------------------
+   
+                                    Shell Menu                                 
+                                                                               
+   
+      + The Shell menu is used to open an IDLE (Integrated Development
+        Environment) Python shell - assuming you have IDLE installed. IDLE is
+        included with most Python distributions, but if for any reason you
+        don't have it, it is available from: http://www.python.org/idle
+      + When opened from within the GUI, IDLE provides a powerful tool with
+        which to interact with the GUI. The GUI Python objects can be operated
+        on directly and information about them displayed.
+      + It is also possible to write and run scripts to carry out complex
+        operations.
+      + More help on this is to follow.

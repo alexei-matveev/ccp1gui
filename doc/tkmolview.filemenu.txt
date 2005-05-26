@@ -1,0 +1,35 @@
+File Menu
+=========
+
+Open
+----
+  Load a molecule from a file
+  Supported formats include CML, PDB, GAMESS-UK punch/ChemShell
+
+Save As
+-------
+  Save the coordinates of the molecule to a text file.
+  Supported formats are: .zme (Z-matrix)
+			 .pdb (Protein Databank)
+			 .pun (specific to GAMESS-UK and Chemshell)
+
+New Molecule
+------------
+  Create a new molecule, (currently a single carbon with 4 attached X
+  atoms) and open the editing tools panel.
+
+Save Image
+----------
+  Save the graphical image in the main window to file out.jpg in the
+  current working directory (the directory from which the GUI was
+  started).
+
+Open Calc
+---------
+  Opens a calculation window and restores the results of the chosen
+  calculation (.clc) file. 
+
+Quit
+----
+  Exit the GUI.
+

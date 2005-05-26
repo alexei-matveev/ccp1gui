@@ -1,0 +1,17 @@
+The Shell menu is used to open an IDLE (Integrated Development
+Environment) Python shell - assuming you have IDLE installed. IDLE is
+included with most Python distributions, but if for any reason you
+don't have it, it is availalable from: http://www.python.org/idle
+
+When opened from within the GUI, IDLE provides a powerful tool with
+which to interact with the GUI. The GUI Python objects can be operated
+on directly and information about them displayed.
+
+It is also possible to write and run scripts to carry out complex
+operations.
+
+More help on this is to follow.
+
+MAJOR BUG ... on Windows, you should not open this window if you
+intent to use the codes on the Compute Menu, the whole GUI will
+hang when the slave programs are started.

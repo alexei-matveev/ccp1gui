@@ -1,0 +1,961 @@
+<html>
+<head><title>Menu and Key Help for the CCP1 GUI.</title></head>
+
+<body>
+
+<a name="KeyBindings"></a><h2 align=center>Description of the CCP1 GUI menus and Key bindings</h2>
+<br>
+<h3 align=center>Key Bindings</h3>
+<h4>Left Mouse Button</h4>
+<ul>
+<li>Rotates image.</li>
+<li>Toggle selection of an atom.</li>
+<li>Clicking away from an atom will clear any selections.</li>
+</ul>
+
+<h4>Shift Left Mouse Button</h4>
+ <ul>
+<li>Rotate the molecule about an axis pointing out
+ from the middle of the screen towards the user.</li>
+</ul>
+
+<h4>Middle Mouse Button (on unix systems)</h4>
+<ul>
+<li>Move the molecule in the plane of the screen.</li>
+</ul>
+
+
+<h4>Right Mouse Button</h4>
+
+<ul>
+<li>Moving the mouse forwards (towards the screen) makes the molecule
+appear bigger, moving the mouse backwards shrinks it.</li>
+<li>Clicking on an atom will give local geometry information for that
+atom.</li>
+</ul>
+
+<h4>Key Strokes</h4>
+<table border=1>
+<tr bgcolor=#e0e0e0>
+<th>Key</th>
+<th>Result</th></tr>
+<tr><td>f</td><td>Fit image to window</td></tr>
+<tr><td>r</td><td>Reset View</td></tr>
+<tr><td>p</td><td>Atom Pick</td></tr>
+<tr><td>s</td><td>Surface Representations</td></tr>
+<tr><td>w</td><td>Wireframe Representations</td></tr>
+</table>
+
+<hr>
+
+<a name="FileMenu"></a><h3 align=center>File Menu</h3>
+
+<p align=center><img src="images/filemenu.png"  border="0" alt="File menu screenshot"></p>
+
+<h4>Open</h4>
+<ul><li>Load molecule coordinates from a file. Supported file formats are:</li>
+<ul><li>.zmt (Z-matrix)</li>
+<li>.cml (Chemical Markup Language)</li>
+<li>.xml (XML)</li>
+<li>.pdb (Brookhaven Protein Databank)</li>
+<li>.pun (GAMESS-UK punch file)</li>
+<li>.c (ChemShell cartesian coordinates)</li>
+<li>.z (ChemShell Z-matrix file)</li>
+<li>.gjf (Gaussian Input File)</li>
+<li>.crd (CHARMM (Chemistry at HARvard Molecular Mechanics))</li>
+<li>.xyz (XMol file format)</li>
+<li>.msi (Molecular Simulations, Cerius 2)</li>
+</ul>
+</ul>
+
+<h4>Save As</h4>
+<ul><li>Save the coordinates of the molecule to a text file. Supported formats are:</li>
+<ul>
+<li>.zmt (Z-matrix)</li>
+<li>.pdb (Brookhaven Protein Databank)</li>
+<li>.pun (cartesian coodinates in GAMESS-UK format)</li>
+<li>.cml (Chemical Markup Language)</li>
+<li>.msi (Molecular Simulations, Cerius 2)
+</ul>
+</ul>
+
+<h4>New Molecule</h4>
+<ul><li>Create a new molecule, (currently a single carbon with 4
+attached X (i.e. unidentified) atoms) and open the editing tools panel.</li></ul>
+<hr width = 50%>
+<h4>Save Image</h4>
+<ul><li>Save the graphical image in the main window to file out.jpg in the
+current working directory (the directory from which the GUI was started).</li></ul>
+<hr width = 50%>
+<h4>Open Calc</h4>
+<ul><li>Opens a calculation window and restores the results of the chosen
+calculation (.clc) file. </li></ul>
+<hr width = 50%>
+<h4>Quit</h4>
+<ul><li>Exit the GUI.</li></ul>
+
+<hr>
+
+<a name="EditMenu"></a><h3 align=center>Edit Menu</h3>
+<p align=center><img src="images/editmenu.png"  border="0" alt="Edit menu screenshot"></p>
+
+<h4>Edit Coords</h4>
+<ul><li>Opens the molecular coordinates editor on the chosen molecule. The
+coordinates editor is used for editing the atomic coordinates of the
+molecule in either Z-matrix or Cartesian form. For more help on the
+Coordinates Editor, click <a href="#EditCoords">here</a>.</li></ul>
+
+<h4>Edit Grid</h4>
+<ul>
+<li>Dunno.</li>
+</ul>
+
+<h4>Connect</h4>
+<ul><li>Determine the connectivity according to the parameters
+specified in <b>Edit -&gt; Options -&gt; Connectivty</b>. You will need to
+do this if you have loaded in a molecule in .pdb format.</li></ul>
+
+<h4>Extend</h4>
+<ul><li>Extend a periodic structure with more repeat units (periodic
+structures can be read in from ChemShell unit cell format).</li></ul>
+
+<hr width = 50%>
+
+<h4>Delete</h4>
+<ul><li>Delete the specified molecule.</li></ul>
+
+<hr width = 50%>
+
+<h4>Editing Tools</h4>
+<ul><li>Opens a window with tools for molecular editing (point and
+ click) operations. More extensive help on the Editing Tools can be
+ displayed by pressing F1 when the Editing Tools window is
+ displayed or clicking <a href="#EditTools">here</a>.</li></ul>
+
+<hr width = 50%>
+
+<h4>Select All</h4>
+<ul><li>Selects all the atoms of the selected molecule.</li></ul>
+
+<h4>Select by bonds</h4>
+<ul><li>Select all the atoms that are part of this molecular fragment
+(i.e. are part of the same bonded network).</li></ul>
+
+<h4>Select by distance</h4>
+<ul><li>Select all the atoms that lie within a sphere of a particular
+radius centered on the selected atom. Selecting this menu item will
+bring up a dialog box to specify the radius of the sphere (in angstroms).</li></ul>
+
+<hr width = 50%>
+
+<h4>Delete Selected Atoms</h4>
+<ul>
+<li>Delete all the selected atoms.</li>
+</ul>
+
+<h4>Delete Unselected Atoms</h4>
+<ul>
+<li>Delete all atoms that are not currently selected.</li>
+</ul>
+
+<hr width = 50%>
+
+<h4>Options</h4>
+<ul><li>Opens the Options panel, allowing adjustment of defaults and
+parameters relating to the behaviour of the GUI. More extensive help can be
+displayed by pressing F1 with this window displayed or clicking <a
+href="#EditOptions">here</a>.</li></ul>
+
+<hr>
+
+<a name="ViewMenu"></a><h3 align=center>View Menu</h3>
+
+<h3>Viewing Molecules</h3>
+
+<p>The CCP1GUI has extremely powerful and highly customisable
+capabilities for viewing molecules and the data resulting from a
+calculation. There are essentially three types of representation that
+can be accessed from the view menu. These are listed below with a more
+detailed description following on.</p>
+
+<ul>
+<li><a href="#MolcView"><b>Molecule View</b></a> - the representation
+of the atoms and bonds within a molecule.</li>
+
+<li><a href="#ScalarView"><b>Scalar Data</b></a> - the representation of
+data that is defined by its magnitude at a point in space
+(such as orbital vectors or electrostatic potential).</li>
+
+<li><a href="#VectorView"><b>Vector Data</b></a> - the representation
+of data that has both a magnitude and direction at a point in space
+(such as a charge density gradient).</li>
+
+</ul>
+
+<blockquote>
+<hr width="50%"/>
+<a name="MolcView"></a><h3>Molecule View</h3>
+<p align=center><img src="images/viewmolc.png"  border="0"
+alt="Molecule View Menu screenshot"></p>
+
+<p>Molecule views are grouped together under the View Menu according to the
+molecule to which they belong. Selecting a particular molecule from
+the View Menu opens a drop-down menu that lists the following options:</p>
+
+<h4>Show/Hide Molecule View</h4>
+<ul><li>This is used to show or hide a particular view of a molecule.</li></ul>
+
+<h4>Adjust Molecule View</h4>
+<ul><li>This is where the properties of a particular view can be
+changed. Selecting this option will cause a dialog box to appear with
+the options listed <a href="#AdjMolView">below</a> (this help may also
+be displayed by pressing F1 when the window is displayed).</li></ul>
+
+<h4>New Molecule View</h4>
+<ul><li>This creates a new view object for the molecule. The view can then be
+adjusted by selecting the view from the menu and selecting 'Adjust
+Molecule View' as above.</li></ul>
+
+<hr width = 40%>
+<a name="AdjMolView"></a><h4>Adjust Molecule View</h4>
+<p>The adjust molecule view tool changes the way that the molecular
+structure is displayed on the screen. The tool is displayed below:</p>
+<p align=center><img src="images/adjmolview.png"  border="0"
+alt="Adjust Molecule View Tool screenshot"></p>
+<p>The available options are:</p>
+
+<ul>
+<li><b>Wireframe</b> - a simple representation of a molecule with the
+bonds represented as coloured lines connecting the individual
+atoms. From their midpoint to the end connected to an atom, the lines
+are coloured with the colour associated with that atom type.</li>
+<ul>
+<li><b>Show bonds</b> - toggle the display of the wireframe
+bonds.</li>
+<li><b>Contacts</b> - atoms that are not connected, but whose centres
+are within a certain distance of each other can be considered to be
+<i>in contact</i>. If two atoms are in contact, when the contacts
+button is selected, the two atoms will be connnected by a white
+line. The contact distance can be specified in the <b>Connectivity</b>
+tab of the <b>Edit -&gt; Options</b> menu.</li>
+</ul>
+
+<br/>
+
+<li><b>Spheres</b> - the <i>balls</i> of the conventional <i>ball and stick</i>
+representation of molecules. Spheres are drawn centered on the individual
+atoms, sized and coloured according to the atom type
+that they are associated with.</li>
+<ul>
+<li><b>Show</b>  - toggle whether the spheres are shown or not.</li>
+<li><b>Scale</b>  - change the relative sizes of the spheres.</li>
+</ul>
+
+<br/>
+
+<li><b>Sticks</b>  - the </i>sticks</i> of the conventional <i>ball and stick</i>representation of molecules. Cylinders are drawn representing the
+bonds connecting individual atoms.</li>
+<ul>
+<li><b>Show</b>  - toggle whether the bonds are shown or not.</li>
+<li><b>Radius</b>  - change the width of the bonds.</li>
+<li><b>Colour</b>  - change the colour of the bonds (default is grey).</li>
+</ul>
+
+<br/>
+
+<li><b>Labels</b> - this displays labels identifiying the individual
+atoms. The labels show the type of the atom, as well as a unique
+number identifying each atom.</li>
+<ul>
+<li><b>Show</b>  - toggle whether the labels are shown or not.</li>
+<li><b>Size</b>  - change the font size used for the labels.</li>
+<li><b>Colour</b>  - change the colour of the labels.</li>
+</ul>
+</ul>
+</blockquote>
+
+
+<blockquote>
+<hr width="50%"/>
+<a name="ScalarView"></a><h3>Scalar data view</h3>
+<p align=center><img src="images/viewscalar.png"  border="0"
+alt="Scalar View Menu screenshot"></p>
+
+<p>When a calculation is carried out on a molecule, the result is often
+returned as the value of the property (such as the charge density) mapped
+onto a 3-dimensional grid of points.</p>
+
+<p>The GUI is equipped with a number of highly configurable visualisers for such scalar
+data on a grids. The following menu items list the visualisers and
+which of their properties can be adjusted. As the visualiers share many
+of the same tools, there are also links to explanations of what the
+indiviual property adjustment tools do</p>
+
+<h4>Density View</h4>
+<ul><li>This defines a single isosurface for a specified positive value of the
+grid. The <a href="#edcontour">contour height</a> is adjustable, as is
+the <a href="#edcolours">colour</a> and <a
+href="#edopacity">opacity</a>. The <a href="#edoutline">outline</a> of
+the grid is also configurable.</li></ul>
+<p align=center <img
+src=images/densityadjust.png alt='Density
+adjust screenshot'></p>
+
+<h4>Density Volume Visualisation View</h4>
+<ul><li>In this view, a whole volume of space is coloured according to
+the value of the property within that volume. A <a
+href="#edtransferfunc">transfer function</a> can be selected and the <a
+href="#edoutline">outline</a> of the grid is also configurable.</li></ul>
+<p align=center <img src="images/densityvoladjust.png" alt="Density Volume Visualiser screenshot"></p>
+
+<h4>Orbital Volume Visualisation View</h4>
+<ul><li>As for a density volume view, a whole volume of space is coloured according to
+the value of the property within that volume. A <a
+href="#edtransferfunc">transfer function</a> can be selected and the <a
+href="#edoutline">outline</a> of the grid is also configurable. The
+difference between a density and orbital view is that, the density view
+expects the values to be in a range from 0 to a positive number, whereas the orbital
+view expects to colour the volume according to whether the values are
+postive, negative or zero.</li></ul>
+<p align=center <img src="images/densityvoladjust.png" alt="Density Volume Visualiser screenshot"></p>
+
+
+<h4>Orbital View</h4>
+<ul><li>This is similar to density view, except that a pair of isosurfaces are
+drawn, one for a specified positive value and another for the corresponding
+negative value. The colours of both of the surfaces may be selected.</li></ul>
+<p align=center <img
+src="images/orbitaladjust.png" alt="Grid adjust screenshot"></p>
+
+
+<h4>Coloured Surface</h4>
+<ul><li>The coloured isosurface representation creates an isosurface at a
+specified contour height. The <a href="#edcolours">colour</a>, <a
+href="#edcontour">contour height</a>, and <a
+href="#edopacity">opacity</a> can all be configured. This surface can
+also  be <a href="#edcolourmap">colour mapped</a> according to the value of
+another property.</li></ul>
+<p align=center <img
+src=images/coloursurfadjust.png alt='Grid
+adjust screenshot'></p>
+
+<h4>Grid View</h4>
+<ul><li>This is the closest view to the 'raw' data and consists of a grid of
+points with their associated values. The size of the points on the
+screen can be altered as can their <a href="#edopacity">opacity</a>
+and the <a href="#edcolourmap">colour mapping</a>.</li></ul>
+<p align=center <img
+src=images/gridadjust.png alt='Grid
+adjust screenshot'></p>
+
+
+<h4>Cut Slice View</h4>
+<p align=center <img
+src=images/cutsliceadjust.png alt='Grid
+adjust screenshot'></p>
+
+<ul><li><p>The cut slice view creates a 2-dimensional 'canvas' that can
+be moved through the molecule, with the values of the function at the
+point the slice is taken displayed on the canvas as contours or a
+colourmap. The size, orientation and position of the slice can be
+specified by using the <b>Tran</b>, <b>Rot</b> and <b>Scale</b> tools, which
+alter the position, orientation and size respectively, of the grid
+components. The density of points, or <i>mesh</i>, that the colour map
+or contours are mapped along any particular axis can be specified with the <b>nx</b>,
+<b>ny</b> and <b>nz</b> tools.</p>
+
+<p>The two tools at the top of the widget allow the <a
+href="#edopacity">opacity</a> of the whole slice to be selected and
+also the <a href="#edcolours">colour</a> of the border to be determined</p>
+
+<p>The options in the <b>representations box</b> determine which of
+the properties area shown.</p>
+<ul>
+<li>If <b>contours</b> is selected, contours are displayed. The
+maximum and minimum contour values, as well as the total number of
+contours displayed can be specified with the <b>Min Contour
+Height</b>,<b>Max Contour Height</b> and <b>Number of Contour</b>
+tools. The tools in the <b>Contour Colour Mapping</b> group allow a <a
+href="#edcolourmap">colour map</a> may also be defined for the
+contours.</li>
+
+<li>If <b>Colourmap</b> is selected a <a href="#edcolourmap">colour
+map</a> will be applied to the whole canvas as specified in the
+<b>colourmap colour mapping</b> group.</li>
+
+<li>The border around the slice can be toggled on and off with the
+<b>border</b> tool.</li>
+
+<li>An optional 2D-representation of the canvas can also be created in
+a separate window by selecting the <b>2D Representation</b>. Selecting this
+option opens up a separate window displaying a face-on of the
+canvas, which can be saved to the current directory as the file
+<b><i>out2d.jpeg</i></b>.</li>
+</li></ul>
+
+</blockquote>
+
+<blockquote>
+<hr width="50%"/>
+<a name="VectorView"></a><h3>Vector data view</h3>
+<p align=center><img src="images/viewvector.png"  border="0"
+alt="Vector View Menu screenshot"></p>
+
+<p>Vector data is data that has both a magnitude and a direction at a
+point in space. The GUI's vector visualiser is described below.</p>
+
+<h4>Vector Visualisation</h4>
+<ul>
+<li>There are three ways that the GUI can visualise vectors:</li>
+
+<br>
+
+<ul>
+<li><b>Hedgehog Plot</b> - this displays the vector as a line
+oriented along the vector. The length of the line is proportional to
+the magnitude of the vector. The lengths of the the hedgehog lines can
+be scaled with the <b>scale</b> tool, and the <b>display</b> tool
+toggles whether the hedgehog plot is displayed or not.</li>
+
+<li><b>Oriented Glyph</b> - this is similar to the hedgehog plot, but
+instead of lines, cones are drawn, with the orientation of the cone
+corresponding to the direction of the vector and the size of the cone
+proportional to the magnitude of the vector.</p></li>
+
+<li><b>Streamlines</b> - Streamlines can be thought of as the paths of
+particles that is travelling along the vector field. Starting at the point
+on the grid defining the vector, the particle moves forward a distance
+specfied by the <b>Integ Step Length</b> and <b>Step Length</b>
+tools. At that point, the magnitude and direction of the new vector field
+is determined and the particle moves forward again in the new
+direction.
+<br/>
+<br/>
+The <b>Propogation Time</b> determines how long the
+particle will travel for, and hence how long the streamlines will be.
+<br/>
+<br/>
+The <b>Display</b> determines whether the streamlines will be
+displayed as lines, tubes or surfaces.
+<br/>
+<br/>
+The <b>Integrate</b> tool determines whether the particle will move
+forwards in the direction the vector is pointing, backwards, or
+whether the path will be traced in both directions.
+<br/>
+<br/>
+<font color="red"><b>Computer Health Warning!</b></font>: computing streamlines
+with Python code is extremely cpu and memory hungry and has been know
+to bring even the hardiest of Linux boxes to its knees!</li>
+
+</ul>
+<br/>
+
+<li>All of the different vector views can have their <a
+href="#edcolourmap">colour mapping</a> changed according to
+other properties with the <b>Colour Map</b> tool.</li>
+
+<li>As displaying all of the points of the vector field is often not
+particularly information, the <b>Sampling Grid</b> tool can be used to
+select which points will be visualised. All of the points can be
+selected, or a 2-dimensional plane can be selected, or the points may
+be sampled according to another grid such as the grid defining the
+HOMO.</li>
+
+
+<p align=center <img
+src="images/vectoradjust.png" alt="Vector Visualiser screenshot"></p>
+
+</blockquote>
+
+
+<h3>An explanation of the individual view properties:</h3>
+
+<a name="edcolours"></a><ul><li><b>Edit Colours</b> - for surfaces
+that only have a single colour mapped to them, clicking on this option
+brings up the below dialog box that can be used to select the
+colour. The colour can be selected either by dragging the sliders to
+mix in various Red Green and Blue components, or the hexadecimal value
+of the colour can be entered in the <b>selection</b> box.</li></ul>
+<p align=center <img src="images/colouradjust.png" alt='Grid
+adjust screenshot'></p>
+
+<a name="edcolourmap"></a><ul>
+<li><b>Colour Mapping</b> - twp or three elements of the colour map are
+configurable depending on the tool that it is being used in:</li>
+<p align="center"><img src="images/edcolourmap.png" alt="Colour Map
+Tool screenshot"></p>
+
+<ul>
+<li><b>Scheme</b> - this determines how the colours change as
+the value of the property that is being coloured changes from its
+minimum to its maximum value.</li>
+<li><b>Lo</b> and <b>Hi</b> - this determines the maximum and minimum values
+of the property that the colour spectrum will be mapped to </li>
+<li><b>Colour By</b> - for certain colour maps, this determines which property the colour
+map is describing.</li>
+</ul>
+
+</ul>
+
+<a name="edopacity"></a><ul><li><b>Opacity</b> - this determines how <i>see-through</i> the coloured
+surface will be.</li></ul>
+
+<a name="edcontour"></a><ul><li><b>Contour Height</b> - this is the point value that the
+surface or contour will be mapped to; this effectively creates an
+isosurface mapped to the value specified in the contour height
+box.</li></ul>
+
+<a name="edoutline"></a><ul><li><b>Outline</b> - this is just a line
+drawn around the outer edge of the 3-dimensional grid that the points
+are mapped onto. It's display can be toggled on or off, and it's
+colour specified when displayed.</li></ul>
+
+<a name="edcolourfield"></a><ul><li><b>Colour Field</b> - this applies to the coloured isosurface
+tool, and colours the isosurface according to the property specified
+here. For example, an isosurface of the electron density can be
+displayed and this can be then coloured according to the electrostatic
+potential.</li></ul>
+
+<a name="edtransferfunc"></a><ul><li><b>Transfer Function</b> - A
+transfer function is used to colour individual volumes of space according to the
+value of a particular property within that volume. A transfer function
+is defined by a number of steps; each step is defined by an upper and
+lower value. If the value of the property within a volume of space falls
+within one of the steps, that volume of space is coloured according to
+the colour that has been ascribed to that step. The opacity of the
+volume can also be specified, so that the whole volume can be viewed
+at one time.</li>
+<ul>
+<p align=center <img src="images/edtransferfunc.png" alt="Transfer function screenshot"></p>
+
+
+
+<h4>Vibrations</h4>
+<p>If the one of the Frequencies options (finite difference or
+analytic) have been selected from the Properties Tab in the GAMESS-UK
+widget, then the vibrational frequencies of the molecule will be
+calculated, and the individual frequencies listed under the
+<b>Views</b> menu. To view a vibration, select the vibration from the
+views menu and a dialog box like the one below will be displayed:</p>
+<p align=center><img src ="images/viewvibration.png" border="0" alt="View
+Vibrations Tool image"></p>
+<p>The first few tools are the same as those for the <a href="#AdjMolView">Adjust
+Molecule View Tool</a>. The additional vibration-specific tools are
+contained in the <i>Animation</i> box. These are:</p>
+<ul><li><b>Start</b> - animate the selected vibration.</li>
+<li><b>Stop</b> - stop the animation.</li>
+<li><b>Number of Frames</b> - this is the number of still
+images that will be concatenated to create the animation.</li>
+<li><b>Amplitude</b> - this determines the <i>size</i> of the
+vibration: the distance from the equilibrium point of the vibration to
+its apex.</li>
+<li><b>Frame Delay</b> - the time-step between each frame that is
+concatenated to create the animation.</li>
+</ul>
+
+<h4>Animation...</h4>
+<ul><li> The animation tool brings up a set of controls that can be
+used to display a movie by cycling through the sequence of images that
+have been loaded into the CCP1GUI. There are buttons to 'play' the
+sequence in a loop, go to the first or last frame, or move forward or
+backwards a frame at a time. The animation tools are displayed below:</li></ul>
+<p align=center><img src ="images/viewanimate.png" border="0" alt="View
+Menu Animate Tool image"></p>
+
+<ul><li>The animation tool is particularly useful if you have carried out a
+geometry optimisation under GAMESS-UK, as the geometry of the molecule
+at each stage of the optimisation is saved to the punch file. Using
+the animation tools, a movie showing the progression of the geometry
+optimisation can be displayed.</li></ul>
+
+<h4>Show/Hide All</h4>
+<ul><li>Show All and Hide All affect the visibility of all graphical
+representations.</li></ul>
+
+<h4>Centre on Selected</h4>
+<ul><li>Changes the origin for viewing and rotations of the centroid
+of the selected atoms.</li></ul>
+
+<hr>
+
+<a name="InfoMenu"></a><h3 align=center>Info Menu</h3>
+<p align=center><img src="images/infomenu.png"  border="0" alt="Info menu screenshot"></p>
+
+<ul><li>The info menu brings up a list of options to print out
+select information on the molcule. The options are:</li>
+<br/>
+<ul>
+<li><b>Coordinate List</b> - a list of all the coordinates of the
+atoms within the selected molecule.</li>
+<li><b>Bond Length and Angles</b> - a list of all bond lengths and
+angles for the selected molecule.</li>
+<li><b>Contacts to Selected Atoms</b> - a list of all the atoms that
+are close enough to be considered in contact with the selected atoms.</li>
+</ul>
+
+</ul>
+
+<hr>
+
+<a name="ComputeMenu"></a><h3 align=center>Compute Menu</h3>
+<p align=center><img src="images/computemenu.png"  border="0" alt="Compute menu screenshot"></p>
+
+<ul><li>The compute menu is used to select a program with which to run a
+calculation on the molecule. Currently, the GUI has control interfaces
+for GAMESS-UK, Mopac and Chemshell. For help relating to the control
+window for a particular program, press F1 when the window is
+displayed.</li></ul>
+
+<hr>
+
+<a name="ShellMenu"></a><h3 align=center>Shell Menu</h3>
+
+<p align=center><img src="images/shellmenu.png"  border="0" alt="Shell menu screenshot"></p>
+
+<ul><li>The Shell menu is used to open an IDLE (Integrated Development
+Environment) Python shell - assuming you have IDLE installed. IDLE is
+included with most Python distributions, but if for any reason you
+don't have it, it is available from: <a
+href="http://www.python.org/idle">http://www.python.org/idle</a></li></ul>
+
+<ul><li>When opened from within the GUI, IDLE provides a powerful tool with
+which to interact with the GUI. The GUI Python objects can be operated
+on directly and information about them displayed.</li></ul>
+
+<ul><li>It is also possible to write and run scripts to carry out complex
+operations.</li></ul>
+
+<ul><li>More help on this is to follow.</li></ul>
+
+<hr>
+
+<a name="EditTools"></a><h3 align=center>The Editing Tools Window</h3>
+<img src="images/edittools_sht.png"  border="0" alt="Edit Tools screenshot 1">
+
+<h4>Changing the element type</h4>
+<ul><li>When it is first displayed, the upper half of the panel displays a
+selection of elements from the periodic table. To change the element
+type of an atom in the main window, select the atom with the mouse (so
+that a yellow square appears over it) and then click on the button
+representing the element type you would like the atom to be changed
+to.</li></ul>
+
+<ul><li>If the element you are after isn't displayed in the selection, click
+on the 'More...' button to display a full periodic table. To shrink
+the window back down so that it only displays a small selection of
+elements, click on the 'Short Table' button.</li></ul>
+<br>
+
+<img src="images/edittools_lng.png"  border="0" alt="Edit Tools screenshot2">
+
+<h4>Deleting atoms or bonds and deleting bonds</h4>
+<ul><li>To delete an atom, just select it with the mouse and click on the &quot;Del
+Atom&quot; button.</li></ul>
+
+<ul><li>To delete a bond, select the atoms on either side of the bond and
+click on the &quot;Del Bond&quot; button.</li></ul>
+
+<ul><li>To add a bond connecting two atoms, select the two atoms you wish to
+connect and click the &quot;Add Bond&quot; button.</li></ul>
+
+<h4>Converting generic atoms to Hydrogen Atoms</h4>
+<ul><li>When a new molecule is created (using File -&gt; 'New Molecule') or new
+atoms are added to the molecule (as described below) the atoms at the
+end of the bonds are not assigned to any element type. To convert them
+to hydrogen atoms, click the 'All X-&gt;H' button.</li></ul>
+
+<h4>Adding atoms and bonds to a molecule</h4>
+<ul><li>To add bonds to an atom of a molecule, you need to change the
+hybridisation of the atom allow extra bonds to be added. To do this,
+select the atom and then click on a hybridisation scheme from the
+'Hybridisation' section of the Tool Panel.</li></ul>
+
+<ul><li>The available options are:</p>
+<ul>
+<li><b>sp</b> &nbsp;&nbsp;= &nbsp;sp</li>
+<li><b>sp2</b> &nbsp;= &nbsp;sp2</li>
+<li><b>sp3</b> &nbsp;= &nbsp;sp3</li>
+<li><b>tpy</b> &nbsp;= &nbsp;trigonal pyrimidal</li>
+<li><b>sqpl</b> = &nbsp;square planar</li>
+<li><b>sqpy</b> = &nbsp;square pyramidal</li>
+<li><b>oct</b> &nbsp;= &nbsp;octahedral</li>
+</ul>
+</ul>
+
+<ul><li>Changing the hybridisation will add however many generic atoms your
+hybridisation scheme permits. You may then change their type
+individually or convert them all to hydrogens as described
+above.</li></ul>
+
+<h4>Adding molecular fragments to a molecule</h4>
+<ul><li>To speed up the construction of large molecules, the GUI
+supports the ability to add molecular fragments to a given atom. This
+is controlled through the <b>Add Fragment</b> part to the bottom right
+of the Tool Panel. To add a molecular fragment, select the atom to
+which you would like to add the fragment in the main window, select
+the desired fragment from menu on the right hand side of the Add
+Fragment frame in the Tools window and then click <b>Add</b>. Supported molecular
+fragments are:</li>
+
+<ul>
+<li><b>Me</b> &nbsp;&nbsp;= &nbsp; methyl</li>
+<li><b>Pr</b> &nbsp;= &nbsp;propyl</li>
+<li><b>t-Bu</b> &nbsp;= &nbsp; tertiary butyl</li>
+<li><b>CO</b> &nbsp;= &nbsp; carbon monoxide</li>
+<li><b>Bu</b> = &nbsp;butyl</li>
+<li><b>eta Bz</b> = &nbsp;&eta; (&pi;-bound) benzyl </li>
+<li><b>eta Cp</b> &nbsp;= &nbsp;&eta; (&pi;-bound) cyclopentadienyl</li>
+<li><b>i-Bu</b> &nbsp;= &nbsp;iso butyl</li>
+<li><b>eta Ethylene</b> &nbsp;= &nbsp;&eta; (&pi;-bound) Ethylene</li>
+<li><b>i-Pr</b> &nbsp;= &nbsp;iso propyl</li>
+<li><b>Et</b> &nbsp;= &nbsp; ethyl</li>
+<li><b>Py</b> &nbsp;= &nbsp;phenyl</li>
+</ul>
+
+</ul>
+
+<p align=center><a href="#EditMenu">Return to the Edit Menu</a></li></ul>
+
+<hr>
+
+<a name="EditOptions"></a><h3 align=center>Edit Options Menu</h3>
+
+<h4>Files</h4>
+<p align=center><img src="images/editoptionsfile.png"  border="0"
+alt="Edit Options File screenshot"></p>
+<ul><li>At present, there are no editable attributes available
+here.</li></ul>
+
+<h4>Connectivity</h4>
+<p align=center><img src="images/editoptionsconnect.png"  border="0"
+alt="Edit Options Connect screenshot"></p>
+<blockquote>
+<ul><li><h4>Connection Parameters</h4>
+<p>The parameters here determine how the gui decides if two atoms are
+bonded (assuming that the connectivity has not been specified in the
+input file). The formula that is used to determine bonding is: </p>
+<p align=center><b>r</b><sub>ij</sub> <b>&lt;</b> <i>scale</i> *
+(r<sub>cov</sub>(i) + r<sub>cov</sub>(j)) + <i>tolerance</i></p>
+<p>where <b>r</b><sub>ij</sub> is the distance between the two atomic
+centres, r<sub>cov</sub>(<i>n</i>) the Van der Waals radius of the
+atom, <i>scale</i> the radius scale factor and <i>tolerance</i> the
+tolerance.</p>
+</li>
+<ul><li><b>Radius scale</b> -  this determines the radius scale in the
+above formula.</li></ul>
+<ul><li><b>Tolerance</b> -  this determines the tolerance in the
+above formula.</li></ul>
+</ul>
+
+<ul><li><h4>Non-bonded Connection Parameters</h4>
+<p>The parameters here determine how the gui decides if two
+non-bonded, but adjacent atoms, are in contact with each other.
+This determined using the same formula as for bondeded
+atoms and the same parameters are adjustable.</p>
+</li></ul>
+</blockquote>
+
+<h4>Visualisation</h4>
+<p align=center><img src="images/editoptionsvisual.png"  border="0"
+alt="Edit Options Visualisation screenshot"></p>
+<blockquote>
+
+<p>The visualistion options here permit the user to define exactly how
+the GUI wil represent the various objects that it draws.</p>
+
+<ul>
+
+<li><b>Background Colour</b> - clicking on the 'Choose' button will bring
+up an <a href="#edcolours">colour editing widget</a> to change the
+background colour of the GUI.</li>
+
+<li><b>Pick Tolerance</b> - this allows you to change how close you have to
+place the mouse pointer to an object in order to be able to select
+that object. </li>
+
+<li><b>Sphere Properties</b> - the options in this box determine the
+surface properties of the spheres and how they interact with the
+light. More later...</li>
+
+
+<li><b>Cylinder Properties</b> - the options in this box determine the
+surface properties of the spheres and how they interact with the
+light. More later...</li>
+
+</blockquote>
+
+<h4>Developmental</h4>
+<ul><li>At present, there are no editable attributes available here.
+The Editing Tool Panel is used to change various properties of the
+molecule displayed in the main window.</li></ul>
+
+<p align=center><a href="#EditMenu">Return to the Edit Menu</a></p>
+
+<hr>
+
+<a name="EditCoords"></a><h3 align=center>The Edit Coordinates Window</h3>
+
+<img src="images/editcoords.png"  border="0" alt="ZME screenshot">
+
+<ul><li>This can be used to manually edit the coordinates of the atoms in a
+molecule using either internal (displayed as a Z-matrix) or Cartesian
+coordinates. It is also possible to mix and match the two.</li></ul>
+
+<ul><li>The coordinates window at the top of the Edit Window is a table
+displaying the coordinates. Each row corresponds to an individual
+atom. The table below shows the meaning of each of the columns in this
+panel for Z-matrix format and Cartesian coordinates.</li></ul>
+<br>
+
+<table border=1>
+
+<tr bgcolor=#e0e0e0>
+<th>Title</th>
+<th>Cartesian</th>
+<th>Zmatrix</th></tr>
+
+<tr><td bgcolor=#e0e0e0>i</td>
+<td>A number serving as a unique identifier for the
+atom</td>
+<td>Same as for Cartesians.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>Sym</td>
+<td>The chemical Symbol for the atom - a number may be
+appended to this to help identify the atom.</td>
+<td>Same as for Cartesians.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>i1</td>
+<td>Unused</td>
+<td>The first atom to which this atom is connected.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>x/r</td>
+<td>The x-coordinate of the atom in Angstroms</td>
+<td>The distance of this atom from the atom specified in i1.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>i2</td>
+<td>Unused</td><td>The second atom to which this atom
+is connected.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>y/theta</td>
+<td>The y-coordinate of the atom in Angstroms</td>
+<td>The angle between this atom and the atoms identified
+in columns i1 and i2.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>i3</td>
+<td>Unused</td><td>The third atom to which this atom is
+connected.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>z/phi</td>
+<td>The z-coordinate of the atom in Angstroms.</td>
+<td>The dihedral angle between this atom and those
+identified in the fields 1i,i2 and i3.</td></tr>
+
+<tr><td bgcolor=#e0e0e0>connections</td>
+<td>The other atoms to which this atom is connected.</td>
+<td>Unused</td></tr>
+</table>
+
+<h4>Input Line</h4>
+<ul><li>Values in the coordinates window cannot be edited by directly. However, by
+clicking on the row corresponding to an atom in the coordinates window (or
+clicking on the atom in the main window), the values for that atom
+appear in the Input Line fields headed &quot;Enter Coordinate values&quot; that
+sits below the table. By clicking in a field, the value can then be
+edited.</li></ul>
+
+<h4>Variables</h4>
+<ul><li>The Variables field shows any values that are specified as variable
+within the coordinates window. </li></ul>
+
+<h4>Error Output</h4>
+<ul><li>If there is a problem with any of the coordinates that have been
+entered, an error message will be displayed here.</li></ul>
+
+<h3>File Menu</h3>
+<h4>Save Zmatrix</h4>
+<ul><li>Save the coordinates to a simple text file with the extension
+.zmt</li></ul>
+
+<h4>Load Zmatrix</h4>
+<ul><li>Load coordinates from a file.</li></ul>
+
+<h4>Reload from Graphics Window</h4>
+<ul><li>Update the coordinates window with the coordinates from the molecule
+displayed in the main window.</li></ul>
+
+<h3>Edit Menu</h3>
+<h4>Select All Atoms</h4>
+<ul><li>This selects and highlights all of the atoms specified in the
+coordinates window &nbsp;- the corresponding atoms in the main window will
+also be highlighted.</li></ul>
+
+<h4>Insert Atoms</h4>
+<ul><li>This opens up a blank Input Line so that the coordinates for a new
+atom can be added.</li></ul>
+
+<h4>Copy Atoms</h4>
+<ul><li>The values for the specified atoms will be copied into a buffer ready
+for pasting.</li></ul>
+
+<h4>Cut Atoms</h4>
+<ul><li>The atoms will be removed from the coordinates window, but the values
+will be copied into a buffer ready to be pasted.</li></ul>
+
+<h4>Paste Atoms</h4>
+<ul><li>Paste the coordinates of any atoms that were saved into the buffer into
+the table.</li></ul>
+
+<h4>Delete Atoms</h4>
+<ul><li>Delete the selected atoms, but don't save their values.</li></ul>
+
+<h4>r,x -&gt; var</h4>
+<ul><li>Specify the value for x-coordinate or r as a variable (this value will then
+be displayed in the 'Variables' window).</li></ul>
+
+<h4>theta,y -&gt; var</h4>
+<ul><li>Specify the value for y-coordinate or theta as a variable (this value will then
+be displayed in the 'Variables' window).</li></ul>
+
+<h4>phi,z -&gt; var</h4>
+<ul><li>Specify the value for z-coordinate or phi as a variable (this value will then
+be displayed in the 'Variables' window).</li></ul>
+
+<h4>all -&gt; var</h4>
+<ul><li>Specify that all the selected values should be variables.</li></ul>
+
+<h4>Select All Variables</h4>
+<ul><li>This selects all of the variables displayed in the 'Variables' window.</li></ul>
+
+<h4>Delete Variables</h4>
+<ul><li>Remove a value from the variables window and specify it as a constant.</li></ul>
+
+<h3>Convert Menu</h3>
+<h4>Reorder Atoms</h4>
+<ul><li>Not active at present</li></ul>
+
+<h4>AutoZ</h4>
+<ul><li>Not active at present.</li></ul>
+
+<h4>Convert Selection to Z-Matrix</h4>
+<ul><li>Convert a selection displayed as Cartesian to be displayed in Z-matrix
+form.</li></ul>
+
+<h4>Convert Selection to Cartesian</h4>
+<ul><li>Convert a selection displayed as Z-matrix to be display in Cartesian
+form.</li></ul>
+
+<h3>Calculate Menu</h3>
+<h4>Auto Recalc</h4>
+<ul><li>This toggles whether the coordinates should be recalculated as each change
+is made or whether the calculation should wait until 'Recompute Now'
+is selected.</li></ul>
+
+<h4>Recompute Now</h4>
+<ul><li>Recompute the Z-matrix.</li></ul>
+
+<p align=center><a href="#EditMenu">Return to the Edit Menu</a></li></ul>
+
+
+</body>
+</html>

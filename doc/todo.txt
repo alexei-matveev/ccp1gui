@@ -1,0 +1,381 @@
+
+                    To Do List
+                    ==========
+
+1. Calculation and Calculation Editor Objects
+   ===========================================
+   Re-enable pickling of calc objects (seems OK now)
+
+   reinstate selector to switch molecule
+
+  Use of rlock to lock GUI elements - is this needed?
+
+1.1 GAMESS-UK
+    dumpfile&restart options
+    dft quad grids, charge fitting
+      still need to be enabled
+    queue vs submit
+    pathname configuration or variable + document
+    Error: dialog for Current Spin OK
+
+   Error handler in gamess-uk run is poor
+     things we could check for...
+     zmatrix has no variables
+     X atoms remain 
+     spin multiplicity problems
+
+   - Why is symmetry and symmetry adaption off?
+     could we deal with orientation changes?
+
+   - check storage of dumpfile and restart
+
+   - add atomic charges (mulliken, pdc, dma etc), ideally
+     using some atom dictionary which will map to xml structures.
+
+   harmonic switch
+
+   working directory .. we could put something useful in there.
+
+   packing/alignment of widgets
+
+cc-pvdz etc
+  check opengl renderer again
+  check load up of xml
+  introduce some molden file format?
+  reader for orth?
+ - restore pymol-based functionality
+ - try vtk build on windows from CVS
+ - make sure openGL code works well enough to use in case VTK fails
+ - grid interface .. coupling to loki, HPCx, etc
+ - <a href="dummy.txt">GUI TODO List</a>
+nice table of bond lengths angles and torsions.
+take close-and-save button off the cut slice widget
+change buttons on the properties and extend widgets
+guess tools dont initialise properly from
+   the data held in the calculation structure
+Add PDC code
+
+
+   also bad that symmetry is activated by default
+   adapt is switched independently of symmetry (in chemshell case, but 
+      not gamess interface)
+   sort out a way of detecting chemshell errors (even
+      minimal example of deleting the punchfile)
+      .. or better a way to catch the return code
+   problems arising from having selected atoms showing when 
+      a new geom is read in.
+   dl_poly interface should support bypass_parameterisation and save_dl_poly_files
+
+   - would be much better if output file was loaded for good or bad 
+     (then could examine problems,.... not see previous output)
+
+1.2 ChemShell
+    GAMESS-UK relies on rungamess, some workaround in ChemShell is needed
+    under windows (this is now OK with cygwin GAMESS-UK)
+
+    No gulp stuff in any of them yet
+
+    connectivity handling for MM calcs seems wrong, I think there is
+    a reconnect going on in chemshell
+
+    clearly some code missing for the case that create_mm_calc fails
+
+    when chemshell script is not in path current version carries on
+    even after a msg on stderr
+
+
+1.3 Mopac
+=========
+
+    some structures dont transfer properly via cartesian coord input.
+
+2. Z-Matrix Editor
+==================
+
+   Update when main window changes
+   Autoz algorithm needs to 
+      a) keep as much of existing zmatrix as possible
+      b) work for non-fully-connected systems
+
+    still sometimes hang in autoz
+       - fix algorithm or make a subthread?
+       - fix issue with AX4 molecules as well
+
+ * It would be useful if there were some more keyboard bindings
+    - Arrow keys up and down to move up and down the list
+    - Enter key to move down the list after updating the zmatrix
+    - Tab key works as expected
+    - bind the del key in the graphics window to delete the selected atom
+    - There should be an undo function.
+
+   - When editing the atom coordinates, it would be useful if
+   selecting a field automatically selected the contents.  I've just
+   dfound double clicking does that!
+
+   - I'm seeing strange behaviour for z/phi.  Using phi the list box
+   shows values of 0.0000 but when I select the edit box show -
+   9.68339008.  Only values of 0.0 seem to be affected values of 180
+   seem OK.  Found when building benzene with sp2
+
+   - occasionally on building I get a sudden change in the bonding.
+
+   - remove unused variables at output, from menu
+
+   Provide a quit menu item and warning
+   How to save z-matrix for the next session (perhaps best
+   incorporated into the calculation object)
+
+    1. Even though it is reasonably obvious, it might make things
+    clearer to have an intial column in the table that states whether
+    the line is being displayed in Z-matrix or cartesian form.
+
+    2. The white canvas where the coordinates are displayed is too
+    long - it should only extend down to just below where the text
+    finishes.
+
+    3. There should be a 'close' button or at least an option under
+    the file menu to close the Coords window.
+
+   4. There should be an 'update' button below the single-line
+   editable field that updates both the coordinate window and the
+   image (an alternative to binding enter)
+
+   check and ask "save changes to atom....."
+
+   6. When atoms are deleted the yellow 'select' dots remain on the
+   screen (Check this out)
+
+   copy/paste with variables
+   fix connectivity errors on cut/paste
+
+   when autoz is run.... 
+
+
+3.  Job manager
+  ==============
+    Support running an update proc when files change
+
+    Globus interface
+    In some cases stderr is hard to find (e.g. BackgroundJob for chemshell)
+
+    this should have two buttons - one to kill the
+    calculation and another to dismiss the job manager icon.
+
+    stdin/stdout for job steps .. problem under unix?
+
+
+4. TkMolView program
+=======================
+   picking-based selection based for OpenGL backend
+
+   allow selection on object views other than wireframe
+   provide tools to output the structure
+   finish linking in fragments
+   update zme when edits are done in the main window
+   fix/report VTK problem with single atoms not showing up
+   provide some kind of a selection tool
+BUG when zoomed right in picking doesnt work
+BUG Fix Open Calc menu entry
+BUG vis object names
+
+   sort out Watch procedure (check unix and windows)
+
+   ON EXIT Keep getting an error message saying memory can't be read.
+   Exiting works OK when using the X button on the top right of the box.
+
+   need an update after some key bindings (e.g. r)
+   we need a z-rotation binding
+
+   FILE MENU . Should think about binding standard key combinations to commands
+   (e.g. Crtl-O for 'Open', Ctrl-N for 'New').
+
+   Should re-instate the idea of playing a sequence of views
+   ... this was really useful for the Cardiff Demo.
+
+   Implement a 'valency check' button as similar programs have to make
+   sure that what's drawn on the screen is viable.
+
+   CALCULATIONS - Confusion around zmatrix files, input files and coordinates.
+
+   problem with zero-length bonds and cylinder code
+
+   editing .. found switching to sp3 when 3 atoms already present gave one new
+   atom overlapping one of the others
+
+Attempting to save gave an error
+================================================================================
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "c:\PythonNest\Python21\lib\lib-tk\Tkinter.py", line 1285, in __call__
+    return apply(self.func, args)
+  File "c:\cygwin\home\john\python_dev\tkmolview\main.py", line 1565, in save_to
+_file
+    calcdir = re.sub(r"[^\/\\:]*$","",self.filename)
+AttributeError: VtkGraph instance has no attribute 'filename'
+=================================================================================
+
+some more output formats
+  - punchfile zmatrix might be helpful
+  - PDB
+  - CML?
+
+how to use browser widget more sensibly
+   - can it replace the extension when you pick an alternate file type?
+
+   File -> New Molecule
+     1. When selecting 'New Molecule' a dialogue box should pop up
+     prompting for a name for the molecule and defaulting to New 1, New 2,
+     ... etc if none is specified.
+
+     2. When a new molecule is selected, the Tool Panel always
+        appears slightly obscuring the screen and needs to be moved -
+        if possible it should appear further down the screen.
+
+     3. (optional) auto resize when reading in new molecules
+
+
+4.1   VTK stuff
+   Configurable VTK molecule views
+
+   When "Save Image' is clicked, a menu should pop up so the user can
+   select a filename, location and image format. The default name for
+   the image should be the molecule name.
+
+  Major problems with font size, justification etc when using
+   vtkScaledTextActor etc in the 2D plane
+   maybe report problems on VTK list?
+
+
+5. Visualisers
+================
+
+HVD In animations it would be good to be able to change the
+    view settings for all frames in one go.
+
+   Isosurf code:
+    also need to be able to rebuild the vtk points if the
+    grid being visualised has changed?
+    ? need to hold a variable to detect this?
+    ? or could we look at dates held within VTK objects?
+
+  vibration vis:
+  add active_atoms for partial frequencies
+
+   molecule vis:
+   Shouldn't 'Sticks' and 'Wireframe' views be mutually exclusive?
+
+   There should be an option to select the width of the sticks as they
+   can be rather wide.
+
+   The text and pointers don't line up
+
+6. Basis 
+   ======
+   Build up internal library
+   Add in proper keyword capability
+   Access to PNNL over Web
+   basis tool should be able to generate orbital stats for current basis
+
+
+7. Selection Module and tools
+=============================
+
+BUG operations which delete/move atoms can leave stray yellow dots
+
+Edit/Select all
+- I expected to select all, but I had to select an atom, then it selects all but that atom
+- I was wondering if it could select all atoms and the refresh the screen
+- May be there should be different selection modes rather than just adding to the
+  selection (replace)
+
+BUG
+  use select all when image isn't showing, produces yellow
+  dots that dont go away properly 
+
+Grid Editor
+============
+
+Sometimes the grid transformation goes haywire .. some loop taking
+values way out of range, with no way back (cancel/restore has no effect,
+seems the reference grid is being overwritten so each transform
+is cumulative.
+
+Also have observed that on linux, moving focus over some of the 
+elements causes invocation of callbacks.
+
+maybe set a minimum scale factor
+hide z widgets when grid is 2d
+have 1,2,3D selector
+add file menu with read/write functions
+
+
+Overall package
+=====================
+
+Propagate licences, copyright etc 
+
+Make acknowledgements somewhere
+
+Location of binaries?
+     hardwired to subdirectories
+     or rely on using paths
+     configurable
+
+   Layout of windows on the screen
+
+   It's got a naff name - it really should have something more inspiring
+   as it will help people to remember what it is.
+
+    It might be a good idea to have a 'Close Panel' button on any
+    new panel that pops up to make it easier to close.
+
+   Determine exactly what modules/functionalities from the different
+   packages (e.g. VTK) are required and package them together into a
+   single Linux rpm or windows .exe package.
+
+   A set of detailed instructions/helpfiles needs to be written and
+   made available on the web and also included with the package. The
+   'internal' help menus in the program need to be improved too,
+   including things like binding context-sensitive help to the F1 key.
+
+   Decide on filename extensions (ideally 3 character ones) avoiding
+   clashes that might affect mailers etc.
+
+   Find how to associate GUI with particular file types under windows
+   and maybe a linux desktop.
+
+   Need to make settings from options panel persistent and define
+   a .ccp1guirc format
+
+
+Handling of periodic edits
+==========================
+
+whether to write out the periodic structure (primitive cell)
+or the current atom list.
+
+this might depend on whether any any changes have been made,
+? perhaps an edit should remove the cell vectors
+
+currently we only output the full list - this is logical in a wysiwyg sense
+
+only special case is where no modifications have been made 
+    so cell is still present
+
+we could extend view in visualiser instead of creating new atoms? (option of using a 
+visibly different representation)
+
+extensibility to other codes
+=============================
+the choice of job types is a bit confusing, some incomplete implementations
+how to avoid chuncks of code being replicated for all QM codes
+standardisation of parameter table
+  how wide? include semi-empirical ? plane wave ?
+
+major confusion of names and titles .. 
+
+Clean code has no undo
+
+better handling of user directory path (probably through paths module)
+would be better.
+

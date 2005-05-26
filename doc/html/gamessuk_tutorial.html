@@ -1,0 +1,70 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Using GAMESS-UK from the GUI</title>
+  </head>
+
+  <body>
+    <h1>Using GAMESS-UK from the GUI</h1>
+
+<h3>Loading or Building a molecule</h3>
+
+<p>If you have a molecule in one of the supported formats (e.g. xyz, pdb, xml)
+you can read it in using the Open option on the file menu.
+
+<p>Alternatively, you can use the molecular editing capabilities, bearing
+in mind these are quite primitive at the moment. 
+Pick New Molecule from the File menu. The new molecule is 
+a single carbon atom with 4 dummy X atoms attached.
+These can be used to build up the structure, using the tools
+on the Editing Tools panel. In general, select an atom with a
+left-mouse click (you should see a yellow marker appear next to
+the atom) and then pick the operation you require. Typically you
+will need to change the atom type of the X atom, select a hybridisation
+state, and then select one of the new X atoms which will appear.
+To unselect an atoms, either click on them a second time with
+the left mouse button, or unselect all by clicking left mouse
+on an empty part of the screen.
+
+<p> If you have any dummy (X) atoms when you have finished,
+be sure to either delete them or convert them to real atom
+types before continuing (there is an All X->H option to convert
+them all to hydrogen).
+
+<p> Once a structure is available, you can open  a GAMESS-UK
+calculation using the Compute menu.
+
+<p> It is recommended that you use the sto3g basis set for
+interactive testing as it will give the fastest computations.
+
+<p> If you would like to recover orbitals or vibrational frequencies
+click the relevant buttons on the Properties page.
+
+<p>The molecule page can be used to change the charge and spin state of
+the system. Probably the SCF and Directives menus will not need 
+any changes.
+
+<p> Hit Run under the Calc menu to run the job. A job manager window
+should pop up, with the status of the job.  If this does not happen,
+check the window in which you started the GUI for error messages.
+
+<p> A dialog box will pop up when the job completes, indicating
+which results have been recovered. The molecular structure from the
+job will replace the one in the GUI window.. you won't see a change
+unless you have performed a geometry optimisation run.
+
+<p> You can pick "Output" from the view menu to see the GAMESS-UK
+output listing, or you can pick "Input" from the view menu to see the
+GAMESS-UK input that was generated.
+
+<p> See the <a href=vis_tutorial.html>visualisation tutorial</a> for 
+information on how to display the results of the calculation.
+
+<hr>
+    <address><a href="mailto:ps96@PS96PORT"></a></address>
+<!-- Created: Thu Mar 04 07:46:47 GMT Standard Time 2004 -->
+<!-- hhmts start -->
+Last modified: Thu Mar 04 14:29:02 GMT Standard Time 2004
+<!-- hhmts end -->
+  </body>
+</html>

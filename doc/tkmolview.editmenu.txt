@@ -1,0 +1,41 @@
+Edit Menu
+=========
+
+Edit Coords
+-----------
+  Opens the molecular coordinates editor on the chosen
+  molecule. The coordinates editor is used for editing the atomic
+  coordinates of the molecule in either Z-matrix or Cartesian form.
+
+Connect
+-------
+  Link all unnconnected atoms with a suitable bond. You will need to
+  do this if you have loaded in a molecule in .pdb format.
+
+Extend
+------
+  Extend a periodic structure with more repeat units.
+
+List
+----
+  List the coordinates of all the atoms for a selected molecule. The
+  results will be displayed in the shell from which the GUI is
+  running, or in the 'Python Shell' window if you have opened it.
+
+Editing Tools
+-------------
+  Opens a window with tools for  molecular editing (point
+  and click) operations. More extensive help on the Editing Tools
+  can be displayed by pressing F1 when the Editing Tools window
+  is displayed.
+
+
+Select All
+----------
+   Selects All atoms of all molecules.
+
+Options
+-------
+   Opens the Options panel, allowing adjustment of defaults
+   and parameters relating to the graphical view. More extensive help
+   can be displayed by pressing F1 with this window displayed.

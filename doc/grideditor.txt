@@ -1,0 +1,50 @@
+Edit Grid
+
+When a particular analysis option is selected, the GAMESS-UK
+calculation will output a grid of points where the selected molecular
+property has been calculated at each point. The Edit Grid button
+brings up a separate window which can be used to tune the properties
+of the Grid. The options available for the grid are:
+
+    * X Tran - the slider can be used to shift the origin of the
+      grid's x-axis. Alternatively the shift can be specified in
+      Angstroms and entered in the box to the right of the slider.
+
+    * Y Tran - as for X Tran, but applies to the y-axis.
+
+    * Z Tran - as for X Tran, but applies to the z-axis.
+
+    * X Rot - the slider can be used to rotate the grid about the
+      x-axis. Alternatively the angle of rotation can be entered in
+      the box to the right of the slider.
+
+    * Y Rot - as for X Rot, but applies to the y-axis.
+
+    * Z Rot - as for X Rot, but applies to the z-axis.
+
+    * X Scale - the slider can be used to scale the length of the
+      x-axis, or the relative value can be entered in the box to the
+      right.
+
+    * Y Scale - as for X Scale, but applies to the y-axis.
+
+    * Z Scale - as for X Scale, but applies to the z-axis.
+
+    * nx - this counter is used to specify the 'mesh density' along
+      the x-axis. For rectangular grids, this is the total number of
+      points along the axis.
+
+    * ny - as for nx, but applies to the y-axis.
+
+    * nz - as for nx, but applies to the z-axis.
+
+    * Transform - apply any changes that are pending.
+
+    * Close and Save - close the Grid Editor window and return to the
+      calculation window, saving any changes that have been made.
+
+    * Reset - reset the grid to its default values.
+
+    * Close and Cancel - close the Grid Editor window and return to
+      the calculation window, but discard any changes that have been
+      made.

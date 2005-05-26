@@ -1,0 +1,25 @@
+Tools Menu
+==========
+
+Provides Access to external program interfaces and a number of utilities
+
+Connect
+-------
+Compute connectivity of a molecule based on the interatomic distances
+
+Extend
+------
+  change the number of periodic images in each direction
+
+List
+----
+  lists (to the windows command window)
+
+GAMESS-UK/Mopac/ChemShell
+-------------------------
+  Opens the control panels for computational chemistry packages
+
+Python Shell
+------------
+  Provides a box to enter python commands
+  Output appears in the window from which the GUI was opened.

@@ -1,0 +1,881 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+	<title>CCP1GUI GAMESS-UK Menus</title>
+</head>
+<body>
+<h2 ALIGN=CENTER>The GAMESS-UK Control Window</h2>
+<p>The GAMESS-UK window provides an easy-to-use interface to select
+the options for a GAMESS-UK calculation on a molecule.</p>
+<h3>Calc Menu</h3>
+<P align=center><img src="images/gamesscalcmenu.png" border="1" alt="Calc menu screenshot"></p>
+<h4>Save...</h4>
+<ul>
+	<li><p>Save the currently selected options and the molecule to
+	a .clc file so that the editing of the calculation can be
+	returned to a later time.</p>
+</ul>
+<h4>Run</h4>
+<ul>
+	<li><p>Run a GAMESS-UK calculation with the currently selected
+	options. If the input file has been edited manually with the <b>Edit
+	-&gt; Input</b> option, any edits will be overwritten.</p>
+</ul>
+
+<h4>Write Inputfile</h4>
+<ul>
+	<li><p>Write a GAMESS-UK input file in the directory specified in
+	the <b>Working Directory</b> tool in the job tab. If no directory is
+	specified, the directory from which the CCP1GUI was started is used.
+	The output file will be saved with same name as the molecule being
+	edited, but with the suffix <kbd>.in</kbd> appended.</p>
+</ul>
+<h4>Run Inputfile</h4>
+<ul>
+	<li><p>Run a GAMESS-UK calculation using the input file that was
+	written with the <b>Write Inputfile</b> option - including any
+	manual edits that may have been made with the the <b>Edit
+	-&gt; Input</b> option.</p>
+</ul>
+<h4>Close</h4>
+<ul>
+	<li><p>Close the GAMESS-UK calculation window. Any unsaved changes
+	will be lost.</p>
+</ul>
+<hr>
+<h3>Edit Menu</h3>
+<P ALIGN=CENTER><img SRC="images/gamesseditmenu.png" border="1" ALT="Edit menu screenshot"</p>
+<h4>Input</h4>
+<ul>
+	<li><p>Open the Inputfile that was written with the <b>File -&gt;
+	Write Inputfile</b> in a simple text-editor window. Clicking <b>Ok</b>
+	in the editor window saves the results of the edit to file and
+	<b>Cancel</b> discards them. 
+	</p>
+</ul>
+<hr>
+<h3>View Menu</h3>
+<P ALIGN=CENTER><img SRC="images/gamessviewmenu.png" border="1" ALT="View menu screenshot"></p>
+<h4>Input</h4>
+<ul>
+	<li><p>View the GAMESS-UK input file.</p>
+</ul>
+<h4>Output</h4>
+<ul>
+	<li><p>View the GAMESS-UK output file for the most recent calculation.</p>
+</ul>
+<h4>Results Summary</h4>
+<ul>
+	<li><p>View a summary of the results of the GAMESS-UK calculation as
+	extracted from the output file. The results will be displayed in the
+	Python terminal from which the CCP1Gui was run.</p>
+</ul>
+<hr>
+<a name="MolTab"></a><h3>Molecule Tab</h3>
+<P align=center><img SRC="images/gamessmoltab.png" alt="Molecule Tab
+screenshot" width=350 height=430 ></p>
+<p>The options in this tab set up some of the most basic and general
+options for the calculation.</p>
+<h4>Options Group</h4>
+<p>This group sets the basic options for the calculation.</p>
+<ul>
+	<li><p><b>Title</b> - a title for the calculation can be entered
+	here. This will be displayed at the head of the GAMESS-UK output
+	file.</p>
+</ul>
+<ul>
+	<li><p><b>Task</b> - this can be used to
+	select the type of GAMESS-UK calculation that will be undertaken. 
+	</p>
+	<ul>
+		<li><p><b>Energy</b> - this undertakes a
+		single-point energy evaluation, followed by any
+		additional calculations/anaylses that may have been specified.</p>
+		<li><p><b>Gradient</b> This forces the
+		computation of both the energy and the forces. 
+		</p>
+		<li><p><b>Geometry Optimisation</b> -
+		this optimises the geometry of the molecule by searching for a
+		local minimum on the potential energy surface. Additional
+		optimisation options can be set in the <b>Optimisation</b> tab. 
+		</p>
+	</ul>
+</ul>
+<ul>
+	<li><p><b>Charge</b> - specify the overall charge on the molecule.</p>
+</ul>
+<ul>
+	<li><p><b>Spin</b> Specify the spin multiplicity of the
+	molecule (1 = singlet, 2 = doublet etc.).</p>
+</ul>
+<ul>
+	<li><p><b>Check Spin</b> - this checks the spin multiplicity of
+	the molecule is consistent with the number of electrons in the
+	molecule.</p>
+</ul>
+<ul>
+	<li><p><b>Use Symmetry</b> - by default, the GAMESS-UK SCF, MCSCF and CI
+	modules are performed internally in a symmetry adapted basis
+	set. This involves the automatic generation of a symmetry
+	adapted list of functions driven from the input molecular
+	geometry and basis specified, and subsequent characterisation
+	of the molecular orbitals in terms of the generated list. The
+	Use Symmetery option toggles this behaviour on or off.</p>
+
+</ul>
+
+<h4>Basis Selector Group</h4>
+<p>The tools in this group are used to select which basis sets are
+applied to each of the atoms in the molecule. The currently applied basis
+set is shown in the <b>Current Basis Assignment</b> window.</p>
+<ul>
+	<li><p><b>Default Basis</b> - this is used to select the basis set
+	that is applied to all the atoms, unless other basis sets are
+	specifically applied to atoms of a certain type using the
+	<b>Assign by atom type</b> tool. The default basis set for
+	GAMESS-UK is the 3-21G split valence basis set.</p>
+</ul>
+<ul>
+	<li><P STYLE="margin-bottom: 0cm"><b>Assign by Atom Type</b> - the tools
+	in this group are used to apply specific basis sets to atoms
+	of the specified type within a molecule.</p>
+	<ul>
+		<li><P STYLE="margin-bottom: 0cm">Clicking on the <b>Assign Type</b>
+		button will apply the basis set shown in the <b>Choose Basis</b>
+		selector to the specified atom type. Any
+		changes made in the <b>Default Basis</b> tool will now no longer
+		apply to this atom unless it is selected again and the <b>Clear
+		Assignment</b> button is pressed. 
+		</p>
+		<li><p>If the basis set that you require is not available from the
+		menus, you can write or paste the basis set specification into the
+		<b>Custom Basis Specification</b> window.</p>
+	</ul>
+</ul>
+<hr>
+<a name="TheoryTab"></a><h3>Theory Tab</h3>
+<P align=center><img SRC="images/gamesstheorytab.png" alt="Theory Tab
+	screenshot"  width=350 height=430></p>
+<h4>Guess Group</h4>
+<p>Any SCF calculation requires a guess to be made as to the form of
+molecular orbitals or eigenvectors used as a starting point for the
+iterative process. The <b>guess</b> menu tool can be used to select
+between the three main methods offered by GAMESS.</p>
+<ul>
+	<li><p><b>Compute</b> - the guess is
+	calculated using an initial property of
+	the molecule. The available options are:</p>
+	<ul>
+		<li><p><b>atoms</b> - the guess is based
+		on concatenating the 1-particle density matrices for each of the
+		component atoms of the molecular system. 
+		</p>
+		<li><p><b>atorbs</b> - the starting
+		orbitals are constructed as a
+		concatenation of the atomic orbitals of the atoms. This is not
+		generally recommended, but is useful for subsequent valence bond
+		calculations and for calculations on atoms. 
+		</p>
+		<li><P<b>hcore</b> - diagonalise the
+		1-electron (core) Hamiltonian. This is the most general mechanism
+		available, but is also the least reliable in that the resulting MOs
+		may often not exhibit the required ordering. 
+		</p>
+		<li><p><b>minguess</b> - construct and
+		diagonalise a Huckel type matrix. This option is limited to minimal
+		basis sets (e.g. STO3G), but in such cases often leads to a
+		reliable set of MOs. 
+		</p>
+		<li><p><b>extguess</b> - limited to split-valence basis sets (e.g.,
+		3-21G, 4-31G etc.), leading in general to a reliable set of
+		orbitals. 
+		</p>
+	</ul>
+</ul>
+<ul>
+	<li><p><b>Dumpfile</b> - the Dumpfile method uses a set of orbitals
+	that have been calculated during a previous run of the
+	calculation and stored in the dumpfile (which is connected to
+	the GAMESS-UK output stream ed3). The orbitals are read from the 
+	dumpfile at the section specified by the counter tool. If an
+	UHF, GVB or UDFT calculation is performed, two sections will
+	need to be specified, one for the alpha orbitals and one for
+	the beta. If, for example, the calculation that created the dumpfile was a
+	UHF calculation, and the current one is one of RHF, GVB or
+	UDFT, then both a and b sections for the current calculation will
+	need to point at the section where the orbitals were stored by
+	the foregoing RHF calculation (the default for RHF
+	calculations being section1). </p>
+	<ul>
+	<li><p><b>Section a/b</b> - the section where the
+	vectors for the &alpha; or &beta; can be found. </p>
+	</ul>
+	<p> For an explanation of how to specify the
+	dumpfile for a calculation see the File Path Group in the <a
+	href="#JobTab">Job Tab</a>.</p>
+
+</ul>
+<ul>
+	<li><p><b>GETQ</b> - this uses a set of orbitals from a
+	<i>foreign</i> dumpfile. A foreign dumpfile is the dumpfile
+	from a calculation where, for example, the geometry of the
+	molecule may be different to the current run, the symmetry
+	adapted option was different or a smaller basis set was
+	used. In fact the only similarities required to use a dumpfile
+	from a previous calcualtion using the GETQ option, is that the
+	ordering of the nuclei presented in the z-matrix definition
+	lines be the same for both. If the GETQ option is selected,
+	the block and section of the dumpfile where the orbtials were
+	written to needs to be specified:</p>
+	<ul>
+		<li><p><b>Block a/b</b> - the block of the dumpfile
+	where the vectors for the &alpha; or &beta; can be found.</p>
+		<li><p><b>Section a/b</b> - the section where the
+	vectors for the &alpha; or &beta; can be found. </p>
+	</ul>
+	<p> For an explanation of how to specify the foreign dumpfile for a
+	calculation see the File Path Group in the <a
+	href="#jobtab">Job Tab</a>.</p>
+</ul>
+<h4>SCF Options</h4>
+<p>The group of options here determine the base SCF calculation
+options as follows:</p>
+<ul>
+	<li><p><b>SCF Method</b> This determines
+	the type of SCF calculation that will be undertaken. The available
+	options are: 
+	</p>
+	<ul>
+		<li><p><b>RHF</b> - a Restricted
+		Hartree-Fock calculation (closed shell). 
+		</p>
+		<li><p><b>UHF</b> - an Unrestricted
+		Hartree-Fock calculation (open shell). 
+		</p>
+		<li><b>GVB</b> - a Generalised
+		Valence Bond calculation.
+		<li><p><b>DFT</b> - a Density Functional
+		Theory calculation (closed shell). 
+		</p>
+		<li><p><b>UDFT</b> - an unrestricted
+		Density Functional Theory calculation (open shell). 
+		</p>
+		<li><p><b>Direct RHF</b> - perform a RHF
+		calculation but recalculate the integrals as needed. 
+		</p>
+		<li><p><b>Direct UHF</b> - perform a UHF
+		calculation but recalculate the integrals as needed. 
+		</p>
+		<li><p><b>Direct GVB</b> - perform a GVB
+		calculation but recalculate the integrals as needed. 
+		</p>
+		<li><p><b>Direct DFT</b> - perform a DFT
+		calculation but recalculate the integrals as needed. 
+		</p>
+		<li><p><b>Direct UDFT</b> - perform a
+		UDFT calculation but recalculate the integrals as needed.</p>
+	</ul>
+	<p></p>
+	<li><p><b>Max. Cycles</b> - this sets the
+	maximum number of SCF iterations that will be carried out if the
+	calculation has not already converged or
+	run out of time by then. 
+	</p>
+	<li><p><b>Threshold</b> - this specifies
+	the 'accuracy' of the calculation by determining when to stop the
+	SCF iterations. This occurs when the value of the
+	<i>tester</i> is equal to 10<sup>-<i>n</i></sup>, where
+	<i>n</i> is the value specified in the threshold field (the
+	<i>tester</i> value is the largest absolute value of the
+	occupied/virtual block  of the Fock matrix in the Molecular
+	Orbital basis). </p>
+
+	<li><p><b>Bypass SCF</b> - if a previous
+	calculation has been carried out the molecule and the resulting
+	vectors saved in the GAMESS-UK dumpfile, selecting the bypass
+	options causes these results to be used negating the need for a
+	fresh SCF calculation. 
+	</p>
+	<li><p><b>SCF Level Shifters</b> The
+	tools in this group control the level shifters that can be used to
+	control the convergence of an SCF calculation. The level shifters
+	work by artificially raising the energy of the virtual
+	orbitals <i>E</i> Hartrees above the occupied orbitals,
+	thereby artificially stabilising the iterative process and
+	improving convergence. The available options are: </p>
+	<ul>
+		<li><p><b>Initial Levelshifter Value</b>
+		- the difference in energy (in Hartrees) between the virtual and
+		occupied orbitals for the first <i>n</i> cycles. 
+		</p>
+		<li><p><b>Cycle to change on</b> - the
+		SCF iteration at which the levelshifter value will be altered. 
+		</p>
+		<li><p><b>Final Levelshifter Value</b> - the energy difference
+		between the virtual and occupied orbitals until the
+		DIIS solver is in operation. 
+		</p>
+	</ul>
+</ul>
+<h4>Post SCF Options</h4>
+<p>This is used to select amongst the post-SCF calculations available
+within GAMESS-UK. The options are:</p>
+<ul>
+	<li><p><b>MCSCF</b> - multi-configuration
+	SCF. 
+	</p>
+	<li><p><b>MP2</b> - second-order
+	M&oslash;ller-Plesset perturbation. 
+	</p>
+	<li><p><b>MP3</b> - third-order
+	M&oslash;ller-Plesset perturbation. 
+	</p>
+	<li><p><b>CCSD</b> - coupled-cluster
+	single and double substitution. 
+	</p>
+	<li><p><b>CCSD(T)</b> - coupled-cluster
+	single, double and a quasi-perturbative
+	estimate for connected triple excitations. 
+	</p>
+	<li><p><b>Direct CI</b> - direct
+	configuration interaction. 
+	</p>
+	<li><p><b>MRDCI</b> - multi-reference
+	single- and double-excitation configuration interaction. 
+	</p>
+	<li><p><b>Direct MP2</b> - as standard MP2 but recalculate the
+	integrals as needed, as opposed to keeping them in memory 
+	</p>
+</ul>
+<hr>
+<a name="DFTTab"></a><h3>Density Functional Theory Tab</h3>
+<P align=center><img src="images/gamessdfttab.png" alt="DFT Tab
+screenshot"  width=350 height=430></p>
+<p>If one of the DFT options was selected in the SCF options in the
+Theory tab, then the DFT options here will apply.</p>
+<h4>Functional</h4>
+<p>The functional tool is used to select the Exchange-Correlation
+Functional to be used. Available functionals are:</p>
+<ul>
+	<li><p><b>SVWN</b> - Slater, Vosko, Wilk,
+	Nusair functional. 
+	</p>
+	<li><p><b>BLYP</b> - Becke's
+	gradient-corrected exchange functional with the Lee-Yang-Parr
+	gradient-corrected correlation functional.
+		</p>
+	<li><p><b>B3LYP</b> - Becke 3-parameter
+	hybrid exchange combined with the LYP exchange-correlation
+	functional. 
+	</p>
+	<li><p><b>B97</b> - Becke-97 functional. 
+	</p>
+	<li><p><b>HCTH</b> -
+	Hamprecht-Cohen-Tozer-Handy pure DFT functional. 
+	</p>
+	<li><p><b>FT97</b> - Filatov and Thiel functional. 
+	</p>
+</ul>
+<h4>Accuracy</h4>
+<p>Together, these settings determine the accuracy of the DFT
+calculation:</p>
+<ul>
+	<li><p><b>Grid setting</b> - this
+	determines the accuracy of the Quadrature Grid. 
+	</p>
+	<ul>
+		<li><p><b>low</b> - should only be used
+		for preliminary studies; the grid is designed to obtain the total
+		number of electrons from the density integration with a relative
+		error of 1.0e-4 per atom. 
+		</p>
+		<li><p><b>medium</b> - this grid is
+		designed to obtain a relative error of less than 1.0e-6 in the
+		number of electrons per atom. 
+		</p>
+		<li><p><b>high</b> - the grid is
+		designed to obtain a relative error of less than 1.0e-8 in the
+		number of electrons per atom. 
+		</p>
+		<li><p><b>very high</b> - this grid is
+		significantly more accurate then the high grid, and is only
+		designed to be used for benchmarking calculations. 
+		</p>
+	</ul>
+	<p></p>
+	<li><p><b>DFT Weighting Scheme</b> - this
+	selects a weighting scheme to combine the atomic integration grids
+	to a molecular integration grid. Available schemes are: 
+	</p>
+	<ul>
+		<li><p><b>Becke</b> - the original Becke
+		weighting scheme. 
+		</p>
+		<li><p><b>MHL</b> - the Murray, Handy
+		and Laming weighting scheme. This leads to more accurate integrals
+		than the Becke scheme. 
+		</p>
+		<li><p><b>SSF</b> - the Stratmann,
+		Scuseria and Frisch weighting scheme, which seems to be the most
+		accurate for large quadrature grids. 
+		</p>
+		<li><p><b>MHL4SSF</b> - the Stratmann,
+		Scuseria and Frisch weighting scheme with screening, but employing
+		the cell function by Murray, Handy and Laming weighting scheme with
+		&mu; equal to 4. 
+		</p>
+		<li><p><b>MHL8SSF</b> - as above but with &mu; equal to 8. 
+		</p>
+	</ul>
+</ul>
+<h4>Quadrature Types</h4>
+<p>The settings here allow the type of angular and radial integration
+grid to be specified explicitly.</p>
+<ul>
+	<li><p><b>Radial Grid</b> - this
+	determines the settings for the radial integration grid. Available
+	options are: 
+	</p>
+	<ul>
+		<li><p><b>default</b> - the default
+		setting will apply. 
+		</p>
+		<li><p><b>Euler-MacLaurin</b> - the
+		Euler-MacLaurin grid will be used. If this option is selected, a
+		tool will be displayed that allows the number of gridpoints to be
+		selected. 
+		</p>
+		<li><p><b>Mura-Knowles</b> - the Mura-Knowles grid will be used. If
+		this option is selected, a tool will be displayed that allows the
+		number of gridpoints to be selected.</p>
+	</ul>
+</ul>
+<ul>
+	<li><p><b>Angular Grid</b> - this
+	determines the settings for the angular integration grid. Available
+	options are: 
+	</p>
+	<ul>
+		<li><p><b>default</b> - the default
+		setting will apply. 
+		</p>
+		<li><p><b>Lebedev-Laikov</b> - the
+		Lebedev-Laikov grid will be used. If this option is selected, a
+		tool will be displayed that allows the number of gridpoints to be
+		selected. 
+		</p>
+		<li><p><b>Gauss-Legendre</b> - the Mura-Legendre grid will be used.
+		If this option is selected, a tool will be displayed that allows
+		the number of gridpoints to be selected.</p>
+	</ul>
+</ul>
+<h4>Coulomb Fitting</h4>
+<p>Coulomb fitting reduces the cost associated with DFT calculations
+of medium sized molecules by avoiding the calculation of 4-center
+2-electron integrals. This can be achieved by choosing a functional
+without Hartree-Fock exchange and evaluating the Coulomb energy with
+an auxiliary basis set. The tools in this group control Coulomb
+Fitting.</p>
+<ul>
+	<li><p><b>Use Coulomb Fitting</b> - if
+	this box is selected, Coulomb fitting is turned on and two
+	additional tools are displayed that allow the fitting to be
+	configured: 
+	</p>
+	<ul>
+		<li><p><b>Fitting Basis</b> - Coulomb
+		fitting requires an additional basis set
+		for the atoms in the molecule, and the options here are used to
+		determine the basis set to be used. Available options are: 
+		</p>
+		<ul>
+			<li><p><b>A1DGAUSS</b> - use the
+			A1-DGAUSS fitting set. 
+			</p>
+			<li><p><b>A2DGAUSS</b> - use the
+			A2-DGAUSS fitting set. 
+			</p>
+			<li><p><b>DEMON</b> - use the DeMon
+			fitting set. 
+			</p>
+			<li><p><b>AHLRICHS</b> - use the fitted
+			basis sets tabulated by Ahlrichs and co-workers. 
+			</p>
+		</ul>
+	</ul>
+	<p></p>
+	<li><p><b>Schwarz Cutoff</b> - the number
+	of 3-centre integrals can be reduced by neglecting
+	those that are small enough to be considered insignificant. The
+	Schwarz inequality is used to decide the
+	cutoff point below which integrals are not important, with the
+	Schwarz tolerance being set to 10<SUP>-<i>n</i></SUP>,
+	where <i>n</i> is the number entered in the box.</p>
+</ul>
+<hr>
+<a name="PropTab"></a><h3>Properties Tab</h3>
+<P align=center><img SRC="images/gamessproptab.png" border="1"
+	alt="Properties Tab screenshot" width=350 height=430></p>
+<p>The options here define the molecular properties to be calculated
+by GAMESS-UK. The upper half of the tab is used to control the
+<i>graphical options</i> that are to be plotted. The magnitudes of
+these particular molecular properties are mapped to a grid, the
+properties of which can be specified with the <a
+href="#editgrid">Edit Grid</a> option. The molecular properties
+that can be calculated are:</p>
+<ul>
+	<li><p><b>Difference Density</b> - this
+	calculates the difference between the total electron density
+	associated with a molecule and the sum of the electron densities of
+	the atoms which constitute the molecule, but which are assumed to
+	have undergone no interactions with each other, and have remained
+	undistorted as in the free state. As such, it provides an indication
+	of the overall rearrangement of density which occurs when the atoms
+	come together upon molecular formation. 
+	</p>
+	<li><p><b>Potential</b> - the value of
+	the electrostatic potential created by the electronic distribution
+	and nuclear charge of the molecule. 
+	</p>
+	<li><p><b>HOMO/LUMO</b> - the Highest
+	Occupied Molecular Orbital and the Lowest Unoccupied Molecular
+	Orbital. 
+	</p>
+	<li><p><b>HOMO<i>n</i>/LUMO<i>n</i></b> - the
+	<i>n<sup>th</sup></i> orbital in energy below the HOMO and the
+	<i>n<sup>th</sup></i> orbital above the LUMO. 
+	</p>
+	<li><p><b>Charge Density</b> - the
+	electron density associated with the molecule. 
+	</p>
+	<li><p><b>Difference Density</b> - this
+	calculates the difference between the total electron density
+	associated with a molecule and the sum of the electron densities of
+	the atoms which constitute the molecule, but which are assumed to
+	have undergone no interactions with each other, and have remained
+	undistorted as in the free state. As such, it provides an indication
+	of the overall rearrangement of density which occurs when the atoms
+	come together upon molecular formation. 
+	</p>
+	<li><p><b>Potential</b> - the value of
+	the electrostatic potential created by the electronic distribution
+	and nuclear charge of the molecule. 
+	</p>
+</ul>
+
+<p> The options in lower half of the tab determine that GAMESS-UK
+	should calculate the force constants that determine the
+	vibrational frequencies of the molecule. This can be done in
+	two ways namely:</p>
+	<ul>
+	<li><p><b>Finite Difference</b> - this indicates that
+	GAMESS-UK will calculate the force constants numerically
+	by taking finite differences of the gradient using a one-point
+	formula.</li> 
+	<li><p><b>Analytic</b> - this option is a combination of
+	tasks, requesting integral generation, SCF, gradient
+	evaluation (with additional evaluation of derivative Fock
+	operators), integral transformation, solution of the coupled
+	Hartree-Fock (CHF) equations, calculation of the two-electron
+	second derivative contribution and, finally, determination of
+	the projected harmonic frequencies. This approach is generally
+	more accurate than the numerical approach, but is only
+	vialable for SCF and DFT wavefunctions, together
+	with MP2 closed-shell wavefunctions.</li> 
+	<p><i><b>NB:</b> the above options are only applicable if
+	the geometry of the molecule has already been optimised in a
+	previous calculation or if an optimisation is carried out as
+	part of the current calculation.</i></p>
+	</p>
+</ul>
+
+<a name="EditGrid"><h4>Edit Grid</h4></a>
+<P align=center><img SRC="images/gamessgridedit.png" alt="Grid Editor
+screenshot"></p>
+<p>When a graphical analysis option is selected, the GAMESS-UK
+calculation will output a grid of points where the selected molecular
+property has been calculated at each point. The <b>Edit Grid</b>
+button brings up a separate window which
+can be used to tune the properties of the Grid. The options available
+for the grid are:</p>
+<ul>
+	<li><p><b>X,Y,Z Tran</b> - the slider can be
+	used to shift the origin of the grid's x,y, or
+	z-axis. Alternatively the shift can be specified in Angstroms
+	and entered in the box to the right of the slider. 
+	</p>
+	<li><p><b>X,Y,Z Rot</b> - the slider can be used to rotate the
+	grid about the x,y or z-axis. Alternatively the angle of
+	rotation can be entered in the box to the right of the
+	slider. 
+	</p>
+	<li><p><b>X,Y,Z Scale</b> - the slider can be used to scale
+	the length of the x,y or z-axis, or the relative
+	value can be entered in the box to the right. 
+	</p>
+	<li><p><b>nx, ny, nz</b> - this counter is used
+	to specify the 'mesh density' along the x,y or z-axis. For rectangular
+	grids, this is the total number of points along the axis. 
+	</p>
+	<li><p><b>Transform</b> - apply any
+	changes that are pending. 
+	</p>
+	<li><p><b>Close and Save</b> - close the
+	Grid Editor window and return to the calculation window, saving any
+	changes that have been made. 
+	</p>
+	<li><p><b>Reset</b> - reset the grid to
+	its default values. 
+	</p>
+	<li><p><b>Close and Cancel</b> - close the Grid Editor window and
+	return to the calculation window, but discard any changes that have
+	been made. 
+	</p>
+</ul>
+<hr>
+<a name="GeomoptTab"></a><h3>Optimisation Tab</h3>
+<p align=center><img src="images/gamessopttab.png" alt="Optimisation
+Tab screenshot"  width=350 height=430></p>
+<p>If the <b>Task</b> has been selected as <b>Geometry Optimisation</b>
+in the <b>Molecule Tab</b>, then the options here determine how the
+geometry optimisation will proceed.</p>
+<h4>Runtype Group</h4>
+<p>The options in this group determine the type of geometry
+optimisation that will be carried out.</p>
+<ul>
+	<li><p><b>Opt. Coords</b> - this
+	determines the optimisation method that will be used. The options
+	are: 
+	</p>
+	<ul>
+		<li><p><b>Z-Matrix</b> - this selects a
+		quasi-Newton rank-2 update procedure in internal coordinates. This
+		is the recommended method but requires the molecular coordinates to
+		have been specified in internal coordinate
+		form and the variables that are to be optimised to have been
+		specified. 
+		</p>
+		<li><p><b>Cartesian</b> - if this is selected the optimisation uses
+		a Cartesian-driven update method. The
+		Cartesian geometry optimisation cannot be
+		used when searching for a transition state or using the
+		Jorgensen/Simmons optimisation algorithm.</p>
+	</ul>
+</ul>
+<ul>
+	<li><p><b>Locate Transition State</b> - if this checkbox is selected
+	then the geometry optimisation will not
+	search for the global minimum, but will instead try and determine
+	the geometry of a transition state. A transition state search can
+	only be undertaken if the z-matrix is in internal coordinate form
+	and the variables that are to be optimised have been specified.</p>
+</ul>
+<h4>Search Procedure Group</h4>
+<p>The options in this group allow the user a certain amount
+of control over the implementation of the selected optimisation
+strategy.</p>
+<ul>
+	<li><p><b>Energy evaluations</b> - this number determines the
+	maximum number of energy evaluations (geometry optimisation <i>steps</i>)
+	that will be permitted.</p>
+</ul>
+<ul>
+	<li><p><b>Line searches</b> - this is the maximum number of line
+	searches that will be permitted during the optimisation.</p>
+</ul>
+<ul>
+	<li><p><b>Convergence Thresh.</b> - this determines the convergence
+	threshold: the point at which the geometry
+	optimisation is deemed to have converged. 
+	</p>
+	<p>For a <i>Z-matrix minimisation</i> or <i>Transition State Search</i>, this is
+	when:</p>
+	<ul>
+		<li><p>maximum change in variables <b>&lt;</b>
+		Convergence Threshold 
+		</p>
+		<li><p>average change in variables <b>&lt;</b>
+		Convergence Threshold * 2/3 
+		</p>
+		<li><p>maximum gradient <b>&lt;</b>
+		Convergence Threshold * 4/9 
+		</p>
+		<li><p>average gradient <b>&lt;</b> Convergence Threshold * 8/27</p>
+	</ul>
+	<p>For a Cartesian optimisation, this is when:</p>
+	<ul>
+		<li><p>The maximum component of the gradient is equal to the value
+		specified for the Convergence Threshold.</p>
+	</ul>
+</ul>
+<ul>
+	<li><p><b>Max. Step Size</b> - this determines the largest change
+	that will be permitted to be made to variables during the
+	optimisation. If a <i>Z-Matrix minimisation</i> or
+	<i>Transition State Search</i> is being carried out this this number
+	determines the maximum change in bond length in Bohrs, or change in
+	bond angle in radians. For a Cartesian
+	optimisation the number specifies the maximum permitted change in
+	the Cartesian coordinates.</p>
+</ul>
+<ul>
+	<li><p><b>Turning Point Accuracy </b>- This option is only
+	applicable to a <i>Z-Matrix minimisation</i> or <i>Transition
+	State Search</i> and controls the accuracy of the search for a
+	turning point during a line search. This value should be set
+	between 0.0 and 1.0, with a smaller value leading to a more
+	accurate line search.</p>
+</ul>
+<h4>Jorgensen Group</h4>
+<p>If the checkbox is selected it indicates that the Jorgensen/Simmons
+quasi-Newton-Raphson minimisation algorithm should be used. This is
+only applicable when a <i>Z-Matrix minimisation</i> or <i>Transition
+State Search</i> is being undertaken.</p>
+<ul>
+	<li><p><b>Hessian Update Procedure</b> - this option is only
+	displayed if the geometry optimisation is searching for a minimum
+	and not a transition state. If displayed it can be used to select
+	whether the Hessian update procedure is the default, BFGS, or BFGSX
+	(a modified BFGS update procedure with safeguards to ensure
+	retention of a positive definite Hessian).</p>
+</ul>
+<ul>
+	<li><p><b>Use Powell Hessian Update</b> - this option is only
+	displayed if a transition search is being undertaken and determines
+	that the Hessian should be updated using the Powell update
+	procedure.</p>
+</ul>
+<ul>
+	<li><p><b>Min. Hessian Eigenvalue</b> - the minimum permitted value
+	for a Hessian eigenvalue.</p>
+</ul>
+<ul>
+	<li><p><b>Max Hessian Eigenvalue </b>- the maximum permitted value
+	for a Hessian eigenvalue</p>
+</ul>
+<ul>
+	<li><p><b>Use Rational Function Optimisation</b> - this is
+	used to control the nature of the steps taken in the search
+	procedure. If RFO is selected, a menu is presented that allows
+	the user to select the default specification for RRO. 
+	</p>
+	<ul>
+		<li><b>ON</b> - only RFO or P-RFO
+		steps will be taken.
+		<li><p><b>OFF</b> - Newton-Raphson steps will be taken where
+		appropriate, instead of RFO or P-RFO steps.</p>
+	</ul>
+</ul>
+<hr>
+<a name="JobTab"></a><h3>Job Tab</h3>
+<p align=center><img src="images/gamessjobtab.png" border="1" alt="Job
+		Tab screenshot"width=350 height=430></p>
+<p>The tools in this tab set up various external atrributes of the
+GAMESS-UK that will be run.</p>
+
+<h4>Job Group</h4>
+<p>The tools in this group are used to configure the environment that
+the GAMESS-UK job will be run in.</p><ul>
+
+	<li><p><b>Jobname</b> - the name of the GAMESS-UK job. All of
+	the files created by the calculation will have whatever
+	<i>jobname</i> has been specified as, as their stem unless
+	they are specifically renamed using the tools in the file path
+	group (see below). </p>
+</ul>
+<ul>
+	<li><p><b>Hostname</b> - the name of the host where the calculation
+	is being run. If your GAMESS-UK executable is located on your local
+	machine (i.e. the computer you are running the GUI on), this
+	should be set to localhost.</p>
+</ul>
+<ul>
+	<li><p><b>Job Submission</b> - this is not
+	active at present.</p>
+</ul>
+<ul>
+	<li><p><b>User Name</b> - the UNIX username of the user submitting
+	the job.</p>
+</ul>
+<ul>
+	<li><p><b>Working Directory</b> - this is used to select
+	the directory where the GAMESS-UK input file, and any output files
+	, will be created.</p>
+</ul>
+
+<h4>File Path Group</h4>
+<p>The tools in this tab set the names and locations of the files that
+will be connected to the various ed streams used by GAMESS-UK.</p>
+<ul>
+	<li><p><b>ECP Libraries</b> - ed0 is used to specify the
+	directory containing the pseudopotential libraries used for non-local
+	pseudopotential calculations. If the <b>specify</b> button is
+	clicked, a text window and browse button will appear, which
+	can be used to specify the location of this directory.</p>
+</ul>
+<ul>
+	<li><p><b>Mainfile (ed2)</b> - this file is used to hold the
+	two electron integrals generated by GAMESS-UK. If the
+	<b>keep</b> button is selected, this file will be saved in the
+	directory the calculation is run in, with the name specified by
+	the <i>jobname</i> tool and the suffix <kbd>.ed2</kbd>. If the
+	<b>specify</b> button is selected, the name and location can
+	be specifed as desired.</p>
+</ul>
+<ul>
+	<li><p><b>Dumpfile (ed3)</b> - the dumpfile holds a variety of
+	information including the eigenvectors, restart information 
+  	Hessians, CI-coefficients etc. You must save the dumpfile for
+	a calculation if you intend to undertake any subsequent
+	calculations based on the results of this calculation. It is
+	also vital to specify the dumpfile you wish to use if you are
+	performing a calculation that requires any information
+	contained in the dumpfile from a previous calculation. It is important to
+	note that the dumpfile from a previous calculation will be
+	overwritten with the new values if it is specifed here.</p>
+
+	<p>If this is the first of a series of calculations and no
+	information from previous calculations is requried, the
+	<b>keep</b> button will cause the dumpfile for this
+	calculation to be saved in the directory the calculation is
+	running in, with the name specified by
+	the <i>jobname</i> tool and the suffix
+	<kbd>.ed3</kbd>. Alternatively, the <b>specify</b> button can
+	be used to select an arbitrary name and location. If the
+	current calculation uses information from a previous
+	calculation, then the same applies, but the eigenvector
+	information will be read from this file, before
+	the values are overwritten with those for the current calculation.</p>
+</ul>
+<ul>
+	<li><p><b>Tempfile (ed7)</b> - this file is the temporary file
+	used by GAMESS-UK and holds various housekeeping information
+	used by the program as it runs. Normally this file is located
+	in the directory specified by the GAMESS_TMP environment
+	variable, or, failing that, the directory specified by the GAMESS_SCR enviroment
+	variable, or, as a last resort, the directory that the
+	calculation runs in. If for any reason you believe there may
+	not be enough space in any of these directories, or they are
+	located on disks that are not fast enough, an alternative
+	location can be specifed with this tool. If the
+	<b>keep</b> button is selected, this file will be saved in the
+	directory the calculation is run in, with the name specified by
+	the <i>jobname</i> tool and the suffix <kbd>.ed7</kbd>. If the
+	<b>specify</b> button is selected, the name and location can
+	be specifed as desired.</p>
+</ul>
+<ul>
+	<li><p><b>Foreign Dumpfile (ed14)</b> - this is used to
+	specify the location of a <i>foreign</i> dumpfile. For more
+	information about foreign dumpfiles see the <b>GETQ</b> option
+	in the <b>Guess Section</b> of the <a href="#TheoryTab">Theory
+	Tab</a>. It is important to note that if a file is specified
+	as a foreign dumpfile, it is only <i>read from</i> and not
+	written to. If the dumpfile for the current calculation is to
+	be kept, it should be specified with the ed3 dumpfile tool
+	described above.</p>
+	<p>If the <b>specify</b> button is clicked, a text window and browse button will appear, which
+	can be used to specify the location of this file.</p>
+</ul>
+</body>
+</html>

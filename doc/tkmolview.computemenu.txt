@@ -1,0 +1,8 @@
+Compute Menu
+============
+
+The compute menu is used to select a program with which to run a calculation on
+the moleclue. Currently, the GUI has control interfaces for GAMESS-UK,
+Mopac and Chemshell. For help relating to the control window for a
+particular program, press F1 when the window is displayed.
+

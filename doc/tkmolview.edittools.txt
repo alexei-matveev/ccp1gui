@@ -1,0 +1,73 @@
+                             The Editing Tools Window                          
+   
+    Changing the element type
+   
+      + When it is first displayed, the upper half of the panel displays a
+        selection of elements from the periodic table. To change the element
+        type of an atom in the main window, select the atom with the mouse (so
+        that a yellow square appears over it) and then click on the button
+        representing the element type you would like the atom to be changed to.
+      + If the element you are after isn't displayed in the selection, click on
+        the 'More...' button to display a full periodic table. To shrink the
+        window back down so that it only displays a small selection of
+        elements, click on the 'Short Table' button.
+   
+   
+    Deleting atoms or bonds and deleting bonds
+   
+      + To delete an atom, just select it with the mouse and click on the "Del
+        Atom" button.
+      + To delete a bond, select the atoms on either side of the bond and click
+        on the "Del Bond" button.
+      + To add a bond connecting two atoms, select the two atoms you wish to
+        connect and click the "Add Bond" button.
+   
+    Converting generic atoms to Hydrogen Atoms
+   
+      + When a new molecule is created (using File -> 'New Molecule') or new
+        atoms are added to the molecule (as described below) the atoms at the
+        end of the bonds are not assigned to any element type. To convert them
+        to hydrogen atoms, click the 'All X->H' button.
+   
+    Adding atoms and bonds to a molecule
+   
+      + To add bonds to an atom of a molecule, you need to change the
+        hybridisation of the atom allow extra bonds to be added. To do this,
+        select the atom and then click on a hybridisation scheme from the
+        'Hybridisation' section of the Tool Panel.
+      + The available options are:
+       
+          o sp   =  sp
+          o sp2  =  sp2
+          o sp3  =  sp3
+          o tpy  =  trigonal pyrimidal
+          o sqpl =  square planar
+          o sqpy =  square pyramidal
+          o oct  =  octahedral
+
+      + Changing the hybridisation will add however many generic atoms your
+        hybridisation scheme permits. You may then change their type
+        individually or convert them all to hydrogens as described above.
+   
+    Adding molecular fragments to a molecule
+   
+      + To speed up the construction of large molecules, the GUI supports the
+        ability to add molecular fragments to a given atom. This is controlled
+        through the Add Fragment part to the bottom right of the Tool Panel. To
+        add a molecular fragment, select the atom to which you would like to
+        add the fragment in the main window, select the desired fragment from
+        menu on the right hand side of the Add Fragment frame and then click 
+        Add. Supported molecular fragments are:
+          o Me   =   Methyl
+          o Pr  =  
+          o t-Bu  =   tertiary Butyl
+          o CO  =   Carbon Monoxide
+          o Bu =  
+          o eta Bz =  
+          o eta Cp  =  
+          o i-Bu  =  
+          o eta Ethylene  =  
+          o i-Pr  =  
+          o Et  =   Ethyl
+          o Py  =  
+   

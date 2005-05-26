@@ -1,0 +1,74 @@
+ 
+                   CCP1 GUI python developments
+                   ----------------------------
+
+0. Introduction
+
+
+1. Directory Structure
+
+ccp1gui
+
+  The core GUI code 
+  - the Zmatrix and Atom classes 
+  - QM and MM code interface objects
+  - Tk editors for the code parameters and zmatrix objects
+  - Field class, and GridEditor class (includes FPScale widget)
+
+chempy
+
+   Slightly modified copy of the implementation of 
+   chemical objedts from PyMOL.
+   We use the Indexed, Atom and Bond classes.
+
+examples
+
+    Some molecules to read in
+
+tests
+ 
+    small python fragments exploring various issues that
+    crop up in development (not really interesting to the
+    non-developer)
+
+graph
+
+    base Graph and Visualiser classes
+
+pymolgraph
+
+    Derived Graph and Visualiser classes when using PyMOL is
+    as the visualisation engine (needs work to get this working
+    again.
+
+tkmolview
+
+    A small, stand-alone python molecular viewer and editor based
+    on either VTK or OpenGL graphics.
+    Includes code for selection, periodic table class and widget
+
+jobmanager
+
+    Classes to support the execution of local and remote calculations,
+    includes a Tk job editor widget to view job status and kill jobs as
+    required.
+
+basis
+
+    Classes to manage Gaussian basis sets, including some data files
+
+doc 
+
+    Preliminary documentation files (text format)
+    
+2. Other documentation
+
+The code is documented and developers should find something useful
+by running pydoc, in practice this doesn't work well although some
+module documentation can be viewed.
+
+Other files in this directory
+
+3. User Documentation
+
+For now, see the help screens of the GUI.

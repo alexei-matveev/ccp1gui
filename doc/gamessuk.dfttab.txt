@@ -1,0 +1,153 @@
+Density Functional Theory Tab
+=============================
+
+If one of the DFT options was selected in the SCF options in the
+Theory tab, then the DFT options here will apply.
+
+Functional
+----------
+
+The functional tool is used to select the Exchange-Correlation
+Functional to be used. Available functionals are:
+
+    * SVWN - Slater, Vosko, Wilk, Nusair functional.
+
+    * BLYP - Becke's gradient-corrected exchange functional with the
+      Lee-Yang-Parr gradient-corrected correlation functional.
+
+    * B3LYP - Becke 3-parameter hybrid exchange combined with the LYP
+      exchange-correlation functional.
+
+    * B97 - Becke-97 functional.
+
+    * HCTH - Hamprecht-Cohen-Tozer-Handy pure DFT functional.
+
+    * FT97 - Filatov and Thiel functional.
+
+
+Accuracy
+--------
+
+Together, these settings determine the accuracy of the DFT calculation:
+
+    * Grid setting - this determines the accuracy of the Quadrature
+      Grid.
+
+          o low - should only be used for preliminary studies; the
+          grid is designed to obtain the total number of electrons
+          from the density integration with a relative error of 1.0e-4
+          per atom.
+
+          o medium - this grid is designed to obtain a relative error
+          of less than 1.0e-6 in the number of electrons per atom.
+
+          o high - the grid is designed to obtain a relative error of
+          less than 1.0e-8 in the number of electrons per atom.
+
+          o very high - this grid is significantly more accurate then
+          the high grid, and is only designed to be used for
+          benchmarking calculations.
+
+
+    * DFT Weighting Scheme - this selects a weighting scheme to
+      combine the atomic integration grids to a molecular integration
+      grid. Available schemes are:
+
+          o Becke - the original Becke weighting scheme.
+
+          o MHL - the Murray, Handy and Laming weighting scheme. This
+          leads to more accurate integrals than the Becke scheme.
+
+          o SSF - the Stratmann, Scuseria and Frisch weighting scheme,
+          which seems to be the most accurate for large quadrature
+          grids.
+
+          o MHL4SSF - the Stratmann, Scuseria and Frisch weighting
+          scheme with screening, but employing the cell function by
+          Murray, Handy and Laming weighting scheme with ? equal to 4.
+
+          o MHL8SSF - as above but with ? equal to 8.
+
+
+Quadrature Types
+----------------
+
+The settings here allow the type of angular and radial integration
+grid to be specified explicitly.
+
+    * Radial Grid - this determines the settings for the radial
+      integration grid. Available options are:
+
+          o default - the default setting will apply.
+
+          o Euler-MacLaurin - the Euler-MacLaurin grid will be
+          used. If this option is selected, a tool will be displayed
+          that allows the number of gridpoints to be selected.
+
+          o Mura-Knowles - the Mura-Knowles grid will be used. If this
+          option is selected, a tool will be displayed that allows the
+          number of gridpoints to be selected.
+
+
+    * Angular Grid - this determines the settings for the angular
+      integration grid. Available options are:
+
+          o default - the default setting will apply.
+
+          o Lebedev-Laikov - the Lebedev-Laikov grid will be used. If
+          this option is selected, a tool will be displayed that
+          allows the number of gridpoints to be selected.
+
+          o Gauss-Legendre - the Mura-Legendre grid will be used. If
+          this option is selected, a tool will be displayed that
+          allows the number of gridpoints to be selected.
+
+
+Coulomb Fitting
+---------------
+
+Coulomb fitting reduces the cost associated with DFT calculations of
+medium sized molecules by avoiding the calculation of 4-center
+2-electron integrals. This can be achieved by choosing a functional
+without Hartree-Fock exchange and evaluating the Coulomb energy with
+an auxiliary basis set. The tools in this group control Coulomb
+Fitting.
+
+    * Use Coulomb Fitting - if this box is selected, Coulomb fitting
+      is turned on and two additional tools are displayed that allow
+      the fitting to be configured:
+
+          o Fitting Basis - Coulomb fitting requires an additional
+          basis set for the atoms in the molecule, and the options
+          here are used to determine the basis set to be
+          used. Available options are:
+
+                + GAMESS - this indicates that the basis set
+                specification has been explicitly specified in the
+                GAMESS-UK input file.
+
+                + NWCHEM - this indicates that the basis set
+                specification has been explicitly specified in the
+                GAMESS-UK input file but in NWChem format.
+
+
+                  The following 4 options indicate that the basis set
+                  is not defined explicitly in the GAMESS-UK input
+                  file, but is to be loaded from the appropriate
+                  library of GAMESS-UK internal basis sets.
+
+                + A1DGAUSS - use the A1-DGAUSS fitting set.
+
+                + A2DGAUSS - use the A2-DGAUSS fitting set.
+
+                + DEMON - use the DeMon fitting set.
+
+                + AHLRICHS - use the fitted basis sets tabulated by
+                Ahlrichs and co-workers.
+
+    * Schwartz Cutoff - the number of 3-centre integrals can be
+      reduced by neglecting those that are small enough to be
+      considered insignificant. The Schwartz inequality is used to
+      decide the cutoff point below which integrals are not important,
+      with the Schwartz tolerance being set to 10-n, where n is the
+      number entered in the box.

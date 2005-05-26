@@ -1,0 +1,157 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+Linux Commands
+</title>
+</head>
+
+<body>
+<h1 align=center>Installing Software Under Linux</h1>
+<h2>Using RPM</h2>
+<p>RPM is the RPM Package Manager used to manage the installation of
+software on a variety of Linux distributions. More information on rpm
+can be found at <a href="http://www.rpm.org">www.rpm.org</a>. What 
+follows is a brief overview
+of the types of commands you will need to use to get the CCP1 GUI
+working.</p>
+
+<h3>Querying  a package</h3>
+<p>To check if you have a package installed open a shell and
+enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>rpm -q <i>&lt;package&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>where <i>&lt;package&gt;</i> is the name of the package, for example 
+'python' for
+Python, 'tk' for Tk, 'tcl' for Tcl and 'vtk' for VTK. If you are not
+sure what the package is called, or are seraching for packages
+relating to a particular package, try the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>rpm -qa | grep -i '<i>&lt;name&gt;</i>'</tt>
+</td></tr>
+</table>
+
+<p>This queries the entire database of installed packages outputing a
+line for each package that contains the string <i>&lt;name&gt;</i>.</p>
+
+<p>The output of these commands will not only tell you if you have the
+package installed, but what version you are using. This assumes the
+packages have been installed as rpm files - if you've installed them
+from source the rpm database will have no record of them.</p>
+
+<h3>Installing an rpm package</h3>
+<p>Sofwtare distributed as rpm packages are optimised for various
+linux distributions and machine architechtures, so you will need to
+know what sort of processor you are running. To find this out, open a
+shell and type the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>uname -ps</tt>
+</td></tr>
+</table>
+
+<p>This will display the version of the operating system you are using
+and the type of processor (e.g intel/pentium: i386, i586 etc), alpha
+etc.). Rpm packages for a particular architecture usually have
+suffices such as i386.rpm or alpha.rpm so you can select the correct 
+one.</p>
+
+<p>Download the rpm package for your system/architecture to a directory 
+on your
+harddrive (it isn't too important where you save the file, as the rpm
+program that installs the program will copy all of the relevant files
+to the correct directories on your hard drive, allowing you to delete
+the rpm file afterwards if desired).</p>
+
+<p>To install the rpm package, open a shell and cd into the directory
+where you downloaded the file. You will probably need to be root to 
+have the
+relevant priviledges requried to run the installation, so type 'su' at 
+the command
+prompt and enter your root password. As root enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>rpm -ivh <i>&lt;package_name&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>where <i>&lt;package_name&gt;</i> is the rpm file you downloaded. 
+You should see a
+series of hash marks (####) indicating the progress of the
+installation and a message telling you if the installation was
+succesful.</p>
+
+<h2>Untarring and unzipping archives.</h2>
+<p>Many software packages are distributed as tarred and zipped
+archives. If a package has the suffix .tar, it indicates that it is a
+tar archive (several files and/or directories bundled into a single
+file). An additional bz or gz suffix (e.g. .tar.gz or .tar.bz)
+indicates that the package has been compressed with the gzip (gz) or
+bzip2 (.bz) utilities.</p>
+
+<p>If a package (<i>&lt;package_name&gt;</i>) has been compresed with
+gzip or bzip, cd into the directory where the package resides and
+enter:</p>
+
+<table border="0" width="100%">
+<tr>
+<td bgcolor=#e0e0e0><tt>gzip -d <i>&lt;package_name&gt;</i></tt></td>
+<td  align=center> or </td>
+<td bgcolor=#e0e0e0><tt>gunzip
+<i>&lt;package_name&gt;</i></tt></td>
+</tr>
+</table>
+
+<p>if the file has been gzipped (.gz) or:</p>
+
+<table border="0" width="100%">
+<tr>
+<td bgcolor=#e0e0e0><tt>bzip2 -d <i>&lt;package_name&gt; </i></tt></td>
+<td align=center> or </td>
+<td bgcolor=#e0e0e0 ><tt>bunzip2 <i>&lt;package_name&gt;</i></tt></td>
+</tr>
+</table>
+
+<p>if it has been bzipped. This will decompress the file and leave you
+with a file ending with a .tar suffix. To untar the file and create
+the directory type:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>tar -xvf <i>&lt;package_name&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>Alternatively, if your version of tar supports it, you can 
+accomplish both steps in one go by typing:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>tar -xvzf <i>&lt;package_name&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>for a gzipped archive or: </p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>tar -xvjf <i>&lt;package_name&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>for a bzipped package.</p>
+
+<p align=center <a href="./install.html">Return to the CCP1GUI install 
+notes</a></p>
+
+</body>
+</html>

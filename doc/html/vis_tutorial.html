@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Visualisation with the CCP1GUI</title>
+  </head>
+
+  <body>
+    <h1>Visualisation with the CCP1GUI</h1>
+
+<H3> Getting Started</H3>
+The GUI does not yet have a user manual, but the following sections 
+should provide some help in trying out the code and seeing what
+is there now.  
+In many cases context-sensitive help is available using the F1 key.
+
+<p>Please read through the <a href=bugs.html>bugs and limitations</a>
+pages
+help avoid frustration when you try to run something which is not
+yet implemented, and work through the examples in the order given
+as information is not repeated.
+
+<H3> Structure of a molecule</H3>
+
+In the data directory you will find a file ch3oh_potential.pun
+which you can read in with the File->Open. 
+
+<p>
+For each "object" (this general classification includes both molecules
+and numerical data fields) in the data file there will be an option on
+the Views menu.
+
+<p>
+The first entry on this menu, labelled "Methanol"  will be portrayed
+in a bold font, denoting the fact that an image of this object is
+being displayed. A submenu will provide the option of removing the
+image "Hide.." and changing the settings for the image "Adjust..".
+Using the panel that comes up when you use the Adjust... option
+you can add sphere, stick, and label representations.
+After each change, press Update to rebuild the images.
+
+<p> Clicking right-mouse on an atom will cause the atom
+details (bond lengths and angles) to be printed. The output will
+appear in the window from which the GUI was started, unless you
+have opened the Idle Shell (Shell menu). The Idle shell is
+not yet available if you are using Python 2.3.
+
+<H3> Charge Density, Potential and Orbitals</H3>
+
+<p>
+The remaining objects are data fields, the values of scalar
+data fields at a grid of points (a 51x51x51 3D grid in this case).
+By default, no default view of data fields is generated, "Orbital
+View" for the HOMO and LUMO. For the density, you can use the 
+"Density View", to get a simple isosurface. You can create multiple
+surfaces by repeating the operation and setting different contour
+heights using the "Adjust ..." option and make the outer ones partially
+transparent by reducing the Opacity.
+
+<p>
+To examine the potential, first try colouring an isosurface
+representation of the charge density.  View the Density with the
+colour surface view, and then adjust this to set the colour field to
+"potential". You adjust the parameters to change the view, for example
+change the way potential is mapped to colour using the colourmapping
+entry boxes which indicate which potential values correspond to the low
+and high ends of the rainbow colourmap.
+
+<p>
+Then try the Cut Slice View on the potential sub-menu. A control panel
+will appear, increae the value of the X Scale and Y Scale slides to
+the cut slice grid to take a large slice, and move it through the
+space around the molecule using the translate and rotate options.
+
+<h3>Vibrational Modes of Ethane</h3>
+
+Open the file examples/ethane_vib.pun. The Views menu will now contain
+an entry for each vibration labelled by the frequence in wavenumbers,
+-ve values denoting the imaginary frequencies. In each case the 
+relevant submenu will have a single entry, which will create an
+animation of that mode. You may want to hide the view of the
+molecule before starting the animation using the button on the
+control panel.
+
+<h3>Viewing a Periodic Structure</h3>
+
+The file examples/sodalite.c provides a suitable example to try out
+the Extend option on the Edit menu, which will allow a number of
+unit cells to be visualised using the molecule visualiser.
+
+    <hr>
+    <address><a href="mailto:ps96@PS96PORT"></a></address>
+<!-- Created: Thu Mar 04 07:37:59 GMT Standard Time 2004 -->
+<!-- hhmts start -->
+Last modified: Fri Mar 19 15:45:18 GMT Standard Time 2004
+<!-- hhmts end -->
+  </body>
+</html>

@@ -1,0 +1,711 @@
+
+Programming Notes
+=================
+
+Style Issues
+
+Please see the python Style guide and try and follow its
+recommendations
+http://www.python.org/peps/pep-0008.html
+a copy in this directory.
+
+* Use 4 character indenting
+
+* The first non-keyword arg for all Tk based widget should be the
+  root window name
+
+* file names should be simple lowercase (this helps when moving from
+  Windows to/from Unix)
+
+* For class methods which are likely to be called by code CapitalisedWords
+* less important implementation .. lowercase_with_underscores
+* private (only used internally):  __double_leading_underscore
+
+* doc strings .. use """ not '''
+    """Return a result"""
+
+    """Run the calculation
+
+    This is a the extra bit
+    """
+  
+  
+
+Interfaces
+==========
+
+caller  | Owner->
+   V    |  Calc    CalcEd   ZME    Graph    Visualiser
+----------------------------------------------------------
+Calc    |    -      lfg_2
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+CalcEd  |            -      ic      lfg,
+        |                           um, u
+        |                           io, gs
+        |                           an, mn
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ZME     |           rfz*            sfz*
+        |           ufz*     -      pstz*
+        |                           lfg*,um*
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+Graph   |                   usfg     -
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+Visualis|                                       -
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+        |
+
+* means the function name isn't hardwired, but specified using
+  an argument
+
+lfg: Graph().load_from_graph
+    calced (or whatever) can pull the current structure from graph
+   (as the return value)
+
+lfg_2: CalcEd().load_from_graph()
+   implemented by calling the same function of the Graph object
+
+um: Graph().update_model
+   allows a new version of the model to be passed to the graphics
+   engine
+     - however can't deal with the case where a model is really
+       new
+
+u:
+   Graph().update()
+   called from calced, to update the images
+   should not be needed in multithreaded implementation
+
+ufz,rfz:
+   two functions are passed to the zmatrix editor when it is created
+   so that it can communicate with the modelling program. 
+   ZME(reload_func=, update_func=....)
+
+   CalcEd.().reload_for_zme       return the current structure
+      --> Graph().load_from_graph()
+        Graph.load_from_graph() is a suitable implementation, 
+      
+   CalcEd.().update_for_zme(obj)  send the structure to the viewer 
+      --> Graph().update_model()
+   Could these be replaced by methods of the graph object? 
+
+
+sfz,pstz:
+   Two functions provided to the zmatrix editor when it started from
+   the molecular viewer,
+   called by the 
+   ZME(export_selection_func=...,   Graph().select_for_zme()
+       import_selection_func=... )  Graph().provide_selection_to_zme()
+   export_selection_func allows selection events in the ZME window to show in
+       the main window
+   import_selection_func is used in 2 ways
+      1. attempt to get right-mouse-click to pull selected atom into an entry box
+         (still rather experimental)
+      2. when a selection event occurs in the editing window (see vtkgraph.py for
+         picking code)a call to ZME().update_selection_from_graph() can be made,
+         this in turn causes ZME to pull the selection from the Graph.
+
+usfg:
+   ZME().update_selection_from_graph()
+   Wrapper to allow another object to force ZME to make its selection consistent
+   with the graph window (typically called by Graph in response to a selection
+   event)
+
+ic: ZME().import_cartesians
+   force new cartiesans into zmatrix editor (when new geometry has
+   been recovered)
+
+gn: Graph().get_names()
+   return a list of names of molecules in the viewer, used to create
+   a selection box
+
+gn: Graph().get_ids()
+   return a list of ids of molecules in the viewer, used to convert
+   selection box output to an ID that can get used in load_from_graph????
+NOT IMPLEMENTED YET
+
+an: Graph().atom_names()  return the names that correspond to a list
+   of numbers. These names can actually be numbers, if this is good
+   enough for the graph interface to uniquely locate the atoms
+
+mn: Graph().map_names()  
+    pymolgraph.py: converts names to integer sequences
+    tkmolview/main.py:       converts integer names to atoms
+
+gs:  Graph().get_selection(name)  return the currently selected atoms
+    in the molecule with the given name (returns atom objects)
+    pymolgraph.py : returns a string
+    tkmolview/main.py  : returns a list of atoms
+
+io: Graph().import_objects()
+    pass objects to graph to be visualised (and added to the menus etc).
+
+Summary of object naming
+=========================
+
+Unique-ifying goes on in tkmolview(main).make_unique_name,
+   (called from xyz, punch, pdb readers) 
+   stored in name field
+   tries the following in sequence
+     name (passed in from root of filename)
+     (if passed in)title
+     name + (if passed in)title
+     output of prev + suffix
+
+this creates a name field for objects read in this way
+  (which is not done when objects are loaded in from calculations)
+
+field
+  load title from title block
+  field object has no attribute name
+  obj.title is assumed to convey information on the type of data
+
+visualiser
+  Adjust view uses vis.get_title()
+  Show/Hide use vis.get_title()
+  before vis is created, View option uses obj.name, then obj.title
+
+Data Object list (built using)  __update_data_list
+   uses obj.name; obj.title
+
+Importance of unique naming?
+
+   Mainly because interaction between modules is done using
+   the names (when gamess-uk interface is started up this 
+   is how it knows which coordinates to load?
+
+   Perhaps it is better to try and pass the python objects instead?
+   Will need to handle cases where data is reloaded after compute
+   Will need to retain usage of names in the pymol interface code
+       but could probably avoid it elsewhere.
+
+Then we just need to keep a translation table to unique names
+   or store it has part of the object.
+
+How to improve?
+  one way considered is to make all our objects inherit from a base
+    class than handles name/title stuff
+    .. but would need to integrate it into pymol
+    (I did once try to make it a mix-in but without success)
+
+Job Manager Classes
+====================
+
+jobmanager.JobManager
+   RegisterJob
+
+jobmanager.JobThread
+   RegisterJob
+   we have stripped out queues and locks, so the job thread runs
+   'unattended', only the jobeditor instance watches it.
+    - more detailed interactions can be included in the job spec itself
+
+jobmanager.JobEditor
+  Lists all registered jobs in a Tk Windows (does little
+  else at the moment
+
+jobmanager.JobManager
+  At the moment, this class just keeps a list of active jobs 
+  as most work is done in the JobEditor
+
+
+ProcessThread diagram 
+
+1) when using BackgroundJob() as for GAMESS-UK
+===============================================
+
+   VTK, calced etc running in the main thread
+   JobEditor also running in this thread, checking job objects for status,
+   calling their kill methods if needed.
+
+   job object created
+   |
+   --- jobmanager.JobThread (subclass of Thread) is created (connected to main thread by
+       queues), passed job object
+
+       loop over tasks (some immediate)
+          (tkinter process is reading job status)
+       GAMESS-UK results in a call to 
+       p = subprocess.Spawn
+       |
+       ------ job.child (winprocess.Process)
+
+       p.wait()
+
+
+Job/Step information fields
+===========================
+job.host 
+job.name 
+
+job.status: one of
+
+JOBSTATUS_IDLE    = 'IDLE'
+JOBSTATUS_RUNNING = 'RUNNING'
+JOBSTATUS_KILLPEND = 'Kill Pending'
+JOBSTATUS_KILLED  = 'KILLED'
+JOBSTATUS_FAILED  = 'FAILED'
+JOBSTATUS_WARNING = 'WARNING'
+JOBSTATUS_OK      = 'OK'
+JOBSTATUS_DONE    = 'DONE'
+
+job.active_step.type: one of:
+
+ALLOCATE_SCRATCH='allocate-scratch'
+DELETE_FILE='delete-file'
+COPY_OUT_FILE='copy-out-file'
+EXECUTE_SHELL='execute-shell'
+RUN_APP='running....'
+COPY_BACK_FILE='copy-back-file'
+CLEAN_SCRATCH='clean-scratch'
+PYTHON_CMD='python-code'
+
+job.active_step.name
+
+Provided  by interface
+
+job.msg
+  Holds diagnostics (including all info/warning/error messages)
+
+Picking
+=======
+
+OpenGL
+------
+Not yet started
+
+VTK
+---
+a) Approach based on vtkPoints (lines, glyphs etc)
+  here we have 2 calls
+mypick1 - (pick observer) just identifies the molecule (ie which set of 
+ actor is displaying the points)
+mypick2 - this is executed as the 'handlepick' method 
+  at the end of the pick call and and extracts the atom
+  selected (if any .. allows clear selection using pick)
+b) Approach based on vtkSphereSource etc
+observer can work out everything
+BUT
+problem if we call mypick2 to handle
+
+picking seems to work very poorly for labels??
+
+
+Implementation of the vibration visualiser
+==============================================
+memory issues
+  how many frames to hold in memory?
+  1
+  all
+  batch
+
+how much shared code between vibfrq object and more general
+purpose animation?
+
+maybe we need some generic class to handle "animatable views"
+(perhaps via multiple inheritance)
+
+then we could have some code in common between simple case
+
+1) loading coordinates and pumping to vtk at each step
+2) loading from a file and sending to vtk
+3) generating frame from some internal formula
+
+Key will be to build in a sensible way on the molecular graphics
+(or data graphics codes)
+
+... in each case the key seems to that a rendering object of some
+form, but the form is not the same in 1 vs 2,3
+
+How to interact with the animation?
+  (maybe) should have animation elements (cycle time)
+   alternative is just to hold one copy of this.
+   also need all the controls expected for the visualiser object
+
+   + special data appropriate to the animator type
+
+VibrationVisualiser
+
+inherits from
+SelfAnimation
+FileAnimation
+ListAnimation
+  - ability to visualise a list of objects
+    visualise the first one, then all the rest can be
+    linked to the same control structures.
+    perhaps the molecule visualisers are all subclassed
+    from the normal molecule vis, but also inherit from
+    SelfAnimation, ListAnimation, or FileAnimation
+
+    these can hold add additional pieces
+      vibfreq will need a structure
+
+--------------
+
+Currently a vibrationvisualiser is a visualiser
+should animators be visualisers?
+  in favour - this fits in with the idea that each object has
+      its visualiser, which one can pick from the view etc
+
+would be good if we could make "composite visualisers" by combining a
+number of components.
+particularly to make the vibration and other animation tools
+build on a base visualiser.
+
+Weakness of using inheritance is that self.obj idea (each visualiser
+having an associated object) gets confused
+
+Maybe it is better not to store the data objects in this generic way,
+but to make the derived classes responsible for the data.
+
+Class Visualiser
+================
+
+Requires
+  a graph object to display into
+Could require - non-default settings
+
+user methods
+
+  build
+  show
+  hide
+  delete
+  (status)
+
+Class ZME
+=========
+
+Requires 
+   a means to load a molecule (reload_func= ) to start
+   off (and also user-driven reloads)
+   a visualiser object (vis=)
+
+   the visualiser will rebuild the images in the visualiser 
+   reflecting the changes but confusingly does not update the
+   structural representation in the viewer 
+    (in the pymol case this happens as the structure must
+    be loaded in to be viewed)!!!
+
+   Perhaps zme should control the visualiser by updating
+      the viewer instead of pushing a new structure in to
+      the visualiser
+
+    load_to_graph is implemented in caled put perhaps should
+    be part of the viewer??
+
+    graph.load_to_graph2 is referenced from chemshell.py but
+      will be broken!
+
+
+Offers
+    import_cartesians - push in a new structure
+
+
+
+
+Methods required of viewer (Graph) classes
+
+
+reload_func
+   can be passed in on creation, if so allows the 
+   editor to bring the structure back in from the viewer
+
+   this has the advantage that missing fields that pymol
+   molecule objects don't have are added in
+
+   Only important if the viewer can also edit. For non-editing
+   viewers it should be OK to just pass in the molecule, but
+   consider the previous point.
+   maybe it is better to always load through the reload method,
+     but we will need to make sure that the correct molecule is
+     chosen (tkmolview now uses load_from_graph for this)
+
+
+
+Class CalcEd
+============
+
+Requires from the visualiser
+
+* get_names  
+  what structures are available
+
+* load_from_graph
+  access a named structure
+    
+
+* ability to provide a framework for results visualisation
+    .. passing a graph object in to the creation of vis object
+
+ should have an update method for use when results come 
+  in from async jobs 
+
+
+
+
+
+
+check on restructuring data from numeric to vtk...
+  example here
+  http://mayavi.sourceforge.net/docs/guide/c827.html
+
+
+
+class Graph
+===========
+
+now has reload_ and update_ in it, capable of 
+working based on names rather than object IDs 
+(as you never know when they are changed)
+pymol version internally keys visualisers based on the name
+tk version uses the id
+
+
+
+zme/calced/editor interactions seem to work
+  still strange that calced manages results, 
+  creates visualises but in the tk code these are not
+     registered in the GUI
+  ?? maybe a small change ??
+
+
+Also recalculation of properties wont overwrite the
+visualiser, attempt to show will create a new one,
+maybe using titles as keys will be better here too?
+
+
+
+Issues around the vtk viewer
+-----------------------------
+
+
+Wireframe could be added following john k's code
+
+
+Migration path to using a C++ class instead
+
+
+Transparency
+
+
+Feeding colours from widgets 
+
+
+auto-update of graphics on connection
+
+
+
+Look a surface reconstruction algorithm, and colouring by data
+
+
+When visualisation objects are generated in the 
+  gui, probably should be passed to the viewer to
+  be managed there  
+   (would be a split from pymol version)
+  or perhaps be managed in both places
+
+
+Bad window path names....
+   e.g. using close on a visualiser window
+
+
+VTK List Queries
+How to approach picking
+especially rubberband-type selection
+
+
+
+EASY
+
+Relationship with numeric
+
+
+Add a vtk density visualiser
+
+trying open calc from vtk fails:
+
+  File "/usr2/psh/python/lib/python2.2/lib-tk/Tkinter.py", line 1292, in __call__
+    return apply(self.func, args)
+  File "tkmolview.py", line 387, in <lambda>
+    command = lambda s=self: s.open_calc() )
+  File "tkmolview.py", line 1204, in open_calc
+    ofile = tkFileDialog.askopenfilename(initialdir = self.calcdir,
+AttributeError: VtkGraph instance has no attribute 'calcdir'
+
+
+
+try directly passing in numeric objects 
+with remap
+http://mayavi.sourceforge.net/docs/guide/c827.html
+
+
+Basis
+========
+
+index .. given a single element, which basis sets are available
+         given a list of elements " "
+
+output  - keyword translation if required
+        - output in code format can be done by the code module
+
+criteria.....
+
+1) must avoid loading all basis sets into memory
+    need to store mechanism by which data can be accessed 
+    rather than the data itself
+
+2) it would be good to be able to use PNNL basis sets, or web service
+
+   need to allow codes to declare their own internal basis sets and
+   ecps (or not)
+
+First layer .. manager interface which should be designed now
+  code interface should create a basis set manager
+  declare internal basis sets
+
+Second layer .. basis set storage and management
+  could be handled in a number of ways
+  reflecting keywords back code specific data
+  basis sets embedded in source, perhaps like this
+
+    from sto3g import h
+        b = h()
+    from sto3g import c
+        b = c()
+
+    or...
+    from sto3g import sto3g
+        b = sto3g('h')
+    - better as it 
+
+    import sto3g 
+    known_basis_sets.append['sto3g']
+    valid_elements['sto3g']=sto3g.get_valid_elements()
+
+
+could execute a proceedure and get a list of basis sets
+
+could store basis sets in a dictionary
+element -> list of basis sets
+(one dictionary per code)
+  . then problem becomes finding common keys in a number of lists
+
+currently have all the basis sets in Tcl list format
+  define from list?
+
+Basis Huub
+==========
+class Basis:
+   '''
+The Basis class
+---------------
+
+The basic storage class for basis functions. 
+'''
+   
+class BasisFunc:
+   '''
+The BasisFunc class
+-------------------
+
+Each element in this class represents a shell of basis functions.
+Each element has
+
+   - an atom identifier
+   - a power
+   - a shell label ('s','p','d','f','g')
+   - a angular momentum list 
+   - a list of primitive functions
+
+** The power is the power of r in
+
+   exp(-alpha*r^power)
+
+I.e. power = 1 for STOs, and power = 2 for GTOs.
+
+** The angular momentum list specifies the order in which the angular momentum
+components appear in the shell. I.e. if the function is defined as
+
+   x^k y^m z^l 
+
+then the angular momentum list is of the form
+
+   [ (k1, m1, l1),
+     (k2, m2, l2),
+     ...]
+
+** The list of primitive functions refers to functions defined like:
+
+   c r^n exp(-a*r^power)
+
+and lists
+
+   [ (n1, c1, a1),
+     (n2, c2, a2),
+     ... ]
+'''
+
+====================================================
+
+Calculation parameter tables
+
+"task"
+"default_basis","sto3g")
+"basis",None)
+"ECP","none")
+"dft_functional","BLYP")
+"guess_method","Compute")
+"guess_comp","atoms")
+"guess_section",1)
+"guess_getq_dump","ed3")
+"guess_getq_block",1)
+"guess_getq_section",1)
+
+
+"scf_maxcyc",50)
+"scf_threshold",6)
+"scf_level_init",1.0)
+"scf_level_it",10)
+"scf_level_final",0.1)
+"scf_bypass",0)
+"dft_grid","medium")
+"dft_weights","default")
+"dft_grid_atom",{}) #This isn't used anywhere yet
+"dft_radialgrid","default")
+"dft_angulargrid","default")
+"dft_radialgridpoints","100")
+"dft_angulargridpoints","100")
+"dft_weightscheme","Becke")
+"dft_jfit",0)
+"dft_jbas","A1-DGAUSS")
+"dft_schwarz",10)
+
+"predirectives",
+"classidirectives",
+"predirectives","")
+"basisdirectives","")
+"classidirectives","")
+"classiidirectives","")
+"ana_homolumo",0)
+"ana_homolumo1",0)
+"ana_homolumo2",0)
+"ana_homolumo3",0)
+"ana_homolumo4",0)
+"ana_homolumo5",0)
+"ana_chargeden",0)
+"ana_frequencies",0)
+"ana_potential",0)
+"ana_diffden",0)
+'direct_scf',0);
+'symmetry',0)
+'adaption',0)
+'use_ri',0)
+'restart',0)
+'accuracy','medium')
+"find_ts",0)
+'grid',field)
+
+
+"scf_method","RHF"
+"postscf_method","None")
+"hamiltonian"

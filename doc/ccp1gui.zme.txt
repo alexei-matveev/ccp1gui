@@ -1,0 +1,177 @@
+The Edit Coordinates Window
+===========================
+
+This can be used to manually edit the coordinates of the atoms in a
+molecule using either internal (displayed as a Z-matrix) or Cartesian
+coordinates. It is also possible to mix and match the two.
+
+The coordinates window at the top of the Edit Window is a table displaying
+the coordinates. Each row corresponds to an individual atom. The table
+below shows the meaning of each of the columns in this panel for
+Z-matrix format and Cartesian coordinates.
+
+
+Title	    Cartesian					Zmatrix
+-------------------------------------------------------------------------------
+i	    A number serving as a unique		Same as for Cartiesians.
+	    identifier for the atom
+
+Sym	    The chemical Symbol for the atom		Same as for Cartesians.
+	    - a number may be appended to this
+	    to help identify the atom.
+
+
+i1	    Unused	     				The first atom to which
+							this atom is connected.
+
+
+x/r	    The x-coordinate of the atom in		The distance of this
+	    Angstroms.	     	   			atom from the atom 
+							specified in i1.
+
+i2          Unused					The second atom to which
+	    						this atom is connected.
+
+y/theta	    The y-coordinate of the atom in		The angle between this atom
+            Angstroms.	     				and the atoms identified
+							in columns i1 and i2.
+
+i3          Unused					The third atom to which
+	    						this atom is connected.
+
+z/phi       The z-coordinate of the atom in		The dihedral angle between
+            Angstroms.	     				this atom and those idenfified
+							in the fields i1, i2 and i3.
+
+connections The other atoms to which this atom		Unused.
+	    this atom is connected.
+
+
+Input Line
+----------
+Values in the coordinates window cannot be edited by directly. However, by
+clicking on the row corresponding to an atom in the coordinates window (or
+clicking on the atom in the main window), the values for that atom
+appear in the Input Line fields headed "Enter Coordinate values" that
+sits below the table. By clicking in a field, the value can then be
+edited.
+
+Variables
+---------
+The Variables field shows any values that are specified as variable
+within the coordinates window. 
+
+Error Output
+------------
+If there is a problem with any of the coordinates that have been
+entered, an error message will be displayed here.
+
+File Menu
+=========
+
+Save Zmatrix
+------------
+Save the coordinates to a simple text file with the extension .zmt
+
+Load Zmatrix
+------------
+Load coordinates from a file.
+
+Reload from Graphics Window
+---------------------------
+Update the coordinates window with the coordinates from the molecule
+displayed in the main window.
+
+
+Edit Menu
+=========
+
+Select All Atoms
+----------------
+This selects and highlights all of the atoms specified in the
+coordinates window  - the corresponding atoms in the main window will
+also be highlighted.
+
+Insert Atoms
+-----------
+This opens up a blank Input Line so that the coordinates for a new
+atom can be added.
+
+Copy Atoms
+---------
+The values for the specified atoms will be copied into a buffer ready
+for pasting.
+
+Cut Atoms
+--------
+The atoms will be removed from the coordiantes window, but the values
+will be copied into a buffer ready to be pasted.
+
+Paste Atoms
+----------
+Paste the coordinates of any atoms that were saved into the buffer into
+the table.
+
+Delete Atoms
+------------
+Delete the selected atoms, but don't save their values.
+
+r,x -> var
+----------
+Specify the value for x-coordinate or r as a variable (this value will then
+be displayed in the 'Variables' window).
+
+theta,y -> var
+----------
+Specify the value for y-coordinate or theta as a variable (this value will then
+be displayed in the 'Variables' window).
+
+phi,z -> var
+----------
+Specify the value for z-coordinate or phi as a variable (this value will then
+be displayed in the 'Variables' window).
+
+all -> var
+----------
+Specify that all the selected values should be variables.
+
+Select All Variables
+--------------------
+This selects all of the variables displayed in the 'Variables' window.
+
+Delete Variables
+----------------
+Remove a variables from the zmatrix.
+
+
+Convert Menu
+============
+
+AutoZ
+-----
+Generate an automatic (new) zmatrix
+BUG!!! This requires all atoms to be connected into a single molecule
+
+Convert Selection to Z-Matrix/ Convert Selection to Cartesian
+--------------------------------------------------------------
+Interchanges the type of definition for selected atoms.
+When switching to z-matrix the program will use any internal coordinates
+that have been defined, if not, i1,i2,i3,r,theta,phi fields will all have
+default values and will need to be filled in.
+BUG!!! Don't try and convert the first 3 atoms to zmatrix form, as this
+will require a reorientation/translation of the molecule which is not 
+performed.
+
+
+Calculate
+=========
+
+Auto Recalc
+-----------
+This toggles whether the coordinates should be recalculated as each change
+is made or whether the calculation should wait until 'Recompute Now'
+is selected.
+
+Recompute Now
+-------------
+Recompute the Z-matrix. Only needed if you switch Auto recalc off.

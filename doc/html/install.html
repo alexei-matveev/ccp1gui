@@ -1,0 +1,670 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+Installation notes for the CCP1 GUI
+</title>
+</head>
+
+<body>
+<h1 align=center>The CCP1 Graphical User Interface</h1>
+
+<p>The Graphical User Interface (GUI) for CCP1 is built using a number 
+of different technologies. The 'interface', including things like
+the menus and buttons, are implemented using the Tcl/Tk and PMW
+toolkits. The drawing of molecules on the screen is carried out by the
+Visualisation Toolkit (VTK) using the OpenGl graphics standard. The
+'glue' that links all of these technologies together to  present
+a single coherent interface is the Python programming language.</p>
+
+<p>Python, Tcl/Tk, VTK and OpenGL are available for almost every
+flavour of <a href="#linux">Linux</a>, Macintosh or <a
+href="#windows">Windows</a>, so CCP1 can be made to run on any of
+these systems. The following sections describe the steps you will need
+to take to install the packages needed to get the CCP1GUI running on
+your system.</p>
+
+
+<a name="linux"><h2 align=center>Linux</h2></a>
+<p>There are two ways to get the CCP1GUI up and running on your
+system. The first is the easiest and least-involved, although it will
+require that you have a reasonably fast internet connection as the
+file to be downloaded is about 20MB in size. The
+second is more involved and should only be followed if you know what
+software you have installed on your system and are happy installing
+new packages.</p>
+
+<h3>Easy Installation</h3>
+<p>Most modern Linux distributions ship with Python, Tk/Tcl and
+Tkinter (aka python-tk) already installed. If you are missing any of these packages, the <a
+href="#linuxpython">Python</a>, <a href="#linuxtcl">Tcl</a> and <a
+href="#linuxtkinter">Tkinter</a> sections below will guide you through
+their installation and the <a href="linuxhelp.html">Linux Help</a>
+section, provides general help on the ins and outs of installing
+software under Linux.</p>
+
+<p>With Python and Tcl installed, all you need to do is download the
+<kbd>ccp1gui-<i>&lt;version&gt;</i>.tar.gz</kbd> file suitable for your
+Linux distribution. The files are available via ftp from
+<a
+href=ftp://ftp.dl.ac.uk/qcg/ccp1gui>ftp://ftp.dl.ac.uk/qcg/ccp1gui</a>
+- just follow the link to your distribution. Currently we have
+packaged distributions for <a
+href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/redhat9.0">Redhat 9.0</a> and <a
+href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse9.0">Suse 9.0</a>.
+
+<p>Place the file in a directory somewhere on your hard drive and
+unpackage it with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>tar -xvzf ccp1gui-<i>&lt;version&gt;</i>.tar.gz</tt>
+</td></tr>
+</table>
+
+<p>where <i>&lt;version&gt;</i> is a number indicating the release of the
+CCP1GUI with <kbd>rh9</kbd> appended to it for Redhat9.0 and <kbd>suse9</kbd> for Suse
+9.0.</p>
+
+<a name="directory"></a><p>The file will un-tar into a directory called <b>ccp1gui</b>. The
+directory has the following structure:<p>
+<pre>
+
+           |--data/
+ccp1gui/---|--ccp1gui.bash
+           |--ccp1gui.bat
+           |--VTK/
+           |--Numeric/
+           |--Numeric.pth
+           |--Scientific/
+           |--Pmw
+           |
+           |              |-- basis/
+           |              |-- ccp1gui/
+           |--python_dev/-|-- ccp1gui.bat
+                          |-- ccp1gui.sh
+                          |-- chempy
+                          |-- examples/
+                          |-- graph/
+                          |-- jobmanager/
+                          |-- pymolgraph/
+                          |-- README
+                          |-- tests
+                          |-- tkmolview
+                          |-- doc/------|--html/
+
+</pre>
+
+To run the CCP1GUI, just <kbd>cd</kbd> into this directory and run the
+ccp1gui.bash script with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>./ccp1gui.bash</tt>
+</td></tr>
+</table>
+
+
+<h4>Upgrading</h4>
+<p>If you would like to upgrade your version of the CCP1GUI, if you hear
+of any new bug fixes or additional features, you will need to download
+a new <b>python_dev</b> directory to replace your current version. </p>
+
+<p>The latest version of this directory is always available on our
+<a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/">ftp site</a>. Download the
+file ccp1gui-<i>&lt;latest_release&gt;</i>.tar.gz into your <b>ccp1gui</b> directory, and unpack it with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>tar-xvzf ccp1gui-<i>&lt;latest_release&gt;</i>.tar.gz</tt>
+</td></tr>
+</table>
+
+<p>where <i>&lt;latest_release&gt;</i> is the release version you have
+downloaded. This will unpack to create a new python_dev directory. You
+should then be able to run the CCP1GUI using the ccp1gui.bash script in the <b>ccp1gui</b> directory as before.</p>
+
+<p>If you have any problems installing or running the CCP1GUI using this method, please <a
+href="mailto:j.m.h.thomas@dl.ac.uk">let us know</a>.
+
+<hr width=75%>
+<h3>Full Installation</h3>
+<p>This section describes the seperate instalation steps for all of
+the individual pieces of software that are used by the CCP1GUI. If you are
+unfamiliar with the basics of how to install software distributed as
+rpm files or zipped and compressed archives, there are brief notes in
+the <a href="linuxhelp.html">Linux Help</a> section.</p>
+
+<p>These are only general instructions that were correct at the
+time of writing. Software being what it is however, they are likely to
+become out of date fairly quickly. In all cases however, there should
+be up-to-date instructions on how to install the packages on their
+websites or included as README files in any downloads. The
+notes here should only be taken as a guide and you are strongly
+advised to read the documentation supplied with the packages to
+determine the best way to install them.</p>
+
+<a name="linuxpython"></a><h3>Python</h3>
+<p>There are currently three different python distributions in use:
+python 1.5, 2.2 and 2.3. Of these, python 2.2 is the most common.</p>
+
+<p>If you have more than one python distribution installed (as may well
+be the case if you are running Redhat) you will need to ensure that
+you invoke the correct version whenever you install a python-related 
+package. A
+particular version of python will install any new packages within its
+own paths which may not be accessible to other distributions.</p>
+
+<p>To find out what executable you are calling when you type python, 
+enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>which python</tt>
+</td></tr>
+</table>
+
+<p>This will show  the path to the executable you are calling on when
+you type <kbd>python</kbd>. List the contents of that directory to see
+if you have more than one version of python there (e.g. /usr/bin/python and
+/usr/bin/python2). If you do, you will need to decide which
+version to use (python 2.2 is recommended) and stick with it - in the
+above case by typing <kbd>python2</kbd> whenever you invoke python.</p>
+
+<p>Python is available as source from:<a
+href="http://www.python.org/download/">www.python.org/download/</a>.</p>
+
+<p>You can search for an appropriate rpm package at: <a
+href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a>
+.</p>
+
+<p>The CCP1GUI also relies on the additional Python packages: Numeric
+Python, Scientific Python and Python Mega Widgets (PMW). These
+packages are not usually installed as rpms and are not part of the
+standard python distribution, so are unlikely to have been installed
+on your system.</p>
+
+<h4>Numeric Python</h4>
+<p>Numeric python is available from: <a
+href="http://sourceforge.net/projects/numpy">
+http://sourceforge.net/projects/numpy</a>.</p>
+
+<p>On this page, follow the link to <b>numpy</b> in the <b>Latest
+Files Releases</b> section and download a
+<b>Numeric-<i>&lt;version_number&gt;</i>.tar.gz</b> file to a folder
+on your computer.</p>
+
+<p>To install the package, you will need to be in the directory you 
+have
+just unpacked and have root priviledges. Now enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python setup.py install</tt>
+</td></tr>
+</table>
+
+<p>This runs the setup.py  python script that copies the relevant files 
+into the
+path of the python version you are using to invoke the script.</p>
+
+<h4>Scientific Python</h4>
+
+<p>Scientific python is available from: <a
+href="http://starship.python.net/~hinsen/ScientificPython/">
+http://starship.python.net/~hinsen/ScientificPython</a>.</p>
+
+<p>Both rpm and .tar.gz versions are available.To install the tar.gz
+version, unzip and untar the archive and then <kbd>cd</kbd> into the 
+directory
+that is created and enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python setup.py build</tt>
+</td></tr>
+</table>
+
+<p>This will build the relevant files which will then need to be
+installed. Installing the files will probably need root permission, so
+su to root and then enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python setup.py install</tt>
+</td></tr>
+</table>
+
+<h4>Python Megawidgets (Pmw)</h4>
+<p>The final step to get the python side of things working is to 
+install
+the Python Mega Widgets package.</p>
+
+<p>This can be downloaded
+from:<a href="http://pmw.sourceforge.net/"> http://pmw.sourceforge.net/</a> 
+as
+a gzipped tar archive.</p>
+
+<p>Detailed installation instructions are available at: <a 
+href="http://pmw.sourceforge.net/doc/starting.html">http://pmw.sourceforge.net/doc/starting</a>.</p>
+
+<p>To install the package unzip and untar the package. This will create 
+a
+directory containing all of the PMW files and  this then needs to be
+moved into a place where python will find it. Assuming you are
+running python 2.2 a good place to put it is: </p>
+
+<b>/usr/lib/python2.2/site-packages/</b>
+
+<p>You can move the directory into this path by becoming root and 
+entering:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>mv <i>&lt;PMW_directory&gt;</i> /usr/lib/python2.2/site-packages/<i>&lt;PMW_directory&gt;</i></tt>
+</td></tr>
+</table>
+
+<p>If you can't get root priviledges, or you don't want to move the
+directory, it is also possible put the path for the PMW directory in
+your <b>PYTHONPATH</b> variable. The <b>PYTHONPATH</b> variables tells 
+python where
+to look for the files it needs. To append the Pmw directory to your
+existing <b>PYTHONPATH</b> enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>export PYTHONPATH=$PYTHONPATH:<i>&lt;Pmw_directory&gt;</i>
+</tt>
+</td></tr>
+</table>
+
+<p>Where <i>&lt;Pmw_directory&gt;</i> is the full path to the Pmw 
+directory.</p>
+
+<a name="linuxtkinter"></a><h4>Tkinter</h4>
+<p>Your Python distribution should come with a valid version of
+Tkinter (this may also be called python-tk). This is the python module
+that acts as the interface to the Tk toolkit (see below). If you mix
+and match your versions of Tcl/Tk and VTK that you may encouter
+problems with the version of Tkinter you are using. If this is the
+case, an error will be displayed indicating that a particular version
+of Tkinter is required when you try and run the CCP1GUI for the first
+time. If this is the case, you can search for an appropriate rpm
+package at: <a
+href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a>.
+If you are unsure how to query and install rpm packages, please read
+the <a href="linuxhelp.html">Linux Help</a> section.</p>
+
+<a name="#linuxtcl"></a><h3>Tcl/Tk</h3>
+<p>Tcl (Tool Command Language) is an open source scripting language 
+that
+has a simple and programmable syntax and can be either used as a
+standalone application or embedded in application programs. Tk is a
+graphical user interface toolkit used to create GUIs.</p>
+
+<p>The latest version of Tcl/Tk is available as source code or with
+links to the pre-compiled binaries at:<a
+href="http://dev.scriptics.com/software/tcltk/">http://dev.scriptics.com/software/tcltk</a></p>
+
+<p>As ever, rpm distributions can be found at: <a
+href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a></p>
+
+<h3>VTK</h3>
+<p>The Visualization ToolKit (VTK) is an open source, freely available
+software system for 3D computer graphics, image processing, and
+visualization that can be used or creating graphical representations
+of molecules.</p>
+
+<p>VTK can be installed from source, or there are rpm distributions
+available for Redhat9.0 and Redhat7.3 (see <a href="#vtkrpmrh">below</a>).</p>
+
+<p>If you decide to install VTK from source, you will firstly need to download
+the <a href="http://www.cmake.org/">CMake</a> cross-platform make
+utility.</p>
+
+<p>You will also need to ensure that you have all of the developmental
+software for Tk, Tcl and Python installed. The rpm versions of these
+packges are called:</p>
+<ul>
+<li>python-devel-<i>&lt;version_number&gt;</i></li>
+<li>tcl-devel-<i>&lt;version_number&gt;</i></li>
+<li>tk-devel-<i>&lt;version_number&gt;</i></li>
+</ul>
+
+<p> where <i>&lt;version_number&gt;</i> is a version number compatible
+with whatever version of python, tk and tcl you are running.</p>
+
+
+<p>With these packages installed, download the lastest VTK release
+from <a
+href="http://public.kitware.com/VTK/get-software.php">http://public.kitware.com/VTK/get-software.php</a>.
+The file will extract to a directory called VTK. <kbd>cd</kbd> into
+this directory and enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>cmake -i</tt>
+</td></tr>
+</table>
+
+<p>This runs CMake in interactive mode, where it will ask you a
+number of different questions. The first question you will be asked is
+if you would like to see the advanced options - if you do you probably
+don't need to be reading this. Most of the remaining options shouldn't need to
+be changed and those that you may want to should be
+self-explanatory. Options that you <i>must</i> select (i.e. set to <i>ON</i>), however are the
+following:</p>
+
+<ul>
+<li>BUILD_SHARED_LIBS</li>
+<li>VTK_USE_HYBRID</li>
+<li>VTK_WRAP_PYTHON</li>
+<li>VTK_WRAP_TCL</li>
+</ul>
+
+<p>When CMake has finished, just type:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>make</tt>
+</td></tr>
+</table>
+
+<p>in the VTK directory to build the VTK binaries, and then:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>make install</tt>
+</td></tr>
+</table>
+
+</p>if you wish to install the files.</p>
+
+<a name="vtkrpmrh"></a><h4>VTK rpm's</h4>
+
+<p>If all of the above sounds a little
+involved and you are running Redhat 9.0, more manageable rpm distributions for are available from:<a 
+href="http://www.creatis.insa-lyon.fr/vtk/">www.creatis.insa-lyon.fr/vtk/</a></p>
+
+<p>If you are running Redhat 7.1, then vtk rpms for this distribution 
+areavailable from:</p>
+
+<a
+href="http://www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html">www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html</a>
+
+<p>The packages you will need to download from this site are:</p>
+
+<ul>
+<li>vtk-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
+<li>vtk-python-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
+</ul>
+
+<h3>Getting the CCP1GUI to work</h3>
+<p>Once you have prepared your system by installing the above
+packages, you are ready to download and run the CCP1GUI. Download the
+latest version of the CCP1GUI from our ftp site at <a
+href=ftp://ftp.dl.ac.uk/qcg/ccp1gui/>ftp://ftp.dl.ac.uk/qcg/ccp1gui/ccp1gui-<i>&lt;latest_release&gt;</i>.tar.gz</a>
+and extract the archive to a directory called <b>python_dev</b> on
+your hard drive.
+
+Before you run the CCP1GUI you will need to add the path to the  
+<b>python_dev</b>
+directory to your <b><i>PYTHONPATH</i></b> variable. To do this 
+enter:</p>
+
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>export PYTHONPATH=$PYTHONPATH:<i>&lt;directory_prefix&gt;</i>/python_dev</tt>
+</td></tr>
+</table>
+
+<p>where <i>directory_prefix</i> is the full path to the
+<b>python_dev</b> directory. To get the CCP1GUI to run, you need to run
+python on the vtkgraph.py file in the <b>python_dev/tkmolview</b>
+directory. To do this enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python <i>&lt;directory_prefix&gt;</i>/python_dev/tkmolview/vtkgraph.py</tt>
+</td></tr>
+</table>
+
+<p><i>NB. This assumes that the <kbd>python</kbd> runs the correct
+version of python as was mentioned in the <a
+href="#linuxpython">python</a> section.</i></p>
+
+
+<h3>Selections of packages know to work with particular 
+distributions.</h3>
+<p>The sections below detail a list of the verison of the packages that
+are known to work with a particular Linux distribution.</p>
+
+<h4>Redhat 9.0</h4>
+
+<ul>
+<li>tk-8.3.5-88</li>
+<li>tcl-8.3.5-88</li>
+<li>python-2.2.2-26</li>
+<li>tkinter-2.2.2-26</li>
+<li>Numeric Python 23.1</li>
+<li>ScientificPython-2.4.3-1</li>
+<li>Python Megawidgets (Pmw) 1.2</li>
+<li>vtk-4.3.0-1.cvs20030930</li>
+<li>vtk-python-4.3.0-1.cvs20030930</li>
+</ul>
+
+<h4>Redhat 7.3</h4>
+<ul>
+<li>tk-8.3.3-67</li>
+<li>tcl-8.3.3-67</li>
+<li>python2-2.2.2-11.7.3</li>
+<li>tkinter2-2.2.2-11.7.3</li>
+<li>Numeric Python 23.1</li>
+<li>ScientificPython-2.4.5</li>
+<li>vtk-4.1.1-1.cvs20020827</li>
+<li>vtk-python-4.1.1-1.cvs20020827</li>
+</ul>
+
+<h4>Suse 9.0</h4>
+<ul>
+<li>tk-8.4.4-50</li>
+<li>tcl-8.4.4.34</li>
+<li>python2.3-52</li>
+<li>python-tk-2.3-43</li>
+<li>Numeric Python 23.1</li>
+<li>ScientificPython-2.4.5</li>
+<li>vtk-4.2</li>
+</ul>
+
+<hr>
+
+<a name="windows"><h2 align=center>Windows</h2></a>
+<p>The following steps describe two  ways to get the CCP1GUI up
+and running on a Windows XP system. Both methods rely on the now
+outdated Python2.1 distribution, as an executable installer for VTK
+isn't available yet for the newer versions of Python. The first
+section of this documentation therefore explains how to install Python2.1 and
+PythonWin on a Windows  XP System. It is possible to get the CCP1GUI to work
+with later versions of Python and VTK, although the installation procedure is a little more involved.</p>
+
+<p>If you don't already have it, you will need to download
+Winzip. Although windows has its own 'zip' utility it cannot deal with
+.tar.gz archives. An evaluation version of Winzip can be downloaded
+from <a href="http://www.winzip.com">www.winzip.com</a>.</p>
+
+<h3>Python2.1</h3>
+<p>First, download the <b><i>Python-2.1.3.exe</i></b> 
+installer from:
+<a href="http://www.python.org/ftp/python/2.1.3">
+www.python.org</a>. The uninstaller for this version of Python has a
+bug in it, so it's advisable to also download the
+<b><i>UNWISE.exe</i></b> file.</p>
+
+<p>To install the program, just double-click on the
+executable icon. You will asked where to install Python and should 
+accept
+the default option of: <b>C:\Python21</b>. It's also advisable to 
+select the
+<i>make backups</i> option in case anything goes wrong. Once the 
+installer
+has finished, over-write the <b><i>UNWISE.exe</i></b> file in the 
+<b>C:\Python21</b>
+directory with the one you downloaded.</p>
+
+<h4>PythonWin</h4>
+<p>The next stage is to download and install PythonWin for Python
+2.1. The <b><i>win32all-151.exe</i></b> executable is available from <a
+href="http://starship.python.net/crew/mhammond/win32/Downloads.html">
+http://starship.python.net/crew/mhammond/win32/Downloads.html</a>. Just 
+double-click the executable to install it.</p>
+
+<h3>Easy Installation of the CCP1GUI</h3>
+<p>There is a version of the GUI available for FTP download, that
+packages all of the files required to run the CCP1GUI into a single
+directory. The  directory structure is the same as that for the Linux
+distribution shown <a href="#directory">above</a>. The only additional
+requirements for this version are Python 2.1 and PythonWin.</p>
+
+<p>Once you have these installed, download the file
+<kbd>ccp1gui-<i>&lt;version&gt;</i>_win.tar.gz</kbd> file from our <a
+href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/windows">ftp site</a> and
+uncompress the package using WinZip. The package will decompress to
+give a directory called <b>ccpigui</b>. To run the CCP1GUI,
+open the ccp1gui directory and double-click on the <b>ccp1gui.bat</b>
+batch file. If you experience problems with this, please read the <a
+href="#batchprobs">problems</a> section.</p>
+
+<h3>PieceWise Installation</h3>
+<p>If you are not using the packaged tar file, you will need to
+download and install VTK and then download the CCP1GUI files as
+described below:</p>
+
+<h4>The Visualisation Toolkit (VTK)</h4>
+<p>This package provide most of the graphical functionality of the
+CCP1GUI. A windows executable that is compatible with Python 2.1 is
+available from the <a
+href="http://public.kitware.com/VTK/get-software.php">VTK
+website</a>.</p>
+
+<p>Go to the <b>Wintel Pre-Compiled Binaries (Windows 9x/NT)</b>
+section and download the file
+<b><i>vtk42-LatestRelease.exe</i></b>.</p>
+
+<p>To install VTK, just run the <b><i>vtk42-LatestRelease.exe</i></b>
+executable, and it will install VTK in <b>C:\Program 
+Files\vtk42</b>.</p>
+
+<h4>The CCP1GUI directory</h4>
+<p>This directory is available from our <a
+href="ftp://ftp.dl.ac.uk/qcg/CCP1GUI">ftp site </a> as a zipped 
+and tarred archive. Download the <b>ccp1gui-<i>&lt;version&gt;</i>.tar.gz</b>
+file. Use WinZip to extract the archive. which will decompress to give
+a directory called <b>python_dev</b>. Before you run the GUI, using
+this method you will need to set your PYTHONPATH environment variable
+as described <a href="#winpythonpath">below</a>. With this done, you
+can run the CCP1GUI by opening the <b>python_dev</b> directory and
+double-clicking on the <b>ccp1gui.bat</b> batch file.</p>
+
+<a name="batchprobs"></a><h3 align=center>If it doesn't work</h3>
+<p>If for some reason the GUI doesn't run when you click on the batch
+file, the most likely reason is that it cannot find all of the files
+it needs to run. The following section describes how the batch file
+sets up the 'environment' that the CCP1GUI runs in, so that you can
+see if this is correct for your system and change it if it isn't.</p>
+
+<p>The batch file is displayed below (the purple line numbers are just
+there to aid explanation and don't appear in the file proper):</p>
+
+<table border=0 width=100% bgcolor=#e0e0e0>
+<tr><td><p><font color=ff00ff>1.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font
+color=ff0000>%0\</font></p></td></tr>
+</td></tr>
+<tr><td><p><font color=ff00ff>2.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>cd</font> <font color=ff0000>%0\.</font></p></td></tr>
+<tr><td><p><font color=ff00ff>3.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> ROOTDIR =<font color=ff0000>%CD%</font></p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>4.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PATH=<font color=0000ff>%PATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\bin</p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>5.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\python_dev</p></td></tr>
+<tr><td><p><font color=ff00ff>6.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\Wrapping\Python</p></td></tr>
+<tr><td><p><font color=ff00ff>7.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\bin</p></td></tr>
+<tr><td><p><font color=ff00ff>8.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\Numeric</p></td></tr>
+<tr><td><p><font color=ff00ff>9.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font></p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>10.&nbsp;&nbsp;&nbsp;</font>c:\python21\python.exe " <font color=ff0000>%ROOTDIR%</font>\python_dev\tkmolview\vtkgraph.py" %1</p></td></tr>
+
+</table>
+
+<p>In a batch file, the argument <font color=ff0000>%0\</font> refers
+to the batch file itself, so the first two lines ensure that the
+CCP1GUI is run from the main installation directory. Line 3 then sets
+the variable <b>ROOTDIR</b> to signify this directory (this is done so
+that all other directory paths are relative to this directory, so you
+can install the CCP1GUI whereever you wish).<p>
+
+<p>Line 4 appends the directory containing the VTK library files to
+the <b>PATH</b> environment variable . If you have installed your VTK
+library files elseswhere, you will need to change this.<p>
+
+<p>Lines 5 to 9 build up the <b>PYTHONPATH</b> environment variable,
+which tells python where to find the files it needs. If you have
+installed VTK or Numeric or any of the other modules somewhere else
+you will need to change the lines accordingly.</p>
+
+<p>Line 10 runs the CCP1GUI using Python version 2.1, which it expects
+to find installed in the folder <b>C:\Python21</b> If you have
+installed Python2.1 elsewhere, then change this line.</p>
+
+<p>Alternatively, to run the CCP1GUI using Pythonwin, open Pythonwin 
+(<b>Start -&gt; Programs -&gt; Python2.1 -&gt; Pythonwin</b>) and go to 
+<b>File -&gt; Run...</b>. Click on the <b><i>Browse</i></b> button and 
+select the <b><i>vtkgraph</i></b> in the <b>python_dev/tkmolview</b>
+directory and click <b><i>Open</i></b> and then click on
+<b><i>Ok</i></b>. For this to work, you will have to have set your
+<b><i>PYTHONPATH</i></b> variable accordingly.</p>
+
+<h4>Display problems with Windows NT</h4>
+<p>We have found that on our Windows NT systems it has been necessary 
+to 
+change the number of colours (choose <b>Start -&gt; Settings -&gt; 
+control
+panels -&gt; Display</b>)
+i.e. 1677216) - with the default the atom picking didn't work 
+properly.</p>
+
+<a name="winpythonpath"></a><h4>Setting the PYTHONPATH environment 
+variable.</h4>
+<p>To set the <b><i>PYTHONPATH</i></b> variable go to <b>Control Panel 
+-&gt;
+System-&gt; Advanced</b> and click the <b>'Environment
+Variables'</b> button. In the <b>'System Variables'</b> panel that
+appears, <i>click</i> <b>New</b> and enter <kbd>PYTHONPATH</kbd> in the
+<b>'Variable Name'</b> field. In the <b>'Variable Value'</b> field 
+enter
+the string corresponding to the path of the directories you wish to 
+include in your <b><i>PYTHONPATH</i></b>. For the CCP1GUI this should include 
+the following paths:</p>
+<ul>
+<li><b><i>&lt;python_prefix&gt;</i>\python_dev</b></li>
+<li><b><i>&lt;vtk_prefix&gt;</i>\vtk42\Wrapping\Python</b></li>
+<li><b><i>&lt;vtk_prefix&gt;</i>\vtk42\bin</b></li>
+</ul>
+
+<p>where <b><i>&lt;python_prefix&gt;</i></b> is the path to your 
+<b>python_dev</b> directory, and <b><i>&lt;vtk_prefix&gt;</i></b>, the path 
+to wherever you have installed vtk.</p>
+
+<p>If your operating system is installed on your <b>C:</b> drive and
+you have put all the programs in their default locations, your
+<b><i>PYTHONPATH</i></b> will be the following:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>c:\python_dev;c:\Program Files\vtk42\Wrapping\Python;c:\Program Files\vtk42\bin</tt>
+</td></tr>
+</table>
+
+
+</body>
+</html>

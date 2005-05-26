@@ -1,0 +1,102 @@
+Optimisation Tab
+
+If the Task has been selected as Geometry Optimisation in the Molecule Tab,
+then the options here determine how the geometry optimisation will proceed.
+
+Runtype Group
+
+The options in this group determine the type of geometry optimisation that will
+be carried out.
+
+  * Opt. Coords - this determines the optimisation method that will be used.
+    The options are:
+   
+      + Z-Matrix - this selects a quasi-Newton rank-2 update procedure in
+        internal coordinates. This is the recommended method but requires the
+        molecular coordinates to have been specified in internal coordinate
+        form and the variables that are to be optimised to have been specified.
+       
+      + Cartesian - if this is selected the optimisation uses a
+        Cartesian-driven update method. The Cartesian geometry optimisation
+        cannot be used when searching for a transition state or using the
+        Jorgensen/Simmons optimisation algorithm.
+       
+  * Locate Transition State - if this checkbox is selected then the geometry
+    optimisation will not search for the global minimum, but will instead try
+    and determine the geometry of a transition state. A transition state search
+    can only be undertaken if the z-matrix is in internal coordinate form and
+    the variables that are to be optimised have been specified.
+   
+Search Procedure Group
+
+The options in this group allow the user a certain amount of control over the
+implementation of the selected optimisation strategy.
+
+  * Energy evaluations - this number determines the maximum number of energy
+    evaluations (geometry optimisation steps) that will be permitted.
+   
+  * Line searches - this is the maximum number of line searches that will be
+    permitted during the optimisation.
+   
+  * Convergence Thresh. - this determines the convergence threshold: the point
+    at which the geometry optimisation is deemed to have converged.
+   
+    For a Z-matrix minimisation or Transition State Search, this is when:
+   
+      + maximum change in variables < Convergence Threshold
+       
+      + average change in variables < Convergence Threshold * 2/3
+       
+      + maximum gradient < Convergence Threshold * 4/9
+       
+      + average gradient < Convergence Threshold * 8/27
+       
+    For a Cartesian optimisation, this is when:
+   
+      + The maximum component of the gradient is equal to the value specified
+        for the Convergence Threshold.
+       
+  * Max. Step Size - this determines the largest change that will be permitted
+    to be made to variables during the optimisation. If a Z-Matrix minimisation
+    or Transition State Search is being carried out this this number determines
+    the maximum change in bond length in Bohrs, or change in bond angle in
+    radians. For a Cartesian optimisation the number specifies the maximum
+    permitted change in the Cartesian coordinates.
+   
+  * Turning Point Accuracy - This option is only applicable to a Z-Matrix
+    minimisation or Transition State Search and controls the accuracy of the
+    search for a turning point during a line search. This value should be set
+    between 0.0 and 1.0, with a smaller value leading to a more accurate line
+    search.
+   
+Jorgensen Group
+
+If the checkbox is selected it indicates that the Jorgensen/Simmons
+quasi-Newton-Raphson minimisation algorithm should be used. This is only
+applicable when a Z-Matrix minimisation or Transition State Search is being
+undertaken.
+
+  * Hessian Update Procedure - this option is only displayed if the geometry
+    optimisation is searching for a minimum and not a transition state. If
+    displayed it can be used to select whether the Hessian update procedure is
+    the default, BFGS, or BFGSX (a modified BFGS update procedure with
+    safeguards to ensure retention of a positive definite Hessian).
+   
+  * Use Powell Hessian Update - this option is only displayed if a transition
+    search is being undertaken and determines that the Hessian should be
+    updated using the Powell update procedure.
+   
+  * Min. Hessian Eigenvalue - the minimum permitted value for a Hessian
+    eigenvalue.
+   
+  * Max Hessian Eigenvalue - the maximum permitted value for a Hessian
+    eigenvalue
+   
+  * Use Rational Function Optimisation - this is used to control the nature of
+    the steps taken in the search procedure. If RFO is selected, a menu is
+    presented that allows the user to select the default specification for RRO.
+   
+      + ON - only RFO or P-RFO steps will be taken.
+      + OFF - Newton-Raphson steps will be taken where appropriate, instead of
+        RFO or P-RFO steps.
+       

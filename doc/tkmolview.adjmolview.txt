@@ -1,0 +1,25 @@
+    Adjust Molecule View
+   
+    The adjust molecule view tool changes the way that the molecular structure
+    is displayed on the screen. The tool is displayed below:
+   
+    The available options are:
+   
+      + Wireframe - lines are drawn connecting the individual atoms. From their
+        midpoint to the end connected to an atom, the lines are coloured with
+        the colour associated with that atom type.
+      + Spheres - the 'balls' of the conventional 'ball and stick'
+        representation of molecules. Spheres are drawn centered on the
+        individual atoms, sized and coloured according to the atom type that
+        they are associated with.
+      + Sphere Scale - this determines the relative sizes of the spheres.
+      + Sticks - the 'sticks' of the conventional 'ball and stick'
+        representation of molecules. Grey cylinders are drawn connecting
+        individual atoms.
+      + Labels - this displays labels identifiying the individual atoms. The
+        labels show the type of the atom, as well as a unique number
+        identifying each atom.
+      + Label Size - the font size used for the labels.
+      + Contacts - this shows non-bonded contacts between different atoms as
+        white lines drawn between the two atoms. The criteria for determining
+        non-bonded contacts can be adjusted in the Edit Options window.

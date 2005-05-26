@@ -1,0 +1,25 @@
+title
+gamess surf directive
+zmat angs
+n
+x 1 1
+h 1 1. 2 110
+h 1 1. 2 110 3  120
+h 1 1. 2 110 3 -120
+end
+runtype scf
+enter 1
+runtype analysis
+punch coor conn grid 100
+graphics
+GDEF
+TITLE
+2D  GRID
+TYPE 2D
+POINTS 60
+SIZE 8.0
+CALC
+TYPE grad dens
+SECTION 100
+VECTORS 1
+ENTER

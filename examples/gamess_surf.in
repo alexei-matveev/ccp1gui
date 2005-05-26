@@ -1,0 +1,28 @@
+title
+gamess surf directive
+zmat angs
+n
+x 1 1
+h 1 1. 2 110
+h 1 1. 2 110 3  120
+h 1 1. 2 110 3 -120
+end
+runtype scf
+enter 1
+runtype analysis
+punch coor conn grid 162 165
+graphics
+GDEF
+TITLE
+3D  GRID
+TYPE 3D
+POINTS 60
+SIZE 15.0
+CALC
+TYPE DENS
+SECTION 150
+SURF POTE 160 0.001 0.01
+runtype analysis
+potf 162 165
+VECTORS 1
+ENTER

@@ -1,0 +1,41 @@
+This file contains a concise listing of changes
+v.vv-> denotes an update of the tar file on the web.
+
+0.01->
+    7th june fix paste of atoms with variable references
+    7th june add angstroms key to output zmatrix
+
+    Initial implementation of VTK graphics back end.
+0.3->  11th june 2003
+
+    Reorganisation of directories
+    Significant reorganisation of calculation editor codes (tools.py etc)
+    BasisManager and associated classes added
+    Introduced cut slice visualiser, grid editors, 2D window etc
+    doc/html directory added
+0.4->  10th Feb, 2004
+
+    Added links to idle shell and pydoc, F1 help
+    Ballon help on main window
+    Reorganised views menus
+    new modules to figure out pathnames
+    Many changes relating to use of ChemShell on windows
+    Update of module documentation
+    Correction to lanl2dz sample ecp basis file
+0.5->  3rd March 2004
+
+    Many minor enhancements and bug fixes
+    Load up GAMESS-UK internal basis set information
+    Change handling of atom selection in Z-matrix editor
+    Z-matrix editor now has a close button
+    Fix autoz anomaly for CX4 molecules
+    Z-matrix reader now works from main menu
+    Removed bulky examples (download data directory)
+    Built complete Suse, RedHat and Windows downloadable distributions
+    Enabled output of DFT options from GAMESS-UK
+    Fixes to CML reader (# atoms, atom ordering)
+    CML(1) and MSI output routines
+    Simple animation tool.
+    Reader for Gaussian format z-matrices
+0.6-> 19th March 2004
+
