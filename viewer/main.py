@@ -22,8 +22,8 @@
 The TkMolView class defined here does not actually include the code to
 render the molecule into the main window, for this see the derived
 classes in files (e.g. vtkgraph.py and openglgraph.py)
-
 """
+
 import sys,os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
@@ -65,6 +65,9 @@ from objects.periodic       import sym2no, z_to_el
 from slavethread import *
 from jobmanager.jobeditor import *
 from toolpanel import *
+
+class Dummy:
+    """ def dummy class"""
 
 class TkMolView(Pmw.MegaToplevel):
     """The Tk-based Widget"""
@@ -5946,6 +5949,14 @@ def copycontents(to,fro):
 if __name__ == "__main__":
     import sys
     import profile
+
+    # test imports
+    try:
+        import Scientific
+    except ImportError:
+        print "You need to install Scientific Python"
+        sys.exit(-1)
+
     from vtkgraph import *
     root=Tk()
     root.withdraw()
@@ -5953,4 +5964,4 @@ if __name__ == "__main__":
     for file in sys.argv[1:]:
         print 'loading',file
         vt.load_from_file(file)
-    profile.run('vt.mainloop()')
+    vt.mainloop()
