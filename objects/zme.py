@@ -316,7 +316,7 @@ class ZME(Pmw.MegaToplevel):
 
         self.menuBar.addmenuitem('File', 'command',
                                  'Finish Editing this Z-matrix', 
-                                 label=self.pad+'Quit', command = self.Quit)
+                                 label=self.pad+'Close', command = self.Quit)
 
         self.menuBar.addmenuitem('Help', 'command',
                                  'Get information on application', 
