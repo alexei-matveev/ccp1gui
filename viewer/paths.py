@@ -19,38 +19,15 @@
 #
 """helper module to manage pathnames
 """
-import sys
-import string
-import objects.periodic
 
-def rmlast(s,x):
-    c=' '
-    if s == None:
-        return ''
-    print s
-    l = len(s)
-    while c != x:
-        l=l-1
-        if l == 0:
-            return None
-        c = s[l]
-    return s[:l]
+# see http://www.pythonmac.org/wiki/FAQ#head-c88c53edb2f911e57c92adf2625ca2b73aa6fc6d
+import os
+import __main__
 
-if sys.platform[:3] == 'win':
-    t = rmlast(objects.periodic.__file__,'\\')
-    gui_path=rmlast(t,'\\')
-    root_path=rmlast(gui_path,'\\')
-    t = rmlast(string.__file__,'\\')
-    python_path=rmlast(t,'\\')
-elif  sys.platform[:3] == 'mac':
-    gui_path=rmlast(objects.periodic.__file__,'/')
-    python_path=rmlast(string.__file__,'/')
-    root_path=rmlast(gui_path,'/')
-else:
-    t = rmlast(objects.periodic.__file__,'/')
-    gui_path=rmlast(t,'/')
-    root_path=rmlast(gui_path,'/')
-    python_path=rmlast(string.__file__,'/')
+mainscriptdir=os.path.dirname(os.path.abspath(__main__.__file__))
+gui_path = os.path.split(mainscriptdir)[0]
+root_path = os.path.split(gui_path)[0]
+python_path = os.path.split(os.__file__)[0]
 
 if __name__ == "__main__":
     print 'Python',python_path

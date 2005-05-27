@@ -24,18 +24,119 @@ render the molecule into the main window, for this see the derived
 classes in files (e.g. vtkgraph.py and openglgraph.py)
 """
 
+if __name__ == "__main__":
+    
+    # Before we do owt else, make sure we can import the modules that we need
+    # and give the user a helpful messsage if we can't (apparently some people
+    # don't like reading tracebacks...)
+    # If that all works, set the PYTHONPATH variable to include the main GUI
+    # directory so that we can find all of our modules
+    
+    import sys
+    
+    header="""
+######################################################################
+#                                                                    #
+#                  MODULE IMPORT ERROR!                              #
+#                                                                    #
+######################################################################"""
+    
+    whereget="""
+Alternatively, for information on all of the dependancies for the GUI and
+instructions for their installation proceedures, please visit:
+
+http://www.cse.clrc.ac.uk/qcg/ccp1gui/install.shtml
+
+Distributions of the CCP1GUI that contain the relevant Python modules
+and pre-compiled vtk libraries are available for download for some
+platforms from:
+
+ftp ftp.dl.ac.uk/qcg/ccp1gui
+"""
+
+    # Tkinter
+    try:
+        import Tkinter
+    except ImportError:
+        print header
+        print """
+We are sorry but the CCP1GUI cannot run on your system as
+you do not appear to have Tkinter installed. For more information
+on installing Tkinter, please visit:
+
+http://tkinter.unpythonic.net/wiki/How_20to_20install_20Tkinter"""
+        print whereget
+        sys.exit(-1)
+
+    # Numeric
+    try:
+        import Numeric
+    except ImportError:
+        print header
+        print """
+We are sorry but the CCP1GUI cannot run on your system as
+you do not appear to have Numeric Python installed. For more
+information on installing Numeric Python, please visit:
+
+http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351"""
+        print whereget
+        sys.exit(-1)
+
+    # Scientific
+    try:
+        import Scientific
+    except ImportError:
+        print header
+        print """
+We are sorry but the CCP1GUI cannot run on your system as
+you do not appear to have Scientific Python installed. For more
+information on installing Scientific Python, please visit:
+
+http://starship.python.net/~hinsen/ScientificPython/"""
+        print whereget
+        sys.exit(-1)
+
+    # Pmw
+    try:
+        import Pmw
+    except ImportError:
+        print header
+        print """
+We are sorry but the CCP1GUI cannot run on your system as
+you do not appear to have Python MegaWidgets installed. For more
+information on installing Python Megawidgets, please visit:
+
+http://pmw.sourceforge.net/"""
+        print whereget
+        sys.exit(-1)
+        
+    # Pmw
+    try:
+        import vtk
+    except ImportError:
+        print header
+        print """
+We are sorry but the CCP1GUI cannot run on your system as
+you do not appear to have VTK installed. For more
+information on installing VTK, please visit:
+
+http://public.kitware.com/VTK/get-software.php"""
+        print whereget
+        sys.exit(-1)
+
+    # Now append the gui directory to the PYTHONPATH
+    from paths import gui_path
+    sys.path.append(gui_path)
+
 import sys,os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
 from tkFileDialog import *
 from tkSimpleDialog import *
 from tkColorChooser import *
-from Numeric import *
 from SimpleDialog import SimpleDialog
 
 import time
-import Pmw
-import Tkinter
 from generic.graph import *
 import copy
 import chempy
@@ -65,9 +166,6 @@ from objects.periodic       import sym2no, z_to_el
 from slavethread import *
 from jobmanager.jobeditor import *
 from toolpanel import *
-
-class Dummy:
-    """ def dummy class"""
 
 class TkMolView(Pmw.MegaToplevel):
     """The Tk-based Widget"""
