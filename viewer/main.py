@@ -148,7 +148,7 @@ from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
 from viewer.paths import gui_path, python_path
 
-from interfaces.calc           import *
+from interfaces.calc import *
 from interfaces.calced         import *
 from interfaces.gamessuk       import *
 from interfaces.gamessoutputreader import *
