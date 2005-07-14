@@ -1,0 +1,217 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+FAQ for the CCP1 GUI
+</title>
+</head>
+
+<body>
+<h1 align=center>The CCP1 Graphical User Interface FAQ</h1>
+
+<p>This is the CCP1GUI FAQ ( Frequently Asked/Answered Questions
+). It's aim is to provide a first port of call where users can come to
+look for answers if they hit problems running the CCP1GUI. It will be
+kept as a single flat-file html file, with the idea being that you can
+use our browsers search functionality to search through it for
+keywords relating to the problem you are having.</p>
+
+<p>The FAQ's are also organised into sections so that you can search
+in a patricular section to see if the issue you are experiencing is
+addressed there.</p>
+
+<!-- Start Contents -->
+<ol>
+
+<!-- Start General contents-->
+<li><a href="#h2general">General</a></li>
+<ol>
+<li><a href="#h4general_whatis">What is the CCP1GUI?</a></li>
+<li><a href="#h4general_atomwin">Display problems with Windows NT?</a></li>
+</ol>
+<!-- End General contents -->
+
+<!-- Start Installation contents -->
+<li><a href="#h2install">Installation</a></li>
+
+<ul>
+<li><a href="#h3install_all">Applicable to all Platforms</li>
+<ol>
+<li><a href="#h4install_whereget">Where can I download the CCP1GUI?</a></li>
+<li><a href="#h4install_cvsread">How do I get CVS read access to the
+CCP1GUI repository?</a></li>
+</ol>
+
+<li><a href="#h3install_nix">Linux/Unix</li>
+<ol>
+</ol>
+
+<li><a href="#h3install_win">Windows</li>
+<ol>
+<li><a href="#h4install_winpath">How do I set my PYTHONPATH
+environment variable under Windows?</a></li>
+<li><a href="#h4install_winbat">How does the batch file work on Windows?</a></li>
+</ol>
+
+<li><a href="#h3install_mac">Mac OSX</li>
+<ol>
+</ol>
+</ul>
+<!-- End Installation contents -->
+
+
+</ol>
+<!-- End Contents -->
+
+<!-- Start FAQ Body -->
+
+<!-- Start General -->
+<a name="h2general"></a><h2>General</h2>
+
+<a name="h4general_whatis"></a><h4>What is the CCP1GUI</h4>
+<p>The CCP1GUI project aims to develop a free, extensible Graphical
+User Interface to various computational chemistry codes developed by
+the worldwide academic community, with an emphasis on ab initio
+Quantum Chemistry codes.</p>
+
+<a name="h4general_atomwin"></a><h4>Display problems with
+Windows NT?</h4>
+<p>We have found that on our Windows NT systems it has been necessary 
+to 
+change the number of colours (choose <b>Start -&gt; Settings -&gt; 
+control
+panels -&gt; Display</b>)
+i.e. 1677216) - with the default the atom picking didn't work 
+properly.</p>
+
+<!-- End General -->
+
+<!-- Start Installation -->
+<a name="h2install"></a><h2>Installation</h2>
+
+<a name="h3install_all"></a><h3>Applicable to all Platforms</a>
+<a name="h4install_whereget"></a><h4>Where can I download the CCP1GUI?</h4>
+<p>The CCP1GUI can be downloaded from the CCP1GUI's page on <a
+href="http://sourceforge.net/projects/ccp1gui/">sourceforge</a> or
+from the <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a> of the
+Quantum Chemistry group at Daresbury Laboratory.</p>
+
+<a name="h4install_cvsread"><h4>How do I get CVS read access to the
+CCP1GUI repository?</h4>
+<p>The CCP1GUI cvs repository is hosted by Sourceforge. Sourceforge
+have created some detailed documentation on using cvs to access their
+repositories, which you can find <a
+href="https://sourceforge.net/docman/display_doc.php?docid=14033&group_id=1">here</a>.
+It is, however, somewhat long, so or the impatient amongst you, the
+two steps you need to go through to get the source code are:</p>
+<ol>
+
+<li>Log in with the command:
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>cvs -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/ccp1gui login</tt>
+</td></tr>
+</table>
+If prompted for password, just hit the enter key.
+</li>
+
+<li>Check out the source:
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>cvs -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/ccp1gui co
+-P ccp1gui</tt>
+</td></tr>
+</table>
+</li>
+</ol>
+
+<a name="h3install_nix"</a><h3>Linux / Unix</h3>
+
+<a name="h3install_win"</a><h3>Windows</h3>
+<a name="h4install_winpath"><h4>How do I set my PYTHONPATH
+environment variable under Windows?</h4>
+<p>To set the <b><tt>PYTHONPATH</tt></b> variable go to <b>Control Panel 
+-&gt;
+System-&gt; Advanced</b> and click the <b>'Environment
+Variables'</b> button. In the <b>'System Variables'</b> panel that
+appears, <i>click</i> <b>New</b> and enter <tt>PYTHONPATH</tt> in the
+<b>'Variable Name'</b> field. In the <b>'Variable Value'</b> field 
+enter
+the string corresponding to the path of the directories you wish to 
+include in your <b><tt>PYTHONPATH</tt></b>. For the CCP1GUI this should include 
+the following paths:</p>
+<ul>
+<li><tt><i>&lt;python_prefix&gt;</i>\ccp1gui</tt></li>
+<li><tt><i>&lt;vtk_prefix&gt;</i>\vtk42\Wrapping\Python</tt></li>
+<li><tt><i>&lt;vtk_prefix&gt;</i>\vtk42\bin</tt></li>
+</ul>
+
+<p>where <tt><i>&lt;python_prefix&gt;</i></tt> is the path to your 
+<tt>ccp1gui</tt> directory, and <tt><i>&lt;vtk_prefix&gt;</i></tt>, the path 
+to wherever you have installed vtk.</p>
+
+<p>If your operating system is installed on your <b>C:</b> drive and
+you have put all the programs in their default locations, your
+<b><tt>PYTHONPATH</tt></b> will be the following:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>c:\ccp1gui;c:\Program Files\vtk42\Wrapping\Python;c:\Program Files\vtk42\bin</tt>
+</td></tr>
+</table>
+
+<a name="h4install_winbat"></a><h4>How does the batch file work on
+Windows?</h4>
+<p>The batch file sets up the 'environment' that the CCP1GUI runs in,
+so if this is set up incorrectly, the CCP1GUI may not find all of the
+files that it needs.</p>
+
+<p>The batch file is displayed below (the purple line numbers are just
+there to aid explanation and don't appear in the file proper):</p>
+
+<table border=0 width=100% bgcolor=#e0e0e0>
+<tr><td><p><font color=ff00ff>1.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font
+color=ff0000>%0\</font></p></td></tr>
+</td></tr>
+<tr><td><p><font color=ff00ff>2.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>cd</font> <font color=ff0000>%0\.</font></p></td></tr>
+<tr><td><p><font color=ff00ff>3.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> ROOTDIR =<font color=ff0000>%CD%</font></p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>4.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PATH=<font color=0000ff>%PATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\bin</p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>5.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\python_dev</p></td></tr>
+<tr><td><p><font color=ff00ff>6.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\Wrapping\Python</p></td></tr>
+<tr><td><p><font color=ff00ff>7.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\vtk42\bin</p></td></tr>
+<tr><td><p><font color=ff00ff>8.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font>\Numeric</p></td></tr>
+<tr><td><p><font color=ff00ff>9.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color=e69900>set</font> PYTHONPATH=<font color=0000ff>%PYTHONPATH%</font>; <font color=ff0000>%ROOTDIR%</font></p></td></tr>
+ 
+<tr><td><p><font color=ff00ff>10.&nbsp;&nbsp;&nbsp;</font>c:\python21\python.exe " <font color=ff0000>%ROOTDIR%</font>\python_dev\tkmolview\vtkgraph.py" %1</p></td></tr>
+
+</table>
+
+<p>In a batch file, the argument <font color=ff0000>%0\</font> refers
+to the batch file itself, so the first two lines ensure that the
+CCP1GUI is run from the main installation directory. Line 3 then sets
+the variable <b>ROOTDIR</b> to signify this directory (this is done so
+that all other directory paths are relative to this directory, so you
+can install the CCP1GUI whereever you wish).<p>
+
+<p>Line 4 appends the directory containing the VTK library files to
+the <b>PATH</b> environment variable . If you have installed your VTK
+library files elseswhere, you will need to change this.<p>
+
+<p>Lines 5 to 9 build up the <b>PYTHONPATH</b> environment variable,
+which tells python where to find the files it needs. If you have
+installed VTK or Numeric or any of the other modules somewhere else
+you will need to change the lines accordingly.</p>
+
+<p>Line 10 runs the CCP1GUI using Python version 2.1, which it expects
+to find installed in the folder <b>C:\Python21</b> If you have
+installed Python2.1 elsewhere, then change this line.</p>
+
+
+<a name="h3install_mac"</a><h3>Mac OSX</h3>
+
+<!-- End Installation -->
+
+</body>
+</html>
