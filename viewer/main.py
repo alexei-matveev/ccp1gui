@@ -2241,13 +2241,10 @@ class TkMolView(Pmw.MegaToplevel):
             self.__update_data_list()
 
             # store the directory part for future file operations
-            words2 = string.split(file,'/')
-            name = words2[-1]
-            ix = file.rfind(name)
-            print 'file =',file
-            print 'name =',name
-            self.user_directory = file[:ix]
+            dirname = os.path.dirname(filename)
+            self.user_directory = dirname
             print 'user directory is now',self.user_directory
+
 
     def load_from_file(self,filename=None):
 
@@ -2341,11 +2338,12 @@ class TkMolView(Pmw.MegaToplevel):
 
         if not objs:
             return 1
-
-        for o in objs:
-            t = id(o)
-            self.file_dict[t] = file
-
+        else:
+            for o in objs:
+                t = id(o)
+                self.file_dict[t] = file
+            return 0
+                
     def rdzmt(self,file,root):
         """Load from a zmatrix
         """
@@ -2589,8 +2587,11 @@ class TkMolView(Pmw.MegaToplevel):
             models.append( model )
 
             line = file.readline() # Go back to top of while loop with next line
-            
-        return [ models ]
+
+        if len( models ) == 0:
+            return None
+        else:
+            return [ models ]
 
     def rdgjf(self,file,root):
         """Load a zmatrix from a Gaussian input file
