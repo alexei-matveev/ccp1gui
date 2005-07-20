@@ -31,7 +31,10 @@ def linecache_checkcache(orig_checkcache=linecache.checkcache):
     for filename in cache.keys():
         if filename[:1] + filename[-1:] == '<>':
             save[filename] = cache[filename]
-    orig_checkcache()
+    # cJens - no idea what the below does - in Python 2.3 and Python 2.4
+    # linecache.checkcache is called with a filename argument, so what the
+    # statement below is about is beyond me.
+    #orig_checkcache()
     cache.update(save)
 linecache.checkcache = linecache_checkcache
 
