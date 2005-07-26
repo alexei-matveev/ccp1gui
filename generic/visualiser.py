@@ -494,9 +494,10 @@ class MoleculeVisualiser(Visualiser):
                 menubutton_textvariable = self.radii_var,
                 items = ['Covalent','v.d.W.'],
                 initialitem='Covalent',
+                command=lambda val, s=self: s.__read_buttons(), 
                 menubutton_width = 8)
-            self.radii_menu.pack(side='left')
 
+            self.radii_menu.pack(side='left')
             sphere_group.pack(side='top',fill='x')
 
         self.stick_var              = Tkinter.BooleanVar()
