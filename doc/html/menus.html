@@ -53,29 +53,58 @@ atom.</li>
 <p align=center><img src="images/filemenu.png"  border="0" alt="File menu screenshot"></p>
 
 <h4>Open</h4>
-<ul><li>Load molecule coordinates from a file. Supported file formats are:</li>
-<ul><li>.zmt (Z-matrix)</li>
-<li>.cml (Chemical Markup Language)</li>
-<li>.xml (XML)</li>
-<li>.pdb (Brookhaven Protein Databank)</li>
-<li>.pun (GAMESS-UK punch file)</li>
-<li>.c (ChemShell cartesian coordinates)</li>
-<li>.z (ChemShell Z-matrix file)</li>
-<li>.gjf (Gaussian Input File)</li>
-<li>.crd (CHARMM (Chemistry at HARvard Molecular Mechanics))</li>
-<li>.xyz (XMol file format)</li>
-<li>.msi (Molecular Simulations, Cerius 2)</li>
+<p>Clicking on the <b>Open</b> Menu opens up a dialog box that allows
+to you select the type of file from which to load a set of molecular
+
+coordinates, as shown below:</p>
+<p align=center><img src="images/fileopen.png"  border="0" alt="File menu screenshot"></p>
+
+<p>The drop-down menu at the bottom is used to filter which file
+formats are displayed. The different filters available are:</p>
+
+<ul>
+<li><b>Molecules</b> - this displays all files with the most commonly
+used extensions that are supported by the CCP1GUI, namely:</li>
+<ul>
+<li><tt>.xyz</tt> (XMol file format)</li>
+<li><tt>.pdb</tt> (Brookhaven Protein Databank)</li>
+<li><tt>.pun</tt> (GAMESS-UK punch file)</li>
+<li><tt>.c</tt> (ChemShell cartesian coordinates)</li>
+<li><tt>.crd</tt> (CHARMM (Chemistry at HARvard Molecular Mechanics))</li>
+<li><tt>.z</tt> (ChemShell Z-matrix file)</li>
+<li><tt>.cml</tt> (Chemical Markup Language)</li>
+<li><tt>.xml</tt> (XML)</li>
+<li><tt>.zmt</tt> (Z-matrix)</li>
+<li><tt>.gj</tt>f (Gaussian Input File)</li>
+<li><tt>.mol</tt> (Molecular Simulations, Cerius 2)</li>
 </ul>
+
+<li><b>XYZ</b> - only XMOL <tt>.xyz</tt> files.</li>
+<li><b>PDB</b> - only  Protein Data Bank <tt>.pdb</tt> or <tt>.PDB</tt>files.</li>
+<li><b>CML</b> - only Chemical/Xtensible Markup Language <tt>.cml</tt>
+or <tt>.xml</tt> files.</li>
+<li><b>Zmatrix</b> - only zmatrix <tt>.zmt</tt> files.</li>
+<li><b>GAMESS-UK Input</b> - only GAMESS-UK <tt>.in</tt> input files.</li>
+<li><b>Other Output</b> - all files with a <tt>.out</tt> extension. Selecting a
+file with a <tt>.out</tt> extension will bring up a box allowing you
+to select the type of output that the file is.</li>
+<li><b>Gaussian Output</b> - Gaussian output files with a
+<tt>.gjf</tt> extension ( very limited support ).</li>
+<li><b>All</b> - list all files types.</li>
 </ul>
 
 <h4>Save As</h4>
-<ul><li>Save the coordinates of the molecule to a text file. Supported formats are:</li>
 <ul>
-<li>.zmt (Z-matrix)</li>
-<li>.pdb (Brookhaven Protein Databank)</li>
-<li>.pun (cartesian coodinates in GAMESS-UK format)</li>
-<li>.cml (Chemical Markup Language)</li>
-<li>.msi (Molecular Simulations, Cerius 2)
+<li>Save the coordinates of the molecule to a text file. Supported formats are:</li>
+<ul>
+<li><b>Punch File</b> - cartesian coordinates <tt>.pun</tt></li>
+<li><b>PDB</b> - Brookhaven Protein Databank <tt>.pdb</tt></li>
+<li><b>CML</b> - Chemical Markup Language <tt>.cml</tt></li>
+<li><b>MSI</b> - Molecular Simulations, Cerius 2 <tt>.msi</tt></li>
+<li><b>CHARMM</b> -  Chemistry at HARvard Molecular Mechanics
+coordinate file <tt>.crd</tt></li>
+<li><b>SHELX.RES</b> -  SHELX crystal structure determination program<tt>.res</tt></li>
+<li><b>Zmatrix</b> - internal coordinates <tt>.zmt</tt></li>
 </ul>
 </ul>
 
@@ -112,7 +141,7 @@ Coordinates Editor, click <a href="#EditCoords">here</a>.</li></ul>
 
 <h4>Connect</h4>
 <ul><li>Determine the connectivity according to the parameters
-specified in <b>Edit -&gt; Options -&gt; Connectivty</b>. You will need to
+specified in <b>Edit -&gt; Options -&gt; Connectivity</b>. You will need to
 do this if you have loaded in a molecule in .pdb format.</li></ul>
 
 <h4>Extend</h4>
@@ -141,10 +170,24 @@ structures can be read in from ChemShell unit cell format).</li></ul>
 <ul><li>Select all the atoms that are part of this molecular fragment
 (i.e. are part of the same bonded network).</li></ul>
 
-<h4>Select by distance</h4>
-<ul><li>Select all the atoms that lie within a sphere of a particular
-radius centered on the selected atom. Selecting this menu item will
-bring up a dialog box to specify the radius of the sphere (in angstroms).</li></ul>
+<h4>Select (dist to sel)</h4>
+<ul><li>Select all atoms within a specified distance of the currently
+selected atom(s). On selecting this item, dialog box will appear that
+you can use to specify the distance in Angstroms.</li></ul>
+
+<h4>Select (dist to point)</h4>
+<ul><li>Select all atoms within a specified distance of a particular
+point. The origin of the grid used to specify the point is the centroid of all
+currently selected atoms or the centre of the screen if no atoms are
+selected. On selecting this item, dialog box will appear that you can
+use to specify the coordinates of the point and the distance in
+Angstroms.</li></ul>
+
+<h4>Select (dist to point) + trim models</h4>
+<ul><li>This functions exactly as <b>Select (dist to point)</b>,
+except that, following the selection, all unselected atoms will be
+hidden ( to show the atoms again, use the <a href="#AdjMolView">Adjust
+Molecule View</a> tool ).</li></ul>
 
 <hr width = 50%>
 
@@ -235,7 +278,7 @@ bonds.</li>
 <li><b>Contacts</b> - atoms that are not connected, but whose centres
 are within a certain distance of each other can be considered to be
 <i>in contact</i>. If two atoms are in contact, when the contacts
-button is selected, the two atoms will be connnected by a white
+button is selected, the two atoms will be connected by a white
 line. The contact distance can be specified in the <b>Connectivity</b>
 tab of the <b>Edit -&gt; Options</b> menu.</li>
 </ul>
@@ -243,12 +286,14 @@ tab of the <b>Edit -&gt; Options</b> menu.</li>
 <br/>
 
 <li><b>Spheres</b> - the <i>balls</i> of the conventional <i>ball and stick</i>
-representation of molecules. Spheres are drawn centered on the individual
+representation of molecules. Spheres are drawn centred on the individual
 atoms, sized and coloured according to the atom type
 that they are associated with.</li>
 <ul>
 <li><b>Show</b>  - toggle whether the spheres are shown or not.</li>
 <li><b>Scale</b>  - change the relative sizes of the spheres.</li>
+<li><b>Radii</b>  - toggle whether the reference radius for the
+spheres is the Covalent or Van der Waals radius.</li>
 </ul>
 
 <br/>
@@ -263,7 +308,7 @@ bonds connecting individual atoms.</li>
 
 <br/>
 
-<li><b>Labels</b> - this displays labels identifiying the individual
+<li><b>Labels</b> - this displays labels identifying the individual
 atoms. The labels show the type of the atom, as well as a unique
 number identifying each atom.</li>
 <ul>
@@ -271,6 +316,21 @@ number identifying each atom.</li>
 <li><b>Size</b>  - change the font size used for the labels.</li>
 <li><b>Colour</b>  - change the colour of the labels.</li>
 </ul>
+
+<br/>
+
+<li><b>Draw Selected Atoms Only</b> - only display those atoms that
+have been selected by clicking on them with the mouse.</li>
+
+<li><b>Draw All Atoms</b> - display all atoms regardless of whether
+they have been selected or not.</li>
+
+<br/>
+<li><b>Update</b> - refresh the screen to show any changed options.</li>
+<li><b>Show</b> - display the structure.</li>
+<li><b>Hide</b> - hide the structure.</li>
+<li><b>Destroy</b> - destroy this representation of the structure.</li>
+
 </ul>
 </blockquote>
 
@@ -287,9 +347,9 @@ onto a 3-dimensional grid of points.</p>
 
 <p>The GUI is equipped with a number of highly configurable visualisers for such scalar
 data on a grids. The following menu items list the visualisers and
-which of their properties can be adjusted. As the visualiers share many
+which of their properties can be adjusted. As the visualisers share many
 of the same tools, there are also links to explanations of what the
-indiviual property adjustment tools do</p>
+individual property adjustment tools do</p>
 
 <h4>Density View</h4>
 <ul><li>This defines a single isosurface for a specified positive value of the
@@ -316,7 +376,7 @@ href="#edoutline">outline</a> of the grid is also configurable. The
 difference between a density and orbital view is that, the density view
 expects the values to be in a range from 0 to a positive number, whereas the orbital
 view expects to colour the volume according to whether the values are
-postive, negative or zero.</li></ul>
+positive, negative or zero.</li></ul>
 <p align=center <img src="images/densityvoladjust.png" alt="Density Volume Visualiser screenshot"></p>
 
 
@@ -425,13 +485,13 @@ proportional to the magnitude of the vector.</p></li>
 <li><b>Streamlines</b> - Streamlines can be thought of as the paths of
 particles that is travelling along the vector field. Starting at the point
 on the grid defining the vector, the particle moves forward a distance
-specfied by the <b>Integ Step Length</b> and <b>Step Length</b>
+specified by the <b>Integ Step Length</b> and <b>Step Length</b>
 tools. At that point, the magnitude and direction of the new vector field
 is determined and the particle moves forward again in the new
 direction.
 <br/>
 <br/>
-The <b>Propogation Time</b> determines how long the
+The <b>Propagation Time</b> determines how long the
 particle will travel for, and hence how long the streamlines will be.
 <br/>
 <br/>
@@ -481,7 +541,7 @@ of the colour can be entered in the <b>selection</b> box.</li></ul>
 adjust screenshot'></p>
 
 <a name="edcolourmap"></a><ul>
-<li><b>Colour Mapping</b> - twp or three elements of the colour map are
+<li><b>Colour Mapping</b> - two or three elements of the colour map are
 configurable depending on the tool that it is being used in:</li>
 <p align="center"><img src="images/edcolourmap.png" alt="Colour Map
 Tool screenshot"></p>
@@ -582,8 +642,9 @@ of the selected atoms.</li></ul>
 <a name="InfoMenu"></a><h3 align=center>Info Menu</h3>
 <p align=center><img src="images/infomenu.png"  border="0" alt="Info menu screenshot"></p>
 
-<ul><li>The info menu brings up a list of options to print out
-select information on the molcule. The options are:</li>
+<ul><li>The info menu brings up a list of options to for displaying
+select information about the molecule. The information will be
+displayed in a pop-up window. Available options are:</li>
 <br/>
 <ul>
 <li><b>Coordinate List</b> - a list of all the coordinates of the
@@ -603,7 +664,7 @@ are close enough to be considered in contact with the selected atoms.</li>
 
 <ul><li>The compute menu is used to select a program with which to run a
 calculation on the molecule. Currently, the GUI has control interfaces
-for GAMESS-UK, Mopac and Chemshell. For help relating to the control
+for ChemShell, Dalton, GAMESS-UK, MNDO and Mopac. For help relating to the control
 window for a particular program, press F1 when the window is
 displayed.</li></ul>
 
@@ -647,31 +708,32 @@ the window back down so that it only displays a small selection of
 elements, click on the 'Short Table' button.</li></ul>
 <br>
 
-<img src="images/edittools_lng.png"  border="0" alt="Edit Tools screenshot2">
+<img src="images/edittools_lng.png"  border="0" alt="Edit Tools
+screenshot2">
 
-<h4>Deleting atoms or bonds and deleting bonds</h4>
-<ul><li>To delete an atom, just select it with the mouse and click on the &quot;Del
-Atom&quot; button.</li></ul>
+<h4>Editing</h4>
+<p>The tools in the Editing Group perform a number of simple editing
+operations on a molecule, namely:</p>
+<ul>
+<li><b>Del Atom</b> - deletes the selected atom(s).</li>
+<li><b>Del Bond</b> - deletes a bond between two ( and only two ) selected atoms.</li>
+<li><b>Add Bond</b> - creates a bond between two selected atoms.</li>
+<li><b>All X-&gt;H</b> - when a new molecule is created ( using File
+-&gt; New Molecule ) or new atoms are added to the molecule, the
+atoms at the end of the bonds are created as generic &quot;X&quot;
+atoms. This button converts all the &quot;X&quot; to hydrogen
+atoms.</li>
+</ul>
 
-<ul><li>To delete a bond, select the atoms on either side of the bond and
-click on the &quot;Del Bond&quot; button.</li></ul>
+<h4>Hybridisation</h4>
+<p> The tools in the hybridisation group change the hybridisation of
+the selected atoms. If you click on an atom that is only connected to a
+molecule with a single bond, changing the hybridisation scheme will
+add however many generic atoms your hybridisation scheme permits. You
+may then change their type individually or convert them all to
+hydrogens as described above. Various hybridisation schemes are
+available:</p>
 
-<ul><li>To add a bond connecting two atoms, select the two atoms you wish to
-connect and click the &quot;Add Bond&quot; button.</li></ul>
-
-<h4>Converting generic atoms to Hydrogen Atoms</h4>
-<ul><li>When a new molecule is created (using File -&gt; 'New Molecule') or new
-atoms are added to the molecule (as described below) the atoms at the
-end of the bonds are not assigned to any element type. To convert them
-to hydrogen atoms, click the 'All X-&gt;H' button.</li></ul>
-
-<h4>Adding atoms and bonds to a molecule</h4>
-<ul><li>To add bonds to an atom of a molecule, you need to change the
-hybridisation of the atom allow extra bonds to be added. To do this,
-select the atom and then click on a hybridisation scheme from the
-'Hybridisation' section of the Tool Panel.</li></ul>
-
-<ul><li>The available options are:</p>
 <ul>
 <li><b>sp</b> &nbsp;&nbsp;= &nbsp;sp</li>
 <li><b>sp2</b> &nbsp;= &nbsp;sp2</li>
@@ -681,22 +743,14 @@ select the atom and then click on a hybridisation scheme from the
 <li><b>sqpy</b> = &nbsp;square pyramidal</li>
 <li><b>oct</b> &nbsp;= &nbsp;octahedral</li>
 </ul>
-</ul>
 
-<ul><li>Changing the hybridisation will add however many generic atoms your
-hybridisation scheme permits. You may then change their type
-individually or convert them all to hydrogens as described
-above.</li></ul>
-
-<h4>Adding molecular fragments to a molecule</h4>
-<ul><li>To speed up the construction of large molecules, the GUI
-supports the ability to add molecular fragments to a given atom. This
-is controlled through the <b>Add Fragment</b> part to the bottom right
-of the Tool Panel. To add a molecular fragment, select the atom to
+<h4>Add Fragment</h4>
+<p>To speed up the construction of large molecules, the GUI
+supports the ability to add molecular fragments to a given atom. To add a molecular fragment, select the atom to
 which you would like to add the fragment in the main window, select
 the desired fragment from menu on the right hand side of the Add
 Fragment frame in the Tools window and then click <b>Add</b>. Supported molecular
-fragments are:</li>
+fragments are:</p>
 
 <ul>
 <li><b>Me</b> &nbsp;&nbsp;= &nbsp; methyl</li>
@@ -713,7 +767,50 @@ fragments are:</li>
 <li><b>Py</b> &nbsp;= &nbsp;phenyl</li>
 </ul>
 
+
+<h4>Measure</h4>
+<p>The tools in the Measure group provide a quick way to determine the
+various properties for selected atoms. The value of the property for
+the selected atoms ( which are identified by their number ) is
+displayed in the space to the right of the buttons in the group.</p>
+<ul>
+<li><b>Distance</b> - the distance ( in Angstroms ) between two
+selected atoms.</li>
+<li><b>Angle</b> - the angle ( in degrees ) between three selected atoms.</li>
+<li><b>Torsion</b> - the torsion ( or dihedral ) angle defined for 4 selected
+atoms ( 1-2-3-4 ), is the angle between the planes defined by atoms 1-2-3 and 
+the plane defined by atoms 2-3-4.</li>
 </ul>
+
+<h4>Clean</h4>
+<p>The tools in the Clean group provide a quick way to run a geometry
+optimisation to &quot;clean up&quot; a molecular structure. The
+ability to use these tools depend on the relevant codes to perform the
+optimisation being installed, as the CCP1GUI currently does not have
+the ability to run an optimisation internally. The options for
+cleaning are:</p>
+<ul>
+<li><b>Clean</b> - this runs the geometry optimisation and replaces
+the structure in the window with the optimised structure.</li>
+<li> The second menu option is used to select the code with which to
+perform the geometry optimisation. Supported codes are:
+<ul>
+<li><b>Mopac</b> - use the Mopac. Mopac is freely available from the <a
+href="http://www.webmo.net/support/mopac_linux.html">WebMo</a> website
+or from the <a
+href="http://www.ccl.net/cca/software/MS-DOS/mopac_for_dos/mopac7/index.shtml">CCL</a>
+website.</li>
+<li><b>MNDO</b> - use the MNDO code.</li>
+<li><b>UFF</b> - use the UFF forcefield code.</li>
+<li><b>GAMESS-UK</b> - use GAMESS-UK.</li>
+</ul>
+</li>
+
+<li><b>Opts...</b> - clicking on this button will bring up a menu for
+configuring how the geometry optimisation will be performed with the
+selected code.</li>
+</ul>
+
 
 <p align=center><a href="#EditMenu">Return to the Edit Menu</a></li></ul>
 
@@ -751,7 +848,7 @@ above formula.</li></ul>
 <ul><li><h4>Non-bonded Connection Parameters</h4>
 <p>The parameters here determine how the gui decides if two
 non-bonded, but adjacent atoms, are in contact with each other.
-This determined using the same formula as for bondeded
+This determined using the same formula as for bonded
 atoms and the same parameters are adjustable.</p>
 </li></ul>
 </blockquote>
@@ -761,27 +858,69 @@ atoms and the same parameters are adjustable.</p>
 alt="Edit Options Visualisation screenshot"></p>
 <blockquote>
 
-<p>The visualistion options here permit the user to define exactly how
-the GUI wil represent the various objects that it draws.</p>
+<p>The visualisation options here permit the user to define exactly how
+the GUI will represent the various objects that it draws.</p>
 
 <ul>
-
-<li><b>Background Colour</b> - clicking on the 'Choose' button will bring
-up an <a href="#edcolours">colour editing widget</a> to change the
-background colour of the GUI.</li>
 
 <li><b>Pick Tolerance</b> - this allows you to change how close you have to
 place the mouse pointer to an object in order to be able to select
 that object. </li>
 
-<li><b>Sphere Properties</b> - the options in this box determine the
-surface properties of the spheres and how they interact with the
-light. More later...</li>
+<li><b>Background Colour</b> - clicking on the 'Choose' button will bring
+up an <a href="#edcolours">colour editing widget</a> to change the
+background colour of the GUI.</li>
+
+<li><b>Clipping Planes</b> - this determines at what point VTK ( the
+underlying graphics toolkit ) will stop trying to display objects
+depending on how near or far away from the &quot;camera&quot; they are. This
+should be left at Auto unless you know what you are doing or are
+_really_ bored...
+<ul>
+<li>Near - distance to the front clipping plane</li>
+<li>Far - distance to the back clipping plane.</li>
+</ul>
+</li>
 
 
-<li><b>Cylinder Properties</b> - the options in this box determine the
-surface properties of the spheres and how they interact with the
-light. More later...</li>
+<li><b>Molecule Line Drawing Settings</b> - settings here can be used
+to change how the molecules appear when they are drawn as lines ( i.e.
+when they are not being displayed as spheres ).
+<ul>
+<li>Line Width - the width of the line used to draw the molecules.</li>
+<li>Point Size - the pint size of the line used to draw the molecules</li>
+</ul>
+</li>
+
+<li><b>Sphere Properties</b> - the features here can be used to tweak
+how the spheres appear on the screen.
+<ul>
+<li>Resolution - </li>
+<li>Specular Power -</li>
+<li>Diffuse - </li>
+<li>Ambient - </li>
+<li>Specular - </li>
+</ul>
+</li>
+
+<li><b>Cylinder Properties</b>- the features here can be used to tweak
+how the cylinders appear on the screen
+<ul>
+<li>Resolution - </li>
+<li>Specular Power - </li>
+<li>Diffuse - </li>
+<li>Ambient - </li>
+<li>Specular - </li>
+</ul>
+</li>
+
+<li><b>Data Line Settings</b> - 
+<ul>
+<li>Line Width - </li>
+<li>Point Size - </li>
+</ul>
+</li>
+
 
 </blockquote>
 
