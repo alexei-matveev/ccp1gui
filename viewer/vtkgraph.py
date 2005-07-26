@@ -534,9 +534,10 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         s.SetThetaResolution(self.graph.mol_sphere_resolution)
                         s.SetPhiResolution(self.graph.mol_sphere_resolution)
                         
-                        ###fac = 0.529177 * rcov[z] * self.sphere_scale
-
-                        fac = rvdw[z] * self.sphere_scale
+                        if self.sphere_table == COV_RADII:
+                            fac = 0.529177 * rcov[z] * self.sphere_scale
+                        else:
+                            fac = rvdw[z] * self.sphere_scale
 
                         #fac = rcov[z] / 2.0
                         # to show cylinders....
