@@ -2391,7 +2391,7 @@ class TkMolView(Pmw.MegaToplevel):
         return [model]
 
     def rdgamout(self,file,root):
-        """ Read in the structures from a GAMESS-UK input file. This uses
+        """ Read in the structures from a GAMESS-UK output file. This uses
             the reader in ccp1gui/gamessoutreader.py, which returns a list
             of molecules. In retrospect it may be better to sort this bit
             out of the reader and create a file to collect all the readers
@@ -2417,7 +2417,10 @@ class TkMolView(Pmw.MegaToplevel):
             self.append_data(vib)
             vib.name = self.make_unique_name(root,vib.title)
 
-        return [r.molecules]
+        if len( r.molecules ) == 0:
+            return None
+        else:
+            return [ r.molecules ]
 
     def rdgamin(self,filename,root):
         """ Read a GAMESS-UK input file. Currently this only reads in the
@@ -2427,21 +2430,22 @@ class TkMolView(Pmw.MegaToplevel):
             that follows is gamess cartesian format and reformats each string so that it
             can be handled by the list method.
         """
+
         # root is the default filename, file is the filename, not the file handle
         try:
             file  = open(filename,'r')        #The file descriptor
         except:
             print 'Error opening file: %s in rdgamin' % fileName
-            return
-
+            return None
+        
+        # loop to find where the coordinate specification starts
         finished = 0
-        reading = 0
-        zmat_buffer = []
-        mode = 'z' # default mode is z-matrix
         while not finished:
             line = file.readline()
-            if not line:
+
+            if not line: # EOF so return 
                 finished = 1
+                return None
                 break
 
             line = string.strip( line )
@@ -2453,47 +2457,69 @@ class TkMolView(Pmw.MegaToplevel):
                 # ignore empty lines
                 continue
 
-            if ( fields[0][0:4] == "zmat" ):# start
-                reading = 1
-            elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
-                reading = 1
-                mode = 'x'
-                if ( len( fields ) > 1 ):
-                    if ( fields[1][0:4] == "angs" ):
-                        zmat_buffer.append( "coordinates angstrom" )
-                    elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
-                        zmat_buffer.append( "coordinates bohr" )
-                    else:
-                        print "Unknown modifier for geometry directive!"
-                        print "Offending line is %s" % line
-                        zmat_buffer.append( "coordinates" )
-                else:
+            if ( fields[0][0:4] == "zmat" or fields[0][0:4] == "geom" ):
+                finished = 1
+                
+
+        zmat_buffer = []
+
+        # We should only get to here when we've hit a line starting with zmat or geom
+        if ( fields[0][0:4] == "zmat" ):# start
+            reading = 1
+            mode = 'z'
+        elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
+            reading = 1
+            mode = 'x'
+            if ( len( fields ) > 1 ):
+                if ( fields[1][0:4] == "angs" ):
+                    zmat_buffer.append( "coordinates angstrom" )
+                elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
                     zmat_buffer.append( "coordinates bohr" )
-                    
-                        
+                else:
+                    print "Unknown modifier for geometry directive!"
+                    print "Offending line is %s" % line
+                    zmat_buffer.append( "coordinates" )
+
+        # loop to read in the coordinates
+        reading = 1
+        while ( reading ):
+            line = file.readline()
+
+            if not line: # EOF so return 
+                reading = 0
+                print "ERROR! Encountered EOF while reading in coordinates from GAMESS-UK Input file!"
+                return None
+                break
+        
+            line = string.strip( line )
+            line = string.lower( line )
+            
+            if line:
+                fields = string.split( line )
+            else:
+                # ignore empty lines
+                continue
+
+            if ( fields[0][0] == "#" or fields[0][0] == "?" ): # ignore comments
                 continue
             elif ( fields[0][0:3] == "end" ): # stop
                 zmat_buffer.append( "end" )
                 reading = 0
-                finished = 1
-            elif ( fields[0][0] == "#" or fields[0][0] == "?" ): # ignore comments
-                continue
-
-            if reading:
+            else:
                 if mode == 'z':
                     zmat_buffer.append( line )
                 elif mode == 'x': # reformat the line
                     cart_string = fields[4] + "  " + fields[0] + "  " + fields[1] + "  " + fields[2]
                     zmat_buffer.append( cart_string )
-            else:
-                continue
 
+        # Now we've got a buffer with the coordinates, create the model
         model = Zmatrix( list = zmat_buffer )
         model.title = root
         model.name = self.make_unique_name(root)
         self.connect_model(model)
         self.quick_mol_view(model)
         self.append_data(model)
+
         return [model]
         
     def rddalout( self, filename, root ):
