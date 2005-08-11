@@ -236,7 +236,7 @@ class ZME(Pmw.MegaToplevel):
         self.build_help_dialog()
 
         #Associate widget with its helpfile
-        tkmolview.help.sethelp(self,'Edit Coords')
+        viewer.help.sethelp(self,'Edit Coords')
 
     def get_mol(self):
         """ simply return a reference to the current coordinate
