@@ -514,6 +514,42 @@ class Field:
 
         return s1*to[0] + s2*to[1] + s3*to[2]
 
+    def minmax(self):
+        maxi = -1.0e10
+        mini = 1.0e10
+        for i in range(len(self.data)):
+            maxi = max(maxi,self.data[i])
+            mini = min(mini,self.data[i])
+        return (mini,maxi)
+
+    def integral(self,fac=1.0):
+        """ Sum up the data on a grid as an approximate integral
+        if provided, fac is the scale factor needed to convert
+        distances expressed in angstroms into the intrinsic length
+        unit of the data on the grid.
+        e.g., if the grid holds densities in electrons per cubic bohr,
+        fac should be 0.529177, as this will convert bohrs to angstroms
+        """
+        if len(self.dim) != 3:
+            return 0.0
+
+        v =  self.axis[0].cross(self.axis[1]) * self.axis[2]
+        nx = self.dim[0]-1
+        ny = self.dim[1]-1
+        nz = self.dim[2]-1
+        vel = v / (nx*ny*nz)
+        fac3 = 1.0 / ( fac*fac*fac)
+
+        tot = 0
+        for i in range(len(self.data)):
+            tot = tot + self.data[i]
+        tot = tot * fac3
+        print 'volume', v, ' cubic angstroms'
+        print 'volume element', vel, ' cubic angstroms'
+        print 'number of points',len(self.data)
+        print 'approximate integral',tot * vel
+        return tot * vel
+
 if __name__ == "__main__":
     f = Field(nd=2)
     f.wrt_punch()
