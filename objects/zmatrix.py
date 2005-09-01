@@ -2298,7 +2298,7 @@ class Zmatrix(Indexed):
             i1_tmp = atom.conn[0]
 
         if not i2_tmp:
-            i2_tmp = self._find_i2(atom,i1_tmp,checking=NO_CHECK,check_i3=0)
+            i2_tmp = self._find_i2(atom,i1_tmp,check=NO_CHECK,check_i3=0)
 
         iref[-1] = i1_tmp
         iref[-2] = i2_tmp
