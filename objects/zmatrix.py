@@ -51,6 +51,10 @@ trans = string.maketrans('a','a')
 
 SMALL = 1.0e-4
 
+NO_CHECK=1
+ORDER_CHECK=1
+OK_CHECK=2
+
 #
 # define some exceptions
 #
@@ -194,8 +198,6 @@ class Indexed:
         for a in self.atom:
             sm = sm + a.get_number()
         return sm
-
-
 
 class ConversionError(exceptions.Exception):
     def __init__(self,args=None):
@@ -463,6 +465,7 @@ class Zmatrix(Indexed):
                 raise VariableError
             # create a variable, initialised to the provided value 
             var = self.new_var(txt,value,metric)
+            
         return (var,sign)
 
     def find_var(self,txt):
@@ -2092,7 +2095,6 @@ class Zmatrix(Indexed):
 
         return (0,'')
 
-
     def _next_x(self,ix=None):
         if self.irecyc < len(self.recycle):
             a1 = self.recycle[self.irecyc]
@@ -2105,37 +2107,6 @@ class Zmatrix(Indexed):
             self.reindex()
         a1.symbol = 'X'
         return a1
-
-    def _find_i3(self,target,i1atom,i2atom):
-        """Choose an atom to define a dihedral from"""
-        i3 = None
-        bestang = 85
-        if self.debug:
-            print '_find_i3',target.get_index(),'i1',i1atom.get_index,'i2',i2atom.get_index,
-        for test in i2atom.conn:
-            if self.debug:
-                print 'checking',test.get_index(),
-            if test.get_index() > target.get_index():
-                if self.debug:
-                    print 'out of order'
-            elif test == i1atom:
-                if self.debug:
-                    print '== i1 atom'
-            else:
-                ang = self.get_angle(test,i2atom,i1atom)
-                tester = abs(ang - 90)
-                if self.debug:
-                    print 'i3 candidate tester=',tester
-                if tester < bestang:
-                    bestang = tester
-                    i3 = test
-                    if self.debug:
-                        print 'i3 candidate selected'
-                else:
-                    if self.debug:
-                        print 'poor angle'
-
-        return i3
 
     def _find_i1(self,target):
         """Choose an atom to define a distance to """
@@ -2153,36 +2124,105 @@ class Zmatrix(Indexed):
                         best = test
         return best
     
-    def _find_i2(self,target,i1atom,check_ordering=1,check_i3=1):
-        """Choose an atom to define a angle from"""
+    def _find_i2(self,target,i1atom,check=ORDER_CHECK,check_i3=1,testang=85):
+
+        """Choose an atom to define a angle from
+        if checking = ORDER_CHECK, only atoms which are above the target in the
+        atom list are valid candidates
+        if checking == OK_CHECK, use the ok attribute
+        if checking == NO_CHECK, all candidates will be possible (check_i3 should be 0)
+
+        if an i3 search is performed, both proper and improper possibilities are considered
+
+        """
         i2 = None
-        bestang = 85
+        bestang = testang
         if self.debug:
-            print '_find_i2', 'target and i1',target.get_index(), i1atom.get_index()
+            print '_find_i2', 'target = ', target.get_index(),' and i1 = ', i1atom.get_index()
         for test in i1atom.conn:
             if self.debug:
                 print 'checking',test.get_index(),
-            if check_ordering and (test.get_index() > target.get_index() ):
-                if self.debug:
-                    print 'out of order'
-            elif test == target:
+            if test == target:
                 if self.debug:
                     print 'is target'
+            elif (check == ORDER_CHECK) and (test.get_index() > target.get_index() ):
+                if self.debug:
+                    print 'out of order'
+            elif (check == OK_CHECK) and (not test.ok ) :
+                if self.debug:
+                    print 'atom marked as undefined'
             else:
-                if self._find_i3(target,i1atom,test) or check_i3 == 0:
+                print 'looking for valid i3'
+                if (check_i3 == 0) or self._find_i3(target,i1atom,test,check=check,testang=testang) \
+                       or self._find_i3(target,i1atom,test,check=check,improper=1,testang=testang):
                     ang = self.get_angle(test,i1atom,target)
                     tester = abs(ang - 90)
                     if self.debug:
-                        print 'i2 candidate tester=',tester
+                        print 'ok, i2 candidate tester=',tester,
                     if tester < bestang:
                         bestang = tester
                         i2 = test
                         if self.debug:
-                            print 'i2 candidate selected'
+                            print ' - retain',i2.get_index()
+                    else:
+                        if self.debug:
+                            print ' - reject'
                 else:
                     if self.debug:
                         print 'no possible i3'
+
         return i2
+
+    def _find_i3(self,target,i1atom,i2atom,check=ORDER_CHECK,improper=0,testang=85):
+        """Choose an atom to define a dihedral from
+        search is conducted by looking at connections to i2 ie proper dihedrals
+        """
+        i3 = None
+        bestang = testang
+        if self.debug:
+            print '   _find_i3',target.get_index(),'i1',i1atom.get_index(),'i2',i2atom.get_index(),
+            if improper:
+                ', proper'
+            else:
+                ', improper'                
+        if improper:
+            list = i1atom.conn
+        else:
+            list = i2atom.conn
+        for test in list:
+            if self.debug:
+                print '     checking',test.get_index(),
+            if (check == ORDER_CHECK) and (test.get_index() > target.get_index()):
+                if self.debug:
+                    print 'out of order'
+            elif (check == OK_CHECK) and (not test.ok ) :
+                if self.debug:
+                    print 'atom marked as undefined'
+            elif test == i1atom:
+                if self.debug:
+                    print '== i1 atom'
+            elif test == i2atom:
+                if self.debug:
+                    print '== i2 atom'
+            else:
+                if improper:
+                    ang = self.get_angle(test,i1atom,i2atom)
+                else:
+                    ang = self.get_angle(test,i2atom,i1atom)                    
+                tester = abs(ang - 90)
+                if self.debug:
+                    print '      i3 candidate tester=',tester
+                if tester < bestang:
+                    bestang = tester
+                    i3 = test
+                    if self.debug:
+                        print '     i3 candidate selected'
+                else:
+                    if self.debug:
+                        print '      poor angle'
+
+        return i3
+
 
     def convert_to_z(self,atom):
         """Try and work out an internal coordinate definition for a atom"""
@@ -2258,7 +2298,7 @@ class Zmatrix(Indexed):
             i1_tmp = atom.conn[0]
 
         if not i2_tmp:
-            i2_tmp = self._find_i2(atom,i1_tmp,check_ordering=0,check_i3=0)
+            i2_tmp = self._find_i2(atom,i1_tmp,checking=NO_CHECK,check_i3=0)
 
         iref[-1] = i1_tmp
         iref[-2] = i2_tmp
@@ -2359,167 +2399,6 @@ class Zmatrix(Indexed):
         #self.calculate_coordinates()
 
 
-    def my_get_internal_tuples(self,ang_tol=160):
-
-        # generates raw atom sets needed to construct an internal coordinate
-        # description of the molecule
-        model = self
-        model.list()
-        
-        print 'on entry len bond', len(model.bond)
-        print 'on entry len conn 0', len(model.atom[0].conn)
-
-        # get a connected version too
-        # cmodel = copy.deepcopy(model).convert_to_connected()
-
-        model.update_bonds()
-        print 'new len bond', len(model.bond)
-        
-        center = [0.0,0.0,0.0]
-        nAtom = len(model.atom)
-        to_go = nAtom
-        done = {}
-        if to_go<2:
-            z_set = [(0,)]
-        elif to_go<3:
-            z_set = [(0,),(1,0)]
-        else:
-            # get center of molecule
-            for a in model.atom:
-                center = cpv.add(center,a.coord)
-            center = cpv.scale(center,1.0/nAtom)
-            # find most central multivalent atom
-            min_a = -1
-            c = 0
-            for a in model.atom:
-                if len(a.conn)>1: # must have at least two neighbors
-                    d = cpv.distance(a.coord,center)
-                    if min_a < 0:
-                        min_d = d
-                        min_a = a
-                    elif d<min_d:
-                        min_d=d
-                        min_a=a
-                c = c + 1
-
-            max_c = 0
-            for a in model.atom:
-                if len(a.conn) > max_c:
-                    max_c = len(a.conn)
-                    min_a = a
-
-            fst = min_a
-
-            # make this our first atom
-            print 'fst',fst.get_index()
-            z_set = [( fst.get_index(), )]
-            done[fst.get_index()] = 1
-            to_go = to_go - 1
-
-            # for the second atom, try to choose different multivalent neighbor
-            nxt = None
-            for b in fst.conn:
-                if len(b.conn)>1:
-                    nxt = b
-                    break
-            # safety, choose any neighbor
-            if nxt is None:
-                nxt = fst.conn[0]
-            z_set.append((nxt.get_index(),fst.get_index()))
-            done[nxt.get_index()] = 1
-            to_go = to_go - 1
-
-            print '2nd',nxt
-
-            # for the third atom, choose a different multivalent neighbor
-            trd = -1
-            for b in fst.conn:
-                #testang = self.get_angle(self.atom[nbr],self.atom[fst],self.atom[nxt])
-                #print 'testang 1',testang
-                #if testang < 170:
-                if len(b.conn)>1:
-                    if not done.has_key(b.get_index()):
-                        trd = b
-                        break
-            print 'trd 1',trd
-            # safety, choose any unchosen neighbor
-            if trd<0:
-                for b in fst.conn:
-                    if not done.has_key(b.get_index()):
-                        trd = b
-                        break
-            z_set.append((trd.get_index(),fst.get_index(),nxt.get_index()))
-            done[trd.get_index()] = 1
-            result = 1
-            to_go = to_go - 1
-            print 'trd 2',trd
-
-            print 'to_go',to_go
-
-            if to_go:
-                # now find all torsions in the molecule
-                tors = {}
-                for b in model.bond: # use bond as center of torsion
-                    a1 = self.atom[b.index[0]]
-                    a2 = self.atom[b.index[1]]
-                    for c in a1.conn:
-                        if c != a2:
-                            ang1 = self.get_angle(c,a1,a2)
-                            print 'ang1',ang1
-                            if ang1 < ang_tol:
-                                for d in a2.conn:
-                                    if d != a1 and d != c:
-                                        ang2  = self.get_angle(a1,a2,d)
-                                        print 'ang2',ang2
-                                        if ang2 < ang_tol:                                        
-                                            if c.get_index() < d.get_index():
-                                                to = (c.get_index(),a1.get_index(),a2.get_index(),d.get_index())
-                                            else:
-                                                to = (d.get_index(),a2.get_index(),a1.get_index(),c.get_index())
-                                            tors[to] = 1
-
-                print tors.keys()
-                import sys
-                count = 0
-                if len(tors.keys()):
-                    # choose remaining atoms based on existing atoms using torsion
-                    while to_go:
-                        print to_go
-                        count = count+1
-                        if count > 100:
-                            print 'count of 100 exceeded'
-                            print 'to_go = ',to_go
-                            print z_set
-                            return None
-                        for tor in tors.keys():
-                            a0 = tor[0]
-                            a1 = tor[1]
-                            a2 = tor[2]
-                            a3 = tor[3]
-                            dh0 = done.has_key(a0)
-                            dh1 = done.has_key(a1)
-                            dh2 = done.has_key(a2)
-                            dh3 = done.has_key(a3)
-                            if ( (not dh0) and dh1 and dh2 and dh3 ):
-                                z_set.append((a0,a1,a2,a3))
-                                done[a0] = 1
-                                to_go = to_go - 1
-                            elif ( dh0 and dh1 and dh2 and (not dh3) ):
-                                z_set.append((a3,a2,a1,a0))
-                                done[a3] = 1
-                                to_go = to_go - 1
-                else: # for molecules with no torsions (dichloromethane, etc.)
-                    # we have to generate torsions which include one virtual bond
-                    for b in fst.conn:
-                        if not done.has_key(b.get_index()):
-                            z_set.append((b.get_index(),fst.get_index(),trd.get_index(),nxt.get_index()))
-                            to_go = to_go - 1
-                            done[b.get_index()] = 1
-
-        print 'finishing'
-        return z_set
-
-
     def insert_atom(self,pos,atom):
         """Insert an atom at the specified position"""
 ####        apply(Indexed.insert_atom, (self,pos,atom))
@@ -2598,7 +2477,7 @@ class Zmatrix(Indexed):
         else:
             v.value = value
 
-    def import_geometry(self,newgeom):
+    def import_geometry(self,newgeom,update_constants=1):
 
         """Import a geometry while trying to retain as much as possible of
         the object contents.
@@ -2608,13 +2487,23 @@ class Zmatrix(Indexed):
         export, and re-import if completely Z this is OK, otherwise we
         may need to apply some translation and rotation
 
-        ... dummies, they wll probably be missing, can the
+        ... dummies, they will probably be missing, can the
         coordinates be back-calculated? Should be easy to see we need
         to do this from the incoming symbols
 
         ... zmatrix conversion convention
         gamess-uk essentially produces a mirror image relative
         to the internal conventions
+
+
+        .... question of what to with connectivity
+
+        ... August 05 need to get a working solution for Erika Palin project
+
+        assume all atoms defined by zmatrix
+        assume no shared variables
+        assume X atoms have already been added such that when their
+              coordinates are computed they will be what are expected
 
         """
 
@@ -2627,7 +2516,14 @@ class Zmatrix(Indexed):
             if a.zorc == 'c':
                 somec = 1
 
-        if somez == 0:
+
+        if somez and somec:
+            raise ImportGeometryError, "cant re-import mixed coordinate systems yet"
+
+
+        if somec and not somez:
+
+            # pure cartesian import
             # there could potentially be a re-ordering transformation
             # here, but no way to perform it yet
 
@@ -2639,13 +2535,19 @@ class Zmatrix(Indexed):
                 self.atom[i].coord = copy.deepcopy(newgeom.atom[i].coord)
 
         elif somec == 0:
-            self.imported_vars = {}
-            self.phi_convention = -1
 
             # purely Z
-            # first atom do nothing
 
-            # could check if it is at the origin, would define a translation
+            print 'import pure z-matrix format'
+            self.imported_vars = {}
+
+            #
+            # phi convention
+            #
+            self.phi_convention = 1
+
+            # first atom do nothing
+            # could check if it is at the origin, as would define a translation
             # to apply to other atoms
 
             # second atom
@@ -2656,16 +2558,25 @@ class Zmatrix(Indexed):
             if len(self.atom) > 1:
                 rnew = self.get_distance(newgeom.atom[0],newgeom.atom[1])
                 v = self.atom[1].r_var
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,rnew)
                 else:
-                    tester = abs(self.atom[1].r - rnew)
-                    print 'atom 1 r diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - rnew)
+                        else:
+                            tester = abs(self.atom[1].r - rnew)
+                            print 'atom 1 r diff=',tester
+                            if  tester > SMALL:
+                                print 'could not import, constant parameter has changed'
+                                raise ImportGeometryError, "constant value changed"
+                    else:
+                        if v:
+                            self.update_variable(v,rnew)
+                        else:
+                            self.atom[1].r = rnew
 
-            # second atom
+            # third atom
             # could check if it is in xz plane and compute a second rotation
 
             if len(self.atom) > 2:
@@ -2675,76 +2586,128 @@ class Zmatrix(Indexed):
                 rnew = self.get_distance(newgeom.atom[2], newgeom.atom[i1])
                 anew = self.get_angle(newgeom.atom[2], newgeom.atom[i1],newgeom.atom[i2])
                 v = self.atom[2].r_var
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,rnew)
                 else:
-                    tester = abs(self.atom[2].r - rnew)
-                    print 'atom 2 r diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - rnew)
+                        else:
+                            tester = abs(self.atom[2].r - rnew)
+                        print 'atom 2 r diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError
+                    else:
+                        if v:
+                            self.update_variable(v,rnew)
+                        else:
+                            self.atom[2].r = rnew
 
                 v = self.atom[2].theta_var
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,anew)
                 else:
-                    tester = abs(self.atom[2].theta - anew)
-                    print 'atom 2 theta diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - anew)
+                        else:
+                            tester = abs(self.atom[2].theta - anew)
+                        print 'atom 2 theta diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError
+                    else:
+                        if v:
+                            self.update_variable(v,anew)
+                        else:
+                            self.atom[2].theta = anew
 
             for a in self.atom[3:]:
+
+                print 'loop'
+
                 i = a.get_index()
                 i1 = a.i1.get_index()
                 i2 = a.i2.get_index()
                 i3 = a.i3.get_index()
+
                 rnew = self.get_distance(newgeom.atom[i], newgeom.atom[i1])
                 anew = self.get_angle(newgeom.atom[i], newgeom.atom[i1],newgeom.atom[i2])
-
                 tnew = self.get_dihedral(newgeom.atom[i], newgeom.atom[i1],newgeom.atom[i2],newgeom.atom[i3])
+
+                print i,'measured values',rnew,anew,tnew
+
+                print 'upd r'
+
                 v = a.r_var
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,rnew)
                 else:
-                    tester = abs(a.r - rnew)
-                    print 'atom '+str(i)+' r diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError                        
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - rnew)
+                        else:
+                            tester = abs(a.r - rnew)
+                        print 'atom '+str(i)+' r diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError
+                    else:
+                        if v:
+                            self.update_variable(v,rnew)
+                        else:
+                            a.r = rnew
+
+                print 'upd theta'
 
                 v = a.theta_var
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,anew)
                 else:
-                    tester = abs(a.theta - anew)
-                    print 'atom '+str(i)+' theta diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - anew)
+                        else:
+                            tester = abs(a.theta - anew)
+                        print 'atom '+str(i)+' theta diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError
+                    else:
+                        if v:
+                            self.update_variable(v,anew)
+                        else:
+                            a.theta = anew
+
+                print 'upd phi'
 
                 v = a.phi_var
-
-                if v:
+                if v and not v.constant:
                     self.update_variable(v,tnew,torsion=1)
                 else:
-
                     tnew = self._adjust_dihedral(tnew, a.phi)
+                    print 'using adjusted dihedral',tnew
+                    if not update_constants:
+                        if v:
+                            tester = abs(v,value - tnew)
+                        else:
+                            tester = abs(a.phi - tnew)
 
-                    print a.get_index(),'phi',a.phi,tnew
-                    tester = abs(a.phi - tnew)
-                    print 'atom '+str(i)+' phi diff=',tester
-                    if tester > SMALL:
-                        print 'could not import, constant parameter has changed'
-                        raise ImportGeometryError
+                        print a.get_index(),'phi',a.phi,tnew
+                        tester = abs(a.phi - tnew)
+                        print 'atom '+str(i)+' phi diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError
+                    else:
+                        if v:
+                            self.update_variable(v,tnew)
+                        else:
+                            a.phi = tnew
 
-        else:
-            raise ImportGeometryError, "cant re-import mixed coordinate systems yet"
+                print 'done'
 
-        # check the number of atoms
-        # if there is connectivity import it?
-
-        pass
 
     def update_variable(self,var,val,torsion=0):
 
@@ -2756,6 +2719,7 @@ class Zmatrix(Indexed):
             oldval = self.imported_vars[var.name][0]
             if torsion:
                 val = self._adjust_dihedral(val,oldval)
+                print 'using adjusted dihedral1',val
             self.imported_vars[var.name].append(val)
 
             tester = abs(val-oldval)
@@ -2765,11 +2729,12 @@ class Zmatrix(Indexed):
             if tester > SMALL:
                 print 'could not import, mismatched variable values'
                 print oldval, val
-                raise ImportGeometryError
+                raise ImportGeometryError, "mismatched variable values"
         else:
             # the first update of this variable
             if torsion:
-                self._adjust_dihedral(val, var.value)
+                val = self._adjust_dihedral(val, var.value)
+                print 'using adjusted dihedral2',val
             self.imported_vars[var.name] = [ val ]
 
         # assign the current value of the variable
@@ -2778,23 +2743,368 @@ class Zmatrix(Indexed):
 
     def _adjust_dihedral(self, val, oldval):
 
+        print '_adjust_dihedral',val,oldval
         # apply any adjustment of measuring convention
         val = val*self.phi_convention
         # apply rotational periodicity
         more = 1
         while more:
-            tester = abs(oldval - val)
+            tester = oldval - val
+            print 'tester',tester
             if tester < -180:
+                print 'shift -360'
                 val = val - 360
             elif tester > 180:
+                print 'shift +360'
                 val = val + 360
             else:
                 more = 0
         return val
 
+
+    def autoz(self,testang=45):
+
+        """ Devise a completely new zmatrix from the
+        structure. This will involve reordering the atoms
+
+        at the moment no existing z-matrix definitions are used
+
+        testang : abs(ang-90) cannot exceed this for a bond angle
+                 or an angle involved in the declaration of a dihedral
+
+        """
+
+        if self.debug:
+            print 'zmatrix.autoz'
+
+        if not self.is_fully_connected():
+            self.warn("system must be fully connected")
+            raise ConversionError, "system must be fully connected"
+
+        # use the atoms OK flag to denote whether we have a valid definition 
+        # for the atom
+        for a in self.atom:
+            a.ok = 0
+
+        if self.debug > 2:
+            self.list()
+
+        # this controls the code from pymol which implements a proper
+        # torsion loop using the table of bonds
+        # we have changed the algorithm to allow specification by improper
+        # torsions 
+        use_bond_list=0
+
+        if use_bond_list:
+            for a in self.atom:
+                print a.conn
+
+            # Reindex the table of bonds reflecting our edits
+            # this is needed by the loop over bonds as the basis for dihedral search
+            # we can skip this if the alternative strategy works OK
+
+            print 'on entry len bond', len(self.bond)
+            self.update_bonds()
+            print 'new len bond', len(self.bond)
+        
+            if self.debug > 2:
+                print 'revised bonding:'
+                self.list()
+
+            ang_tol=160
+        
+
+        # generates raw atom sets needed to construct an internal coordinate
+        # description of the molecule
+
+        self.list()
+        
+        center = [0.0,0.0,0.0]
+        nAtom = len(self.atom)
+        to_go = nAtom
+
+        if to_go < 2:
+            z_set = [(self.atom[0],)]
+        elif to_go < 3:
+            z_set = [(self.atom[0],),(self.atom[1],self.atom[0])]
+        else:
+            # get center of molecule
+            for a in self.atom:
+                center = cpv.add(center,a.coord)
+            center = cpv.scale(center,1.0/nAtom)
+            # find most central multivalent atom
+            min_a = None
+            c = 0
+            for a in self.atom:
+                if len(a.conn)>1: # must have at least two neighbors
+                    d = cpv.distance(a.coord,center)
+                    if min_a < 0:
+                        min_d = d
+                        min_a = a
+                    elif d<min_d:
+                        min_d=d
+                        min_a=a
+                c = c + 1
+
+            max_c = 0
+            for a in self.atom:
+                if len(a.conn) > max_c:
+                    max_c = len(a.conn)
+                    min_a = a
+
+            # make this our first atom
+            if min_a:
+                fst = min_a
+            else:
+                fst = self.atom[0]
+            print 'fst',fst.get_index()
+            z_set = [( fst,) ]
+            fst.ok = 1
+            to_go = to_go - 1
+
+            # for the second atom, try to choose different multivalent neighbor
+            nxt = None
+            for b in fst.conn:
+                if len(b.conn)>1:
+                    nxt = b
+                    break
+            # safety, choose any neighbor
+            if nxt is None:
+                nxt = fst.conn[0]
+
+            z_set.append((nxt,fst))
+            nxt.ok = 1
+            to_go = to_go - 1
+
+            print '2nd',nxt.get_index()
+
+            # for the third atom, choose a different multivalent neighbor
+            trd = None
+            for b in fst.conn:
+                #testang = self.get_angle(self.atom[nbr],self.atom[fst],self.atom[nxt])
+                #print 'testang 1',testang
+                #if testang < 170:
+                if len(b.conn) > 1:
+                    if not b.ok:
+                        trd = b
+                        break
+            if trd:
+                print 'trd 1',trd.get_index()
+            else:
+                print 'safety code for trd'
+
+            # safety, choose any unchosen neighbor
+            if not trd:
+                for b in fst.conn:
+                    if not b.ok:
+                        trd = b
+                        break
+            z_set.append((trd,fst,nxt))
+            trd.ok = 1
+            to_go = to_go - 1
+            print 'trd 2',trd.get_index()
+            print 'to_go',to_go
+
+            # this is the original pymol algorithm
+            # the alternative is an attempt to optimise choice of
+            # paths and to include impropers as well
+
+            if to_go and use_bond_list:
+                # now find all proper torsions in the molecule that can be used
+                # to define atoms at one or other end
+                tors = []
+                for b in self.bond: # use bond as center of torsion
+                    print 'bond indices',b.index[0],b.index[1]
+                    a1 = self.atom[b.index[0]]
+                    a2 = self.atom[b.index[1]]
+                    for c in a1.conn:
+                        if c != a2:
+                            ang1 = self.get_angle(c,a1,a2)
+                            print '   checking c=',c.get_index(), 'angle=',ang1,
+                            if ang1 >= ang_tol:
+                                print 'Rejected'                              
+                            else:
+                                print ""
+                                for d in a2.conn:
+                                    if d != a1 and d != c:
+                                        ang2  = self.get_angle(a1,a2,d)
+                                        print '   checking d=',d.get_index(), 'angle=',ang2,
+                                        if ang2 < ang_tol:                                        
+                                            if c.get_index() < d.get_index():
+                                                to = (c,a1,a2,d)
+                                            else:
+                                                to = (d,a2,a1,c)
+                                            tors.append(to)
+                                            print 'Keep',to
+                                        else:
+                                            print 'Rejected'
+
+                print 'List of proper Torsions',tors
+                if len(tors):
+                    # assign atoms where possible using torsions
+                    oldcnt = -1
+                    while 1:
+                        print 'Loop to_go=',to_go
+                        if oldcnt == to_go:
+                            print 'tors loop finished with ',to_go,' unassigned atoms'
+                            break
+                        oldcnt = to_go
+                        for tor in tors:
+                            a0 = tor[0]
+                            a1 = tor[1]
+                            a2 = tor[2]
+                            a3 = tor[3]
+                            if ( (not a0.ok) and a1.ok and a2.ok and a3.ok ):
+                                z_set.append((a0,a1,a2,a3))
+                                a0.ok = 1
+                                print 'select ',(a0,a1,a2,a3)
+                                to_go = to_go - 1
+                            elif ( a0.ok and a1.ok and a2.ok and (not a3.ok) ):
+                                z_set.append((a3,a2,a1,a0))
+                                a3.ok = 1
+                                print 'select ',(a3,a2,a1,a0)
+                                to_go = to_go - 1
+
+            if to_go:
+                # some atoms could not be assigned using proper torsions
+                # try using cominations impropers and propers
+
+                oldcnt = -1
+                while 1:
+                    print 'Loop to_go=',to_go
+                    if oldcnt == to_go:
+                        print 'impropers loop finished with ',to_go,' unassigned atoms'
+                        break
+                    oldcnt = to_go
+
+                    unass = []
+                    for a in self.atom:
+                        if not a.ok:
+                            unass.append(a)
+                    print 'unassigned: ',unass
+
+                    for orphan in unass:
+                        for con in orphan.conn:
+                            if con.ok:
+                                print 'XXXXX'
+                                i2 = self._find_i2(orphan,con,check=OK_CHECK,testang=testang)
+                                print 'XXXXX returned',i2
+                                if i2:
+                                    print 'YYYYY search i3 proper'
+                                    i3 = self._find_i3(orphan,con,i2,check=OK_CHECK,testang=testang)
+                                    print 'YYYYY proper returned',i3
+                                    if i3:
+                                        print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
+                                        z_set.append((orphan,con,i2,i3))
+                                        orphan.ok = 1
+                                        to_go = to_go - 1
+                                    else:
+                                        print 'YYYYY search i3 improper'
+                                        i3 = self._find_i3(orphan,con,i2,check=OK_CHECK,improper=1,testang=testang)
+                                        print 'YYYYY improper returned',i3
+                                        if i3:
+                                            print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
+                                            to_go = to_go - 1
+                                            orphan.ok = 1                                                
+                                            z_set.append((orphan,con,i2,i3))
+                            if orphan.ok:
+                                break
+
+        if len(z_set) != len(self.atom):
+            self.warn("Autoz failed - probably linear angles, you may need to add some dummy atoms")
+            raise ConversionError, "Autoz failed - probably linear angles, you may need to add some dummy atoms"
+
+        print 'autoz: Building new zmatrix'
+        
+        if self.debug > 2:
+            print 'internal tuples',z_set
+
+
+        # retain the old list to reference into
+        old_atoms = copy.copy(self.atom)
+        i=0
+        warn = 0
+        self.atom = []
+
+        for z in z_set:
+            print 'z',z
+            print 'z[0]',z[0]
+            indices = z
+            a = z[0]
+
+            a.zorc = 'z'
+
+            a.r = 0.0
+            a.theta = 0.0
+            a.phi = 0.0
+            a.r_var = None
+            a.theta_var = None
+            a.phi_var = None
+
+            if len(indices) > 1:
+                a.i1 = indices[1]
+                a.r = cpv.distance(a.coord,a.i1.coord)
+                if a.r < 0.01:
+                    warn = 1
+                    a.r = 0.01
+            else:
+                a.i1 = None
+
+            if len(indices) > 2:
+                a.i2 = indices[2]
+                try:
+                    a.theta = self.get_angle(a,a.i1,a.i2)
+                except ZeroDivisionError, e:
+                    self.logerr('zero division')
+                    a.theta = 0.0
+                    warn = 1
+            else:
+                a.i2 = None
+
+            if len(indices) > 3:
+                a.i3 = indices[3]
+                try:
+                    a.phi = self.get_dihedral(a,a.i1,a.i2,a.i3)
+                except ZeroDivisionError, e:
+                    self.logerr('zero division')
+                    a.phi = 0.0
+                    warn = 1
+            else:
+                a.i3 = None
+
+            self.atom.append(a)
+            i=i+1
+
+        if warn:
+            print "Some distances 0 or internal coordinates undefined"
+
+        self.zlist()
+
+    def is_fully_connected(self):
+        set = [self.atom[0]]
+        more=1
+        while more:
+            more=0
+            for a in set:
+                for b in a.conn:
+                    if b in set:
+                        pass
+                    else:
+                        set.append(b)
+                        more=1
+        print 'connection check',len(set),len(self.atom)
+        if len(set) == len(self.atom):
+            return 1
+        else:
+            return 0
+
     def logerr(self,txt):
         """log txt as an error message"""
         print txt
+
+    def warn(self,txt):
+        """log txt as an error message"""
+        print "warning:",txt
 
     def wrtmsi(self,file):
         """Write the MSI format file"""
@@ -3079,7 +3389,6 @@ class ZVar:
         else:
             return 'var '+str(self.name)+' '+str(self.value)
 
-
 #
 # -1         The attaching atom
 # -2 and -3  Two other atoms, both connected to -1
@@ -3261,50 +3570,44 @@ if __name__ == "__main__":
 
     from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
-    model=Zmatrix(file=gui_path+"/examples/import1.zmt")
-    model.list()
 
-    p = PunchReader()
-    p.scan(gui_path+"/examples/import1.pun")
-    model.import_geometry(p.objects[0])
-
-    model.list()
-    import sys
-    sys.exit()
-
-    fp = open(gui_path+"/examples/import1_pre.pun","w")
-    for line in model.output_coords_block():
-        fp.write(line+'\n')
-    fp.close()
-    #model.reindex()
-    p = PunchReader()
-    #p.scan(gui_path+"/examples/import1_pre.pun")
-    #model.import_geometry(p.objects[0])
-    #p.objects = []
-    p.scan(gui_path+"/examples/import1.pun")
-    model.import_geometry(p.objects[0])
-    model.list()
-
-    #print 'len conn',len(model.atom[0].conn)
-    #print 'len bond',len(model.bond)
-    #Zmatrix(file="ethane.zmt")
-    #model.update_bonds()
-    #print model.get_internal_tuples()
-    #print model.my_get_internal_tuples()
-    #model.wrtres("test.res")
-    #model.list(full=1)
-    #for t in model.bonds_and_angles():
-    #    print t
-    #a = model.atom[6]
+    #model=Zmatrix(file=gui_path+"/examples/import1.zmt")
     #model.list()
-###    a = model.atom[7]
-####    model.add_fragment(a,'Et')
-    #model.zlist(full=1)
-    #model.delete_atom(3)
-    #model.zlist(full=1)
-    #print model.my_get_internal_tuples()
 
-    m2 = Zmatrix(list=["coordinates","c 0 0 0", "c 0 0 1"])
-    m2.list()
-    #m2.connect()
-    print m2.is_connected(m2.atom[0],m2.atom[1])
+
+    if 0 :
+        # check autoz function
+        p = PunchReader()
+        p.scan("/home/psh/work/Erika/zmatrix/paul.pun")
+        model = p.objects[0]
+        model.list()
+        print model.is_fully_connected()
+        model.autoz()
+        model.zlist()
+
+    if 0:
+        # check import function for pure cartestian system
+        p = PunchReader()
+        p.scan("../examples/metallo.c")
+        model = p.objects[0]
+        p.objects = []
+        p.scan("../examples/metallo.c")
+        model2 = p.objects[0]
+        model.list()
+        model.import_geometry(model2)
+        model.list()
+        
+    if 1:
+        # import cartesians ->  zmat with variable
+        model=Zmatrix(file=gui_path+"/examples/import2.zmt")
+        model.zlist()
+
+        #fp = open("tmp.c","w")
+        #for txt in model.output_coords_block():
+        #    fp.write(txt+'\n')
+        #fp.close()
+        p = PunchReader()
+        p.scan(gui_path+"/examples/import.pun")
+        model2 = p.objects[0]
+        model.import_geometry(model2)
+        model.zlist()
