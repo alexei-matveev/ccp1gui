@@ -1068,7 +1068,9 @@ class ZME(Pmw.MegaToplevel):
                                     # be over-ridden by the theta field if we are not careful
                                     # for now it is assumed that it can be blanked out
                                     #
-                                    if a.r_var == None:
+                                    
+                                    #  !!!!! Paul test
+                                    if a.r_var == None or 1:
                                         recomp_r = 1
                                         if i > 1:
                                             recomp_theta = 1
@@ -1110,7 +1112,9 @@ class ZME(Pmw.MegaToplevel):
                                     except IndexError, e:
                                         raise BadInput, "invalid value for i2"
                                     # replace variable if not symbolic
-                                    if a.theta_var == None:
+
+                                    #  !!!!! Paul test
+                                    if a.theta_var == None or 1:
                                         recomp_theta = 1
                                         if i > 2:
                                             recomp_phi = 1
@@ -1150,7 +1154,9 @@ class ZME(Pmw.MegaToplevel):
                                     except IndexError, e:
                                         raise BadInput, "invalid value for i3"
                                     # replace variable if not symbolic
-                                    if a.phi_var == None:
+
+                                    #  !!!!! Paul test
+                                    if a.phi_var == None or 1:
                                         recomp_phi = 1
 
                         txt = self.z_line.phi.get()
@@ -1175,12 +1181,18 @@ class ZME(Pmw.MegaToplevel):
                         if self.debug:
                             print '   recompute r'
                         a.r = distance(a.coord,a.i1.coord)
+
+                        # !!!!! paul need to check if the variable is shared
+
                         if a.r_var:
                             a.r_var.value = a.r*a.r_sign
                     if recomp_theta and a.i1 and a.i2:
                         if self.debug:
                             print '   recompute theta'
                         a.theta = self.model.get_angle(a,a.i1,a.i2)
+
+                        # !!!!! paul need to check if the variable is shared
+
                         if a.theta_var:
                             a.theta_var.value = a.theta*a.theta_sign
                     if recomp_phi and a.i1 and a.i2 and a.i3:
@@ -1190,6 +1202,8 @@ class ZME(Pmw.MegaToplevel):
                             a.phi = self.model.get_dihedral(a,a.i1,a.i2,a.i3)
                         except ZeroDivisionError:
                             self.logerr('arithmetic error in dihedral on atom: %d' % (i+1))
+
+                        # !!!!! paul need to check if the variable is shared
 
                         if a.phi_var:
                             a.phi_var.value = a.phi*a.phi_sign
@@ -1720,17 +1734,18 @@ class ZME(Pmw.MegaToplevel):
         creates all additional data structures
         (at the moment)
         """
+
         # anything pending in widgets
         self._save_edits()
         self.model.calculate_coordinates()
 
         try:
-            self._autoz()
+            self.model.autoz(testang=40)
             self._update_atom_editor()
             self._update()
         except ConversionError, e:
-            self.logerr('autoz conversion error')
-            pass
+            self.logerr(e.args)
+
 
     def import_cartesians(self,model):
         """ Load in a new set of cartesian coordinates, assuming
@@ -2399,7 +2414,7 @@ if __name__ == '__main__':
     atom.name = 'C0'
     model.insert_atom(0,atom)
     root = Tk()
-    root.withdraw()
+    #root.withdraw()
     t = ZME(root,model=model,list_final_coords=1)
     #t.withdraw()
     #Button(command = lambda: t.show(), text = 'show').pack()
