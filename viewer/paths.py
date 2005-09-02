@@ -22,9 +22,19 @@
 
 # see http://www.pythonmac.org/wiki/FAQ#head-c88c53edb2f911e57c92adf2625ca2b73aa6fc6d
 import os
+import sys
 import __main__
 
-mainscriptdir=os.path.dirname(os.path.abspath(__main__.__file__))
+
+version=sys.version_info #The version of python we are using
+
+if ( int(version[0]) == 2 and int(version[1]) < 3 ): # Python < 2.3
+    import debug
+    x=os.path.abspath(debug.__file__) # Get the full path to the debug file
+    mainscriptdir=os.path.dirname(x)
+else:
+    mainscriptdir=os.path.dirname(os.path.abspath(__main__.__file__))
+
 gui_path = os.path.split(mainscriptdir)[0]
 root_path = os.path.split(gui_path)[0]
 python_path = os.path.split(os.__file__)[0]
