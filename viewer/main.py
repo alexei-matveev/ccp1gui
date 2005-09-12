@@ -2463,12 +2463,11 @@ class TkMolView(Pmw.MegaToplevel):
 
         zmat_buffer = []
 
-        # We should only get to here when we've hit a line starting with zmat or geom
+        # We should now be at the start of a line beginning with zmat or geom
         if ( fields[0][0:4] == "zmat" ):# start
-            reading = 1
             mode = 'z'
+            zmat_buffer.append( "zmat" )
         elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
-            reading = 1
             mode = 'x'
             if ( len( fields ) > 1 ):
                 if ( fields[1][0:4] == "angs" ):
@@ -2479,6 +2478,10 @@ class TkMolView(Pmw.MegaToplevel):
                     print "Unknown modifier for geometry directive!"
                     print "Offending line is %s" % line
                     zmat_buffer.append( "coordinates" )
+        else:
+            # shouldn't ever get here
+            print "Error reading GAMESS-UK input"
+            return 1
 
         # loop to read in the coordinates
         reading = 1
