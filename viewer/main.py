@@ -2466,7 +2466,8 @@ class TkMolView(Pmw.MegaToplevel):
         # We should now be at the start of a line beginning with zmat or geom
         if ( fields[0][0:4] == "zmat" ):# start
             mode = 'z'
-            zmat_buffer.append( "zmat" )
+            zmat_buffer.append( line )
+                
         elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
             mode = 'x'
             if ( len( fields ) > 1 ):
