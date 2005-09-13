@@ -33,6 +33,9 @@ SlavePipe
    - no control but at least the main program keeps running
      (or at least one would expect so, this doesn't seem to
      be run on windows)
+
+    NB does not support stdin= arg as used by Spawn
+
 Spawn
    fork or pythonwin process (no explicit threads)
    offers the chance to check its status, wait for it, kill it etc
@@ -40,6 +43,7 @@ Spawn
    on windows, could use spawnl and win32api.TerminateProcess
      - not sure of there is any way to check the status of the
        process 
+
 SlaveSpawn
    As spawn, but under a new thread
    A new thread is spawned which then forks/spawns the new
@@ -52,12 +56,13 @@ SlaveSpawn
 
 RemoteProcess(ForegroundPipe)
 """
-
+    
 import os
 import sys
 import threading
 import time
 import Queue
+import signal
 
 if sys.platform[:3] == 'win':
     import winprocess
@@ -89,9 +94,19 @@ CHILD_EXITS='child-exits'
 CHILD_STDOUT='child-stdout'
 CHILD_STDERR='child-stderr'
 
+def list_to_string(list):
+    if len(list) == 0:
+        return ""
+    else:
+        txt = ""
+        for l in list[:-1]:
+            txt = txt + l
+        txt = txt + list[-1]
+        return txt
+
 class SubProcess:
 
-    def __init__(self,cmd,on_end=None,debug=0):
+    def __init__(self,cmd,on_end=None,debug=1):
 
         self.cmd = cmd
         self.on_end = on_end
@@ -100,10 +115,13 @@ class SubProcess:
         self.stderr = None
         self.status = IDLE
         self.debug = debug
+
         self.output = []
         self.err = []
         self.status = IDLE
         self.debug = debug
+
+        self.debug = 1
     #
     #   main access functions (need to be replaced)
     #
@@ -146,18 +164,68 @@ class SubProcess:
                 print 'winprocess.Process',self.cmd,kw
             self.child = winprocess.Process(self.cmd, **kw)
         else:
-            # UNIX
-            #
-            # The code for fork will be here
-            #
 
-            print 'new UNIX pipe',self.cmd
-            #f = os.popen(self.cmd,'w')
-            #self.pipe = f
-            #status = f.close()
+            # Pipe for communication with forked process
+            # these are file descriptors, not file objects
+            self.r, self.w = os.pipe() 
 
-            (self.stdin_pipe,self.stdout_pipe,self.stderr_pipe) = os.popen3(self.cmd)
+            # Code imported ..
 
+            bufsize=-1
+            child_stdin, stdin = os.pipe()
+            stdout, child_stdout = os.pipe()
+            stderr, child_stderr = os.pipe()
+            self.stdin = os.fdopen(stdin, 'w', bufsize)
+            self.stdout = os.fdopen(stdout, 'r', bufsize)
+            self.stderr = os.fdopen(stderr, 'r', bufsize)
+
+            self.pid = os.fork()
+
+            print 'DEBUG',self.debug
+
+            if self.pid:
+                # we are the parent
+                if self.debug:
+                    print "process id is", self.pid
+                # use os.close() to close a file descriptor
+                os.close(self.w) 
+                # turn r into a file object
+                self.r = os.fdopen(self.r) 
+
+            else:
+                # Child code
+
+                os.close(self.r)
+                self.w = os.fdopen(self.w, 'w')
+                self.w.close()
+
+                os.dup2(child_stdin, 0)
+                os.dup2(child_stdout, 1)
+                os.dup2(child_stderr, 2)
+
+                self.MAXFD = 256
+
+                for i in range(3, self.MAXFD):
+                    try:
+                        os.close(i)
+                    except:
+                        pass
+                try:
+                    words = self.cmd.split()
+                    #print 'execvp',words
+
+                    os.setsid() # Make child process group leader
+                    # so we can stop child and all its children
+                    os.nice(19)
+                    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+                    os.execvp(words[0],words)
+                finally:
+                    os._exit(1)
+
+            os.close(child_stdin)
+            os.close(child_stdout)
+            os.close(child_stderr)
 
     def _wait_child(self,timeout=-1):
 
@@ -184,55 +252,123 @@ class SubProcess:
             return self.child.exitCode()
 
         else:
-            # UNIX
-            # To be replaced with code for fork
-            #
 
-            self.output = self.stdout_pipe.readlines()
-            self.error = self.stderr_pipe.readlines()
-
-            if self.debug:
-                print 'output', self.output
-                print 'error', self.error
-
-            status = self.stdout_pipe.close()
-            if self.debug:
-                print 'status on out', status 
-
-            status1 = self.stderr_pipe.close()
-            if self.debug:
-                print 'status on err', status1
-
-            status2 = self.stdin_pipe.close()
-            if self.debug:
-                print 'status on in', status2
-
-            print 'unix wait', self.error, self.debug
-            if len(self.error):
-                msg = 'Result on Stderr:'
-                for ttt in self.error:
-                    msg = msg + ttt
-                self.msg = msg
-                return -1
-
-            #status = self.pipe.close()
-            #self.status = EXITED
-            #if status:
-            #    print 'close status', status
-            #    return -1
+            if not self.pid:
+                print 'Child in Wait'
             else:
-                return 0
+                # parent
+                print "parent: reading"
+                txt = self.r.read()
+                print 'text is ',txt
+                txt = txt.split("%")
+                print 'split text is ',txt
+
+                # print 'readlines'
+                self.output = self.stdout.readlines()
+                print 'OUT:', self.output
+                self.error = self.stderr.readlines()
+                print 'ERR:'
+                for er in self.error:
+                    print er,
+#                print 'ERR', self.error
+
+                # close stdin, stdout and stderr pipes to child process.  Wait
+                # for the exit status of the child and return it."""
+
+                for fd in (self.stdin, self.stdout, self.stderr):
+                    if not fd.closed:
+                        fd.close()
+
+                proc, code = os.waitpid(self.pid, 0) 
+
+                return code
+            
+#                if code == 0:
+#                    return 0
+#                else:
+#                    return status
+
+
+##                 if len(txt) == 0:
+##                     # Process died somehow before results could be sent through
+##                     self.output = ""
+##                     self.error = "slave process killed"
+##                     self.status = code
+##                     self.status1 = None
+##                     self.status2 = None
+##                 else:
+##                     self.output = txt[0]
+##                     self.error = txt[1]
+##                     if txt[2] == "None":
+##                         self.status = None
+##                     else:
+##                         self.status = int(txt[2])
+##                     if txt[3] == "None":
+##                         self.status1 = None
+##                     else:
+##                         self.status1 = int(txt[3])
+##                     if txt[4] == "None":
+##                         self.status2 = None
+##                     else:
+##                         self.status2 = int(txt[4])
+
+
+##                 self.output = ""
+##                 self.error = "slave process killed"
+##                 self.status = code
+##                 self.status1 = None
+##                 self.status2 = None
+
+
+                if len(self.error):
+##                if code != 0:
+                    msg = 'Result on Stderr:'
+                    for ttt in self.error:
+                        msg = msg + ttt
+                    self.msg = msg
+##                    self.msg = "slave process died"
+                    return -1
+                    #self.status = EXITED
+                    #if status:
+                    #    print 'close status', status
+                    #    return -1
+                else:
+                    return 0
 
     def _kill_child(self):
-        self.child.kill()
-        return self.child.exitCode()
+
+        if sys.platform == 'mac':
+            print 'Dont know how to do _kill_child on mac'
+            return -1
+
+        elif sys.platform[:3] == 'win':
+
+            self.child.kill()
+            return self.child.exitCode()
+
+        else:
+            if not self.pid:
+                print 'Child in Kill'
+            else:
+                print 'Killing PID ',self.pid
+
+                sig = 'KILL'
+                signals = {'QUIT': 3, 'KILL': 9, 'STOP': 23, 'CONT': 25}
+                try:
+                    os.kill(-self.pid,signals[sig]) # -pid since we did set pgid to pid
+                    # and we are trying to kill all children too
+                except os.error:
+                    print "kill - %s of process %d failed" % (sig,pid)
+                                            
+                # The return code from the dying process will be
+                # returned by the waitpid
+                return 0
 
 
 class ForegroundPipe(SubProcess):
     """Class to manage os.popen3
     So far we have not managed to detect errors using this approach
     (except that there is output on the stderr channel)
-
     april 2005... try making this fatal and see what happens
 
     """
@@ -491,7 +627,6 @@ class Spawn(SubProcess):
 
     def wait(self,**kw):
 
-
         if self.status == SPAWNED:
 
             if self.debug:
@@ -502,6 +637,8 @@ class Spawn(SubProcess):
                 print 'wait code',code
             return code
         else:
+
+            print 'in wait',self.status
 
             if self.debug:
                 print t.time(), 'class Spawn, err'
@@ -687,10 +824,13 @@ class RemoteProcess(ForegroundPipe):
         else:
             self.cmd = 'ssh' + ' ' + host + ' ' + cmd
 
+print "PRE IF CLAUSE", __name__
 
 if __name__ == "__main__":
 
-    if 1:
+    print "IF CLAUSE"
+
+    if 0:
         os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
         os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
         print 'Testing Spawn ChemShell'
@@ -880,3 +1020,23 @@ if __name__ == "__main__":
         #code = p.wait()
         #print 'p.wait returns',code
         #print p.get_output()
+
+    if 1:
+        print 'Testing simple SlaveSpawn'
+        cmd = "echo a b c"
+        cmd = "rungamess test1"
+        print cmd
+        p = Spawn(cmd,debug=1)
+        i = None
+        o = open('small.out','w')
+        e = open('small.err','w')
+        print 'Executing run',os.getpid()
+        p.run(stdin=i)
+        time.sleep(1.5)
+        #p.kill()
+        code = p.wait()
+        #print 'return code',code
+        o.close()
+        #i.close()
+        e.close()
+
