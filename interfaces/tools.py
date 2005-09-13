@@ -40,7 +40,7 @@ class Tool:
         self.editor = editor
         self.parent = editor.interior()
         self.editor.tools.append(self)
-        self.debug = 1
+        self.debug = 0
 
     def GetWidget(self):
         return self.widget
@@ -257,6 +257,7 @@ class TitleTool(Tool):
             entry_width = 50,
             labelpos = 'w', label_text = 'Title',
             value = title)
+
     def ReadWidget(self):
         title = self.widget.get()
         self.editor.calc.set_title(title)
