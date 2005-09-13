@@ -199,7 +199,10 @@ of any program using or generating them. The parameters however will be
 
     def get_name(self):
         """Returns the name of the calculation."""
-        return self.name
+        if self.name:
+            return self.name
+        else:
+            return "unnamed"
 
     # input data sets things
 
@@ -251,7 +254,10 @@ of any program using or generating them. The parameters however will be
 
     def get_program(self):
         """Returns the program name."""
-        return self.program
+        if self.program:
+            return self.program
+        else:
+            return "unknown-prog"
 
     # program parameter things
     def set_parameter(self,name,reference):
