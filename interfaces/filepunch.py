@@ -769,11 +769,14 @@ class PunchReader:
          return
       
       brik.points = []
+      fac = 0.529177
       for i in range(0,self.records):
          txt = string.split(f.readline())
          t = []
          for j in range(0,self.elements):
-            t.append(float(txt[j]))
+            v = float(txt[j])
+            v = v * fac
+            t.append(v)
          brik.points.append(Vector(t))
 
 ##      d = [ dim[0]*3 ]
