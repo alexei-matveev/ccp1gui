@@ -615,6 +615,8 @@ class TkMolView(Pmw.MegaToplevel):
         menu.add_command(label='Select All', underline=0, 
                 command=lambda x=self: x.select_all())
 
+        menu.add_command(label="Select connected",command=self.select_connected)
+
         menu.add_command(label="Select by bonds",command=self.select_by_bonds)
 
         menu.add_command(label="Select (dist to sel) ",command=self.select_by_distance_to_selected)
@@ -1261,7 +1263,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         self.update()
 
-    def select_by_bonds(self):
+    def select_connected(self):
         # First build a list of structures
         sel = self.sel()
         dsel = sel.get()
@@ -1269,16 +1271,44 @@ class TkMolView(Pmw.MegaToplevel):
         edited = []
         for mol in sel.get_mols():
             set = sel.get_by_mol(mol)
+            set2 = copy.copy(set)
+            for a in set2:
+                for b in a.conn:
+                    if b in set:
+                        pass
+                    else:
+                        set.append(b)
+            sel.append(mol,set)
+
+    def select_by_bonds(self):
+        # First build a list of structures
+        sel = self.sel()
+        dsel = sel.get()
+        print 'dsel', dsel
+        edited = []
+        for mol in sel.get_mols():
+
+            for a in mol.atom:
+                a.tmp = 0
+
+            set = sel.get_by_mol(mol)
+            for a in set:
+                a.tmp = 1
+
             more = 1
             while more:
-                more=0
-                for a in set:
-                    for b in a.conn:
-                        if b in set:
-                            pass
-                        else:
-                            set.append(b)
-                            more=1
+                more = 0
+                for a in mol.atom:
+                    if a.tmp == 1:
+                        a.tmp = 2
+                        for b in a.conn:
+                            if b.tmp == 0:
+                                b.tmp = 1
+                                more=1
+            set = []
+            for a in mol.atom:
+                if a.tmp:
+                    set.append(a)
 
             #sel.clear()
             sel.append(mol,set)
@@ -3441,6 +3471,9 @@ class TkMolView(Pmw.MegaToplevel):
             mol.wrtres(ofile)
 
     def make_unique_name(self,name,title=None):
+
+        print 'make_unique_name ,name=',name
+        
         old_names = self.get_names()
         suf = []
         suf.append('')
@@ -3932,13 +3965,12 @@ class TkMolView(Pmw.MegaToplevel):
         """
         for o in objects:
             try:
-                dum = o.name
-                o.name = self.make_unique_name(o.name)
-            except AttributeError:
-                try:
-                    o.name = self.make_unique_name(o.title)
-                except AttributeError:
-                    o.name = self.make_unique_name("untitled")
+                dum = o.get_name()
+                if not dum:
+                    dum = "None"
+            except:
+                dum = "???"
+            o.name = self.make_unique_name(dum)
             self.append_data(o)
                     
     def import_objects_info(self,objects):
@@ -3957,6 +3989,10 @@ class TkMolView(Pmw.MegaToplevel):
                 txt = txt + o.title + "\n"
             except AttributeError:
                 txt = txt + "????\n"
+            except:
+                print 'Other error'
+                txt = txt + "????\n"
+                
         self.info(txt)
 
     def get_selection(self,name):
