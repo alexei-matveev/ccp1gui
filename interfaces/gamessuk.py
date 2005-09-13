@@ -400,13 +400,9 @@ class GAMESSUKCalc(QMCalc):
         username = self.get_parameter("username")
 
         if hostname == 'localhost':
-            if sys.platform[:3] == 'win':
-                os.chdir(directory) #Run job in the specified directory
-                job = jobmanager.BackgroundJob()
-            else:
-                # Haven't implemented UNIX fork interface yet
-                os.chdir(directory) #Run job in the specified directory
-                job = jobmanager.ForegroundJob()
+            #Run job in the specified directory
+            os.chdir(directory) 
+            job = jobmanager.BackgroundJob()
         elif hostname == 'hpcx':
             job = jobmanager.RemoteForegroundJob('hpcx',username)
         elif hostname == 'tcsg7':
@@ -441,11 +437,8 @@ class GAMESSUKCalc(QMCalc):
                 rungamess_command = "rungamess " + str(self.rungamess_keep['ed0']) + str(self.rungamess_keep['ed2']) \
                 + str(self.rungamess_keep['ed3']) + str(self.rungamess_keep['ed7']) + str(self.rungamess_keep['ed14']) \
                 + " " + job_name
-                job.add_step(RUN_APP,'run gamess',local_command=rungamess_command)
             else:
-                #job.add_step(RUN_APP,'run gamess',local_command="rungamess " + job_name)
                 rungamess_command="rungamess " + job_name
-                
             job.add_step(RUN_APP,'run gamess',local_command=rungamess_command)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
@@ -820,71 +813,9 @@ class GAMESSUKCalc(QMCalc):
         #
         #  BASIS directive
         #
-        basis = self.get_parameter("basisdirectives")
-        if basis != "":
-            file.write(basis)
-        else:
-            basis = self.get_parameter("basis")
-            if basis:
-                # Use the result of the basis manager
-                # for more details see the basis manager module
-                file.write('basis\n')
-                for entry in basis:
-                    (ass_type, tag, b) = entry
-                    print 'entry', ass_type, tag, b
-                    if ass_type == 'TYPE.KEY':
-                        #If b contains 2 fields, need to place element symbol between the two:
-                        basis_keyword=string.split(b)
-                        length=len(basis_keyword)
-                        if (length>1): # > one keyword
-                            file.write('%s %s %s\n' %(basis_keyword[0],tag,basis_keyword[1]))
-                        else:
-                            file.write('%s %s\n' % (basis_keyword[0], tag))#only 1 keyword
-                    if ass_type == 'TYPE.EXPL':
-                        b.list()
-                        for shell in b.shells:
-                            file.write('%s %s\n' % (shell.type, tag))
-                            for p in shell.expansion:
-                                print 'expansion',p,len(p)
-                                if len(p) == 2:
-                                    file.write( '%12.8f %8.4f\n' % (p[1],p[0]))
-                                elif len(p) == 3:
+        self._write_basis(file)
 
-                                    file.write( '%12.8f %8.4f %8.4f\n' % (p[1],p[0],p[2]))
-                                else:
-                                    print 'ELSE'
-                file.write('end\n')
-
-            else:
-                # Use the default
-                basis = self.get_parameter("default_basis")
-                file.write('basis ' + basis+'\n')
-
-        ecp = self.get_parameter("ECP")
-        if ecp:
-            file.write('pseudo ecp\n')
-            for entry in ecp:
-                print 'entry:',entry
-                (ass_type, tag, b) = entry
-                print 'entry', ass_type, tag, b
-                if ass_type == 'TYPE.KEY':
-                    #The form of the input for GAMESS is: 'el sym' ecp 'el tag'
-                    #so just strip any numbers off 'el tag' to get the symbol
-                    basis_keyword=string.split(b)
-                    trans = string.maketrans('a','a')
-                    el_sym = string.translate(tag,trans,string.digits)
-                    file.write('%s %s %s\n' %(el_sym,basis_keyword[1],tag))
-                if ass_type == 'TYPE.EXPL':
-                    file.write('cards %s\n' % (tag))
-                    file.write('%s %s\n' % (b.lmax, b.ncore))
-                    b.list()
-                    for shell in b.shells:
-                        file.write('%d \n' % (len(shell.expansion)))
-                        for p in shell.expansion:
-                            print 'expansion',p,len(p)
-                            file.write( '%d %8.4f %8.4f\n' % (p[0],p[1],p[2]))
-                        else:
-                            print 'ELSE'
+        self._write_ecp(file)
 
         #  Replacement Class II
         classii = self.get_parameter("classiidirectives")
@@ -1398,6 +1329,76 @@ class GAMESSUKCalc(QMCalc):
         else:
             print "No next_section defined in gamessuk.py.__WriteInput!\n"
             return 0
+
+    def _write_basis(self,file):
+
+        basis = self.get_parameter("basisdirectives")
+        if basis != "":
+            file.write(basis)
+        else:
+            basis = self.get_parameter("basis")
+            if basis:
+                # Use the result of the basis manager
+                # for more details see the basis manager module
+                file.write('basis\n')
+                for entry in basis:
+                    (ass_type, tag, b) = entry
+                    print 'entry', ass_type, tag, b
+                    if ass_type == 'TYPE.KEY':
+                        #If b contains 2 fields, need to place element symbol between the two:
+                        basis_keyword=string.split(b)
+                        length=len(basis_keyword)
+                        if (length>1): # > one keyword
+                            file.write('%s %s %s\n' %(basis_keyword[0],tag,basis_keyword[1]))
+                        else:
+                            file.write('%s %s\n' % (basis_keyword[0], tag))#only 1 keyword
+                    if ass_type == 'TYPE.EXPL':
+                        b.list()
+                        for shell in b.shells:
+                            file.write('%s %s\n' % (shell.type, tag))
+                            for p in shell.expansion:
+                                print 'expansion',p,len(p)
+                                if len(p) == 2:
+                                    file.write( '%12.8f %8.4f\n' % (p[1],p[0]))
+                                elif len(p) == 3:
+
+                                    file.write( '%12.8f %8.4f %8.4f\n' % (p[1],p[0],p[2]))
+                                else:
+                                    print 'ELSE'
+                file.write('end\n')
+
+            else:
+                # Use the default
+                basis = self.get_parameter("default_basis")
+                file.write('basis ' + basis+'\n')
+
+    def _write_ecp(self,file):
+        
+        ecp = self.get_parameter("ECP")
+        if ecp:
+            file.write('pseudo ecp\n')
+            for entry in ecp:
+                print 'entry:',entry
+                (ass_type, tag, b) = entry
+                print 'entry', ass_type, tag, b
+                if ass_type == 'TYPE.KEY':
+                    #The form of the input for GAMESS is: 'el sym' ecp 'el tag'
+                    #so just strip any numbers off 'el tag' to get the symbol
+                    basis_keyword=string.split(b)
+                    trans = string.maketrans('a','a')
+                    el_sym = string.translate(tag,trans,string.digits)
+                    file.write('%s %s %s\n' %(el_sym,basis_keyword[1],tag))
+                if ass_type == 'TYPE.EXPL':
+                    file.write('cards %s\n' % (tag))
+                    file.write('%s %s\n' % (b.lmax, b.ncore))
+                    b.list()
+                    for shell in b.shells:
+                        file.write('%d \n' % (len(shell.expansion)))
+                        for p in shell.expansion:
+                            print 'expansion',p,len(p)
+                            file.write( '%d %8.4f %8.4f\n' % (p[0],p[1],p[2]))
+                        else:
+                            print 'ELSE'
 
     def scan(self):
         """Extract and Store results from a punchfile"""
