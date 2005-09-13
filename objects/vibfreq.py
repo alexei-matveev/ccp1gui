@@ -25,7 +25,9 @@ class VibFreq:
    def __init__(self,index):
       self.index=index
       self.freq=0.0
-#      self.name="unnamed"
       self.name=None
-      self.title="untitled"
+      self.title="v???"
       self.reference = None
+
+   def get_name(self):
+      return self.title

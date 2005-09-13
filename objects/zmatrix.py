@@ -112,6 +112,12 @@ class Atom:
         '''Sequence number in molecule'''
         return self.seqno2
 
+    def get_name(self):
+        if self.title:
+            return self.title
+        else:
+            return "untitled zmat"
+
 class Bond:
     def __init__(self):
         pass

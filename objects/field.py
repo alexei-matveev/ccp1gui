@@ -100,6 +100,12 @@ class Field:
     def get_axis(self,index):
         return self.axis[index] 
 
+    def get_name(self):
+        if self.title:
+            return self.title
+        else:
+            return "untitled field"
+
     def get_mapping(self,index):
         """Return one of the mapping vectors as per GAMESS-UK punchfile """
         if index == 0:
