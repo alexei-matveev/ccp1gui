@@ -96,6 +96,7 @@ class CalcEd(Pmw.MegaToplevel):
         Pmw.MegaToplevel.__init__(self, root)
 
         title=self.calc.get_program()+" Calculation: "+self.calc.get_name()
+
         self.title(title)
         #self.geometry('%dx%d+0+0' % (self.frameWidth, self.frameHeight))
 
@@ -192,7 +193,9 @@ class CalcEd(Pmw.MegaToplevel):
         print 'calced: obj,name',mol_obj, mol_name
 
         if not mol_obj:
-            if mol_name:
+
+            if self.reload_func:
+#####            if mol_name:
                 self.calc.set_input("mol_name",mol_name)
                 self.Reload()
                 if self.calc.get_name() == "untitled":
@@ -432,8 +435,15 @@ class CalcEd(Pmw.MegaToplevel):
         """Close this calculation edit"""
         #self.LowerPage(self.notebook.getcurselection())
         self.calc.set_editor(None)
-        self.withdraw()
-        self.destroy()
+        try:
+            self.withdraw()
+        except:
+            pass
+        try:
+            self.destroy()
+        except:
+            pass
+
 
     def CreateViewMenu(self,menu):
         """Create the view menu:
@@ -770,12 +780,12 @@ class CalcEd(Pmw.MegaToplevel):
             self.calc.edit(self.root, self.graph,editor=self)
 
     def SelectMolecule(self):
+
         """ Make a selection for the molecule to be used in the
         calculation. The main purpose of this routine is to force any
         user to explicitly select a molecule through a dialog box. 
         If no molecule is present in the viewer an error condition is
         raised."""
-
 
         if self.graph:
             if mol_name == None or mol_name == "":
