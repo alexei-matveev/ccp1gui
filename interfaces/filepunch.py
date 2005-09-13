@@ -871,6 +871,7 @@ class PunchReader:
 
       for i in range(0,self.records):
 
+         print 'read i',i
          a = ZAtom()
          rr = string.split(f.readline())
 
@@ -900,7 +901,7 @@ class PunchReader:
             a.y_var = None
             a.z_var = None
 
-            if v1[:1] == '-#':
+            if v1[:2] == '-#':
                a.r = 0.0
                a.r_var = v1[1:]
                a.r_sign = -1.0
@@ -913,7 +914,7 @@ class PunchReader:
                a.r_var = None
                a.r_sign = 1.0
 
-            if v2[:1] == '-#':
+            if v2[:2] == '-#':
                a.theta = 0.0
                a.theta_var = v2[1:]
                a.theta_sign = -1.0
@@ -925,8 +926,8 @@ class PunchReader:
                a.theta = float(v2)
                a.theta_var = None
                a.theta_sign = 1.0
-
-            if v3[:1] == '1#':
+            
+            if v3[:2] == '-#':
                a.phi = 0.0
                a.phi_var = v3[1:]
                a.phi_sign = -1.0
@@ -1068,6 +1069,7 @@ class PunchReader:
 
          if a.zorc == 'z':
             if a.r_var:
+               print a.r_var
                a.r_var = self.lookup_var(tt,a.r_var)
                a.r = a.r_var.value
                a.r_var.metric = 'd'
@@ -1111,6 +1113,8 @@ class PunchReader:
 
    def lookup_var(self,tt,var):
       ix = int(var[1:])
+      print 'ix is',ix,len(tt.variables)
+
       return tt.variables[ix-1]
 
    def skip_block(self,f,obj=None):
