@@ -106,7 +106,7 @@ def list_to_string(list):
 
 class SubProcess:
 
-    def __init__(self,cmd,on_end=None,debug=1):
+    def __init__(self,cmd,on_end=None,debug=0):
 
         self.cmd = cmd
         self.on_end = on_end
@@ -120,8 +120,6 @@ class SubProcess:
         self.err = []
         self.status = IDLE
         self.debug = debug
-
-        self.debug = 1
     #
     #   main access functions (need to be replaced)
     #
@@ -181,8 +179,6 @@ class SubProcess:
 
             self.pid = os.fork()
 
-            print 'DEBUG',self.debug
-
             if self.pid:
                 # we are the parent
                 if self.debug:
@@ -212,13 +208,10 @@ class SubProcess:
                         pass
                 try:
                     words = self.cmd.split()
-                    #print 'execvp',words
-
                     os.setsid() # Make child process group leader
                     # so we can stop child and all its children
                     os.nice(19)
                     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-
                     os.execvp(words[0],words)
                 finally:
                     os._exit(1)
@@ -257,20 +250,18 @@ class SubProcess:
                 print 'Child in Wait'
             else:
                 # parent
-                print "parent: reading"
                 txt = self.r.read()
-                print 'text is ',txt
                 txt = txt.split("%")
-                print 'split text is ',txt
+                #print 'split text is ',txt
 
-                # print 'readlines'
                 self.output = self.stdout.readlines()
-                print 'OUT:', self.output
+                if self.debug:
+                    print 'OUT:', self.output
                 self.error = self.stderr.readlines()
-                print 'ERR:'
-                for er in self.error:
-                    print er,
-#                print 'ERR', self.error
+                if self.debug:
+                    print 'ERR:'
+                    for er in self.error:
+                        print er,
 
                 # close stdin, stdout and stderr pipes to child process.  Wait
                 # for the exit status of the child and return it."""
@@ -342,16 +333,13 @@ class SubProcess:
             return -1
 
         elif sys.platform[:3] == 'win':
-
             self.child.kill()
             return self.child.exitCode()
-
         else:
             if not self.pid:
                 print 'Child in Kill'
             else:
                 print 'Killing PID ',self.pid
-
                 sig = 'KILL'
                 signals = {'QUIT': 3, 'KILL': 9, 'STOP': 23, 'CONT': 25}
                 try:
@@ -823,8 +811,6 @@ class RemoteProcess(ForegroundPipe):
             print 'remote command:',self.cmd
         else:
             self.cmd = 'ssh' + ' ' + host + ' ' + cmd
-
-print "PRE IF CLAUSE", __name__
 
 if __name__ == "__main__":
 
