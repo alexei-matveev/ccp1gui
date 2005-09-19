@@ -312,7 +312,7 @@ class Zmatrix(Indexed):
                 if len(fields) > 1:
                     fac = self.rescale( fields[1] )
 
-            elif ( f0[0:4] == 'coor') or ( f0[0:4] == 'cart'):
+            elif ( f0[0:4] == 'coor') or ( f0[0:4] == 'cart') or ( f0[0:4] == 'geom' ):
                 mode = 'x'
                 # interpret unit specifier if present
                 if len(fields) > 1:
