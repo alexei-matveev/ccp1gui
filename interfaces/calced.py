@@ -865,7 +865,7 @@ class CalcEd(Pmw.MegaToplevel):
         dialog = self.query_dialog
         dialog.configure(message_text=txt)
         dialog.configure(title='Calculation Query')
-        dialog.activate()
+        dialog.activate( geometry='centerscreenalways' )
         # see __QueryResult for self.dialogresult
         return self.dialogresult
         
