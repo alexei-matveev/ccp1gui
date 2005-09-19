@@ -1547,13 +1547,18 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         #Create the tools used in the Molecule tab - spin & charge created in QM.
         self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
+        self.balloon.bind( self.task_tool.widget, 'Specify the type of calculation to run.' )
+        
         #Used to specify task
         self.tasktoolvalue = self.task_tool.widget.getvalue() 
 
         self.checkspin_widget = Tkinter.Button(self.interior(),
                                              text = 'Check Spin',
                                              command = self.__CheckSpin)
+        self.balloon.bind( self.checkspin_widget, 'Check if the spin is consistent for the molecule' )
+        
         self.symmetry_tool = BooleanTool(self,'symmetry','Use Symmetry')
+        self.balloon.bind( self.symmetry_tool.widget, 'Turn on the use of symmetry during the calculation' )
 
         mol_obj = self.calc.get_input('mol_obj')
 
@@ -1568,6 +1573,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         #self.guess_tool = GamessGuessTool(self,self.__guesscommand)
         self.guessoption_tool = SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
                                                  self.__guesstype)
+        self.balloon.bind( self.guessoption_tool.widget, 'Determine how the initial vectors for the guess are computed' )
         self.guessatoms_tool = SelectOptionTool(self,'guess_comp',None,self.compute_options)
         self.guesssection1_tool = IntegerTool(self,'guess_sect1','Section a',0)
         self.guesssection2_tool = IntegerTool(self,'guess_sect2','Section b',0)
@@ -1581,9 +1587,12 @@ class GAMESSUKCalcEd(QMCalcEd):
                                                self.scf_methods[self.tasktoolvalue],
                                                self.__scfmethod)
         self.scfmaxcycles_tool = IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
+        self.balloon.bind( self.scfmaxcycles_tool.widget, 'Maximum permitted number of SCF cycles' )
         self.scfthreshold_tool = IntegerTool(self,'scf_threshold','Threshold',3)
+        self.balloon.bind( self.scfthreshold_tool.widget, 'Consider the SCF converged when Energy change is less than 10x(-n) this number' )
 
         self.scfbypass_tool = BooleanTool(self,'scf_bypass', 'Bypass SCF')
+        self.balloon.bind( self.scfbypass_tool.widget, 'Eschew SCF calculation. Read integrals and vectors from dumpfile instead' )
 
         self.scflevelinit_tool = FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
         self.scflevelit_tool = IntegerTool(self,'scf_level_it','Cycle to change on',1)
@@ -1598,6 +1607,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         #Create the tools for the DFT tab
         self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
         self.dftaccuracy_tool = SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
+        self.balloon.bind( self.dftaccuracy_tool.widget, 'Specify a quadrature grid designed to achieve a particular accuracy' )
         self.dftweightscheme_tool = SelectOptionTool(self,'dft_weights',
                                                      'DFT weighting scheme',
                                                      self.dft_weights)
@@ -1626,8 +1636,11 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.angulargrid = self.dftangular_tool.firstmenu.getvalue()
 
         self.dftjfit_tool = BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
+        self.balloon.bind( self.dftjfit_tool.widget, 'Evaluate the Coulomb energy with an auxilary basis set' )
         self.dftjbas_tool = SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
+        self.balloon.bind( self.dftjbas_tool.widget, 'Select the auxilary fitting basis' )
         self.dftschwarz_tool = IntegerTool(self,'dft_schwarz','Schwarz cutoff')
+        self.balloon.bind( self.dftschwarz_tool.widget, 'Reduce the number of 3e integrals by setting Schwarz tolerance to 10x-(n)' )
 
         #Create the tools used in the Properties tab
         self.homolumo_tool = BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
@@ -1638,15 +1651,18 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.homolumo5_tool = BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
        
         self.chargeden_tool = BooleanTool(self, 'ana_chargeden', 'Charge Density')
+        self.balloon.bind ( self.chargeden_tool.widget, 'Calculate the charge density and import the results back for display' )
         self.diffden_tool = BooleanTool(self, 'ana_diffden', 'Difference Density')
         self.potential_tool = BooleanTool(self, 'ana_potential', 'Potential')
+        self.balloon.bind ( self.potential_tool.widget, 'Calculate the electrostatic potential and import the results back for display' )                
         self.chargedengrad_tool = BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
         self.spinden_tool = BooleanTool(self, 'ana_spinden', 'Spin Density')
         self.frequencies_tool = BooleanTool(self, 'ana_frequencies', 'Finite Difference')
+        self.balloon.bind( self.frequencies_tool.widget, 'Calculate force constants numerically' )
         self.hessian_tool = BooleanTool(self, 'ana_hessian', "Analytic")
+        self.balloon.bind( self.hessian_tool.widget, 'Calculate the force constants analytically' )
 
         #Create the tools used in the Optimisation tab
-
         self.optcoords_tool = SelectOptionTool(self,'optimiser', 'Opt. Coords',
                                                self.optcoord_opts, self.__selectcoords)
         self.find_ts_tool = BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
@@ -1671,6 +1687,7 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         #Create the tools used for the Job tab
         self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
+        self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' ) 
         self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
                                               self.hostnames, command=self.__sethost)
         self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
@@ -1678,6 +1695,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                                                 self.submissionpolicies[self.hostname])
         self.username_tool = TextFieldTool(self,'username','User Name')
         self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
+        self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
 
         #Create the tools used in the Restart Group
         self.ed0keep_tool = BooleanTool(self, 'ed0_keep', 'specify',
@@ -1685,24 +1703,31 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.ed0path_tool = ChangeDirectoryTool(self,'ed0_path','')
         self.ed2keep_tool = BooleanTool(self, 'ed2_keep', 'keep',
                                         command=lambda s= self: s.__keepfile('ed2'))
+        self.balloon.bind( self.ed2keep_tool.widget, 'Save the integral file' )
         self.ed2name_tool = BooleanTool (self, 'ed2_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed2'))
+        self.balloon.bind( self.ed2name_tool.widget, 'Toggle saving with the default name or a user-specified one' )        
         self.ed2path_tool = FileTool(self,'ed2_path','',
                                       filetypes=[('Mainfiles','*.ed2'), ('All files','*.*')])
         self.ed3keep_tool = BooleanTool(self, 'ed3_keep', 'keep',
                                         command=lambda s = self: s.__keepfile('ed3'))
+        self.balloon.bind( self.ed3keep_tool.widget, 'Save the dump file - required to restart calculations' )
         self.ed3name_tool = BooleanTool (self, 'ed3_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed3'))
+        self.balloon.bind( self.ed3name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                
         self.ed3path_tool = FileTool(self,'ed3_path','',
                                      filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')])
         self.ed7keep_tool = BooleanTool(self, 'ed7_keep', 'keep',
                                         command=lambda s = self: s.__keepfile('ed7'))
+        self.balloon.bind( self.ed7keep_tool.widget, 'Save the scratch file' )        
         self.ed7name_tool = BooleanTool (self, 'ed7_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed7'))
+        self.balloon.bind( self.ed7name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                        
         self.ed7path_tool = FileTool(self,'ed7_path','',
                                       filetypes=[('Tempfiles','*.ed7'), ('All files','*.*')])
         self.ed14keep_tool = BooleanTool(self, 'ed14_keep', 'specify',
                                         command=lambda s=self: s.__keepfile('ed14'))
+        self.balloon.bind( self.ed14keep_tool.widget, 'Specify a \'foreign\' dumpfile for a restart calculation' )        
         self.ed14path_tool = FileTool(self,'ed14_path','',
                                       filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')],
                                       action="open")
