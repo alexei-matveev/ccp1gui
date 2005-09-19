@@ -2487,32 +2487,36 @@ class TkMolView(Pmw.MegaToplevel):
                 # ignore empty lines
                 continue
 
-            if ( fields[0][0:4] == "zmat" or fields[0][0:4] == "geom" ):
+            if ( fields[0][0:4] == "zmat" ):
+                mode = 'z'
                 finished = 1
-                
+            elif ( fields[0][0:4] == "geom"  or fields[0][0:4] == "cart" ):
+                mode = 'x'
+                finished = 1
 
         zmat_buffer = []
 
         # We should now be at the start of a line beginning with zmat or geom
-        if ( fields[0][0:4] == "zmat" ):# start
-            mode = 'z'
-            zmat_buffer.append( line )
-                
-        elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
-            mode = 'x'
-            if ( len( fields ) > 1 ):
-                if ( fields[1][0:4] == "angs" ):
-                    zmat_buffer.append( "coordinates angstrom" )
-                elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
-                    zmat_buffer.append( "coordinates bohr" )
-                else:
-                    print "Unknown modifier for geometry directive!"
-                    print "Offending line is %s" % line
-                    zmat_buffer.append( "coordinates" )
-        else:
-            # shouldn't ever get here
-            print "Error reading GAMESS-UK input"
-            return 1
+        # Append the header line we just read:
+        zmat_buffer.append( line )
+        
+#        if ( fields[0][0:4] == "zmat" ):# start
+#            mode = 'z'
+#        elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
+#            mode = 'x'
+#             if ( len( fields ) > 1 ):
+#                 if ( fields[1][0:4] == "angs" ):
+#                     zmat_buffer.append( "coordinates angstrom" )
+#                 elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
+#                     zmat_buffer.append( "coordinates bohr" )
+#                 else:
+#                     print "Unknown modifier for geometry directive!"
+#                     print "Offending line is %s" % line
+#                    zmat_buffer.append( "coordinates" )
+#        else:
+#            # shouldn't ever get here
+#            print "Error reading GAMESS-UK input"
+#           return 1
 
         # loop to read in the coordinates
         reading = 1
@@ -2529,7 +2533,13 @@ class TkMolView(Pmw.MegaToplevel):
             line = string.lower( line )
             
             if line:
-                fields = string.split( line )
+                # See if the line has commas in it, as GAMESS-UK supports this as a
+                # separator as well as whitespace
+                if re.compile(",").search( line ):
+                    fields = string.split( line, ','  )
+                    line = string.join( fields ) # Rejoin split line using space as separator
+                else:
+                    fields = string.split( line )                    
             else:
                 # ignore empty lines
                 continue
@@ -2545,6 +2555,11 @@ class TkMolView(Pmw.MegaToplevel):
                 elif mode == 'x': # reformat the line
                     cart_string = fields[4] + "  " + fields[0] + "  " + fields[1] + "  " + fields[2]
                     zmat_buffer.append( cart_string )
+
+        if ( self.debug == 1 ):
+            print "viewer/main.py: rdgamin read zmat_buffer:"
+            for line in zmat_buffer:
+                print "zmat: ",line
 
         # Now we've got a buffer with the coordinates, create the model
         model = Zmatrix( list = zmat_buffer )
