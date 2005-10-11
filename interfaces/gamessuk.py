@@ -707,7 +707,10 @@ class GAMESSUKCalc(QMCalc):
 
         file.write('title\n')
         file.write(self.get_title()+'\n')
-        file.write('punch coor conn title\n')
+        if task == MENU_OPT:
+            file.write('punch coor conn title opti\n')
+        else:
+            file.write('punch coor conn title\n')
 
         if not self.get_parameter('symmetry'):
             file.write('nosym\n')
