@@ -173,11 +173,17 @@ class Visualiser:
 
     initted = 0
     
-    def __init__(self,root,graph,obj,**kw):
+    def __init__(self,root,graph,obj,allvis=None,**kw):
+        
+        # allvis is a flag to tag if the visualiser is being used to change all the images
+        # or just a single one
+        self.allvis = allvis
 
-        if self.initted:
-            print 'reinit skipped'
-            return
+        if not self.allvis:
+            if self.initted:
+                print 'reinit skipped'
+                return
+
         self.initted = 1
         self.root = root
         # the graph object we will be rendering to
@@ -209,11 +215,18 @@ class Visualiser:
             self.dialog.botframe = Tkinter.Frame(self.dialog.component('hull'))
             self.dialog.botframe.pack(side='top',fill='x')
 
-            self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update',command=self.__view)
-            self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show',command=self.__show)
-            self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide',command=self.__hide)
-            self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy',command=self.__delete)
-            self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
+            if self.allvis:
+                self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update All',command=self.__view)
+                self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show All',command=self.__show )
+                self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide All',command=self.__hide)
+                self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy All',command=self.__delete)
+                self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
+            else:
+                self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update',command=self.__view)
+                self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show',command=self.__show)
+                self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide',command=self.__hide)
+                self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy',command=self.__delete)
+                self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
 
             self.dialog.b1.pack(side='left',fill='x')
             self.dialog.b2.pack(side='left',fill='x')
@@ -288,6 +301,9 @@ class Visualiser:
         self.opacity = float(self.w_opacity.get())        
 
     def __view(self):
+        self.View()
+
+    def View(self):
         self.read_widgets()
         self.Build()
         if self.status == BUILT:
@@ -296,17 +312,20 @@ class Visualiser:
     def __delete(self):
         """ Delete the graphical representation (and the widget) """
         self.Delete()
-        #
-        # need to destory vis_dict and vis_list entries for as well
-        # the modelling program as well
-        #
-        t = id(self.object)
-        self.graph.vis_list.remove(self)
-        try:
-            visl = self.graph.vis_dict[t]
-            visl.remove(self)
-        except KeyError:
-            print 'key error'
+
+        # Need to miss this out if we are changing all molecules
+        if not self.allvis:
+            #
+            # need to destory vis_dict and vis_list entries for as well
+            # the modelling program as well
+            #
+            t = id(self.object)
+            self.graph.vis_list.remove(self)
+            try:
+                visl = self.graph.vis_dict[t]
+                visl.remove(self)
+            except KeyError:
+                print 'key error'
 
     def __show(self):
         self.Show()
@@ -410,13 +429,16 @@ class MoleculeVisualiser(Visualiser):
 
         self.molecule=obj
 
-        try:
-            if  self.molecule.title:
-                self.title='Molecule view: ' + self.molecule.title
-            else:
-                self.title='Molecule view: (None title)'
-        except AttributeError:
-            self.title='Molecule view: (untitled)'
+        if not self.allvis:
+            try:
+                if  self.molecule.title:
+                    self.title='Molecule view: ' + self.molecule.title
+                else:
+                    self.title='Molecule view: (None title)'
+            except AttributeError:
+                self.title='Molecule view: (untitled)'
+        else:
+            self.title='View Changer for All Molecules'
 
         print 'Mol Title',self.title
 
@@ -600,12 +622,15 @@ class MoleculeVisualiser(Visualiser):
 
         Pmw.alignlabels(labels2)
 
-        f = Tkinter.Frame(self.dialog.topframe)
-        self.select_button = Tkinter.Button(f,command = self.draw_by_selection,text="Draw Selected Atoms Only")
-        self.all_button = Tkinter.Button(f,command = self.draw_all,text="Draw All Atoms")        
-        self.select_button.pack(side='left')
-        self.all_button.pack(side='left')
-        f.pack(side='top')
+
+        if not self.allvis:
+            # Draw selected atoms not applicable to the all visualiser
+            f = Tkinter.Frame(self.dialog.topframe)
+            self.select_button = Tkinter.Button(f,command = self.draw_by_selection,text="Draw Selected Atoms Only")
+            self.all_button = Tkinter.Button(f,command = self.draw_all,text="Draw All Atoms")        
+            self.select_button.pack(side='left')
+            self.all_button.pack(side='left')
+            f.pack(side='top')
 
     def draw_by_selection(self):
         pass
@@ -1847,6 +1872,164 @@ class IrregularDataVisualiser(Visualiser):
         #self.cmap_low = float(self.w_cmap_low.get())
         #self.cmap_high = float(self.w_cmap_high.get())
         #self.opacity =  float(self.w_opacity.get())
+
+class AllMoleculeVisualiser( MoleculeVisualiser ):
+
+#    def __init__(self, root, graph, **kw):
+    def __init__( self, root, graph ):
+
+        # Pass an empty object to the base classes as we operate on multiple objects
+        obj = None
+
+        # Set up the data structures we'll need to change things
+        self.graph = graph
+        self.data_list = graph.data_list
+        self.vis_list = graph.vis_list
+        self.vis_dict = graph.vis_dict  # dict mapping structures to image;
+                                        #one->many, each entry is a list
+        self.query = graph.query # For popping up questions
+                                        
+        #apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        #apply( MoleculeVisualiser.__init__, (self, root, graph, obj), kw )
+        # Weve got stuff to display so carry on
+        kw_dict = {'allvis': '1'}
+        apply( Visualiser.__init__, ( self, root, graph, obj ), kw_dict )
+        apply( MoleculeVisualiser.__init__, (self, root, graph, obj), kw_dict )
+
+
+    def update_mol_list(self):
+        """ Update the list of molecules that we know about:
+            objects with a class of Indexed or Zmatrix are molecules so
+            these are the only ones we are interested in.
+            This methods returns None if no molecules are present, so this
+            method can be used to query whether we have any molecules.
+        """
+        #Build up a list of all the molecules
+        self.molecule_list = []
+        for obj in self.data_list:
+            t = id(obj)
+            # for each object see if it is a molecule
+            t1 = string.split(str(obj.__class__),'.')
+            myclass = t1[len(t1)-1]
+            if myclass == 'Indexed' or myclass == 'Zmatrix':
+                self.molecule_list.append( obj )
+
+        # Return 0 if we've no molecules to display - call this to see if we are needed or not
+        if ( len( self.molecule_list ) == 0 ):
+            return None
+        else:
+            return 1
+
+    # Now set about overloading the definitions that are specific
+    # to single instances of molecules
+
+    def set_vis_variables(self,vis):
+        """ This takes the a vis - i.e. an image and sets all of the variables
+            that define how it will be visualised from the values that have been
+            set in the widget
+        """    
+        vis.show_wire = self.show_wire
+
+        vis.show_spheres = self.show_spheres
+        vis.sphere_table = self.sphere_table
+        vis.sphere_scale = self.sphere_scale
+        
+        vis.show_labels = self.show_labels
+        vis.label_scale = self.label_scale
+        vis.label_with = self.label_with
+        vis.label_rgb = self.label_rgb
+        vis.label_colour = self.label_colour
+        
+        vis.show_sticks = self.show_sticks
+        vis.cyl_rgb = self.cyl_rgb
+        vis.cyl_colour = self.cyl_colour
+        vis.cyl_width = self.cyl_width
+        
+        vis.show_contacts = self.show_contacts
+        
+
+    def View(self):
+        """ Method invoked with the 'Update All' button is clicked. """
+        
+        self.update_mol_list()
+        self.read_widgets()
+        
+        for molc in self.molecule_list:
+            t = id(molc)
+            try:
+                visl = self.vis_dict[t]
+                for vis in visl:
+                    # set the variables
+                    self.set_vis_variables( vis )
+                    # Delete the old image and create a new one
+                    vis._delete()
+                    vis._build(object=None)
+                    vis._show()
+                    vis.is_showing=1
+            except KeyError:
+                pass
+        self.graph.update()
+
+            
+    def Show(self):
+        """ Method invoked with the 'Show All' button is clicked. """
+            
+        self.update_mol_list()
+        # Loop across all molecules and display the images
+        for molc in self.molecule_list:
+            t = id(molc)
+            try:
+                visl = self.vis_dict[t]
+                for vis in visl:
+                    #if vis.IsShowing():
+                    vis.Show()
+            except KeyError:
+                pass
+            
+
+    def Hide(self):
+        """ Method invoked with the 'Hide All' button is clicked. """
+
+        self.update_mol_list()
+        # Loop across all molecules and hide the images
+        for molc in self.molecule_list:
+            t = id(molc)
+            try:
+                visl = self.vis_dict[t]
+                for vis in visl:
+                    #if vis.IsShowing():
+                    vis.Hide()
+            except KeyError:
+                pass
+
+
+    def Delete(self):
+        """ Method invoked with the 'Destroy All' button is clicked.
+        """
+
+        if not self.query("Are you really sure you want to trash all those images?"):
+            return
+        
+        self.update_mol_list()
+        # Loop across all molecules and delete all the images
+        for molc in self.molecule_list:
+            t = id(molc)
+            try:
+                # Each molecule could have a number of images
+                # so for each id cycle through the list of possible images
+                visl = self.vis_dict[t]
+                print "visl is ",visl
+                for vis in self.vis_list:
+                    print "deleting vis: ",vis
+                    vis._delete()
+                    self.vis_list.remove( vis )
+                # Remove the object from the vis dict?
+                del self.vis_dict[t]
+                        
+            except KeyError,e:
+                pass
+            
+        self.graph.update()
 
 if __name__ == "__main__":
     from Tkinter import *

@@ -191,6 +191,11 @@ class TkMolView(Pmw.MegaToplevel):
         self.master.bind_all('<F1>', lambda event : viewer.help.helpall(event))
         # Associate helpfile with widget
         viewer.help.sethelp(self.master,'Introduction')
+        
+        # We only want one instance of the allmoleculevisualiser 
+        self.allmolecule_visualiser = None
+        # We only want one scene visualiser
+        self.ani_image_widget = None
 
         self.__createBalloon()
         
@@ -200,7 +205,8 @@ class TkMolView(Pmw.MegaToplevel):
                                             (self._hull,),
                                             # hull_relief=RAISED,
                                             # hull_borderwidth=0,
-                                            balloon=self.__balloon)
+                                            #balloon=self.__balloon)
+                                            balloon=self.balloon)
 
         self.menuBar.pack(fill=X)
         self.menuBar.addmenu('Help', 'Documentation', side='right')
@@ -241,6 +247,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_distance_dialog()
         self.build_distance_dialog(include_xyz=1)
         self.build_command_window()
+        self.build_save_image_dialog()
 
         #Pass viewer object to the help.py module
         viewer.help.get_tkmolview(self)
@@ -312,8 +319,9 @@ class TkMolView(Pmw.MegaToplevel):
 
         # animation controls
         self.build_ani_toolbar()
+        
         # list of images from last animation frame
-        self.oldvisl = []
+        #self.oldvisl = []
 
         # Load user Defaults if present
         if sys.platform == 'mac':
@@ -395,7 +403,9 @@ class TkMolView(Pmw.MegaToplevel):
     def __createBalloon(self):
         # Create the balloon help manager for the frame.
         # Create the manager for the balloon help
-        self.__balloon = self.createcomponent('balloon', (), None,
+        #self.__balloon = self.createcomponent('balloon', (), None,
+        #                                      Pmw.Balloon, (self._hull,))
+        self.balloon = self.createcomponent('balloon', (), None,
                                               Pmw.Balloon, (self._hull,))
 
     def update(self):
@@ -427,10 +437,18 @@ class TkMolView(Pmw.MegaToplevel):
         b.pack(side='left')
         b=Button(bar, text='Hide', command=self.hide_ani_toolbar)
         b.pack(side='left')
+        b=Button(bar, text='Select', command=self.select_ani_images )
+        b.pack(side='left')
+        b=Button(bar, text='Save Images', command=self.save_ani_images )
+        b.pack(side='left')
 
     def pack_ani_toolbar(self):
-        self.ani_toolbar.pack(side='bottom')
-        self.ani_reset()
+        if ( len( self.vis_list ) < 1 ):
+            self.ani_toolbar.forget()
+            return
+        else:
+            self.ani_toolbar.pack(side='bottom')
+            self.ani_reset()
         
     def hide_ani_toolbar(self):
         self.ani_toolbar.forget()
@@ -546,14 +564,96 @@ class TkMolView(Pmw.MegaToplevel):
         mbutton['menu'] = menu
         return mbutton
 
+    def build_save_image_dialog(self):
+        """Build up the widgets that consitute the save image dialog box with the
+           slider to specify the quality of the jpeg.
+        """
+
+        self.image_filename = None
+        self.save_image_dialog = Pmw.Dialog( self.master,
+                                             buttons = ( 'Save', 'Close', 'Browse...' ),
+                                             title = 'Save window as image',
+                                             command = self.save_image3d )
+        format_frame = Tkinter.Frame( self.save_image_dialog.interior() )
+
+        self.image_format = Tkinter.StringVar( )
+        self.image_format.set("jpg")
+        jpegradio = Tkinter.Radiobutton( format_frame,
+                                        text = "jpg", variable = self.image_format, value = "jpg",
+                                              command = self.select_image_format )
+        pngradio = Tkinter.Radiobutton( format_frame,
+                                        text = "png", variable = self.image_format, value = "png",
+                                        command = self.select_image_format )
+
+        self.jpeg_res_frame = Tkinter.Frame( self.save_image_dialog.interior() )
+        
+        self.jpeg_res_widget = Tkinter.Scale( self.jpeg_res_frame ,
+                                           label = 'Jpeg quality',
+                                           orient = 'horizontal',
+                                           tickinterval = '10',
+                                           length = '400',
+                                           from_ = 0, to_ = 100 )
+        
+        format_frame.pack()
+        jpegradio.select()
+        jpegradio.pack( side = 'left' )
+        pngradio.pack( side = 'left' )
+        self.jpeg_res_frame.pack()
+        self.jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
+        self.jpeg_res_widget.pack()
+        self.save_image_dialog.withdraw()
+
+    def select_image_format( self ):
+        """ Select between jpeg and png image formats - if jpg
+            is selected display the widget to specify the quality
+        """
+        format = self.image_format.get()
+        if format == "jpg":
+            self.jpeg_res_frame.pack()
+        elif format == "png":
+            self.jpeg_res_frame.forget()
+        else:
+            print "no image string :%s" % format
+            
     def ask_save_image3d(self):
+        self.save_image_dialog.show()
+
+    def save_image3d( self, result ):
         """Save image from main window to a JPEG file"""
-        name = 'out.jpg'
-        ofile = tkFileDialog.asksaveasfilename(
-            initialfile = name,
-            filetypes=[("JPEG","*.jpg")])
-        if len(ofile):
-            self.save_image(ofile)
+
+        format = self.image_format.get()
+        
+        if ( result == 'Save' ):
+            if self.image_filename == None:
+                from viewer.paths import gui_path
+                name = 'out.'+format
+                self.image_filename = gui_path + os.sep + name
+
+            if format == "png":
+                self.save_image( self.image_filename, format = format )
+            elif format == "jpg":
+                quality = self.jpeg_res_widget.get()
+                self.save_image( self.image_filename, format = format, quality=quality )
+            else:
+                print "ERROR getting format in save_image3d"
+
+            self.image_filename = None
+            self.save_image_dialog.withdraw()
+            
+        elif ( result == 'Close' ):
+            self.save_image_dialog.withdraw()
+        elif( result == 'Browse...' ):
+            if format == "png":
+                self.image_filename = tkFileDialog.asksaveasfilename(
+                    initialfile = self.image_filename,
+                    filetypes=[("PNG","*.png")])
+                print "png self.image_filename ",self.image_filename
+            else:
+                self.image_filename = tkFileDialog.asksaveasfilename(
+                    initialfile = self.image_filename,
+                    filetypes=[("JPEG","*.jpg")])
+                print "jpeg self.image_filename ",self.image_filename
+            
 
     def ask_save_image2d(self):
         """Save image from main window to a JPEG file"""
@@ -1329,7 +1429,6 @@ class TkMolView(Pmw.MegaToplevel):
         for obj in self.data_list:
             # one submenu for each object
             cascade = Menu(menu,tearoff=0)
-
             t = id(obj)
             show=0
             built=0
@@ -1445,15 +1544,39 @@ class TkMolView(Pmw.MegaToplevel):
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                                   lambda r=s.master,g=s,func=s.vibration_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
-            #menu.add_separator()
+        menu.add_separator()
 
-        menu.add_command(label="Show All", underline=0, 
+        greyedfont = ("Helvetica", 9, "normal")
+        showfont = ("Helvetica", 9, "bold")
+        
+        # Create the Menu Item to Alter all molecules
+        # First instantiate the visualiser if it doesn't exist
+        if not self.allmolecule_visualiser:
+            # Need to import this here because the others are set up in vtkgraph.py but we are different
+            # because we are not tied to a single image and so have no vtk-specific code
+            from generic.visualiser import AllMoleculeVisualiser
+            self.allmolecule_visualiser = AllMoleculeVisualiser( self.master, self )
+            
+        # update_mol_list returns None if no molecules to display
+        if self.allmolecule_visualiser.update_mol_list(): 
+            menu.add_command(label="Adust All Molecules", underline=0, font=showfont,
+                             command = lambda s=self : s.adjust_allmolc(1) )
+        else:
+            menu.add_command(label="Adust All Molecules", underline=0, font=greyedfont,
+                             command = lambda s=self : s.adjust_allmolc(0) )
+        
+        if ( len( self.vis_list ) >= 1 ):
+            myfont = showfont
+        else:
+            myfont = greyedfont
+                
+        menu.add_command(label="Show All", underline=0, font=myfont,
                          command=lambda x=self : x.showall(1))
-        menu.add_command(label="Hide All", underline=0, 
+        menu.add_command(label="Hide All", underline=0, font=myfont,
                          command=lambda x=self : x.showall(0))
         menu.add_separator()
 
-        menu.add_command(label="Animation...", underline=0, 
+        menu.add_command(label="Animation...", underline=0, font=myfont,
                          command=lambda x=self : x.pack_ani_toolbar())
         menu.add_separator()
 
@@ -1495,6 +1618,19 @@ class TkMolView(Pmw.MegaToplevel):
             for obj in mols:
                 cascade.add_command(label=obj.name,
                                     command= lambda f=fnc,o=obj : f(o))
+
+    def adjust_allmolc(self, show):
+        """Display the widget to adjust all the molecule representations together
+           if we have any molecules to adjust
+        """
+
+        if ( show == 1 ):
+            self.allmolecule_visualiser.Open()
+        else:
+            if self.allmolecule_visualiser.dialog:
+                self.allmolecule_visualiser.dialog.withdraw()
+            else:
+                pass
 
     def showall(self,show):
         for o in self.vis_list:
@@ -1708,9 +1844,11 @@ class TkMolView(Pmw.MegaToplevel):
     def toggleBalloon(self):
         # from abstractapp
         if self.toggleBalloonVar.get():
-            self.__balloon.configure(state = 'both')
+            #self.__balloon.configure(state = 'both')
+            self.balloon.configure(state = 'both')
         else:
-            self.__balloon.configure(state = 'status')
+            #self.__balloon.configure(state = 'status')
+            self.balloon.configure(state = 'status')
 
     #
     # The following bit of code is very similar to that
@@ -3749,7 +3887,8 @@ class TkMolView(Pmw.MegaToplevel):
                       reload_func= lambda s=self,t=str(id(obj)) : s.load_from_graph(t),
                       update_func= lambda o,s=self,t=str(id(obj)) : s.update_model(t,o),
                       on_exit=lambda s=self,k=callback_key,o=obj : s.delete_callback(o,k),
-                      balloon=self.__balloon )
+#                      balloon=self.__balloon )
+                      balloon=self.balloon )
         if ed:
             try:
                 ed.Show()
@@ -4337,12 +4476,46 @@ class TkMolView(Pmw.MegaToplevel):
     # -------------  Animation Controls -------------------
     #
 
-    def ani_reset(self):
-        """ Clear out any information and go to the first frame
+    def select_ani_images(self):
+        """ Pop up the widget to select the images for an animation:
+            Create the scene widget if it doesn't already exists.
+            Regenerate the list of objects and refresh the widget if it does.
         """
+
+        if not self.ani_image_widget:
+            from objects import selector
+            self.ani_image_widget = selector.Selector( self.master, self )
+            self.ani_image_widget.show()
+        else:
+            self.ani_image_widget.refresh()
+            self.ani_image_widget.show()
+        
+    def save_ani_images(self):
+        """Save the selected (and ordered) scenes as an animated gif
+        """
+
+    def ani_reset(self):
+        """ Build up a fresh animation list
+
+            ani_list is a list of the images for the animation - stored
+            in the order they will be shown.
+        """
+
+        # The order of the items in the list is the order of the scenes
+        self.ani_list = [] 
         if len( self.data_list ):
+            for obj in self.data_list:
+                t = id(obj)
+                try:
+                    visl = self.vis_dict[t]
+                    for vis in visl:
+                        if vis.IsShowing():
+                            self.ani_list.append( vis )
+                except KeyError:
+                    # No representation so just pass
+                    pass
+
             self._ani_hide_all()
-            self.oldvisl=[]
             self.frame_no = 0
             if self._ani_show():
                 self.update()
@@ -4350,23 +4523,26 @@ class TkMolView(Pmw.MegaToplevel):
             print "No animation objects to display."
             pass
 
+
     def ani_rew(self):
-        """ Go to the first frame of the animation
+        """ Go to the first frame of the animation and display the image
         """
         self.frame_no = 0
-        self._ani_hide()
-        #self._ani_show()
+        self._ani_hide_all()
         if self._ani_show():
             self.update()
         
     def ani_end(self):
-        """ Go to the last frame of the animation.
-        """ 
-        self.frame_no = len(self.data_list) - 1
-        self._ani_hide()
-#        self._ani_show()
-        if self._ani_show():
-            self.update()
+        """ Go to the last frame of the animation and display the image.
+        """
+        lani = len(self.ani_list)
+        if lani <= 1:
+            print "ani_end: only one or no frames to display"
+        else:
+            self.frame_no = lani - 1
+            self._ani_hide_all()
+            if self._ani_show():
+                self.update()
 
     def ani_bak(self):
         """ Step back a single frame in the animation
@@ -4378,14 +4554,15 @@ class TkMolView(Pmw.MegaToplevel):
             tmp = self.frame_no 
         except:
             self.frame_no = 0
-
+            
         if self.frame_no > 0:
-            self.frame_no = self.frame_no-1
             self._ani_hide()
+            self.frame_no -= 1
             if self._ani_show():
                 self.update()
         else:
-            self.error( " Already at the start of animation.\nI can\'t go any further back!" )
+            #self.error( " Already at the start of animation.\nI can\'t go any further back!" )
+            print " Already at the start of animation.\nI can\'t go any further back!"
             return
         #self._ani_show()
 
@@ -4399,16 +4576,16 @@ class TkMolView(Pmw.MegaToplevel):
         except:
             self.frame_no = 0
             
-        if self.frame_no < (len(self.data_list)-1):
-            self.frame_no = self.frame_no+1
+        if self.frame_no < ( len(self.ani_list)-1 ):
             self._ani_hide()
-        #self._ani_show()
+            self.frame_no = self.frame_no+1
             if self._ani_show():
                 self.update()
+            #self.update()
         else:
-            self.error( " Already at the end of animation.\nI can\'t go any further forward!" )
+            #self.error( " Already at the end of animation.\nI can\'t go any further forward!" )
+            print " Already at the end of animation.\nI can\'t go any further forward!"
             return
-
     
     def ani_stop(self):
         """ Stop the animation
@@ -4416,54 +4593,82 @@ class TkMolView(Pmw.MegaToplevel):
         self.ani_stop = 1
 
     def ani_play(self):
-        # Play through the sequence of images
-        self.ani_stop = 0
-        self.frame_no = 0
+        """ Play through the sequence of images from self.frame_no to the end
+        """
+
         self._ani_hide_all()
-        self.oldvisl=[]        
-        #while 1:
-        for self.frame_no in range(len(self.data_list)):
+        
+        # Need to initialise frame_no if the animation toolbar was
+        # open when objects were read in
+        try:
+            tmp =  self.frame_no
+        except:
+            self.frame_no = 0
+
+        if (  self.frame_no == len( self.ani_list )-1  ):
+            #self.error( " At end of animation; nothing to play!" )
+            print " At end of animation; nothing to play!"
+            return
+        
+        self.ani_stop = 0
+        
+        while ( self.frame_no <= len(self.ani_list)-2 ):
             self.interior().update()
             if self.ani_stop:
                 return
-            self._ani_hide()
-            if self._ani_show():
-                self.update()
-                time.sleep(0.2)
+            if tmp != self.frame_no: # dont' show the first frame again as is already showing
+                self._ani_hide()
+                self.frame_no += 1
+                if self._ani_show():
+                    self.update()
+                    time.sleep(0.2)
+            else:
+                self.frame_no += 1
+
 
     def _ani_hide(self):
-        for oldvis in self.oldvisl:
-            oldvis._hide()
+        """ Hide the current image as defined in self.frame_no
+        """
+        try:
+            vis = self.ani_list[self.frame_no]
+            vis._hide()
+            # Hack so the view menu display what is showing/hidden
+            vis.is_showing = 0
+            #vis.Hide()
+            #self.update()
+        except IndexError:
+            print "ani_hide: nothing to hide"
+            pass
 
     def _ani_hide_all(self):
-        for r in self.data_list:
-            t = id(r)
+        """ Hide all the images in the animation list
+        """
+        for vis in self.ani_list:
             try:
-                visl = self.vis_dict[t]
-                for vis in visl:
-                    vis._hide()
-            except KeyError:
+                vis._hide()
+                # Hack so the view menu display what is showing/hidden
+                vis.is_showing = 0
+            except IndexError:
                 pass
-        self.update()        
+            #self.update()
 
     def _ani_show(self):
-        self.oldvisl=[]
-        #print 'show frame #',self.frame_no
-        r = self.data_list[self.frame_no]
-
-        t = id(r)
+        """ Show the image as specified by the current frame number.
+            Return 1 if we have an image to show, None if not
+        """
         try:
-            visl = self.vis_dict[t]
-            self.oldvisl = []
-            for vis in visl:
-#                print '   ',vis.GetTitle()
-                vis._show()
-                self.oldvisl.append(vis)
+            vis = self.ani_list[ self.frame_no ]
+            vis._show()
+            # Hack so the view menu display what is showing/hidden
+            vis.is_showing = 1
+            #vis.Show()
+            #self.update()
+            #print '_ani_show frame #',self.frame_no
             return 1
-        except KeyError:
-            return 0
-
-
+        except IndexError:
+            print "ani_show: nothing to show"
+            return None
+            
                     
     #------------- messages -----------------------------
 

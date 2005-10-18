@@ -168,15 +168,35 @@ class VtkGraph(TkMolView,Graph):
         self.pane.Render()
         self.pane2d.Render()
 
-    def save_image(self,file):
+    def save_image(self, file, format=None, quality=None  ):
+        """
+           Save an image from the renderwindow to file.
+           Specify format as png to write as png else it defaults
+           to jpeg with the optional quality argument specifying
+           the quality ( default is 95 ).
+        """
         self.master.update()
         w2i = vtkWindowToImageFilter()
         w2i.SetInput(self.pane.GetRenderWindow())
-        j = vtkJPEGWriter()
-        j.SetInput(w2i.GetOutput())
-        print 'save to file',file
-        j.SetFileName(file)
-        j.Write()
+
+        if format == "png":
+            writer = vtkPNGWriter()
+            print "Saving png to file... %s" % file
+        else:
+            writer = vtkJPEGWriter()
+            print "Saving jpeg to file... %s" % file
+            if ( quality ):
+                try:
+                    quality = int( quality )
+                except:
+                    print "Error! Quality is not a number"
+                    return 1
+                writer.SetQuality( quality )
+                print 'Resolution of jpeg is %d' % quality
+            
+        writer.SetInput(w2i.GetOutput())
+        writer.SetFileName(file)
+        writer.Write()
 
     def save_image2d(self,file):
         self.master.update()
