@@ -4509,8 +4509,8 @@ class TkMolView(Pmw.MegaToplevel):
                 try:
                     visl = self.vis_dict[t]
                     for vis in visl:
-                        if vis.IsShowing():
-                            self.ani_list.append( vis )
+                        #if vis.IsShowing():
+                        self.ani_list.append( vis )
                 except KeyError:
                     # No representation so just pass
                     pass
@@ -4596,8 +4596,6 @@ class TkMolView(Pmw.MegaToplevel):
         """ Play through the sequence of images from self.frame_no to the end
         """
 
-        self._ani_hide_all()
-        
         # Need to initialise frame_no if the animation toolbar was
         # open when objects were read in
         try:
@@ -4611,20 +4609,16 @@ class TkMolView(Pmw.MegaToplevel):
             return
         
         self.ani_stop = 0
-        
+
         while ( self.frame_no <= len(self.ani_list)-2 ):
             self.interior().update()
             if self.ani_stop:
                 return
-            if tmp != self.frame_no: # dont' show the first frame again as is already showing
-                self._ani_hide()
-                self.frame_no += 1
-                if self._ani_show():
-                    self.update()
-                    time.sleep(0.2)
-            else:
-                self.frame_no += 1
-
+            self._ani_hide()
+            self.frame_no += 1
+            if self._ani_show():
+                self.update()
+                time.sleep(0.2)
 
     def _ani_hide(self):
         """ Hide the current image as defined in self.frame_no
