@@ -4603,10 +4603,9 @@ class TkMolView(Pmw.MegaToplevel):
         except:
             self.frame_no = 0
 
+        # Go back to the start if we're at the end
         if (  self.frame_no == len( self.ani_list )-1  ):
-            #self.error( " At end of animation; nothing to play!" )
-            print " At end of animation; nothing to play!"
-            return
+            self.frame_no = 0
         
         self.ani_stop = 0
 
