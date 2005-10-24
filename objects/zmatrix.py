@@ -3165,16 +3165,23 @@ class Zmatrix(Indexed):
         fp.write(")\n")
 
 
-    def wrtcrd(self,file,chain='CHAI',residues=None):
+    def wrtcrd(self,file,chain='CHAI',residues=None,write_dummies=1,unique_label=1):
         """Write a CHARMM CRD file"""
-        from tkmolview.periodic import z_to_el
+        from periodic import z_to_el
         mol = self
         object_ids = []
         fp = open(file,"w")
-        ix=1
-        fp.write("* coords from gui\n")
-        fp.write("%d\n" % len(self.atom))
+        fp.write("* coords from ccp1gui\n")
+        fp.write("* \n")
+
+        if write_dummies:
+            n = len(self.atom)
+        else:
+            n = self.get_nondum()
+
+        fp.write("%d\n" % n)
         # Output atom objects 
+        ix=1
         i=0
 #  (2I5,2(1X,A4),3A10,1X,A4,1X,A4,A10)
 #    1    1 WAT1 OH2    0.00000   0.00000   0.00000 WATR 1      0.00000
@@ -3187,24 +3194,26 @@ class Zmatrix(Indexed):
         nresids = 0
         resids = {}
         for a in mol.atom:
-            i = a.get_index()+1
-            if residues:
-                r = residues[i]
-                try:
-                    rid = resids[r]
-                except KeyError:
-                    nresids=nresids+1
-                    resids[r]=nresids
-                    rid = nresids
-                
-            else:
-                r = 'RESI'
-                rid = 1
-            fp.write("%5d%5d %-4s %-4s%10.5f%10.5f%10.5f %4s %-4s%10.5f\n" %(
-                ix,rid,r,a.name,a.coord[0],a.coord[1],a.coord[2],
-                     chain,'1',0.0))
-            ix = ix + 1
-
+            if write_dummies or (a.seqno2 > -1):            
+               i = a.get_index()+1
+               if residues:
+                   r = residues[i]
+                   try:
+                       rid = resids[r]
+                   except KeyError:
+                       nresids=nresids+1
+                       resids[r]=nresids
+                       rid = nresids
+               else:
+                   r = 'RESI'
+                   rid = 1
+               name = string.upper(a.name)
+               if unique_label:
+                   name=name+str(ix)
+               fp.write("%5d%5d %-4s %-4s%10.5f%10.5f%10.5f %4s %-4s%10.5f\n" %(
+                   ix,rid,r,name,a.coord[0],a.coord[1],a.coord[2],
+                        chain,'1',0.0))
+               ix = ix + 1
         fp.close()
         
     def wrtcml(self,file,title="untitled"):
