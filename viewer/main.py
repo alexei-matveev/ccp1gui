@@ -3292,14 +3292,14 @@ class TkMolView(Pmw.MegaToplevel):
                 a.symbol = charmm_map[txt_type]
                 #a.name = a.symbol + string.zfill(i+1,2)
             except KeyError:
+                # strip off any numbers and punctuation
                 a.symbol = string.translate(txt_type,trans,string.digits)
                 a.symbol = string.translate(a.symbol,trans,string.punctuation)
-                a.symbol = string.lower(a.symbol)[:2]
-                a.symbol = string.upper(a.symbol)[:1]
+                a.symbol = string.upper(a.symbol)[:1] + string.lower(a.symbol)[1:2]
                 try:
                     testz = sym2no[a.symbol]
                 except KeyError:
-                    print 'unknown type',txt_type
+                    print 'unrecognised atom type',txt_type
                     a.symbol = 'X'
 
             #a.symbol = string.translate(words[0],trans,string.digits)
