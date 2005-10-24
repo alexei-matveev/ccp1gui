@@ -226,9 +226,14 @@ class Zmatrix(Indexed):
         self.cell = []
         # for selection manager
         self.selix=0
+
+        # for editor
+        self.errors = []
+
         if title:
             self.title = title
         else:
+
             self.title = "Untitled molecule"
 
         if mol:
@@ -1191,6 +1196,9 @@ class Zmatrix(Indexed):
 
     def calculate_coordinates(self):
         """Compute cartesian coordinates for all atoms"""
+
+        self.errors = []
+
         xvec = [1.0, 0.0, 0.0]
         zvec = [0.0, 0.0, 1.0]
         orig = [0.0, 0.0, 0.0]
@@ -1368,11 +1376,16 @@ class Zmatrix(Indexed):
                     a.ok = 0
 
         if self.debug:
-            print 'calculate_coordinates done:'
+            print 'calculate_coordinates done, errors:'
+            print self.errors
+
         if self.debug > 2:
             self.list()
             for a in self.atom:
                 print a.ok
+
+
+
 
     def __ziccd(self,a,b,c,r,theta,phi):
         """compute coordinates of atom x from a,b,c
@@ -3107,6 +3120,7 @@ class Zmatrix(Indexed):
     def logerr(self,txt):
         """log txt as an error message"""
         print txt
+        self.errors.append(txt)
 
     def warn(self,txt):
         """log txt as an error message"""
