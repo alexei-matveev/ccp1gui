@@ -163,7 +163,9 @@ class ZME(Pmw.MegaToplevel):
         self.v_key = v_key
         self.natoms=0
         self.atom_sel = []
+        self.var_sel = []
         self.end_selected = 0
+        self.end_var_selected = 0
 
         self.last_var = -1
       
@@ -812,6 +814,15 @@ class ZME(Pmw.MegaToplevel):
         self.sel.delete(atom,atom)
         self.sel.insert(atom, txt)
 
+    def _copy_atom_to_sel2(self,junk):
+        """Save edits when return is hit in a widget
+        """
+        if self.debug:
+            print '_copy_atom_to_sel2'
+        if self._save_edits():
+            print 'running update'
+            self._update()
+
     def _update_atom_editor(self):
         """ When a single atom record is selected, update the editing
         widgets with the relevant fields
@@ -990,7 +1001,6 @@ class ZME(Pmw.MegaToplevel):
             self.c_line.pack(side='left',expand=0,fill='none')
 
     def _save_edits(self):
-
         """ Copy data from the editing widgets to the molecule object
         Does not include any calculation yet
         All selected atoms are modified but blank widgets are
@@ -1053,6 +1063,7 @@ class ZME(Pmw.MegaToplevel):
                                 try:
                                     i1 = int(txt)
                                 except ValueError, e:
+                                    print 'raising non int'
                                     raise BadInput, "non integer for i1"
                                 if i == 0:
                                     a.i1 = None
@@ -1285,8 +1296,7 @@ class ZME(Pmw.MegaToplevel):
 
         except BadInput, e:
             self.logerr("input invalid: " + str(e.args))
-            ##### try without this
-            ####self.active_atom = None
+            return 0
 
         if update_editor or change:
             # in the change case this stores the revised "old" values
@@ -1296,14 +1306,6 @@ class ZME(Pmw.MegaToplevel):
             print 'ZME._save_edits done, change=',change
         self._update_atom_selection()
         return change
-
-    def _copy_atom_to_sel2(self,junk):
-        """Save edits when return is hit in the atom editor widget
-        """
-        if self.debug:
-            print '_copy_atom_to_sel2'
-        if self._save_edits():
-            self._update()
 
     def _click_atom(self):
         """ The user has clicked on an item in the listbox
@@ -1348,21 +1350,34 @@ class ZME(Pmw.MegaToplevel):
                 selats.append(self.model.atom[i])
             self.export_selection_func(self.model, selats)
 
+
+    def _store_var_selection(self):
+        """Save the indices of the selected variables"""
+        self.var_sel = []
+        for s in self.varsel.curselection():
+            if int(s) < len(self.model.variables):
+                self.var_sel.append(int(s))
+            else:
+                self.end_var_selected = 1
+
     def _create_var1(self):
         self._store_atom_selection()
         if len(self.atom_sel):
             self.create_var1(self.atom_sel)
             self._update(selection=self.atom_sel)
+
     def _create_var2(self):
         self._store_atom_selection()
         if len(self.atom_sel):
             self.create_var2(self.atom_sel)
             self._update(selection=self.atom_sel)
+
     def _create_var3(self):
         self._store_atom_selection()
         if len(self.atom_sel):
             self.create_var3(self.atom_sel)
             self._update(selection=self.atom_sel)
+
     def _create_var123(self):
         self._store_atom_selection()
         if len(self.atom_sel):
@@ -1494,6 +1509,12 @@ class ZME(Pmw.MegaToplevel):
         if calc:
             self.model.reindex()
             self.model.calculate_coordinates()
+            # log any errors
+            txt = ""
+            for er in self.model.errors:
+                txt = txt + er + '\n'
+            self.logerr(txt)
+        
         self._load_atom_sel()
         self._load_var_sel()
         self._update_atom_editor()
@@ -1675,6 +1696,7 @@ class ZME(Pmw.MegaToplevel):
 
     def invert_order(self):
 
+        # save anything pending in the widgets #!! paul should just be a check and warn
         self._save_edits()
 
         #self._store_atom_selection()
@@ -1735,53 +1757,16 @@ class ZME(Pmw.MegaToplevel):
         (at the moment)
         """
 
-        # anything pending in widgets
+        # anything pending in widgets #!! paul should just be a check and warn
         self._save_edits()
         self.model.calculate_coordinates()
 
         try:
-            self.model.autoz(testang=40)
+            self.model.autoz(testang=89)
             self._update_atom_editor()
             self._update()
         except ConversionError, e:
             self.logerr(e.args)
-
-
-    def import_cartesians(self,model):
-        """ Load in a new set of cartesian coordinates, assuming
-            that the atom ordering is preserved
-        """
-
-        for i in range(len(model.atom)):
-            old = self.model.atom[i]
-            new = model.atom[i]
-            old.coord = new.coord
-
-        for i in range(len(model.atom)):
-            a = self.model.atom[i]
-            if old.zorc == 'z':
-                if i > 0:
-                    a.r = distance(a.coord,a.i1.coord)
-                    if a.r_var:
-                        a.r_var.value = a.r*a.r_sign
-                if i > 1:
-                    old.theta = self.model.get_angle(a,a.i1,a.i2)
-                    if a.theta_var:
-                        a.theta_var.value = a.theta*a.theta_sign
-
-                if i > 2:
-                    old.phi = self.model.get_dihedral(old,old.i1,old.i2,old.i3)
-                    if a.phi_var:
-                        a.phi_var.value = a.phi*a.phi_sign
-            else:
-                if a.x_var:
-                    a.x_var.value = a.coord[0]*a.x_sign
-                if a.y_var:
-                    a.y_var.value = a.coord[1]*a.y_sign
-                if a.z_var:
-                    a.z_var.value = a.coord[2]*a.z_sign
-
-        self._update()
 
     def _update_var_editor(self):
         """ When a variable record is selected, update the editing widgets with 
@@ -1789,11 +1774,7 @@ class ZME(Pmw.MegaToplevel):
         It should only be called for a single atom selection
         The line to be edited is assumed to have been stored in last_var
         """
-        targets = []
-        for s in self.varsel.curselection():
-            i = int(s)
-            if i < len(self.model.variables):
-                targets.append(i)
+        targets = self.var_sel
 
         if len(targets) == 1:
             a = self.model.variables[targets[0]]
@@ -1830,66 +1811,21 @@ class ZME(Pmw.MegaToplevel):
 
     def _click_var(self):
         """ The user has clicked on an item in the variable listbox"""
-
-        cursel = self.varsel.curselection()
-        nsel = len(cursel)
-        sels = self.varsel.getcurselection()
-
-        if sels[0] == "[End]":
-            var = -1
-        elif nsel !=  1:
-            var = -1
-        else:
-            var = int(cursel[0])
-
-        if self.debug:
-            print '_click_var: selection',nsel, cursel,'last_var is',self.last_var
-
-        if var == self.last_var:
-            print '_click var reclick'
-            return
-
-        if self.last_var != -1 and var != self.last_var:
-            # Deal with any existing edits if we have changed the active line
-            if self._save_var_edits():
-                self._update()
-
-
-        self.last_var = var
-        # Update the editing widgets
-        #
+        self._store_var_selection()
         self._update_var_editor()
         # self.varsel.see(var)
 
     def _save_var_edits(self,targets=None):
 
         """ Copy data from the variable editing widgets to the
-        molecule object Does not include any calculation yet. All
+        molecule object. Does not include any calculation yet. All
         selected atoms are modified but blank widgets are ignored
         (this should be the case for multiple selections) """
-
-        # if not provided, use the last_variable
-        # this should be missing for multiple variable edits
-        if not targets:
-            if self.last_var != -1:
-                targets = [ self.last_var ]
-                if self.debug:
-                    print '_save_var_edits using last_var = ',self.last_var
-
-        # try and use the selection
-        if not targets:
-            targets = []
-            for s in self.varsel.curselection():
-                i = int(s)
-                if i < len(self.model.variables):
-                    targets.append(i)
-            if self.debug:
-                print 'ZME._save_var_edits: using selection :', targets
 
         change = 0
         try:
             update_editor = 0
-            for i in targets:
+            for i in self.var_sel:
                 txt =  self.v_line.name.get()
                 if txt != self.old_name:
                     change = 1
@@ -2003,6 +1939,7 @@ class ZME(Pmw.MegaToplevel):
             i=-1
         self.varsel.insert(i+1, '[End]')
 
+        # !! paul should replace this will code based on var_sel setting
         if self.last_var != -1:
             self.varsel.select_set(self.last_var)
             self.varsel.see(i)
@@ -2012,28 +1949,6 @@ class ZME(Pmw.MegaToplevel):
         # Save edits
         if self._save_var_edits():
             self._update()
-
-    def _copy_atom_to_sel2(self,junk):
-        """Save edits when return is hit in a widget
-        If there is no selection, it is assumed to be a single
-        atom edit
-        """
-        if self._save_edits():
-            self._update()
-
-    def _copy_var_to_sel(self):
-        """Output the current line to the selection widget
-            Note that this deletes the selection
-        """
-        if self.last_var == -1:
-            print '_copy_var_to_sel called incorrectly!!!'
-            return
-
-        txt = self._output_var_full(self.model.variables[self.last_var])
-        if self.debug:
-            print'_copy_var_to_sel line',self.last_var, txt
-        self.varsel.delete(self.last_var,self.last_var)
-        self.varsel.insert(self.last_var, txt)
 
     # currently we are not using menus yet ... but we will need this some day
     def _rvarmenu(self,event):
@@ -2069,11 +1984,13 @@ class ZME(Pmw.MegaToplevel):
         self._load_var_sel()
 
     def logerr(self,msg):
-        """ Write the message into the error box"""
-        print msg
+        """ Write the messages into the error box
+        """
         self.errbox.delete('1.0','end')
-        self.errbox.insert(AtEnd(),msg+'\n')
-        self.errbox.see(AtEnd())
+        self.errbox.insert(AtEnd(),msg+'\n')            
+        self.errbox.see('1.0')
+        ###AtEnd())
+
     #
     #
     #  Generic stuff .......
@@ -2408,11 +2325,11 @@ def getgeometry(something):
     return map(int, re.split(s, "[x+]"))
  
 if __name__ == '__main__':
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C0'
-    model.insert_atom(0,atom)
+    model = Zmatrix(file="../examples/feco5.zmt")
+    #atom = ZAtom()
+    #atom.symbol = 'C'
+    #atom.name = 'C0'
+    #model.insert_atom(0,atom)
     root = Tk()
     #root.withdraw()
     t = ZME(root,model=model,list_final_coords=1)
