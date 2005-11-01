@@ -439,16 +439,14 @@ class TkMolView(Pmw.MegaToplevel):
         b.pack(side='left')
         b=Button(bar, text='Select', command=self.select_ani_images )
         b.pack(side='left')
-        b=Button(bar, text='Save Images', command=self.save_ani_images )
-        b.pack(side='left')
+        #b=Button(bar, text='Save Images', command=self.save_ani_images )
+        #b.pack(side='left')
 
     def pack_ani_toolbar(self):
-        if ( len( self.vis_list ) < 1 ):
-            self.ani_toolbar.forget()
-            return
-        else:
-            self.ani_toolbar.pack(side='bottom')
-            self.ani_reset()
+        """ Pack the toolbar and reset it
+        """
+        self.ani_toolbar.pack(side='bottom')
+        self.ani_reset()
         
     def hide_ani_toolbar(self):
         self.ani_toolbar.forget()
@@ -4487,21 +4485,34 @@ class TkMolView(Pmw.MegaToplevel):
             self.ani_image_widget = selector.Selector( self.master, self )
             self.ani_image_widget.show()
         else:
+            print "self.ani_image_widget is ",str(self.ani_image_widget)
             self.ani_image_widget.refresh()
             self.ani_image_widget.show()
         
     def save_ani_images(self):
         """Save the selected (and ordered) scenes as an animated gif
         """
+        pass
 
     def ani_reset(self):
         """ Build up a fresh animation list
-
             ani_list is a list of the images for the animation - stored
             in the order they will be shown.
         """
+        # Build up a fresh animation list
+        self.new_ani_list()
 
-        # The order of the items in the list is the order of the scenes
+        # Redraw the selector
+        if self.ani_image_widget:
+            self.ani_image_widget.refresh()
+
+        # Redraw the main window
+        self.ani_refresh()
+
+    def new_ani_list(self):
+        """Generate a fresh ani_list from the objects in the data_list
+           that have representations.
+        """
         self.ani_list = [] 
         if len( self.data_list ):
             for obj in self.data_list:
@@ -4514,16 +4525,26 @@ class TkMolView(Pmw.MegaToplevel):
                 except KeyError:
                     # No representation so just pass
                     pass
+            
 
-            self._ani_hide_all()
-            self.frame_no = 0
-            if self._ani_show():
-                self.update()
-        else:
-            print "No animation objects to display."
-            pass
+    def ani_refresh(self):
+        """ Reset the main window so that is clears out all images showing
+            and displays the first one in the ani_list
+        """
+        for obj in self.data_list:
+            t = id(obj)
+            try:
+                visl = self.vis_dict[t]
+                for vis in visl:
+                    vis.Hide()
+            except KeyError:
+                pass
 
-
+        #self._ani_hide_all()
+        self.frame_no = 0
+        if self._ani_show():
+            self.update()
+            
     def ani_rew(self):
         """ Go to the first frame of the animation and display the image
         """
@@ -4605,6 +4626,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         # Go back to the start if we're at the end
         if (  self.frame_no == len( self.ani_list )-1  ):
+            self._ani_hide()
             self.frame_no = 0
         
         self.ani_stop = 0
