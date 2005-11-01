@@ -30,6 +30,12 @@ class Selector( Pmw.MegaToplevel ):
        of the tag that the mouse was originally clicked in, not the tagname of the tag
        that it was released in. For this reason I have had to implement a dictionary to
        track the line numbers of each tag and then look up the tag from the dictionary.
+
+
+       NEW: Tracking the clicks using the tags seems daft now - it would now make more sense
+       just to bind the clicks and then work out the tags from the line number as also covers
+       the case where the widget has been resized and the length of the line extends beyond
+       the end of the tag.
     """
     
                          
@@ -46,7 +52,11 @@ class Selector( Pmw.MegaToplevel ):
         else:
             self.balloon = Balloon()
 
-        self.show_list = [] # List of the objects making up the animation in scene order
+        # self.show_list = [] # List of the objects making up the animation in scene order
+        # self.show_list = self.graph.ani_list
+        # The above just creates a copy whereas we need the actual object, so it looks like we need
+        # to refer to it directly
+
         self.noshow_list = [] # List of the objects excluded from the animation
         self.show_selected = [] # List of tuples ordered by the order of the tags in the animation
                                 # The tuples are ( tag , selected ) where selected indicates
@@ -79,6 +89,9 @@ class Selector( Pmw.MegaToplevel ):
         mytitle="Image Selector Widget"
         Pmw.MegaToplevel.__init__( self, self.root, title=mytitle )
         
+        # Stop the Widget being destroyed when the user deletes the widget from the window manager
+        self.userdeletefunc( func = self.hideme )
+        
         self.build()
         self.refresh()
 
@@ -101,6 +114,7 @@ class Selector( Pmw.MegaToplevel ):
         
         # need to bind these tags here for reason mentioned in class description
         self.scene_text.bind( "<ButtonRelease-1>", self.buttonrelease1 )
+        self.scene_text.bind("<ButtonPress-1>", self.buttonpress1 )
         self.scene_text.bind( "<B1-Motion>", self.b1_motion )
         self.scene_text.bind( "<Double-Button-1>", self.double_button1 )
         #self.scene_text.bind( "<Shift_L>", self.shift_pressed )
@@ -132,23 +146,20 @@ class Selector( Pmw.MegaToplevel ):
                                               text='Clear and Refresh',
                                               command=self.__refreshclicked )
         self.balloon.bind( self.refresh_button, 'Generate a fresh list of available images' )
-        self.quit_nosave_button = Tkinter.Button( self.bottom_frame,
-                                                  text='Quit without Save',
-                                                  command = lambda s=self: s.quit( save=None ) )
-        self.balloon.bind( self.quit_nosave_button, 'Quit: Do not use this list of animations' )
-        self.quit_save_button = Tkinter.Button( self.bottom_frame,
-                                              text='Save and Quit',
-                                              command=lambda s=self :s.quit( save = 1 ) )
-        self.balloon.bind( self.quit_save_button, 'Quit: Use selected list of animations' )
+        self.close_button = Tkinter.Button( self.bottom_frame,
+                                           text='Close',
+                                           command = lambda s=self: s.hideme() )
+        self.balloon.bind( self.close_button, 'Close the selector widget.' )
         self.refresh_button.pack( side='left' )
-        self.quit_nosave_button.pack( side='left' )
-        self.quit_save_button.pack( side='left' )
+        self.close_button.pack( side='left' )
+        #self.quit_save_button.pack( side='left' )
         
 
     def __addclicked(self):
         """ The add button was clicked so add the items at the end of the show_list
         """
-        endindex = len( self.show_list ) + 1
+        #endindex = len( self.show_list ) + 1
+        endindex = len( self.graph.ani_list ) + 1
         self.add_to_animation( endindex  )
 
     def __removeclicked(self):
@@ -165,8 +176,13 @@ class Selector( Pmw.MegaToplevel ):
             print "DEBUG: self.show_selected: ", self.show_selected
             print "DEBUG: self.noshow_selected: ", self.noshow_selected
 
+        # Do nowt if theres nowt to show
+        if not self.is_selected():
+            return
+
         # Hide all the images
-        for vis in self.show_list:
+        #for vis in self.show_list:
+        for vis in self.graph.ani_list:
             vis.Hide()
         for vis in self.noshow_list:
             vis.Hide()
@@ -174,7 +190,8 @@ class Selector( Pmw.MegaToplevel ):
         # Show all the show images that have been selected
         for tag, selected in self.show_selected:
             if selected :
-                for vis in self.show_list:
+                #for vis in self.show_list:
+                for vis in self.graph.ani_list:
                     if str( id(vis) ) == tag:
                         vis.Show()
         
@@ -191,82 +208,44 @@ class Selector( Pmw.MegaToplevel ):
         """
         self.refresh()
         
-    def quit( self, save = None ):
-        """ Quit was clicked so hide the scence widget and pass back the show_list
-            if the user clicked save
+    def hideme( self ):
+        """ Close was clicked so hide the scene widget
         """
-        if save :
-            print "Quitting Scene Widget and saving"
-            # Hide all the images
-            for vis in self.show_list:
-                vis.Hide()
-            for vis in self.noshow_list:
-                vis.Hide()
-            self.graph.ani_list = self.show_list
-            # Reset the frame number for playing images
-            self.graph.frame_no = 0
-            self.graph._ani_show()
-            
-        #print "Leaving scene with self.ani_list = ",self.graph.ani_list
         self.withdraw()
         
     def refresh(self):
-        """ Regenerate new show and noshow lists from graph.data_list (see main.py)
-            Destroy all the tags that were applied to the text as these are regenerated
-            by the draw method.
+        """ Reset things:
+            Get names for all the images from the ani_list
         """
 
         # Clear the vis lists
-        #self.vis_list = []
-        self.show_list = []
         self.noshow_list = []
         self.vis_to_name = {}
-
-        # Clear the slected list
-        # self.show_selected = []
-        # self.noshow_selected = []
-        # ABOVE IS ACTUALLY DONE IN redraw
-        
-        # Delete all tags
-        for tag in self.scene_text.tag_names():
-            self.scene_text.tag_delete( tag )
+        # Tags and selections are cleared in redraw
         
         if __name__ == '__main__':
+            # Just for debugging
             for vis in self.objlist:
                 if vis.IsShowing():
-                    self.show_list.append( vis )
+                    #self.show_list.append( vis )
+                    self.graph.ani_list.append( vis )
                 else:
                     self.noshow_list.append( vis )
                 name = vis.name
                 self.vis_to_name[ vis ] = name
                 
         else:
-            #Grab the objects to be visualised from the data_list
-            for obj in self.graph.data_list:
-                t = id(obj)
+            self.graph.new_ani_list()
+            for vis in self.graph.ani_list:
                 try:
-                    visl = self.graph.vis_dict[t]
-                    for vis in visl:
-                        # Work out a name
-                        try:
-                            name = vis.title
-                        except:
-                            if obj.name is not None:
-                                name = obj.name
-                            else:
-                                name = obj.title
-                        self.vis_to_name[ vis ] = name
-
-                        #if vis.IsShowing():
-                        #    self.show_list.append( vis )
-                        #else:
-                        #    self.noshow_list.append( vis )
-                        self.show_list.append( vis )
-                        
-                except KeyError:
-                    pass
+                    name = vis.title
+                except:
+                    # Don't think this ever happens
+                    name = "I_wanna_name"
+                self.vis_to_name[ vis ] = name
+                
         self.redraw()
-            
+
 
     def redraw(self):
         """ Clear and then redraw the text widget to display the images we are showing based on
@@ -309,7 +288,8 @@ class Selector( Pmw.MegaToplevel ):
                 
         # Fill the text widget with the list of images we are showing
         count = 0
-        for vis in self.show_list:
+        #for vis in self.show_list:
+        for vis in self.graph.ani_list:
             name = self.vis_to_name[ vis ]
             t = id(vis)
             #name = str(t )
@@ -344,8 +324,8 @@ class Selector( Pmw.MegaToplevel ):
             self.show_selected.append( [ tag, None ] )
             
             # Bind the tags to events:
-            self.scene_text.tag_bind( tag, "<ButtonPress-1>",
-                                       lambda event, tn=tag : self.tag_buttonpress1( event, tn )  ) 
+            #self.scene_text.tag_bind( tag, "<ButtonPress-1>",
+            #                           lambda event, tn=tag : self.tag_buttonpress1( event, tn )  ) 
            
             # Move to the next line
             self.scene_text.insert('insert','\n' )
@@ -390,27 +370,43 @@ class Selector( Pmw.MegaToplevel ):
             self.noshow_selected.append( [ tag, None ] )
 
             # Bind the tags to events:
-            self.scene_text.tag_bind( tag, "<ButtonPress-1>",
-                                       lambda event, tn=tag : self.tag_buttonpress1( event, tn )  )
+            #self.scene_text.tag_bind( tag, "<ButtonPress-1>",
+            #                           lambda event, tn=tag : self.tag_buttonpress1( event, tn )  )
             
             # Move to the next line
             self.scene_text.insert('insert','\n' )
 
-        #self.scene_text.configure( state = "disabled" )
+        self.scene_text.configure( state = "disabled" )
+        # Reset the graph
+        self.graph.ani_refresh()
         
-    def tag_buttonpress1(self, event, tag):
-        """ A tag has been clicked on - set the initialtag flag so that
-            on release we can check whether the release event came from
-            the same or a different tag.
+    def buttonpress1( self, event ):
+        """ Mouse button 1 has been pressed, we check the line number to
+            work out whether this happened on a tag or elsewhere
         """
+
+        # Get the line number the mouse is on 
+        current = event.widget.index("current")
+        try:
+            linenum = int( string.split( current, "." )[0] )
+        except:
+            print "ERROR getting linenumber in buttonpress1!"
+            linenum = -1 # should cause an exception below
+
+        # Work out the tag
+        try:
+            tag = self.line_to_tag[ linenum ]
+            self.initialtag = tag
+        except:
+            tag = None
+            self.initialtag = None
+            pass
+        
         if (self.debug):
             print "DEBUG: tag_button1press: tag %s was clicked on" % tag
 
-        self.initialtag = tag
-
         return 'break'
             
-
     def key_pressed( self, event ):
         """  A key was pressed - check if it was the shift key and set shifton if so
         """
@@ -463,10 +459,15 @@ class Selector( Pmw.MegaToplevel ):
 
         # Get the line number the mouse is on 
         current = event.widget.index("current")
-        linenum = int( string.split( current, "." )[0] )
+        try:
+            linenum = int( string.split( current, "." )[0] )
+        except:
+            linenum = -1
 
         if self.debug:
             print "DEBUG: in buttonrelease1"
+            print "DEBUG: current = ",current
+            print "DEBUG: self.initialtag is ",self.initialtag
         
         # Find out in which tag the release happend in (from line number )
         try:
@@ -492,9 +493,14 @@ class Selector( Pmw.MegaToplevel ):
                     self.dragged_to_noshow_tag()
         except KeyError, e:
             # The line number doesn't correspond to any tag in the dictionary
-            # so we assume he user clicked in an empty field
-            #print "User clicked on an unknown tag"
+            
+            # HACK: we assume the user clicked on the bottom of the widget in the noshow field
+            self.dragged_to_noshow_tag()
+            #print "ReleaseButton-1: User clicked on an unknown tag"
             pass
+
+        # Reset the initialtag
+        self.initialtag = None
 
         return 'break'
 
@@ -521,7 +527,6 @@ class Selector( Pmw.MegaToplevel ):
         """
         if self.debug:
             print "DEBUG: double_button1: de-selecting all tags"
-            
 
         for tag, select in self.show_selected:
             if self.is_selected( tagquery = tag):
@@ -558,8 +563,8 @@ class Selector( Pmw.MegaToplevel ):
         if not got:
             self.select_tag( selected_tag )
 
-        # We now know that at least one tag was selected so find out what type
-        # and get the index of that tag in the selected list
+        # We now know that at least one tag of this type was selected so
+        # get the index of that tag in the selected list
         selected_index = self.get_index( selected_tag, selected_type )
 
         # Get the highest indexed selected tag of the type in question
@@ -593,12 +598,15 @@ class Selector( Pmw.MegaToplevel ):
         """We were dragged to a show_tag so get the index of the tag in the show_list
            and then call add_to_animation with that index
         """
-        got=0
-        if ( selectedtag == "show_header" ) or ( selectedtag == "noshow_header" ):
+
+        # See if this is a header tag
+        if self.tag_is_header():
             index = 0
         else:
+            got=0
             index=0
-            for obj in self.show_list:
+            #for obj in self.show_list:
+            for obj in self.graph.ani_list:
                 if  str( id(obj) )  == selectedtag :
                     got = 1
                     break
@@ -647,7 +655,8 @@ class Selector( Pmw.MegaToplevel ):
                 if selected:
                     vis = self.tag_to_vis[ tag ]
                     insertlist.append( vis )
-                    self.show_list.remove( vis )
+                    #self.show_list.remove( vis )
+                    self.graph.ani_list.remove( vis )
                     self.deselect_tag( tag )
                     
         # Add any images from the noshow_selected to the insertlist
@@ -669,15 +678,15 @@ class Selector( Pmw.MegaToplevel ):
         # we increment the index so the items go in in the order they were
         # in the insertlist
         for obj in insertlist:
-            self.show_list.insert( index, obj )
+            #self.show_list.insert( index, obj )
+            self.graph.ani_list.insert( index, obj )
             index += 1
             
         # Now redraw the text widget
         self.redraw()
         
     def remove_from_animation( self ):
-        """ The mouse was dragged onto a noshow tag.
-            So move all selected tags in the show_list to the noshow list
+        """Move all selected tags in the show_list to the noshow list
             and then refresh the widget.
         """
         if self.debug:
@@ -689,11 +698,98 @@ class Selector( Pmw.MegaToplevel ):
                 if selected:
                     vis = self.tag_to_vis[ tag ]
                     self.noshow_list.append( vis )
-                    self.show_list.remove( vis )
+                    #self.show_list.remove( vis )
+                    self.graph.ani_list.remove( vis )
 
             self.redraw()
         else:
-            print "dragged_to_noshowtag: No Shown items selected for removal!"
+            print "remove_from_animation: No Shown items selected for removal!"
+
+
+    def select_tag( self, tag ):
+        """ 1. Set the flag in the relevant list
+            2. Highlight the tag by configuring its fg & bg
+        """
+
+        # Check if this is a header or not - we ignore headers
+        if self.tag_is_header():
+            return
+        
+        ttype = self.tag_to_type[ tag ]
+
+        if self.debug:
+            print "DEBUG: Entering select_tag: tag is %s ttype is %s " % ( tag, ttype )
+            print "DEBUG:          noshow_selected", self.noshow_selected
+            print "DEBUG:          show_selected", self.show_selected
+
+        if ttype == "show":
+            index = 0
+            for show, selected in self.show_selected:
+                if show == tag:
+                    if selected:
+                        print "Selecting an already selected show tag!"
+                    else:
+                        self.show_selected[ index ][1] = 1
+                index += 1
+
+        elif ttype == "noshow":
+            index = 0
+            for noshow, selected in self.noshow_selected:
+                if noshow == tag:
+                    if selected:
+                        print "Selecting an already selected noshow tag!"
+                    else:
+                        self.noshow_selected[ index ][1] = 1
+                index += 1
+        else:
+            print "select_tag: unknown tag selected %s" % tag
+            return
+            
+        self.scene_text.tag_config( tag,
+                                    background=self.select_colour )
+
+    def deselect_tag( self, tag ):
+        """ 1. Set the flag in the relevant list
+            2. Remove highlight by configuring tags fg & bg
+        """
+
+        # Check if this is a header or not - we ignore headers
+        if self.tag_is_header():
+            return
+        
+        if self.debug:
+            print "DEBUG: De-selecting tag: ",tag
+            
+        ttype = self.tag_to_type[ tag ]
+        #print "deselecting tag, ttype is: %s" % ttype
+
+        if ttype == "show":
+            index = 0
+            for show, selected in self.show_selected:
+                if show == tag:
+                    if not selected:
+                        print "De-selecting an already deselected show tag!"
+                    else:
+                        self.show_selected[ index ][1] = None
+                index += 1
+
+        elif ttype == "noshow":
+            index = 0
+            for noshow, selected in self.noshow_selected:
+                if noshow == tag:
+                    if not selected:
+                        print "De-selecting an already deselected noshow tag!"
+                    else:
+                        self.noshow_selected[ index ][1] = None
+                index += 1
+        else:
+            print "deselect_tag: unknown tag selected %s" % tag
+            return
+            
+        self.scene_text.tag_config( tag,
+                                    background=self.standardbg )
+
+    ## GENERAL HELPER FUNCTIONS BELOW ###
 
     def is_selected( self, tagquery=None, typequery=None ):
         """ Return 1 if any of the tags in the text widget are selected, None if not
@@ -782,8 +878,6 @@ class Selector( Pmw.MegaToplevel ):
             print "DEBUG: get_index returning: %s" % retval
 
         return int( retval )
-        
-        
 
     def get_highest_index( self, ttype ):
         """ Return the highest index of the tag that is selected in either of
@@ -822,84 +916,18 @@ class Selector( Pmw.MegaToplevel ):
 
         return retval
 
+    def tag_is_header( tag ):
+        """ See if the tag is a header. The tag name for a header is name of the name
+            of the frame and the word header separated by an underscore, e.g show_header
+            Return the type if true, else None
+       """
+        try:
+            mytype, header = string.split(tag, "_")
+            if header == "header":
+                return mytype
+        except:
+            return None
 
-    def select_tag( self, tag ):
-        """ 1. Set the flag in the relevant list
-            2. Highlight the tag by configuring its fg & bg
-        """
-        
-        ttype = self.tag_to_type[ tag ]
-
-        if self.debug:
-            print "DEBUG: Entering select_tag: tag is %s ttype is %s " % ( tag, ttype )
-            print "DEBUG:          noshow_selected", self.noshow_selected
-            print "DEBUG:          show_selected", self.show_selected
-
-        if ttype == "show":
-            index = 0
-            for show, selected in self.show_selected:
-                if show == tag:
-                    if selected:
-                        print "Selecting an already selected show tag!"
-                    else:
-                        self.show_selected[ index ][1] = 1
-                index += 1
-
-        elif ttype == "noshow":
-            index = 0
-            for noshow, selected in self.noshow_selected:
-                if noshow == tag:
-                    if selected:
-                        print "Selecting an already selected noshow tag!"
-                    else:
-                        self.noshow_selected[ index ][1] = 1
-                index += 1
-        else:
-            print "select_tag: unknown tag selected %s" % tag
-            return
-            
-        self.scene_text.tag_config( tag,
-                                    background=self.select_colour )
-
-    def deselect_tag( self, tag ):
-        """ 1. Set the flag in the relevant list
-            2. Remove highlight by configuring tags fg & bg
-        """
-
-        if ( tag == "show_header" ) or ( tag == "noshow_header" ):
-            return
-        
-        if self.debug:
-            print "DEBUG: De-selecting tag: ",tag
-            
-        ttype = self.tag_to_type[ tag ]
-        #print "deselecting tag, ttype is: %s" % ttype
-
-        if ttype == "show":
-            index = 0
-            for show, selected in self.show_selected:
-                if show == tag:
-                    if not selected:
-                        print "De-selecting an already deselected show tag!"
-                    else:
-                        self.show_selected[ index ][1] = None
-                index += 1
-
-        elif ttype == "noshow":
-            index = 0
-            for noshow, selected in self.noshow_selected:
-                if noshow == tag:
-                    if not selected:
-                        print "De-selecting an already deselected noshow tag!"
-                    else:
-                        self.noshow_selected[ index ][1] = None
-                index += 1
-        else:
-            print "deselect_tag: unknown tag selected %s" % tag
-            return
-            
-        self.scene_text.tag_config( tag,
-                                    background=self.standardbg )
 
     def setup_debug( self ):
         """ We are in debugging mode so set up some dummy data
