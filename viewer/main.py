@@ -248,6 +248,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_distance_dialog(include_xyz=1)
         self.build_command_window()
         self.build_save_image_dialog()
+        self.build_save_movie_dialog()
 
         #Pass viewer object to the help.py module
         viewer.help.get_tkmolview(self)
@@ -319,6 +320,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         # animation controls
         self.build_ani_toolbar()
+        self.pack_ani_toolbar()
         
         # list of images from last animation frame
         #self.oldvisl = []
@@ -435,12 +437,12 @@ class TkMolView(Pmw.MegaToplevel):
         b.pack(side='left')
         b=Button(bar, text='>|', command=self.ani_end)
         b.pack(side='left')
-        b=Button(bar, text='Hide', command=self.hide_ani_toolbar)
-        b.pack(side='left')
+        #b=Button(bar, text='Hide', command=self.hide_ani_toolbar)
+        #b.pack(side='left')
         b=Button(bar, text='Select', command=self.select_ani_images )
         b.pack(side='left')
-        #b=Button(bar, text='Save Images', command=self.save_ani_images )
-        #b.pack(side='left')
+        b=Button(bar, text='Save Images', command=self.ask_save_movie )
+        b.pack(side='left')
 
     def pack_ani_toolbar(self):
         """ Pack the toolbar and reset it
@@ -613,6 +615,128 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             print "no image string :%s" % format
             
+    def build_save_movie_dialog(self):
+        """Build up the widgets that consitute the save image dialog box with the
+           slider to specify the quality of the jpeg.
+        """
+
+        from viewer.paths import gui_path
+        self.movie_directory = gui_path
+        
+        self.save_movie_dialog = Pmw.Dialog( self.master,
+                                             buttons = ( 'Save', 'Close', 'Browse...' ),
+                                             title = 'Save Movie',
+                                             command = self.save_movie_buttonclick )
+        format_frame = Tkinter.Frame( self.save_movie_dialog.interior() )
+
+        self.movie_format = Tkinter.StringVar( )
+        self.movie_format.set("jpg")
+        jpegradio = Tkinter.Radiobutton( format_frame,
+                                        text = "jpg", variable = self.movie_format, value = "jpg",
+                                              command = self.select_movie_format )
+        pngradio = Tkinter.Radiobutton( format_frame,
+                                        text = "png", variable = self.movie_format, value = "png",
+                                        command = self.select_movie_format )
+
+        self.movie_jpeg_res_frame = Tkinter.Frame( self.save_movie_dialog.interior() )
+        
+        self.movie_jpeg_res_widget = Tkinter.Scale( self.movie_jpeg_res_frame ,
+                                           label = 'Jpeg quality',
+                                           orient = 'horizontal',
+                                           tickinterval = '10',
+                                           length = '400',
+                                           from_ = 0, to_ = 100 )
+        
+        format_frame.pack()
+        jpegradio.select()
+        jpegradio.pack( side = 'left' )
+        pngradio.pack( side = 'left' )
+        self.movie_jpeg_res_frame.pack()
+        self.movie_jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
+        self.movie_jpeg_res_widget.pack()
+        self.save_movie_dialog.withdraw()
+
+    def select_movie_format( self ):
+        """ Select between jpeg and png image formats - if jpg
+            is selected display the widget to specify the quality
+        """
+        format = self.movie_format.get()
+        if format == "jpg":
+            self.movie_jpeg_res_frame.pack()
+        elif format == "png":
+            self.movie_jpeg_res_frame.forget()
+        else:
+            print "no image string :%s" % format
+
+    def save_movie_buttonclick(self, result ):
+        """ Process the result of clicking one of the buttons in the save_movie_dialog
+        """
+        print "save_movie_buttonclick ", result
+
+        if result == "Close":
+            self.save_movie_dialog.withdraw()
+        elif result == "Browse...":
+            self.browse_movie_directory()
+        elif result == "Save":
+            format = self.movie_format.get()
+            self.save_movie( format )
+            self.save_movie_dialog.withdraw()
+        else:
+            self.save_movie_dialog.withdraw()
+        
+    def browse_movie_directory(self):
+        # askdirectory() cant create new directories so use asksaveasfilename is used instead
+        # and the filename  is discarded - also fixes problem with no askdirectory in Python2.1
+        olddir = self.movie_directory
+        dummyfile="use_this_directory"
+        path=tkFileDialog.asksaveasfilename(initialfile=dummyfile, initialdir=olddir)
+        #path=tkFileDialog.askdirectory(initialdir=olddir)
+        if len(path) == 0:
+            # User didn't select anything
+            pass
+        else:
+            self.movie_directory = os.path.dirname( path )
+
+    def save_movie(self, format ):
+        """
+        """
+        print "format is ",format
+        directory = self.movie_directory
+        print "directory is ",directory
+
+        # or should we ask?
+        if len( self.ani_list ) == 0 :
+            self.ani_reset()
+
+        # hide everything
+        self.showall(0)
+
+        # Loop over the images, creating a unique name and then show the image,
+        # take a snapshot and save this as a jpeg with the unique name and
+        # then hide the image
+        image_file_list = []
+        i = 0
+        for vis in self.ani_list:
+            title = vis.title
+            # Need to remove ":" from title & replace spaces with underscores
+            title = string.replace( title, ":", "")
+            title_list = string.split( title )
+            title = string.join( title_list, "_" )
+            myfile = directory + os.sep + title + "." + str( i ) + "." + format
+            image_file_list.append( myfile )
+            vis.Show()
+            if format == "jpg":
+                quality = self.movie_jpeg_res_widget.get()
+                self.save_image(myfile, format=format, quality=quality )
+            elif format == "png":
+                self.save_image(myfile, format=format )
+            else:
+                print "Unrecognised image format in save_movie"
+            vis.Hide()
+            i += 1
+            
+        return
+        
     def ask_save_image3d(self):
         self.save_image_dialog.show()
 
@@ -1574,8 +1698,8 @@ class TkMolView(Pmw.MegaToplevel):
                          command=lambda x=self : x.showall(0))
         menu.add_separator()
 
-        menu.add_command(label="Animation...", underline=0, font=myfont,
-                         command=lambda x=self : x.pack_ani_toolbar())
+#        menu.add_command(label="Animation...", underline=0, font=myfont,
+#                         command=lambda x=self : x.pack_ani_toolbar())
         menu.add_separator()
 
         menu.add_command(label="Centre on Selected", underline=0, 
@@ -4489,10 +4613,10 @@ class TkMolView(Pmw.MegaToplevel):
             self.ani_image_widget.refresh()
             self.ani_image_widget.show()
         
-    def save_ani_images(self):
-        """Save the selected (and ordered) scenes as an animated gif
+    def ask_save_movie(self):
+        """ The use has clicked on the button to save a movie
         """
-        pass
+        self.save_movie_dialog.show()
 
     def ani_reset(self):
         """ Build up a fresh animation list
@@ -4624,13 +4748,22 @@ class TkMolView(Pmw.MegaToplevel):
         except:
             self.frame_no = 0
 
+        # If the ani_list is empty reset
+        if len ( self.ani_list ) == 0 :
+            self.ani_reset()
+            #return
+
         # Go back to the start if we're at the end
         if (  self.frame_no == len( self.ani_list )-1  ):
             self._ani_hide()
             self.frame_no = 0
+
+        # Display the current frame
+        if self._ani_show():
+            self.update()
+            time.sleep(0.2)
         
         self.ani_stop = 0
-
         while ( self.frame_no <= len(self.ani_list)-2 ):
             self.interior().update()
             if self.ani_stop:
