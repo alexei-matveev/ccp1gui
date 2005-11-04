@@ -50,6 +50,10 @@ class Selector( Pmw.MegaToplevel ):
             self.balloon = graph.balloon
             self.error = graph.error
         else:
+            # Stuff so that we can run standalone for debugging
+            self.graph = self
+            self.graph.ani_list = []
+            self.graph.ani_refresh = self.debug_refresh
             self.balloon = Balloon()
 
         # self.show_list = [] # List of the objects making up the animation in scene order
@@ -225,6 +229,7 @@ class Selector( Pmw.MegaToplevel ):
         
         if __name__ == '__main__':
             # Just for debugging
+            self.graph.ani_list = []
             for vis in self.objlist:
                 if vis.IsShowing():
                     #self.show_list.append( vis )
@@ -535,6 +540,8 @@ class Selector( Pmw.MegaToplevel ):
         for tag, select in self.noshow_selected:
             if self.is_selected( tagquery = tag):
                 self.deselect_tag( tag )
+
+        return 'break'
  
     def shift_select( self, selected_tag ):
         """ A tag was selected with the shift key pressed down.
@@ -563,8 +570,8 @@ class Selector( Pmw.MegaToplevel ):
         if not got:
             self.select_tag( selected_tag )
 
-        # We now know that at least one tag of this type was selected so
-        # get the index of that tag in the selected list
+        # We now know that at least one other tag of this type was selected so
+        # get the index of selected_tag in the selected list
         selected_index = self.get_index( selected_tag, selected_type )
 
         # Get the highest indexed selected tag of the type in question
@@ -594,20 +601,20 @@ class Selector( Pmw.MegaToplevel ):
             pass
             
             
-    def dragged_to_show_tag( self, selectedtag ):
+    def dragged_to_show_tag( self, tag ):
         """We were dragged to a show_tag so get the index of the tag in the show_list
            and then call add_to_animation with that index
         """
 
         # See if this is a header tag
-        if self.tag_is_header():
+        if self.tag_is_header( tag ):
             index = 0
         else:
             got=0
             index=0
             #for obj in self.show_list:
             for obj in self.graph.ani_list:
-                if  str( id(obj) )  == selectedtag :
+                if  str( id(obj) )  == tag :
                     got = 1
                     break
                     # Found object so i is index in show_list
@@ -619,7 +626,7 @@ class Selector( Pmw.MegaToplevel ):
                 return
 
         if self.debug:
-            print "DEBUG: in dragged_to_show tag with tag: %s index: %s " % ( selectedtag, index )
+            print "DEBUG: in dragged_to_show tag with tag: %s index: %s " % ( tag, index )
         
         self.add_to_animation( index )
 
@@ -712,7 +719,7 @@ class Selector( Pmw.MegaToplevel ):
         """
 
         # Check if this is a header or not - we ignore headers
-        if self.tag_is_header():
+        if self.tag_is_header( tag ):
             return
         
         ttype = self.tag_to_type[ tag ]
@@ -754,7 +761,7 @@ class Selector( Pmw.MegaToplevel ):
         """
 
         # Check if this is a header or not - we ignore headers
-        if self.tag_is_header():
+        if self.tag_is_header( tag ):
             return
         
         if self.debug:
@@ -905,18 +912,20 @@ class Selector( Pmw.MegaToplevel ):
                 #print "noshow_selected: noshowtag %s selected %s" % ( noshowtag, selected )
                 if selected:
                     got_noshow = index
+                index += 1
             retval = got_noshow
         else:
             print "get_highest_index - unrecognised ttype!"
             
         if self.debug:
-            print "DEBUG: get_highest_index returning %s" % retval
+            pass
+        print "DEBUG: get_highest_index returning %s" % retval
 
         retval = int( retval )
 
         return retval
 
-    def tag_is_header( tag ):
+    def tag_is_header( self, tag ):
         """ See if the tag is a header. The tag name for a header is name of the name
             of the frame and the word header separated by an underscore, e.g show_header
             Return the type if true, else None
@@ -925,7 +934,7 @@ class Selector( Pmw.MegaToplevel ):
             mytype, header = string.split(tag, "_")
             if header == "header":
                 return mytype
-        except:
+        except Exception,e:
             return None
 
 
@@ -944,6 +953,18 @@ class Selector( Pmw.MegaToplevel ):
         ten = visobj( show=1, name = 'ten' )
         eleven = visobj( show=1, name = 'eleven' )
 
+        one.name = str( id(one) )
+        two.name = str( id(two) )
+        three.name = str( id(three) )
+        four.name = str( id(four) )
+        five.name = str( id(five) )
+        six.name = str( id(six) )
+        seven.name = str( id(seven) )
+        eight.name = str( id(eight) )
+        nine.name = str( id(nine) )
+        ten.name = str( id(ten) )
+        eleven.name = str( id(eleven) )
+
         self.objlist.append( one )
         self.objlist.append( two )
         self.objlist.append( three )
@@ -955,6 +976,12 @@ class Selector( Pmw.MegaToplevel ):
         self.objlist.append( nine )
         self.objlist.append( ten )
         self.objlist.append( eleven )
+
+    def debug_refresh(self):
+        """
+        dummy refreh call
+        """
+        pass
 
 class Balloon:
     """ Dummy balloon for debugging purposes
