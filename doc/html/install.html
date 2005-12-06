@@ -15,29 +15,26 @@ operating systems. A number of the packages are not &quot;standard&quot; and so
 are unlikely to be installed on your computer unless you put them
 there.</p>
 
-<p>To get the CCP1GUI running on your system you can either
-download a file containing all of the additional packages required
+<p>To get the CCP1GUI running on your system you can
+download a file containing the additional packages required
 for your Operating System together with the CCP1GUI source code from
 our <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a> as described in
-the <a href="#easyinstall">Easy Installation</a>
-instructions, or you can download the latest CCP1GUI
+the <a href="#ftpbundle">Using the software bundle</a>
+instructions. Before doing this, please read the sections  below
+for <a href="#linux">Linux</a>, <a href="#macosx">Macintosh</a> or <a
+href="#windows">Windows</a>, as you may have to check that you have
+some base packages installed before the bundle works.</p>
+
+
+<p>Alternatively, if you are experienced in installing software on
+your system, you can download the latest CCP1GUI
 package from the CCP1GUI pages on <a
-href="http://sourceforge.net/projects/ccp1gui/">sourceforge</a> and
-install all of the additional packages yourself, as described in the
+href="http://sourceforge.net/projects/ccp1gui/">sourceforge</a> and install all of the additional packages yourself, as described in the
 sections below for <a href="#linux">Linux</a>, <a
 href="#macosx">Macintosh</a> and <a href="#windows">Windows</a>
 users.</p>
 
-<a name="easyinstall"><h2 align=center>Easy Installation</h2></a>
-
-<small><blockquote><b>NB:</b> Python, Tcl/Tk and Tkinter (the interface between Python and Tk/Tcl)
-should come pre-installed on most modern operating systems and the
-rest of these instructions assume that they are. If they are not,
-please read the sections below for <a href="#linux">Linux</a>, <a
-href="#macosx">Macintosh</a> or <a href="#windows">Windows</a> for
-instructions on how to get hold of them ( they all are freely
-available ).</small></blockquote>
-
+<a name="ftpbundle"></a><h2 align=center>Using the software bundle</h2>
 <p>To get the archive file containing the CCP1GUI and all of the
 packages it depends on, go the to ccp1gui <a
 href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a>. You should be able to
@@ -52,7 +49,14 @@ Windows command-prompt and type:</p>
 </table>
 
 <p>When prompted for a password enter <tt>anonymous</tt> and just hit
-enter when asked for a password. Then cd to the ccp1gui directory.</p>
+enter when asked for a password. Then cd to the qcg/ccp1gui directory
+by typing.</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>cd qcg/ccp1gui</tt>
+</td></tr>
+</table>
 
 <p>The packages in the ccp1gui directory are organised according to
 Operating System (OS), OS version and processor-type ( if applicable ). The
@@ -83,17 +87,18 @@ href="linuxhelp.html">Linux Help</a> section for instructions on how
 to do this ) or use the Winzip utility on Windows.</p>
 
 <p>The file will unpack to give a folder called
-<b><tt>ccp1gui_bundle</tt></b>, which has the following structure:</p>
+<b><tt>ccp1gui_bundle</tt></b>, which has the following structure
+(files/folders in red are not present in the Windows bundle):</p>
 
 <pre>
 
                   |--data/
 ccp1gui_bundle/---|--ccp1gui.sh ( or ccp1gui.bat )
-                  |--Numeric/
-		  |--Numeric.pth
-		  |--Scientific/
+                  <font color="red">|--Numeric/</font>
+		  <font color="red">|--Numeric.pth</font>
+		  <font color="red">|--Scientific/</font>
 		  |--Pmw/
-		  |--vtk/
+		  <font color="red">|--vtk/</font>
 		  |
 		  |           |-- basis/
 		  |           |-- ccp1gui.sh
@@ -116,9 +121,9 @@ ccp1gui_bundle/---|--ccp1gui.sh ( or ccp1gui.bat )
 <tt>ccp1gui.bat</tt> on Windows systems in the ccp1gui_bundle
 directory should be used to start the CCP1GUI.</p>
 
-<small><blockquote><b>NB:</b> Mac OSX users will need to run the script
+<blockquote><b>NB:</b> Mac OSX users will need to run the script
 <b><tt>setpaths.sh</tt></b> before trying to run the CCP1GUI, as
-otherwise the paths to the VTK libraries are likely to be wrong.</blockquote></small>
+otherwise the paths to the VTK libraries are likely to be wrong.</blockquote>
 
 <p>On Unix and Linux systems, make sure the script is executable with the command:</p>
 
@@ -137,8 +142,10 @@ otherwise the paths to the VTK libraries are likely to be wrong.</blockquote></s
 </table>
 
 <p> On Windows, just double-click on the <tt>ccp1gui.bat</tt>
-file.</p>
-
+file. If nothing - or very little - appears to happen, please see if a
+file called <tt>ccp1gui.log</tt> has been created in the same
+directory as the ccp1gui.bat file and open this file with notepad, as
+this will contain any error messages.</p>
 
 <h3>Upgrading</h3>
 
@@ -161,7 +168,7 @@ before.</p>
 
 <hr width=75%>
 
-<h2 align=center>Installing the packages individually</h2>
+<h2 align=center>Installing the packages for different Operating systems</h2>
 
 <a name="linux"><h3>Linux</h3></a>
 
@@ -298,7 +305,7 @@ href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a>.
 If you are unsure how to query and install rpm packages, please read
 the <a href="linuxhelp.html">Linux Help</a> section.</p>
 
-<a name="linuxtcl"></a><h3>Tcl/Tk</h3>
+<a name="linuxtcl"></a><h4>Tcl/Tk</h4>
 <p>Tcl (Tool Command Language) is an open source scripting language 
 that
 has a simple and programmable syntax and can be either used as a
@@ -346,7 +353,58 @@ with whatever version of python, tk and tcl you are running.</p>
 <hr width="75%"/>
 
 <a name="windows"><h3>Windows</h3></a>
-<p>The following steps describe two  ways to get the CCP1GUI up
+<p>The installation of the CCP1GUI on Windows has been made
+considerably easier thanks to the nice people at <a
+href="http://www.enthought.com">Enthought</a> who have created a
+Python distribution that contains most of the software dependancies
+required by the CCP1GUI.</p>
+
+<p>Their Python installation program can be downloaded from:</p>
+
+<a href="http://www.enthought.com/python/">http://www.enthought.com/python/</a>
+
+<p>Save the installatation program to somewhere on your computer (e.g
+your Desktop) and then run it by double-clicking on it.</p>
+
+<p>It is important to let Enthought install the python in the default
+location of C:\Python23 - otherwise you will need to edit the
+ccp1gui.bat file to point it at your Python installation or set a
+PYTHON environment variable to point at excutable.</p>
+
+<p>When prompted to "Select Components" for the install "Python
+interpreter and Libraries" as well as "Tcl/Tk (Tkinter, IDLE, pydoc)"
+should be selected by default, but if for any reason they are not,
+make sure that they are selected.</p>
+
+<p>Once you have installed Python, you will need to reboot.</p>
+
+<p>Next, install Mark Hammond's Python for Windows extensions from:</p>
+
+<a href="https://sourceforge.net/projects/pywin32/">https://sourceforge.net/projects/pywin32/</a>
+
+<p>You will need to ensure that you download the extensions for the
+version of Python you downloaded from Enthought. For the latest
+version of Enthought Python (2.3) you should download the file:</p>
+
+<tt><b>pywin32-205.win32-py2.3.exe</b></tt>
+
+<p>and then run it by double-clicking on it. The installer will ask you
+where to install the extensions, and you should ensure that it has
+selected the directory that holds your Enthought Python installation.</p>
+
+<p>Once you have installed the extensions, you should be able to download
+the ccp1gui_bundle file from our ftp site as described in the <a
+href="#ftpbundle">Using the Software bundle</a> section above, and
+then run the ccp1gui.bat file in the ccp1gui_bundle directory.</p>
+
+<p><b>NB:</b>If you click on the batch file and nothing appears to happen, please
+open the file ccp1gui.log that should have been created in the same
+directory as the batch file. The log file will contain any error messages
+produced by the program. If it is not obvious how to fix them, please
+email <a href="mailto:j.m.h.thomas@dl.ac.uk">j.m.h.thomas@dl.ac.uk</a>
+attaching the log file.<p>
+
+<!-- <p>The following steps describe two  ways to get the CCP1GUI up
 and running on a Windows XP system. Both methods rely on the now
 outdated Python2.1 distribution, as an executable installer for VTK
 isn't available yet for the newer versions of Python. The first
@@ -410,6 +468,7 @@ panels -&gt; Display</b>)
 i.e. 1677216) - with the default the atom picking didn't work 
 properly.</p>
 
+--!>
 <hr width="75%"/>
 
 <a name="macosx"></a><h3>Macintosh OSX</h3>
@@ -504,11 +563,11 @@ this directory and enter:</p>
 
 <table border="0" bgcolor="#E0E0E0" width="100%">
 <tr><td>
-<tt>cmake -i</tt>
+<tt>ccmake</tt>
 </td></tr>
 </table>
 
-<p>This runs CMake in interactive mode, where it will ask you a
+<p>This runs CMake with a curses interface, where it will ask you a
 number of different questions. The first question you will be asked is
 if you would like to see the advanced options - if you do you probably
 don't need to be reading this. Most of the remaining options shouldn't need to
