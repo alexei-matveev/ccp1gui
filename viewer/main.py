@@ -331,14 +331,16 @@ class TkMolView(Pmw.MegaToplevel):
         elif sys.platform[:3] == 'win':
             try:
                 execfile(os.path.expandvars('$USERPROFILE\ccp1guirc.py'))
+                print "Found User configuration file: $USERPROFILE\ccp1guirc.py"
             except IOError,e:
-                print 'No user initialisation file: ',str(e)
+                pass
 
         elif sys.platform[:5] == 'linux':
             try:
                 execfile(os.path.expandvars('$HOME/ccp1guirc.py'))
+                print "Found User configuration file: $HOME/ccp1guirc.py"
             except IOError,e:
-                print 'No user initialisation file: ',str(e)
+                pass
 
         self.build_options_dialog()
         self.toolwidget = EditingToolsWidget(self.master,
