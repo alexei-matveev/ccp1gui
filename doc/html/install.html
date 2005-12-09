@@ -9,32 +9,150 @@ Installation notes for the CCP1 GUI
 <body>
 <h1 align=center>The CCP1 Graphical User Interface</h1>
 
-<p>All of the packages needed to get the CCP1GUI running are freely
+<p>All of the packages needed to get the ccp1gui running are freely
 available on the web and many come pre-installed on most modern
-operating systems. A number of the packages are not &quot;standard&quot; and so
-are unlikely to be installed on your computer unless you put them
-there.</p>
+operating systems. The main packages that the ccp1gui uses are quite
+common and are available for most operating systems - usually
+supplied on the installation disks or available via the Operating
+System's package managment system. These main packages are:</p>
 
-<p>To get the CCP1GUI running on your system you can
-download a file containing the additional packages required
-for your Operating System together with the CCP1GUI source code from
-our <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a> as described in
-the <a href="#ftpbundle">Using the software bundle</a>
-instructions. Before doing this, please read the sections  below
-for <a href="#linux">Linux</a>, <a href="#macosx">Macintosh</a> or <a
-href="#windows">Windows</a>, as you may have to check that you have
-some base packages installed before the bundle works.</p>
+<ul>
+<li><a href="http://www.python.org">Python</a></li>
+<li><a href="http://tcl.sourceforge.net/">Tcl (Tool Command Language)
+and Tk (Tk Toolkit)</a></li>
+<li><a href="http://wiki.python.org/moin/TkInter">Tkinter</a> ( aka Python-tk )</li>
+</ul>
 
 
-<p>Alternatively, if you are experienced in installing software on
-your system, you can download the latest CCP1GUI
-package from the CCP1GUI pages on <a
-href="http://sourceforge.net/projects/ccp1gui/">sourceforge</a> and install all of the additional packages yourself, as described in the
-sections below for <a href="#linux">Linux</a>, <a
-href="#macosx">Macintosh</a> and <a href="#windows">Windows</a>
-users.</p>
+<p>In addition, the CCP1GUI relies on a number of packages that are
+not standard and so are unlikely to be installed on your computer
+unless you put them there. These packages are:</p>
 
-<a name="ftpbundle"></a><h2 align=center>Using the software bundle</h2>
+<ul>
+<li><a href="http://sourceforge.net/projects/numpy">Numerical Python</a> ( aka python-numeric or numpy )</li>
+<li><a href="http://starship.python.net/~hinsen/ScientificPython/">Scientific Python</a> ( aka python-scientific )</li>
+<li><a href="http://pmw.sourceforge.net/">Python Megawidgets</a> ( aka Pmw )</li>
+<li>The <a href="http://public.kitware.com/VTK/">Visualistation Tool Kit</a> (VTK)</li>
+</ul>
+
+
+<p>In order to simplify the installation of the ccp1gui, we have
+created software bundles that contain all of the additional packages
+required. To use a bundle you just need to ensure that you have the
+base packages installed (see the table below for links to instructions
+on how to do this), after which, you can
+download a bundle and run the ccp1gui from there.</p>
+
+<p>If a bundle is not available, or you would prefer to install all of
+the additional packages yourself, there are links in the table below
+to instructions on how to install the additional packages.</p>
+
+<br/>
+
+<table width="100%" border="1">
+
+<!-- Header rows -->
+
+<thead>
+<tr><th rowspan="2">Operating System</th><th rowspan="2">Architecture</th><th rowspan="2">Bundle</th><th
+colspan="5" bgcolor="gray">Installation Instructions</th></tr>
+<tr><th>Base Packages</th><th>Numeric</th><th>Scientific</th><th>Pmw</th><th>VTK</th></tr>
+
+<tbody>
+<!-- Windows -->
+<tr>
+<td>Windows (XP,2000,NT)</td>
+<td>Pentium</td>
+<td<a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/windows/">y</a></td>
+<td><a href="./install_win.html">Base</a></td>
+<td><a href="./install_win.html#numeric">Numeric</a></td>
+<td><a href="./install_win.html#scientific">Scientific</a></td>
+<td><a href="./install_win.html#pmw">Pmw</a></td>
+<td><a href="./install_win.html#vtk">VTK</a></td>
+</tr>
+
+<!-- Mac OSX -->
+<tr>
+<td>Mac OSX (Darwin)</td>
+<td>PowerPC (3,4,5)</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/macosx/">y</a></td>
+<td><a href="./install_mac.html">Base</a></td>
+<td><a href="./install_mac.html#numeric">Numeric</a></td>
+<td><a href="./install_mac.html#scientific">Scientific</a></td>
+<td><a href="./install_mac.html#pmw">Pmw</a></td>
+<td><a href="./install_mac.html#vtk">VTK</a></td>
+</tr>
+
+
+<!-- AIX -->
+<tr>
+<td>Aix</td>
+<td>Power5</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/aix/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+<!-- Tru 64 -->
+<tr>
+<td>Tru 64</td>
+<td>Alpha EV6</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/tru64/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+<!-- Solaris  -->
+<tr>
+<td>Solaris</td>
+<td>Ultrasparc 3</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/solaris/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+<!-- SuSE  -->
+<tr>
+<td>Linux: Suse</td>
+<td>x86, x86_64</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+<!-- Redhat  -->
+<tr>
+<td>Linux: Redhat</td>
+<td>x86</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+</table>
+
+<p>If you have installed all of the packages, then click <a
+href="#nobundle">here</a> for instructions on how to run the ccp1gui
+directly, otherwise read on for instructions on how to get/use one of
+the software bundles.</p>
+
+
+<a name="ftpbundle"></a><h3 align=center>Using the software bundle</h3>
 <p>To get the archive file containing the CCP1GUI and all of the
 packages it depends on, go the to ccp1gui <a
 href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a>. You should be able to
@@ -84,16 +202,17 @@ processor ), the file would be:</p>
 <p>Once you have downloaded the file, you will need to unpack it. To do
 this on unix systems, use the tar and gzip utilties ( see the <a
 href="linuxhelp.html">Linux Help</a> section for instructions on how
-to do this ) or use the Winzip utility on Windows.</p>
+to do this ) or use the Winzip (or euqivalent) utility on Windows.</p>
 
 <p>The file will unpack to give a folder called
 <b><tt>ccp1gui_bundle</tt></b>, which has the following structure
-(files/folders in red are not present in the Windows bundle):</p>
+(files/folders in red are not present in all bundles):</p>
 
 <pre>
 
                   |--data/
 ccp1gui_bundle/---|--ccp1gui.sh ( or ccp1gui.bat )
+                  <font color="red">|--setpaths.sh</font>
                   <font color="red">|--Numeric/</font>
 		  <font color="red">|--Numeric.pth</font>
 		  <font color="red">|--Scientific/</font>
@@ -147,7 +266,69 @@ file called <tt>ccp1gui.log</tt> has been created in the same
 directory as the ccp1gui.bat file and open this file with notepad, as
 this will contain any error messages.</p>
 
-<h3>Upgrading</h3>
+<p>For instructions on how to upgrade the ccp1gui to take advantage
+of any new features or bugfixes, see <a href="#upgrade">here</a>.</p>
+
+<a name="nobundle"></a><h3>Running the ccp1gui directly</h3>
+
+<p>The latest ccp1gui source code is available as a tarred an gzipped archive
+from the <a
+href="http://sourceforge.net/projects/ccp1gui/">sourceforge site</a> or the
+ccp1gui <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/ccp1gui-latest_release.tar.gz">ftp site</a>.
+
+<p>Once you have downloaded the source code, you will need to unpack it. To do
+this on unix systems, use the tar and gzip utilties ( see the <a
+href="linuxhelp.html">Linux Help</a> section for instructions on how
+to do this ) or use the Winzip (or euqivalent) utility on Windows.</p>
+
+<p> The archive will unpack to create a folder called ccp1gui with the
+following directory structure:</p>
+
+<pre>
+         |-- basis/
+         |-- ccp1gui.sh
+ccp1gui/-|-- chempy/
+         |-- CVS/
+	 |-- doc/------|--html/
+	 |-- examples/
+	 |-- generic/
+	 |-- idle/
+	 |-- interfaces/
+	 |-- jobmanager/
+	 |-- LICENCE
+	 |-- objects
+	 |-- scripts
+	 |-- viewer/-|--main.py
+
+</pre>
+
+
+<p>The ccp1gui itself is just python code, so can be invoked from the
+command-line, by running the ccp1gui.sh script in the main
+directory. You will need to make the script excutable with the
+command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>chmod +x ccp1gui.sh</tt>
+</td></tr>
+</table>
+
+<p>Alternatively, you can eschew the script and run the python code
+directly with the interpeter (which is all the shell script does),
+with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python viewer/main.py</tt>
+</td></tr>
+</table>
+
+<p>in a terminal, whilst sat in the ccp1gui directory. Provided you
+have all the additional packages installed and an X-server running,
+then the ccp1gui should launch.
+
+<a name="upgrade"></a><h3>Upgrading</h3>
 
 <p>If you would like to upgrade your version of the CCP1GUI ( if you
 hear of any new bug fixes or additional features you would like to
@@ -159,446 +340,12 @@ directory to replace your current version. </p>
 as the file <tt>ccp1gui-latest.tar.gz</tt> on our
 <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/">ftp site</a>.
 
-<p>Remove  ( or rename ) the old <b><tt>ccp1gui</tt></b> directory,
+<p>Remove  (or rename) the old <b><tt>ccp1gui</tt></b> directory,
 download the new file into your <b><tt>ccp1gui_bundle</tt></b>
-directory and unpack it  so that the new
+directory (if you are using one) and unpack it  so that the new
 directory <b><tt>ccp1gui</tt></b> replaces the old one. You can then
 run the <tt>ccp1gui.sh</tt> or <tt>ccp1gui.bat</tt> script as
 before.</p>
-
-<hr width=75%>
-
-<h2 align=center>Installing the packages for different Operating systems</h2>
-
-<a name="linux"><h3>Linux</h3></a>
-
-<p>Before following the instructions below, you should query the
-package management for your Linux distribution to see if these
-packages are already available to you ( as it is likely to make life a
-lot easier for you ). The additional packages you will need to ensure are on your
-system are:</p>
-
-<ul>
-<li>Tcl ( Tool Command Language )</li>
-<li>Tk ( Tk Toolkit )</li>
-<li>Tkinter ( aka python-tk )</li>
-<li>Numeric Python ( aka python-numeric or numpy )</li>
-<li>Scientific Python ( aka python-scientific )</li>
-<li>Python Megawidgets ( aka Pmw )</li>
-</ul>
-
-<p>The majority of these should be available under yast with Suse,
-apt-get with Debian, yum under Redhat or emerge under Gentoo. If they are not ( as is
-likely to be the case for Pmw  at least ) read the instructions below on how to
-install them.</p>
-
-<p>Even if the packages aren't available through your package manger,
-then you may be able to find rpm distributions of the relevant
-packages ( if you are running Redhat, Suse or their ilk ). A good
-place to start looking for rpm packages is the <a
-href="http://www.rpmfind.net/linux/RPM/">rpmfind</a> site.</p>
-
-<p>If you can't find all of the packages mentioned above then you will
-need to install them manually as described below.</p>
-
-<small><blockquote><b>NB:</b> The following are only general instructions that were correct at the
-time of writing. Software being what it is however, they are likely to
-become out of date fairly quickly. In all cases however, there should
-be up-to-date instructions on how to install the packages on their
-websites or included as README files in any downloads. The
-notes here should only be taken as a guide and you are strongly
-advised to read the documentation supplied with the packages to
-determine the best way to install them.</small></blockquote>
-
-<a name="linuxpython"></a><h4>Python</h4>
-<p>There are a range of different python distributions in use:
-python 1.5, 2.2, 2.3 and 2.4. The CCP1GUI should work quite happily
-with most of these.</p>
-
-<p>If for some unaccountable reason Python isn't installed on your
-system, it is available as source from: <a
-href="http://www.python.org/download/">www.python.org/download/</a></p>
-
-<p>The CCP1GUI also relies on the additional Python packages: Numeric
-Python, Scientific Python and Python Mega Widgets (PMW).</p>
-
-<a name="linuxnumeric"></a><h5>Numeric Python</h5>
-<p>Numeric python is available from: <a
-href="http://sourceforge.net/projects/numpy">
-http://sourceforge.net/projects/numpy</a></p>
-
-<p>On this page, follow the link to <b>numpy</b> in the <b>Latest
-Files Releases</b> section and download a
-<b>Numeric-<i>&lt;version_number&gt;</i>.tar.gz</b> file to a folder
-on your computer.</p>
-
-<p>To install the package, you will need to be in the directory you 
-have just unpacked and have root priviledges. Now enter:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>python setup.py install</tt>
-</td></tr>
-</table>
-
-<p>This runs the setup.py  python script that copies the relevant files 
-into the
-path of the python version you are using to invoke the script.</p>
-
-<a name="linuxscientific"></a><h5>Scientific Python</h5>
-
-<p>Scientific python is available from: <a
-href="http://starship.python.net/~hinsen/ScientificPython/">
-http://starship.python.net/~hinsen/ScientificPython</a>.</p>
-
-<p>Both rpm and .tar.gz versions are available.To install the tar.gz
-version, unzip and untar the archive and then <kbd>cd</kbd> into the 
-directory
-that is created and enter:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>python setup.py install</tt>
-</td></tr>
-</table>
-
-<a name="linuxpmw"></a><h5>Python Megawidgets (Pmw)</h5>
-<p>The final step to get the python side of things working is to 
-install the Python Mega Widgets package.</p>
-
-<p>This can be downloaded
-from:<a href="http://pmw.sourceforge.net/"> http://pmw.sourceforge.net/</a> 
-as a gzipped tar archive.</p>
-
-<p>Detailed installation instructions are available at: <a 
-href="http://pmw.sourceforge.net/doc/starting.html">http://pmw.sourceforge.net/doc/starting</a>.</p>
-
-<p>To install the package unzip and untar the package. This will
-create a directory containing all of the PMW files and  this then
-needs to be moved into a place where python will find it. Assuming you
-are running python 2.<i>n</i> ( where <i>n</i> is one of 1, 2, 3 or 4
-depending on which version of python you are using )  a good place to
-put it is: </p>
-
-<b>/usr/lib/python2.<i>n</i>/site-packages/</b>
-
-<p>You can move the directory into this path by becoming root and 
-entering:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>mv <i>&lt;PMW_directory&gt;</i> /usr/lib/python2.2/site-packages/<i>&lt;PMW_directory&gt;</i></tt>
-</td></tr>
-</table>
-
-<a name="linuxtkinter"></a><h5>Tkinter</h5>
-<p>Your Python distribution should come with a valid version of
-Tkinter (this may also be called python-tk). This is the python module
-that acts as the interface to the Tk toolkit (see below). If you mix
-and match your versions of Tcl/Tk and VTK that you may encouter
-problems with the version of Tkinter you are using. If this is the
-case, an error will be displayed indicating that a particular version
-of Tkinter is required when you try and run the CCP1GUI for the first
-time. If this is the case, you can search for an appropriate rpm
-package at: <a
-href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a>.
-If you are unsure how to query and install rpm packages, please read
-the <a href="linuxhelp.html">Linux Help</a> section.</p>
-
-<a name="linuxtcl"></a><h4>Tcl/Tk</h4>
-<p>Tcl (Tool Command Language) is an open source scripting language 
-that
-has a simple and programmable syntax and can be either used as a
-standalone application or embedded in application programs. Tk is a
-graphical user interface toolkit used to create GUIs.</p>
-
-<p>The latest version of Tcl/Tk is available as source code or with
-links to the pre-compiled binaries at:<a
-href="http://dev.scriptics.com/software/tcltk/">http://dev.scriptics.com/software/tcltk</a></p>
-
-<p>As ever, rpm distributions can be found at: <a
-href="http://www.rpmfind.net/linux/RPM/">www.rpmfind.net/linux/RPM/</a></p>
-
-<h4>VTK</h4>
-
-<p>If you are fortunate then you may find that a vtk package already exists
-for your distribution. This is certainly the case for Debian, and if  are running Redhat 9.0, rpm distributions for are available from:<a 
-href="http://www.creatis.insa-lyon.fr/vtk/">www.creatis.insa-lyon.fr/vtk/</a></p>
-
-<p>If you are running Redhat 7.1, then vtk rpms for this distribution 
-are available from:</p>
-<a
-href="http://www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html">www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html</a>
-
-<p>The packages you will need to download from this site are:</p>
-
-<ul>
-<li>vtk-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
-<li>vtk-python-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
-</ul>
-
-<p>If the above fails, then there are instructions on building VTK <a href="#vtk">here</a>,
-however, before you read these instructions, you will need to ensure
-that you have the developmental pacakges for Tk, Tcl and Python installed. The rpm versions of these
-packges are called:</p>
-<ul>
-<li>python-devel-<i>&lt;version_number&gt;</i></li>
-<li>tcl-devel-<i>&lt;version_number&gt;</i></li>
-<li>tk-devel-<i>&lt;version_number&gt;</i></li>
-</ul>
-
-<p> where <i>&lt;version_number&gt;</i> is a version number compatible
-with whatever version of python, tk and tcl you are running.</p>
-
-<hr width="75%"/>
-
-<a name="windows"><h3>Windows</h3></a>
-<p>The installation of the CCP1GUI on Windows has been made
-considerably easier thanks to the nice people at <a
-href="http://www.enthought.com">Enthought</a> who have created a
-Python distribution that contains most of the software dependancies
-required by the CCP1GUI.</p>
-
-<p>Their Python installation program can be downloaded from:</p>
-
-<a href="http://www.enthought.com/python/">http://www.enthought.com/python/</a>
-
-<p>Save the installatation program to somewhere on your computer (e.g
-your Desktop) and then run it by double-clicking on it.</p>
-
-<p>It is important to let Enthought install the python in the default
-location of C:\Python23 - otherwise you will need to edit the
-ccp1gui.bat file to point it at your Python installation or set a
-PYTHON environment variable to point at excutable.</p>
-
-<p>When prompted to "Select Components" for the install "Python
-interpreter and Libraries" as well as "Tcl/Tk (Tkinter, IDLE, pydoc)"
-should be selected by default, but if for any reason they are not,
-make sure that they are selected.</p>
-
-<p>Once you have installed Python, you will need to reboot.</p>
-
-<p>Next, install Mark Hammond's Python for Windows extensions from:</p>
-
-<a href="https://sourceforge.net/projects/pywin32/">https://sourceforge.net/projects/pywin32/</a>
-
-<p>You will need to ensure that you download the extensions for the
-version of Python you downloaded from Enthought. For the latest
-version of Enthought Python (2.3) you should download the file:</p>
-
-<tt><b>pywin32-205.win32-py2.3.exe</b></tt>
-
-<p>and then run it by double-clicking on it. The installer will ask you
-where to install the extensions, and you should ensure that it has
-selected the directory that holds your Enthought Python installation.</p>
-
-<p>Once you have installed the extensions, you should be able to download
-the ccp1gui_bundle file from our ftp site as described in the <a
-href="#ftpbundle">Using the Software bundle</a> section above, and
-then run the ccp1gui.bat file in the ccp1gui_bundle directory.</p>
-
-<p><b>NB:</b>If you click on the batch file and nothing appears to happen, please
-open the file ccp1gui.log that should have been created in the same
-directory as the batch file. The log file will contain any error messages
-produced by the program. If it is not obvious how to fix them, please
-email <a href="mailto:j.m.h.thomas@dl.ac.uk">j.m.h.thomas@dl.ac.uk</a>
-attaching the log file.<p>
-
-<!-- <p>The following steps describe two  ways to get the CCP1GUI up
-and running on a Windows XP system. Both methods rely on the now
-outdated Python2.1 distribution, as an executable installer for VTK
-isn't available yet for the newer versions of Python. The first
-section of this documentation therefore explains how to install Python2.1 and
-PythonWin on a Windows  XP System. It is possible to get the CCP1GUI to work
-with later versions of Python and VTK, although the installation procedure is a little more involved.</p>
-
-<p>If you don't already have it, you will need to download
-Winzip. Although windows has its own 'zip' utility it cannot deal with
-.tar.gz archives. An evaluation version of Winzip can be downloaded
-from <a href="http://www.winzip.com">www.winzip.com</a>.</p>
-
-<h4>Python2.1</h4>
-<p>First, download the <b><i>Python-2.1.3.exe</i></b> 
-installer from:
-<a href="http://www.python.org/ftp/python/2.1.3">
-www.python.org</a>. The uninstaller for this version of Python has a
-bug in it, so it's advisable to also download the
-<b><i>UNWISE.exe</i></b> file.</p>
-
-<p>To install the program, just double-click on the
-executable icon. You will be asked where to install Python and should 
-accept
-the default option of: <b>C:\Python21</b>. It's also advisable to 
-select the
-<i>make backups</i> option in case anything goes wrong. Once the 
-installer
-has finished, over-write the <b><i>UNWISE.exe</i></b> file in the 
-<b>C:\Python21</b>
-directory with the one you downloaded.</p>
-
-<h5>PythonWin</h5>
-<p>The next stage is to download and install PythonWin for Python
-2.1. The <b><i>win32all-151.exe</i></b> executable is available from <a
-href="http://starship.python.net/crew/mhammond/win32/Downloads.html">
-http://starship.python.net/crew/mhammond/win32/Downloads.html</a>. Just 
-double-click the executable to install it.</p>
-
-
-<h4>The Visualisation Toolkit (VTK)</h4>
-<p>This package provides most of the graphical functionality of the
-CCP1GUI. A windows executable that is compatible with Python 2.1 is
-available from the <a
-href="http://public.kitware.com/VTK/get-software.php">VTK
-website</a>.</p>
-
-<p>Go to the <b>Wintel Pre-Compiled Binaries (Windows 9x/NT)</b>
-section and download the file
-<b><i>vtk42-LatestRelease.exe</i></b>.</p>
-
-<p>To install VTK, just run the <b><i>vtk42-LatestRelease.exe</i></b>
-executable, and it will install VTK in <b>C:\Program 
-Files\vtk42</b>.</p>
-
-<h4>Display problems with Windows NT</h4>
-<p>We have found that on our Windows NT systems it has been necessary 
-to 
-change the number of colours (choose <b>Start -&gt; Settings -&gt; 
-control
-panels -&gt; Display</b>)
-i.e. 1677216) - with the default the atom picking didn't work 
-properly.</p>
-
---!>
-<hr width="75%"/>
-
-<a name="macosx"></a><h3>Macintosh OSX</h3>
-<p>Unfortunately, the version of Python that ships with OSX (Darwin at
-any rate) does not include Tk/Tcl or Tkinter by default (why?!?), so
-you will need to install these packages first.</p>
-
-<a name="mactcl"><h4>Tcl/Tk Aqua</h4>
-<p>Tcl/Tk for MacOSX can be downloaded from <a
-href="http://www.apple.com/downloads/macosx/unix_open_source/tcltkaqua.html">Apple</a>
-- just follow the instructions for installing them.</p>
-
-<h4> Tkinter ( Numeric Python and IDLE )</h4>
-<p>The next step is to install the Mac Python add-ons, which include a
-Package Manager tool that you can use to install Tkinter ( as well as Numeric
-Python and IDLE ). You can get the Package Manger 
- from <a
-href="http://homepages.cwi.nl/~jack/macpython/download.html">MacPython
-website</a>. Once you have installed this, it will create a folder
-call <b><tt>MacPython-<i>version</i></b></tt> ( where version is the
-version of Python you are using  - e.g. 2.3 ) in your Applications
-folder. Use the Finder to navigate to this folder and then run
-<tt>PackageManager</tt> program.</p>
-
-<small><blockquote><b>NB:</b> If this crashes on opening with a
-message about being unable to open a &quot;.plist&quot; file, then the
-Package Manager is looking at the wrong online database to get it's
-list of available packages. To find out about current databases, visit the
-<a href="http://www.python.org/packman/">packman</a> webpage and get
-the url for a suitable database. Then in PackageManager, select
-<b>File -&gt; Open Url...</b> and paste in the
-url.</small></blockquote>
-
-<p>In the package manager then select the following packages:</p>
-<ul>
-<li>Numeric-<i>version</i>-binary</li>
-<li>_tkinter-<i>version</i>-binary</li>
-<li>IDLE-<i>version</i>-binary</li>
-</ul>
-
-<p>( where version will be a differnent number depending on the
-version ) and then click the <b>install</b> button at the bottom of
-the page to install the packages.</p>
-
-<p>If the above commands work for you, you should now be in a position
-to download one of the pre-packaged distributions or Mac OSX as
-described in the <a href="#easyinstall">Easy Installation
-Instructions</a> above. Alternatively, you can install the
-remaining dependencies as described below:</p>
-
-<h4>Scientific Python and Pmw</h4>
-<p> The instructions for installing <a href="#linuxscientific">Scientific
-Python</a> and <a href="#linuxpmw">Pmw</a> under Unix/Linux are also
-applicable under Mac OSX, so please read the information in those
-sections.</p>
-
-<h4>VTK</h4>
-<p>If you have installed Tk/Tcl and Tkinter as described above, then
-follow the instructions <a href="#vtk">below</a> to build vtk.</p>
-
-<hr width="75%"/>
-
-<a name="vtk"></a><h3>Building VTK from source</h3>
-
-<p>The Visualization ToolKit (VTK) is an open source, freely available
-software system for 3D computer graphics, image processing, and
-visualization that can be used for creating graphical representations
-of molecules.</p>
-
-<p> The following instructions are for building VTK from
-source. To do this you will need  a C/C++-compiler. On Linux systems gcc will be there by
-default, on Macs, you can install <a
-href="http://fink.sourceforge.net/">fink</a> and use this to install
-gcc. On Windows, your best bet is probably to install <a
-href="http://www.cygwin.com/">cygwin</a> and get gcc that way.</p>
-
-<p>With a compiler in place you will need to install 
-the relevant development packages on your system ( development
-packages contain the header files for C/C++ and other information
-needed when you compile a package ). Assuming you already have Tk/Tcl,
-Python and Tkinter installed as mentioned in the sections above, then you will just need to
-install the development versions of these packges.</p>
-
-<p>The next stage is to install cmake, the cross-platform make
-utility. You can get this from the <a
-href="http://www.cmake.org/">CMake website</a>.</p>
-
-<p>Next, download the lastest VTK release
-from <a href="http://public.kitware.com/VTK/get-software.php">http://public.kitware.com/VTK/get-software.php</a>.
-The file will extract to a directory called VTK. <kbd>cd</kbd> into
-this directory and enter:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>ccmake</tt>
-</td></tr>
-</table>
-
-<p>This runs CMake with a curses interface, where it will ask you a
-number of different questions. The first question you will be asked is
-if you would like to see the advanced options - if you do you probably
-don't need to be reading this. Most of the remaining options shouldn't need to
-be changed and those that you may want to should be
-self-explanatory. Options that you <i>must</i> select (i.e. set to <i>ON</i>), however are the
-following:</p>
-
-<ul>
-<li>BUILD_SHARED_LIBS</li>
-<li>VTK_USE_HYBRID</li>
-<li>VTK_WRAP_PYTHON</li>
-<li>VTK_WRAP_TCL</li>
-</ul>
-
-<p>When CMake has finished, just type:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>make</tt>
-</td></tr>
-</table>
-
-<p>in the VTK directory to build the VTK binaries, and then:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>make install</tt>
-</td></tr>
-</table>
-
-</p>To install vtk onto your system.</p>
 
 </body>
 </html>
