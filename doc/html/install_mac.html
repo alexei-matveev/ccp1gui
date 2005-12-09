@@ -1,0 +1,109 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+Packages for the CCP1GUI under Macintosh
+</title>
+</head>
+
+<body>
+<h1 align=center>Installation of the packages for the CCP1GUI
+under Mactintosh</h1>
+
+<h2>Base Packages</h2>
+
+<p>Unfortunately, the version of Python that ships with OSX (Darwin at
+any rate) does not include Tk/Tcl or Tkinter by default, so
+you will need to install these packages first.</p>
+
+<a name="mactcl"><h3>Tcl/Tk Aqua</h3>
+<p>Tcl/Tk for MacOSX can be downloaded from <a
+href="http://www.apple.com/downloads/macosx/unix_open_source/tcltkaqua.html">Apple</a>
+- just follow the instructions for installing them.</p>
+
+<a name="numeric"></a><h3> Tkinter ( Numeric Python and IDLE )</h3>
+<p>The next step is to install the Mac Python add-ons, which include a
+Package Manager tool that you can use to install Tkinter ( as well as Numeric
+Python and IDLE ). You can get the Package Manger 
+ from <a
+href="http://homepages.cwi.nl/~jack/macpython/download.html">MacPython
+website</a>. Once you have installed this, it will create a folder
+call <b><tt>MacPython-<i>version</i></b></tt> ( where version is the
+version of Python you are using  - e.g. 2.3 ) in your Applications
+folder. Use the Finder to navigate to this folder and then run
+<tt>PackageManager</tt> program.</p>
+
+<small><blockquote><b>NB:</b> If this crashes on opening with a
+message about being unable to open a &quot;.plist&quot; file, then the
+Package Manager is looking at the wrong online database to get it's
+list of available packages. To find out about current databases, visit the
+<a href="http://www.python.org/packman/">packman</a> webpage and get
+the url for a suitable database. Then in PackageManager, select
+<b>File -&gt; Open Url...</b> and paste in the
+url.</small></blockquote>
+
+<p>In the package manager then select the following packages:</p>
+<ul>
+<li>Numeric-<i>version</i>-binary</li>
+<li>_tkinter-<i>version</i>-binary</li>
+<li>IDLE-<i>version</i>-binary</li>
+</ul>
+
+<p>(where version will be a different number depending on the
+version) and then click the <b>install</b> button at the bottom of
+the page to install the packages.</p>
+
+<p>If the above commands work for you, you should now be in a position
+to download one of the software bundles. Only read on if you need to
+install the additional packages yourself.</p>
+
+<hr/>
+
+<h2 align="center">Additional Packages</h2>
+
+<a name="scientific"></a><h3>Scientific Python</h3>
+<p>The Scientific Python <a
+href="http://starship.python.net/~hinsen/ScientificPython/">Website</a>
+has links for Mac installers that you can download. If these aren't
+available or you think installers are for wusses and you crave the
+command-line, then you can follow the instructions for installing
+Scientific under <a
+href="./install_unix.html#scientific">Unix/Linux</a>.</p>
+
+<a name="pmw"></a><h3>Python MegaWidgets</h3>
+
+<p>Pmw is just pure Python code, and so doesn't need to be installed
+as such, just copied into a place where Python can find it. A link to
+a download of a tarred and zipped archive is available on the Pmw <a
+href="http://pmw.sourceforge.net/">webpage</a>.
+You should be able to unpack the archive with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>tar -xvzf Pmw.1.2.tar.gz</b></tt>
+</td></tr>
+</table>
+
+<p>This will give you a folder called <b>Pmw</b> To install Pmw, copy this folder into the
+<b>site-packages</b> folder of your python installation, as show below. This
+command applies to Python 2.3 as installed as a framework build -
+please change the version number (2.3) to whatever is suitable for
+your installation if it is different. If you've
+built your own python, just copy the Pmw folder into the
+<b><tt>lib/site-packages</tt></b> of your install tree.</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>cp -R Pmw /System/Library/Frameworks/Python.framework/Versions/2.3/lib/python2.3/site-packages</b></tt>
+</td></tr>
+</table>
+
+<a name="vtk"></a><h3>VTK</h3>
+<p>Most of the instructions for building under <a
+href="./install_unix.html#vtk">Unix/Linux</a> should apply, but you
+will first need to ensure you have a compiler installed, which you can
+do by installing the MacOSX developer tools from the installation CD,
+which includes gcc.</p>
+
+</body>
+</html>

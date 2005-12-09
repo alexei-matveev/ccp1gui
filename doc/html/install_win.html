@@ -1,0 +1,105 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+Packages for the CCP1GUI under Windows
+</title>
+</head>
+
+<body>
+<h1 align=center>Installation of the software packages for the CCP1GUI
+under Windows</h1>
+
+<h2>Base Packages</h2>
+
+<p>The installation of the CCP1GUI on Windows has been made
+considerably easier thanks to the nice people at <a
+href="http://www.enthought.com">Enthought</a> who have created a
+Python distribution that contains most of the software dependancies
+required by the CCP1GUI.</p>
+
+<p>Their Python installation program can be downloaded from:</p>
+
+<a href="http://www.enthought.com/python/">http://www.enthought.com/python/</a>
+
+<p>Save the installatation program to somewhere on your computer (e.g
+your Desktop) and then run it by double-clicking on it.</p>
+
+<p>It is important to let Enthought install the python in the default
+location of C:\Python23 - otherwise you will need to edit the
+ccp1gui.bat file to point it at your Python installation or set a
+PYTHON environment variable to point at excutable.</p>
+
+<p>When prompted to "Select Components" for the install "Python
+interpreter and Libraries" as well as "Tcl/Tk (Tkinter, IDLE, pydoc)"
+should be selected by default, but if for any reason they are not,
+make sure that they are selected.</p>
+
+<p>Once you have installed Python, you will need to reboot.</p>
+
+<p>Next, install Mark Hammond's Python for Windows extensions from:</p>
+
+<a href="https://sourceforge.net/projects/pywin32/">https://sourceforge.net/projects/pywin32/</a>
+
+<p>You will need to ensure that you download the extensions for the
+version of Python you downloaded from Enthought. For the latest
+version of Enthought Python (2.3) you should download the file:</p>
+
+<tt><b>pywin32-205.win32-py2.3.exe</b></tt>
+
+<p>and then run it by double-clicking on it. The installer will ask you
+where to install the extensions, and you should ensure that it has
+selected the directory that holds your Enthought Python
+installation.</p>
+
+<p>At this point you have the base packages installed and so can
+download a bundle, so only read on if you are installing the
+additional packages individually.</p>
+
+<hr/>
+
+<h2 align="center">Additional Packages</h2>
+
+<a name="numeric"></a><h3>Numerical Python (numpy)</h3>
+<p>If you've installed the Enthought package as described above, you
+already have numpy installed. If you need to install it separately,
+please vist the Numerical Python website at <a
+href="http://sourceforge.net/projects/numpy">sourceforge</a> and click
+on the <b>Download Numerical Python</b> link. Then select the
+<b>numpy</b> package to download and you will be presented with a page
+that offers both installers for windows as well as source builds.</p>
+
+
+<a name="scientific"></a><h3>Scientific Python</h3>
+<p>If you've installed the Enthought package as described above, you
+already have Scientific Python installed. If you need to install it separately,
+please vist the Scientific Python website at <a
+href="http://starship.python.net/~hinsen/ScientificPython/">http://starship.python.net/~hinsen/ScientificPython/</a>.
+The main page offers both installers for windows as well as downloads
+of the Python source code.</p>
+
+<a name="pmw"></a><h3>Python MegaWidgets</h3>
+<p>Pmw is just pure Python code, and so doesn't need to be installed
+as such, just copied into a place where Python can find it. A link to
+a tarred and zipped archive is available on the Pmw <a
+href="http://pmw.sourceforge.net/">webpage</a>.
+You should be able to unpack the archive with a zip utility such as
+Winzip, and it will unpack to create a folder called Pmw.</p>
+
+<p>To install Pmw, copy this folder into the
+<b>Python&lt;VERSION&gt;\Lib\site-packages</b> folder of your Python
+installation. For example if you are using Python 2.3 and it is
+installed on the default place on your C: drive, you would copy the
+Pmw folder to:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>C:\Python2.3\Lib\site-packages</b></tt>
+</td></tr>
+</table>
+
+<a name="vtk"></a><h3>VTK</h3>
+<p>Use the Enthought Python version. No really, do.</p>
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<head>
+<title>
+Packages for the CCP1GUI under Linux/Unix
+</title>
+</head>
+
+<body>
+<h1 align=center>Installation of the packages for the CCP1GUI under
+Unix/Linux</h1>
+
+<h2>Base Packages</h2>
+
+<p>The majority of these should be available under the package
+management system under Linux systems (e.g. yast with Suse, apt-get
+with Debian, yum under Redhat or emerge under Gentoo) or on the
+installation cd's for your distribution. Even if they are not,
+then you may be able to find rpm distributions of the relevant
+packages ( if you are running Redhat, Suse or their ilk ).</p>
+
+<p>If you are unfamiliar with Unix/Linux command-line tools and how to
+determine which rpms are installed / how to add new packages, there
+are some instructions on how to use these in the <a
+href="./linuxhelp.html">Linux Help</a> section.
+
+<p>A good place to start looking for rpm packages is the <a
+href="http://www.rpmfind.net/linux/RPM/">rpmfind</a> site.</p>
+
+<a name="python"></a><h3>Python</h3>
+
+<p>There are a range of different python distributions in use:
+Python 1.5, 2.2, 2.3 and 2.4. The CCP1GUI should work quite happily
+with most of these, although you are recommended to try and get the
+most up-to-date possible.</p>
+
+<p>If Python isn't installed on your system, it is available from: <a
+href="http://www.python.org/download/">www.python.org/download/</a></p>
+
+<a name="tcltk"></a><h3>Tcl/Tk</h3>
+<p>A good place to look for Tcl/Tk packages is the <a
+href="http://www.tcl.tk/software/tcltk/">Tcl Developer Xchange</a>, or
+you can always get it  as source from the <a
+href="http://tcl.sourceforge.net/">Tcl/Tk</a> pages on Sourceforge, by
+clicking on the <b>File Distribution</b> link.</p>
+
+<a name="tkinter"></a><h3>Tkinter</h3>
+
+<p>Tkinter is really considered to be part of Python and so is usually
+included with most Python distributions (and comes if you download
+Python as source code). Unfortunately, many Linux
+distributions do not install Tkinter by default, even though it is
+provided, so you will need to look for the appropriate rpm on the
+installation cds or via the package manager. Additional information on
+Tkinter can be found at: <a
+href="http://wiki.python.org/moin/TkInter">http://wiki.python.org/moin/TkInter</a>.</p>
+
+<p>With the three above packages installed, you should be in a
+position to download a bundle for your system. If one is not
+available, then please read on for instructions on how to install the
+additional packages.</p>
+
+<hr/>
+
+<h2 align="center">Additional Packages</h2>
+
+<a name="numeric"></a><h3>Numerical Python</h3>
+<p>The Numerical Python website at <a
+href="http://sourceforge.net/projects/numpy">sourceforge</a> has links
+to tarred and gzipped archives that you can find by clicking
+on the <b>Download Numerical Python</b> link. Then select the
+<b>numpy</b> package to download and you will be presented with a page
+that offers rpm packages as well as source distributions.</p>
+
+<p>If you are using the source distribution, you will need to unpack
+the distribution with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>gunzip < Numeric-24.2.tar.gz | tar xvf -</tt>
+</td></tr>
+</table>
+
+<p>To install the package, you will need to cd into the <b>Numeric-24.2</b> you 
+have just unpacked and have root priviledges. Whilst sat in the
+directory <b>Numeric-24.2</b> enter the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python setup.py install</tt>
+</td></tr>
+</table>
+
+<p>This runs the setup.py Python script that copies the relevant files 
+into the path of the Python version you are using to invoke the
+script. If you want to install the python somewhere else, the you can
+find more information on how to use setup.py scripts at the <a
+href="http://www.python.org/doc/current/inst/">distutils</a> page
+on the Python website.</p>
+
+<a name="scientific"></a><h3>Scientific Python</h3>
+<p>The Scientific Python website: <a
+href="http://starship.python.net/~hinsen/ScientificPython/">http://starship.python.net/~hinsen/ScientificPython</a>
+has links to downloads for rpm files as well as source distributions.</p>
+</p>
+
+<p>If you are using the source distribution, you will need to unpack
+the distribution with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>gunzip < Scientific-2.4.9.tar.gz | tar xvf -</tt>
+</td></tr>
+</table>
+
+<p>To install the package, you will need to cd into the <b>Scientific-2.4.9</b> you 
+have just unpacked and have root priviledges. Whilst sat in the
+directory <b>Scientific-2.4.9</b> enter the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>python setup.py install</tt>
+</td></tr>
+</table>
+
+<p>This runs the setup.py Python script that copies the relevant files 
+into the path of the Python version you are using to invoke the
+script. If you want to install the Python somewhere else, the you can
+find more information on how to use setup.py scripts at the <a
+href="http://www.python.org/doc/current/inst/">distutils</a> page
+on the Python website.</p>
+
+<a name="pmw"></a><h3>Pmw</h3>
+<p>Pmw is just pure Python code, and so doesn't need to be installed
+as such, just copied into a place where Python can find it. A link to
+a download of a tarred and zipped archive is available on the Pmw <a
+href="http://pmw.sourceforge.net/">webpage</a>.
+You should be able to unpack the archive with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>gunzip < Pmw.1.2.tar.gz | tar xvf -</tt>
+</td></tr>
+</table>
+
+<p>This will give you a folder called <b>Pmw</b> To install Pmw, copy this folder into the
+<b>site-packages</b> folder of your python installation, as show below. This
+command applies to Python 2.3 as installed in /usr/lib. Please
+change the version number (2.3) and prefix to whatever is suitable for
+your installation if it is different.</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>cp -R Pmw /usr/lib/python2.3/site-packages/</tt>
+</td></tr>
+</table>
+
+<blockquote>
+<p><b>NB:</b>If you aren't sure where you python site-packages is
+located, you can find out by executing the following sequence of commands:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td><tt>python</tt></td></tr>
+</table>
+
+<p>This should start the python interpreter on your system and give
+you a python prompt (something like <b>&gt;&gt;&gt;</b> should
+appear). If that does, type:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td><tt>import sys</tt></td></tr>
+</table>
+
+<p>This imports the system module that we can then query to find the python
+path with the command:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td><tt>print sys.path</tt></td></tr>
+</table>
+
+<p>This will print out the path that Python searches for Modules. Look
+for the one that has <b>site-packages</b> in it.</p>
+</blockquote>
+
+<a name="vtk"></a><h3>VTK</h3>
+<p>If you are fortunate then you may find that a vtk package already exists
+for your distribution. This is certainly the case for Debian, and if
+are running Redhat 9.0, rpm distributions for are available from: <a 
+href="http://www.creatis.insa-lyon.fr/vtk/">www.creatis.insa-lyon.fr/vtk/</a></p>
+
+<!-- 
+<p>If you are running Redhat 7.1, then vtk rpms for this distribution are available from:</p>
+<a
+href="http://www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html">www.fysik.dtu.dk/CAMPOS/Download/CAMPOS_access.html</a>
+
+<p>The packages you will need to download from this site are:</p>
+
+<ul>
+<li>vtk-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
+<li>vtk-python-<i>&lt;release_and_cvs_number&gt;</i>.i386.rpm</li>
+</ul>
+-->
+
+<p>If the above fails, then the following instructions are for
+building VTK.</p>
+
+<p>The <a href="http://public.kitware.com/VTK/">Visualization ToolKit</a> (VTK) is an open source, freely available
+software system for 3D computer graphics, image processing, and
+visualization that can be used for creating graphical representations
+of molecules.</p>
+
+<p> The following instructions are for building VTK from
+source. To do this you will need  a C/C++-compiler. On Linux systems gcc will be there by
+default, on Macs, you can user the developer tools or install <a
+href="http://fink.sourceforge.net/">fink</a> and use this to install
+gcc. On Windows, your best bet is probably to install <a
+href="http://www.cygwin.com/">cygwin</a> and get gcc that way.</p>
+
+<p>With a compiler in place you will need to install 
+the relevant development packages on your system ( development
+packages contain the header files for C/C++ and other information
+needed when you compile a package ). Assuming you already have Tk/Tcl,
+Python and Tkinter installed as mentioned in the sections above, then you will just need to
+install the development versions of these packges.</p>
+
+<p>The next stage is to install cmake, the cross-platform make
+utility. You can get this from the <a
+href="http://www.cmake.org/">CMake website</a>.</p>
+
+<p>Next, download the lastest VTK release
+from <a href="http://public.kitware.com/VTK/get-software.php">http://public.kitware.com/VTK/get-software.php</a>.
+The file will extract to a directory called VTK. <kbd>cd</kbd> into
+this directory and enter:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>ccmake</tt>
+</td></tr>
+</table>
+
+<p>This runs CMake with a curses interface, where it will ask you a
+number of different questions. The first question you will be asked is
+if you would like to see the advanced options - if you do you probably
+don't need to be reading this. Most of the remaining options shouldn't need to
+be changed and those that you may want to should be
+self-explanatory. Options that you <i>must</i> select (i.e. set to <i>ON</i>), however are the
+following:</p>
+
+<ul>
+<li>BUILD_SHARED_LIBS</li>
+<li>VTK_USE_HYBRID</li>
+<li>VTK_WRAP_PYTHON</li>
+<li>VTK_WRAP_TCL</li>
+</ul>
+
+<p>When CMake has finished, just type:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>make</tt>
+</td></tr>
+</table>
+
+<p>in the VTK directory to build the VTK binaries, and then:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>make install</tt>
+</td></tr>
+</table>
+
+</p>to install vtk onto your system.</p>
+
+</body>
+</html>
