@@ -28,12 +28,13 @@ import __main__
 
 version=sys.version_info #The version of python we are using
 
-if ( int(version[0]) == 2 and int(version[1]) < 3 ): # Python < 2.3
+try:
+    # Below accpeted way of doing things for Python > 2.2
+    mainscriptdir=os.path.dirname(os.path.abspath(__main__.__file__))
+except AttributeError:
     import debug
     x=os.path.abspath(debug.__file__) # Get the full path to the debug file
     mainscriptdir=os.path.dirname(x)
-else:
-    mainscriptdir=os.path.dirname(os.path.abspath(__main__.__file__))
 
 gui_path = os.path.split(mainscriptdir)[0]
 root_path = os.path.split(gui_path)[0]
