@@ -150,9 +150,12 @@ class VtkGraph(TkMolView,Graph):
         self.set_clipping_planes()
 
         # reposition window
-        m = re.match('(\d+)x(\d+)\+(\d+)\+(\d+)',self.master.geometry())
+        #m = re.match('(\d+)x(\d+)\+(\d+)\+(\d+)',self.master.geometry())
+        # Above may not work as offset may contain a minus sign
+        # See http://www.pythonware.com/library/tkinter/introduction/x9867-window-geometry-methods.htm
+        m = re.match('(\d+)x(\d+)\+(-?\d+)\+(-?\d+)',self.master.geometry())
         sx,sy,px,py = int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4))
-        print sx,sy,px,py
+        #print sx,sy,px,py
         sx = 450
         sy = 500
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
