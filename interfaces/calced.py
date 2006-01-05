@@ -305,7 +305,7 @@ class CalcEd(Pmw.MegaToplevel):
     def reposition(self):
         """ place window relative to main graphics window"""
         parent = self.graph.master
-        m = re.match('(\d+)x(\d+)\+(\d+)\+(\d+)',parent.geometry())
+        m = re.match('(\d+)x(\d+)\+(-?\d+)\+(-?\d+)',parent.geometry())
         msx,msy,mpx,mpy = int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4))
         #print 'master geom',    msx,msy,mpx,mpy
         self.geometry("+%d+%d" % (mpx+msx+4,mpy+1))
