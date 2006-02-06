@@ -2722,6 +2722,7 @@ class TkMolView(Pmw.MegaToplevel):
             that follows is gamess cartesian format and reformats each string so that it
             can be handled by the list method.
         """
+        print "Reading GAMESS-UK input file: %s" % filename
 
         # root is the default filename, file is the filename, not the file handle
         try:
@@ -2734,7 +2735,6 @@ class TkMolView(Pmw.MegaToplevel):
         finished = 0
         while not finished:
             line = file.readline()
-
             if not line: # EOF so return 
                 finished = 1
                 return None
@@ -2748,12 +2748,18 @@ class TkMolView(Pmw.MegaToplevel):
             else:
                 # ignore empty lines
                 continue
-
             if ( fields[0][0:4] == "zmat" ):
                 mode = 'z'
                 finished = 1
-            elif ( fields[0][0:4] == "geom"  or fields[0][0:4] == "cart" ):
+            elif ( fields[0][0:4] == "cart" ):
                 mode = 'x'
+                finished = 1
+            elif ( fields[0][0:4] == "geom"):
+                # Check for NWChem input style
+                if ( len(fields) == 3 and fields[2][0:4] == 'nwch'):
+                    mode = 'n'
+                else:
+                    mode = 'x'
                 finished = 1
 
         zmat_buffer = []
@@ -2815,9 +2821,17 @@ class TkMolView(Pmw.MegaToplevel):
                 if mode == 'z':
                     zmat_buffer.append( line )
                 elif mode == 'x': # reformat the line
-                    cart_string = fields[4] + "  " + fields[0] + "  " + fields[1] + "  " + fields[2]
+                    cart_string = fields[4] + "\t" + fields[0] + "\t" \
+                                  + fields[1] + "\t" + fields[2]
                     zmat_buffer.append( cart_string )
+                elif mode == 'n':
+                    # Reformat the string from NWChem input format
+                    cart_string = fields[0] + "\t" + fields[2] + "\t" \
+                                  + fields[3] + "\t" + fields[4]
+                    zmat_buffer.append( cart_string )
+                    
 
+        #self.debug = 1
         if ( self.debug == 1 ):
             print "viewer/main.py: rdgamin read zmat_buffer:"
             for line in zmat_buffer:
