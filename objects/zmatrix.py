@@ -343,7 +343,12 @@ class Zmatrix(Indexed):
                     a.coord = [0.0,0.0,0.0]
                     self.atom.append(a)
                     a.name = fields[0]
-                    a.symbol = string.translate(fields[0],trans,string.digits)
+                    a.symbol = a.name
+                    # Remove any punctuation symbols & take the remaining stem as the symbol
+                    for char in string.punctuation:
+                        a.symbol = string.split(a.symbol,char)[0]
+                    # Remove any digits that remain
+                    a.symbol = string.translate(a.symbol,trans,string.digits)
                     a.symbol = string.capitalize(a.symbol)
 
                     if mode == 'z':
@@ -530,6 +535,11 @@ class Zmatrix(Indexed):
             fac = 1.0
         elif key[0:4] == 'bohr' or key[0:4] == 'a.u.' or key[0:2] == 'au':
             fac = 0.529177
+        else:
+            print "ERROR reading in factor in rescale in zmatrix.py!!!"
+            print "Errant key is: %s" % fac
+            fac = 0.529177
+        
         return fac
         
     def output_zmat(self,full=0,charges=1):
