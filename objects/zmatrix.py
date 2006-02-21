@@ -38,6 +38,7 @@ import math
 import copy
 import exceptions
 import string
+import re
 
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
@@ -343,12 +344,16 @@ class Zmatrix(Indexed):
                     a.coord = [0.0,0.0,0.0]
                     self.atom.append(a)
                     a.name = fields[0]
-                    a.symbol = a.name
-                    # Remove any punctuation symbols & take the remaining stem as the symbol
-                    for char in string.punctuation:
-                        a.symbol = string.split(a.symbol,char)[0]
-                    # Remove any digits that remain
-                    a.symbol = string.translate(a.symbol,trans,string.digits)
+
+                    # Determine the symbol from the first 2 chars of the name
+                    if ( len( a.name ) == 1 ):
+                        a.symbol = a.name
+                    else:
+                        # See if 2nd char is a character - if so use 1st 2 chars as symbol
+                        if re.match( '[a-zA-Z]', a.name[1] ):
+                            a.symbol = a.name[0:2]
+                        else:
+                            a.symbol = a.name[0]
                     a.symbol = string.capitalize(a.symbol)
 
                     if mode == 'z':
