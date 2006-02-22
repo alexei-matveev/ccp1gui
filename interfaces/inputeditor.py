@@ -32,16 +32,19 @@ class Editor(Pmw.MegaToplevel):
 #   def __init__(self,parent,title=None,data=None,**kw):
    def __init__(self,parent,title=None,data=None,directory=None,**kw):
 
+
        self.parent = parent
        self.data = data
-       self.title = title
+       self.inputtitle = title
        self.user_directory=directory
 
-       #print self.data
-
-       Pmw.MegaToplevel.__init__(self, parent)
+       Pmw.MegaToplevel.__init__(self, parent, title="Calculation Input Editor" )
        initialiseTk(parent)
-
+       
+       # Ensure that when the user kills us with the window manager we behave as expected
+       self.userdeletefunc( func = self.Quit )
+       #self.usermodaldeletefunc( func = self.Quit )
+                            
        #Add the menu bar
        # Create the Balloon.
 #       self.balloon = Pmw.Balloon(self.interior())
@@ -71,7 +74,7 @@ class Editor(Pmw.MegaToplevel):
        
        self.text = Pmw.ScrolledText(self.interior(),
                                           labelpos = 'n',
-                                          label_text=self.title)
+                                          label_text=self.inputtitle)
        self.text.pack(fill='both',expand=1)
        
        self.__settext()
