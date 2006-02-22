@@ -71,6 +71,27 @@ script in this directory as shown below:
 or by double-clicking on the ccp1gui.bat file (also in this directory)
 under Windows.
 
+
+Customising / scripting the CCP1GUI
+===================================
+
+As it is written in Python, is possible to customise the CCP1GUI to
+your own needs. The simplest way to do this is to place a ccp1guirc.py
+file in your home directory to set defaults for various variables
+(e.g. the background colour) or even to add functionality to the
+CCP1GUI.
+
+There is an example ccp1guirc.py file in the scripts directory, that
+you can copy to the root of your home directory (as specified by the
+$HOME environment variable under *nix or %USERPROFILE% under Windows)
+and experiment with.
+
+In addition there are several example scripts in the scripts directory
+that demonstrate how to use the functionality available in the CCP1GUI
+from the command line, which can be useful for automating tasks
+(e.g. running multiple calcluations for a parameter sweep).
+
+
 If you have any problems or queries relating to the CCP1GUI, please
 send an email to either of:
 
