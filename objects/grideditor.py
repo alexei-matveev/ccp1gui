@@ -52,7 +52,7 @@ class GridEditor(Pmw.MegaToplevel):
       self.reposition()
       
       #Associate widget with its help file
-      tkmolview.help.sethelp(self,"Grid Editor")
+      viewer.help.sethelp(self,"Grid Editor")
       
    def _close(self,field):
       if self.exitcommand:
