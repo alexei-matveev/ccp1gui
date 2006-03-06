@@ -549,20 +549,11 @@ class GAMESSUKCalc(QMCalc):
             return 1
         else:
             return 0
-
-    def __keepfiles(self):
-        """Keep any files the user has selected - for Windoze use environment variables,
-           for unix and its ilk, try rungamess as default and only use env var if we bum out.
-           Also run a quick check to see if we can use rungamess with the -V variable.
+        
+    def check_rungamess(self):
+        """ See if we can use rungamess and set self.rungamess to 1 if we can.
         """
-        #dictionary to hold rungamess command line parameters
-        self.rungamess_keep = {'ed0' : '',
-                               'ed2' : '',
-                               'ed3' : '',
-                               'ed7' : '',
-                               'ed14' : ''}
-
-        #Check if rungamess -V works
+        # Check if rungamess -V works - this prints out the environment variables
         from jobmanager import subprocess
         cmd="rungamess -V"
         p = subprocess.ForegroundPipe(cmd)
@@ -579,10 +570,26 @@ class GAMESSUKCalc(QMCalc):
                 test = dict['GAMESS_LIB']
                 self.userungamess = 1
             except KeyError:
-                print 'got a key error'
+                print 'Key error in __keepfiles checking for rungamess'
                 self.userungamess = 0
 
         print 'self.userungamess is '+str(self.userungamess)
+
+
+    def __keepfiles(self):
+        """Keep any files the user has selected - for Windoze use environment variables,
+           for unix and its ilk, try rungamess as default and only use env var if we bum out.
+           Also run a quick check to see if we can use rungamess with the -V variable.
+        """
+        #dictionary to hold rungamess command line parameters
+        self.rungamess_keep = {'ed0' : '',
+                               'ed2' : '',
+                               'ed3' : '',
+                               'ed7' : '',
+                               'ed14' : ''}
+
+        # Check if we are using rungamess
+        self.check_rungamess()
         
         if self.get_parameter('ed0_keep'):
             ed0_path = self.get_parameter("ed0_path")
@@ -599,8 +606,6 @@ class GAMESSUKCalc(QMCalc):
                 
             if sys.platform[:3] == 'win':
                 os.putenv('ed2',ed2_path)
-            elif sys.platform[:3] == 'mac':
-                print "Sorry! - Mac still not supported!"
             else:
                 if self.userungamess:
                     self.rungamess_keep['ed2'] = ' -k ed2='+ed2_path
@@ -618,8 +623,6 @@ class GAMESSUKCalc(QMCalc):
                 
             if sys.platform[:3] == 'win':
                 os.putenv('ed3',ed3_path)
-            elif sys.platform[:3] == 'mac':
-                print "Sorry! - Mac still not supported!"
             else:
                 if self.userungamess:
                     self.rungamess_keep['ed3'] = ' -k ed3='+ed3_path
@@ -636,8 +639,6 @@ class GAMESSUKCalc(QMCalc):
                 
             if sys.platform[:3] == 'win':
                 os.putenv('ed7',ed7_path)
-            elif sys.platform[:3] == 'mac':
-                print "Sorry! - Mac still not supported!"
             else:
                 if self.userungamess:
                     self.rungamess_keep['ed7'] = ' -k ed7='+ed7_path
@@ -660,8 +661,6 @@ class GAMESSUKCalc(QMCalc):
 
                     if sys.platform[:3] == 'win':
                         os.putenv('ed14',ed14_path)
-                    elif sys.platform[:3] == 'mac':
-                        print "Sorry! - Mac still not supported!"
                     else:
                         if self.userungamess:
                             self.rungamess_keep['ed14'] = ' -k ed14='+ed14_path
@@ -1129,7 +1128,7 @@ class GAMESSUKCalc(QMCalc):
                 alpha_titles['atom'] = "Atom Difference Density"
                 alpha_punch.append(alpha_sections['atom'])                
 
-        for n in range(0,5):
+        for n in range(0,6):
             txt = "ana_homolumo"
             if n != 0:
                 txt = txt + str(n)
@@ -1649,7 +1648,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.homolumo_tool = BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
         self.homolumo1_tool = BooleanTool(self, 'ana_homolumo1', 'HOMO1/LUMO1')
         self.homolumo2_tool = BooleanTool(self, 'ana_homolumo2', 'HOMO2/LUMO2')
-        self.homolumo3_tool = BooleanTool(self, 'ana_homolumo2', 'HOMO3/LUMO3')
+        self.homolumo3_tool = BooleanTool(self, 'ana_homolumo3', 'HOMO3/LUMO3')
         self.homolumo4_tool = BooleanTool(self, 'ana_homolumo4', 'HOMO4/LUMO4') 
         self.homolumo5_tool = BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
        
