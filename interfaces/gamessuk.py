@@ -682,7 +682,7 @@ class GAMESSUKCalc(QMCalc):
         scf_method     = self.get_parameter("scf_method")
         postscf_method = self.get_parameter("postscf_method")
         #Set local flag for rhf/uhf
-        if (scf_method == "RHF" or scf_method == "DFT" or 
+        if (scf_method == "RHF" or scf_method == "DFT" or scf_method == "GVB" or 
             scf_method == "Direct RHF" or scf_method == "Direct DFT"):
             scftype="rhf"
         elif (scf_method == "UHF" or scf_method == "UDFT" or 
@@ -893,7 +893,7 @@ class GAMESSUKCalc(QMCalc):
         elif (scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
             file.write('scftype direct uhf\n')
         else:
-            file.write('scftype rhf')
+            file.write('scftype rhf\n')
 
         #This is where all the DFT directives go
 #        if scf_method == "DFT" or scf_method == "UDFT" or scf_method == "Direct DFT" or scf_method == "Direct UDFT"
@@ -1025,16 +1025,24 @@ class GAMESSUKCalc(QMCalc):
         #
         # Plot (graphics) options
         #
-        uhf = (scf_method == 'UHF' or scf_method == 'Direct UHF' or
-               scf_method == 'UDFT' or scf_method == 'Direct UDFT')
-
-        rohf = self.get_parameter("spin") != 1 and not uhf
+        spin = self.get_parameter("spin")
+        uhf = (scftype == "uhf")
+        rohf = (spin != 1 and not uhf)
 
         count = mol.get_nuclear_charges()
         charge = self.get_parameter("charge")
         count = count - int(charge)
-        homo = (count+1)/2
-        lumo = homo+1
+
+        if uhf:
+            count = count - (spin-1)
+            homob = (count+1)/2
+            lumob = homob+1
+            homoa = homob + (spin-1)
+            lumoa = homoa + 1
+        else:
+            count = count - (spin-1)
+            homo = (count+1)/2 + (spin-1)
+            lumo = homo+1
 
 
         alpha_props = []; beta_props = []
@@ -1133,34 +1141,54 @@ class GAMESSUKCalc(QMCalc):
             if n != 0:
                 txt = txt + str(n)
             if self.get_parameter(txt):
-                txt1 = 'mo '+str(homo-n)
-                alpha_props.append(txt1)
-                alpha_sections[txt1] = self.get_next_section()
-                txt2 = 'mo '+str(lumo+n)
-                alpha_props.append(txt2)
-                alpha_sections[txt2] = self.get_next_section()
-                alpha_punch.append(alpha_sections[txt1])
-                alpha_punch.append(alpha_sections[txt2])
+
                 if n == 0:
                     txt3 = "HOMO"
                     txt4 = "LUMO"
                 else:
                     txt3 = "HOMO-"+str(n)
                     txt4 = "LUMO+"+str(n)
+
                 if uhf:
-                    alpha_titles[txt1] = txt3 +' (alpha)'
-                    alpha_titles[txt2] = txt3 +' (alpha)'
+                    txt1 = 'mo '+str(homoa-n)
+                    alpha_props.append(txt1)
+                    alpha_sections[txt1] = self.get_next_section()
+
+                    txt2 = 'mo '+str(lumoa+n)
+                    alpha_props.append(txt2)
+                    alpha_sections[txt2] = self.get_next_section()
+
+                    alpha_titles[txt1] = txt3 +' (alpha)' + ' [MO '+str(homoa-n)+']'
+                    alpha_titles[txt2] = txt4 +' (alpha)' + ' [MO '+str(lumoa+n)+']'
+
+                    alpha_punch.append(alpha_sections[txt1])
+                    alpha_punch.append(alpha_sections[txt2])
+
+                    txt1 = 'mo '+str(homob-n)
                     beta_props.append(txt1)
-                    beta_titles[txt1] = txt3 +' (beta)'
+                    beta_titles[txt1] = txt3 +' (beta)'  + ' [MO '+str(homob-n)+']'
                     beta_sections[txt1] = self.get_next_section()
+
+                    txt2 = 'mo '+str(lumob+n)
                     beta_props.append(txt2)
-                    beta_titles[txt2] = txt4 +' (beta)'
+                    beta_titles[txt2] = txt4 +' (beta)' ' [MO '+str(lumob+n)+']'
                     beta_sections[txt2] = self.get_next_section()
+
                     beta_punch.append(beta_sections[txt1])
                     beta_punch.append(beta_sections[txt2])
+
                 else:
-                    alpha_titles[txt1] = txt3
-                    alpha_titles[txt2] = txt4
+
+                    txt1 = 'mo '+str(homo-n)
+                    alpha_props.append(txt1)
+                    alpha_sections[txt1] = self.get_next_section()
+                    txt2 = 'mo '+str(lumo+n)
+                    alpha_props.append(txt2)
+                    alpha_sections[txt2] = self.get_next_section()
+                    alpha_punch.append(alpha_sections[txt1])
+                    alpha_punch.append(alpha_sections[txt2])
+                    alpha_titles[txt1] = txt3 + ' [MO '+str(homo-n)+']'
+                    alpha_titles[txt2] = txt4 + ' [MO '+str(lumo+n)+']'
 
         for orb in self.get_parameter('ana_orbitals'):
             txt1 = 'mo '+str(orb)
@@ -1499,15 +1527,26 @@ class GAMESSUKCalcEd(QMCalcEd):
              "BLYP", "UBLYP", "SVWN", "USVWN", 
              "HCTH", "UHCTH", "FT97", "UFT97"]
         self.scf_methods = {}
+
+##         self.scf_methods[MENU_ENER] = [
+##              "RHF", "UHF", "GVB", "DFT", "UDFT" ,
+##              "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+##         self.scf_methods[MENU_GRAD] = [
+##              "RHF", "UHF", "GVB", "DFT", "UDFT" ,
+##              "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+##         self.scf_methods[MENU_OPT] = [
+##              "RHF", "UHF", "GVB", "DFT", "UDFT" ,
+##              "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+
         self.scf_methods[MENU_ENER] = [
-             "RHF", "UHF", "GVB", "DFT", "UDFT" ,
-             "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+              "RHF", "UHF", "DFT", "UDFT" ,
+              "Direct RHF", "Direct UHF", "Direct DFT", "Direct UDFT"]
         self.scf_methods[MENU_GRAD] = [
-             "RHF", "UHF", "GVB", "DFT", "UDFT" ,
-             "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+              "RHF", "UHF", "DFT", "UDFT" ,
+              "Direct RHF", "Direct UHF", "Direct DFT", "Direct UDFT"]
         self.scf_methods[MENU_OPT] = [
-             "RHF", "UHF", "GVB", "DFT", "UDFT" ,
-             "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
+              "RHF", "UHF", "DFT", "UDFT" ,
+              "Direct RHF", "Direct UHF",  "Direct DFT", "Direct UDFT"]
 
 
         #DFT options
@@ -2565,18 +2604,18 @@ if __name__ == "__main__":
     atom.coord = [ 1.,1.,0. ]
     model.insert_atom(1,atom)
 
+    print 'x'
     calc = GAMESSUKCalc()
 
     root=Tk()
-    button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
-    button.pack()
-    
-    calc.set_input('mol_obj',model)
-    jm = JobManager()
-    je = JobEditor(root,jm)
 
-    calc2 = copy.deepcopy(calc)
-
-    vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
-    vt.Run()
+    #button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
+    #button.pack()
+    if 1:
+        calc.set_input('mol_obj',model)
+        jm = JobManager()
+        je = JobEditor(root,jm)
+        calc2 = copy.deepcopy(calc)
+        vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
+        vt.Run()
     root.mainloop()
