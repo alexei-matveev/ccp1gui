@@ -2754,9 +2754,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             probe = vtkProbeFilter()
             probe.SetSource(self.vtkgrid3d)
             probe.SetInput(self.vtk_sample_grid)
-
-            interp = vtkUnstructuredGrid()
-            probe.SetOutput(interp)
+            interp = probe.GetUnstructuredGridOutput()
 
             # since the interp object is not actually feeding through
             # to the pipeline, run an update so there is some data
