@@ -105,7 +105,9 @@ class MopacCalc(QMCalc):
         username = self.get_parameter("username")
 
         if hostname == 'localhost':
-            job = jobmanager.BackgroundJob()
+            #job = jobmanager.BackgroundJob()
+            # jmht Background job doesn't work currently so this is just a quick hack
+            job = jobmanager.ForegroundJob()
         elif hostname == 'hpcx':
             job = jobmanager.RemoteForegroundJob('hpcx',username)
         elif hostname == 'tcsg7':
@@ -129,11 +131,15 @@ class MopacCalc(QMCalc):
                 mopac_exe=root_path+'/exe/mopac.exe'
             print 'Using MOPAC path ' + mopac_exe
             job.add_step(RUN_APP,'run mopac',local_command=mopac_exe)
-        elif sys.platform[:3] == 'mac':
-            pass
         else:
-            mopac_exe="runmopac "+job_name
-            job.add_step(RUN_APP,'run mopac',local_command=mopac_exe,stdin_file=self.infile)
+            # See if we can work out the location of the sript
+            mopac_exe = self.find_runmopac()
+            if not mopac_exe:
+                return
+            mopac_cmd=mopac_exe+" "+job_name
+            #mopac_exe="runmopac "+job_name
+            #job.add_step(RUN_APP,'run mopac',local_command=mopac_exe,stdin_file=self.infile)
+            job.add_step(RUN_APP,'run mopac',local_command=mopac_cmd,stdout_file=self.outfile)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
@@ -282,6 +288,37 @@ class MopacCalc(QMCalc):
                     mol.atom[i].coord[2] = fac*float(rec[4])
 
                 break
+            
+    def find_runmopac(self):
+        """
+           Try to work out the location of the run_mopac script
+        """
+        # Get an editor for popping up error widgets
+        ed = self.get_editor()
+        
+        # See if we can work out where the runmopac script lives
+        from jobmanager import subprocess
+        cmd="which run_mopac"
+        p = subprocess.ForegroundPipe(cmd)
+        code = p.run()
+        script = None
+        if p.error:
+            print 'Error trying to locate run_mopac script '+str(p.error)
+        else:
+            if ( len( p.output ) > 0 ):
+                # Output is a list containing a string with an endline char
+                output = p.output[0]
+                script = output[:-1]
+                
+        if not script:
+            ed.Error("A script called \"run_mopac\" could not be found.\n" +
+                      "Please ensure that a script called \"run_mopac\" is\n" +
+                     "in your path before starting the GUI.")
+            
+        return script
+        
+    def get_editor_class(self):
+        return MopacCalcEd
 
 class MopacCalcEd(QMCalcEd):
 
