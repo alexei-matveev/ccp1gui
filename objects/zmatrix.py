@@ -1369,6 +1369,7 @@ class Zmatrix(Indexed):
                             phi = a.phi_sign * a.phi_var.value
 
                     else:
+                        print 'bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1)
                         self.logerr('bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1))
                         ok = 0
                         a.ok = 0
