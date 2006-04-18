@@ -60,7 +60,7 @@ class Field:
         self.points = None
         self.debug = 0
 
-        self.mapping = []
+        ######self.mapping = []
         self.axis = []
         # just for convenience
         self.x = Vector(1., 0., 0.)
@@ -556,8 +556,99 @@ class Field:
         print 'approximate integral',tot * vel
         return tot * vel
 
+
+    def read_molden(self,file):
+        """Load in the grid from a molden plot
+        to start with, assumes 3D (ascii version from a hacked molden)
+        (ignores the structural part)
+        """
+
+        fp = open(file,"r")
+        line = fp.readline()
+        natoms = int(line.split()[0])
+        nat = []
+        line = fp.readline()
+        for atom in range(0,natoms):
+            nat.append(int(line.split()[atom]))
+        line = fp.readline()
+        adjus = float(line.split()[0])
+        x = []; y = []; z = []
+        for atom in range(0,natoms):
+            line = fp.readline()
+            coords = line.split()
+            x.append(float(coords[0]))
+            y.append(float(coords[1]))
+            z.append(float(coords[2]))
+
+        line = fp.readline()
+        coords = line.split() 
+        px = float(coords[1])
+        py = float(coords[2])
+        pz = float(coords[3])
+
+        line = fp.readline()
+        coords = line.split() 
+        cx = -float(coords[1])
+        cy = -float(coords[2])
+        cz = -float(coords[3])
+
+        line = fp.readline()
+        coords = line.split() 
+        v1x = float(coords[1])
+        v1y = float(coords[2])
+        v1z = float(coords[3])
+
+        line = fp.readline()
+        coords = line.split() 
+        v2x = float(coords[1])
+        v2y = float(coords[2])
+        v2z = float(coords[3])
+
+        # Edge Lengths 
+        line = fp.readline()
+        coords = line.split() 
+        rx = float(coords[1])
+        ry = float(coords[2])
+        rz = float(coords[3])
+
+        line = fp.readline()
+        coords = line.split() 
+        nx = int(coords[0])
+        ny = int(coords[1])
+        nz = int(coords[2])
+        iplat = int(coords[3])
+
+        fac = 0.529177249
+        self.dim = [ nx, ny, nz ]
+        self.origin = fac * Vector(px, py, pz)
+        self.axis = []
+
+        # note swap of v1 and v2, this is empirical
+
+        self.axis.append(fac * ry * Vector(v2x,v2y,v2z))
+        self.axis.append(fac * rx * Vector(v1x,v1y,v1z))
+        self.axis.append(fac * rz * Vector(cx,cy,cz).normal())
+        self.data = nx*ny*nz*[0.0]
+        # Now pull records off the file until all done
+        i = 0
+        while i < nx*ny*nz:
+            line = fp.readline()
+            if line == "":
+                print "Warning Incomplete Molden Data"
+                return
+            values = line.split()
+            for v in values:
+                self.data[i] = float(v)
+                i = i + 1
+    
+        print 'molden data loaded'
+        self.list()
+
 if __name__ == "__main__":
-    f = Field(nd=2)
-    f.wrt_punch()
-    f.wrt_gamessuk()
-    f.wrt_mapnet()
+    f = Field(nd=3)
+    #f.wrt_punch()
+    #.wrt_gamessuk()
+    #.wrt_mapnet()
+    f.read_molden('/home/psh/ccp1gui_bundle/ccp1gui/interfaces/3dgridfile')
+    f.list()
+    
