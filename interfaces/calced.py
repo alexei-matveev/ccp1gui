@@ -245,7 +245,7 @@ class CalcEd(Pmw.MegaToplevel):
         self.charge_tool = IntegerTool(self,'charge','Charge')
         #self.tools.append(self.charge_tool)
 
-        self.spin_tool = IntegerTool(self,'spin','Spin',mini=0)
+        self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
         #self.tools.append(self.spin_tool)
 
         # defer until 
