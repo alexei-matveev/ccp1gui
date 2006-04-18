@@ -380,7 +380,7 @@ class Visualiser:
             self.dialog.destroy()
 
     def read_widgets(self):
-        print 'This method should be replaced in the derived class'
+        print 'read_widgets method should be replaced in the derived class'
 
     def GetStatus(self):
         return self.status
@@ -820,7 +820,7 @@ class OutlineVisualiser:
     def __init__(self):
         self.outline_colour   =  '#00ff00'
         self.outline_rgb = [0, 255, 0]
-        self.show_outline = 1
+        self.show_outline = 0
 
     def add_outline_widget(self):
         self.outline_var = Tkinter.BooleanVar()
@@ -2031,28 +2031,142 @@ class AllMoleculeVisualiser( MoleculeVisualiser ):
             
         self.graph.update()
 
+
+class MoldenWfnVisualiser(OrbitalVisualiser,Visualiser):
+
+    def __init__(self, root, graph, obj, **kw):
+        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        self.field = Field()
+        OrbitalVisualiser.__init__(self, root, graph, self.field, **kw)
+
+        self.title = "MolDen Visualiser for " + obj.name
+        #self.height = 0.05
+
+        # MOLDEN control object
+        from interfaces.molden import MoldenDriver
+        self.driver=MoldenDriver(obj.filename)
+
+        # default molden settings
+        self.mo = 0
+        self.npts = 21
+        self.edge = 0.0
+        #
+        self.last_mo = -1
+        self.last_edge = -1.0
+        self.last_npts = -1
+
+    def make_dialog(self, **kw):
+
+        f = self.dialog.topframe
+        #
+        #  Selection of which orbital
+        #
+        value = self.mo
+        mini = 0
+        maxi = 100
+        # Will need a callback here to change the variable value
+        if mini and maxi:
+            v = {'validator' : 'integer' , 'min' : mini , 'max' : maxi}
+        elif mini:
+            v = {'validator' : 'integer' , 'min' : mini }
+        elif maxi:
+            v = {'validator' : 'integer' , 'max' : maxi }
+        else:
+            v = {'validator' : 'integer' }
+
+        self.w_pickmo = Pmw.Counter(f,
+            labelpos = 'w', label_text = "select MO (0=density): ",
+            increment = 1,
+            entryfield_entry_width = 6,
+            entryfield_value = value,
+            entryfield_validate = v)
+
+        self.w_pickmo.pack(side='top')
+
+        #
+        #  Selection of point density
+        #
+        value = self.npts
+        mini = 2
+        maxi = 201
+        # Will need a callback here to change the variable value
+        if mini and maxi:
+            v = {'validator' : 'integer' , 'min' : mini , 'max' : maxi}
+        elif mini:
+            v = {'validator' : 'integer' , 'min' : mini }
+        elif maxi:
+            v = {'validator' : 'integer' , 'max' : maxi }
+        else:
+            v = {'validator' : 'integer' }
+
+        self.w_npts = Pmw.Counter(f,
+            labelpos = 'w', label_text = "Grid points/edge",
+            increment = 5,
+            entryfield_entry_width = 6,
+            entryfield_value = value,
+            entryfield_validate = v)
+
+        self.w_npts.pack(side='top')
+
+        #
+        #  Selection of edge length
+        #
+        self.w_edge = Pmw.Counter(f,
+                                   labelpos = 'w', label_text = 'Edge (0.0=auto)',
+                                   entryfield_value = self.edge,
+                                   entryfield_entry_width = 6,
+                                   increment=1.0,
+                                   datatype = {'counter' : 'real' },
+                                   entryfield_validate = { 'validator' : 'real' })
+
+        self.w_edge.pack(side='top')
+
+        apply(OrbitalVisualiser.make_dialog, (self, ), kw)
+
+    def compute_grid(self):
+        """ Compute the data via a call to Molden """
+        retcode=0
+        if self.mo != self.last_mo or self.edge != self.last_edge or self.npts != self.last_npts:
+            self.driver.ComputePlot((1,2,3),mo=self.mo,npts=self.npts,edge=self.edge)
+            self.field = self.driver.field
+            retcode=1
+        self.last_mo = self.mo
+        self.last_edge = self.edge
+        self.last_npts = self.npts
+        # for the rest of the construction, see graph-specific
+        # code (VtkMoldenWfnVisualise._build)
+        return retcode
+
+    def read_widgets(self):
+        self.mo = int(self.w_pickmo.get())
+        self.npts = int(self.w_npts.get())
+        self.edge = float(self.w_edge.get())
+        OrbitalVisualiser.read_widgets(self)
+
 if __name__ == "__main__":
+
+    import sys
     from Tkinter import *
     from viewer.vtkgraph import *
     from interfaces.filepunch import *
-    import sys
+
     root=Tk()
     root.withdraw()
     vt = VtkGraph(root)
-    p = PunchReader()
-    p.scan("metallo.c")
-    print p.objects
-    mol = p.objects[0]
+#    p = PunchReader()
+#]    p.scan("metallo.c")
+#    print p.objects
+#    mol = p.objects[0]
 #    obj1 = p.objects[1]
 #    obj = p.objects[2]
-    for o in p.objects:
-        o.name = o.title
-        vt.data_list.append(o)
+#    for o in p.objects:
+#        o.name = o.title
+#        vt.data_list.append(o)
 
     #vis = VtkColourSurfaceVisualiser(root,vt,obj1)
     #vis = VtkDensityVisualiser(root,vt,obj1)
     #vis = VtkVectorVisualiser(root,vt,obj)
-    vis2 = VtkMoleculeVisualiser(root,vt,mol)
+    vis2 = VtkMoldenWfnVisualiser(root,vt,"/home/psh/molden4.4_hvd/ex1/cyclopropaan.out")
     print 'build'
     #vis.Build()
     vis2.Build()
