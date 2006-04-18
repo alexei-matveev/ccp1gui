@@ -28,6 +28,7 @@ import tkFileDialog
 from mm        import *
 from interfaces.mmtools   import *
 from interfaces.tools   import *
+from objects.periodic import z_to_el
 
 class DLPOLYCalc(MMCalc):
     """DLPOLY specifics."""
@@ -99,7 +100,187 @@ class DLPOLYCalcEd(MMCalcEd):
         a.Show()
 
 
+
+class Dl_PolyCONFIGReader:
+    """Reader for DL_POLY config files
+    """
+    def __init__(self):
+        self.debug = 0
+
+
+    def scan(self,file):
+        """ Parse CONFIG
+        """
+
+        print file
+        if self.debug:
+            print "> config reader scannig file"
+        f = open(file)
+
+        self.title = f.readline()
+
+        tt = f.readline().split()
+        print 'Line 2 integers',tt[0],tt[1]
+
+        nskip = int(tt[0])
+        icell = int(tt[1])
+
+        if icell == 0:
+            ncell = 0
+        elif icell == 6:
+            ncell = 2
+        else:
+            ncell = 3
+
+        self.cell = []
+        if ncell:
+            for i in range(0,ncell):
+                tt = f.readline().split()
+                print tt
+                self.cell.append([ float(tt[0]), float(tt[1]), float(tt[2]) ] )
+
+        self.model = Zmatrix()
+
+        self.model.title = self.title
+        self.model.name = self.model.title
+
+        more=1
+        while more:
+            line = f.readline()
+            print line
+            if line != "":
+                p = ZAtom()
+                t = line.split()
+                p.name = t[0]
+                atom_no = int(t[1])
+                if len(t) > 2:
+                    z_num = int(t[2])
+                    p.symbol = z_to_el[z_num]
+                    #print p.symbol,z_num
+                else:
+
+                    # Determine the symbol from the first 2 chars of the name
+                    if ( len( p.name ) == 1 ):
+                        p.symbol = p.name
+                    else:
+                        # See if 2nd char is a character - if so use 1st 2 chars as symbol
+                        if re.match( '[a-zA-Z]', p.name[1] ):
+                            p.symbol = p.name[0:2]
+                        else:
+                            p.symbol = p.name[0]
+                    p.symbol = string.capitalize(p.symbol)
+
+                line = f.readline()
+                t = line.split()
+                p.coord[0] = float(t[0])
+                p.coord[1] = float(t[1])
+                p.coord[2] = float(t[2])
+                self.model.add_atom(p)
+                for i in range(0,nskip):
+                    junk = f.readline()
+                    print 'skip',junk
+            else:
+                more=0
+        
+        f.close()
+        print 'reindex'
+        self.model.reindex()
+        print 'returning', self.model
+        return self.model
+
+
+class Dl_PolyHISTORYReader:
+    """Reader for DL_POLY history files
+    """
+    def __init__(self):
+        self.debug = 0
+
+
+    def scan(self,file):
+        """ Parse HISTORY
+        """
+
+        print file
+        if self.debug:
+            print "> config reader scannig file"
+        f = open(file)
+
+        self.title = f.readline()
+
+        tt = f.readline().split()
+        ###print 'Line 3 integers',tt[0],tt[1],tt[2]
+
+        atom_count = int(tt[2])
+        atom_no = atom_count
+
+        more=1
+        self.results = []
+        
+        model = None
+        while more:
+            line = f.readline()
+            #print 'line in loop',line
+            #print line
+            if line != "":
+
+                ###print 'CHECK',atom_no, atom_count
+                if atom_no == atom_count :
+                    print 'timestep line',line
+                    line = f.readline()
+
+                t = line.split()
+                atom_no = int(t[1])
+                mass = float(t[2])
+                value = float(t[3])
+
+                if atom_no == 1 :
+                    if model:
+                        model.reindex()
+                    model = Zmatrix()
+                    model.title = self.title
+                    model.name = model.title
+                    self.results.append(model)
+
+                p = ZAtom()
+                p.name = t[0]
+
+                # Determine the symbol from the first 2 chars of the name
+                if ( len( p.name ) == 1 ):
+                    p.symbol = p.name
+                else:
+                    # See if 2nd char is a character - if so use 1st 2 chars as symbol
+                    if re.match( '[a-zA-Z]', p.name[1] ):
+                        p.symbol = p.name[0:2]
+                    else:
+                        p.symbol = p.name[0]
+                    p.symbol = string.capitalize(p.symbol)
+
+                ##p.symbol = z_to_el[z_num]
+                #print p.symbol,z_num
+                line = f.readline()
+                t = line.split()
+                p.coord[0] = float(t[0])
+                p.coord[1] = float(t[1])
+                p.coord[2] = float(t[2])
+                model.add_atom(p)
+
+            else:
+                more=0
+        
+        f.close()
+        print 'reindex'
+
+        print 'returning', self.results
+        return self.results
+
 if __name__ == "__main__":
+
+
+    reader = Dl_PolyHISTORYReader()
+    reader.scan("/c/qcg/psh/ParChemCourse/DL_POLY/NanoSwitch/PAUL/HISTORY")
+    reader.model.list()
+    sys.exit(0)
+
 
     from gamessuk import *
     from objects.zmatrix import *
