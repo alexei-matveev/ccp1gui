@@ -83,6 +83,7 @@ class VtkGraph(TkMolView,Graph):
         self.cut_slice_visualiser =  VtkCutSliceVisualiser
         self.vibration_visualiser = VtkVibrationVisualiser
         self.vector_visualiser = VtkVectorVisualiser
+        self.wavefunction_visualiser = VtkMoldenWfnVisualiser
         self.colourmap_func = VtkColourMap
         # experimental
         self.irregular_data_visualiser =  VtkIrVis
@@ -3029,6 +3030,34 @@ class VtkVibrationVisualiser(VibrationVisualiser,VtkMoleculeVisualiser):
 
         # This hack is needed to restore data overwritten
         self.title = 'Animate ' + self.vib.title
+
+
+class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
+
+    """Visualiser for wavefunction (held as a molden-compatible
+    output file, obj is just a string holding the name of the file)
+    """
+    def __init__(self, root, graph, obj, **kw):
+
+        self.alist = []
+        self.alist2d = []
+        apply(MoldenWfnVisualiser.__init__, (self,root,graph,obj), kw)
+
+
+    def _build(self,**kw):
+        if object:
+            print 'passed in object',object
+
+        # execute MolDen call to build and convert grids if needed
+        if self.compute_grid():
+            self.convert_data()
+
+        print 'plot height', self.height
+        VtkOrbitalVisualiser._build(self)
+
+    # this group of methods can act on the particular embedded visualiser
+    # that we are using eg orbiral visualiser
+
 
 class VtkColourMap(ColourMap):
 

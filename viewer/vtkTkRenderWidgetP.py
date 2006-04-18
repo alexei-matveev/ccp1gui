@@ -53,6 +53,9 @@ i.e. set to some initial value.  Don't forget that 'None' means
 import Tkinter
 from Tkinter import *
 import math, os, sys
+
+print 'CHECK', sys.path
+
 from vtk import *
 
 from vtk.tk.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets

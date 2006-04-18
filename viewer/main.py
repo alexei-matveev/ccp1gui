@@ -146,11 +146,13 @@ import viewer.help
 from viewer.debug import deb_setwidget,deb
 from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
-from viewer.paths import gui_path, python_path
+from viewer.paths import gui_path, python_path, user_path
+from viewer.paths import paths
 
 from interfaces.calc import *
 from interfaces.calced         import *
 from interfaces.gamessuk       import *
+from interfaces.molpro         import *
 from interfaces.gamessoutputreader import *
 from interfaces.filepunch      import *
 from interfaces.chemshell      import *
@@ -162,6 +164,8 @@ from interfaces.cadpac         import *
 
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el
+
+from interfaces.charmm_map import *
 
 from slavethread import *
 from jobmanager.jobeditor import *
@@ -247,7 +251,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_distance_dialog()
         self.build_distance_dialog(include_xyz=1)
         self.build_command_window()
-        self.build_save_image_dialog()
+        #self.build_save_image_dialog()
         self.build_save_movie_dialog()
 
         #Pass viewer object to the help.py module
@@ -566,7 +570,54 @@ class TkMolView(Pmw.MegaToplevel):
         mbutton['menu'] = menu
         return mbutton
 
+
+
     def build_save_image_dialog(self):
+        """Build up the widgets that consitute the save image dialog box with the
+           slider to specify the quality of the jpeg.
+        """
+
+        from FileDialog import SaveFileDialog
+        self.save_image_dialog=SaveFileDialog(self.master)
+        myframe=Frame(self.save_image_dialog.top,background='blue')
+        self.save_image_dialog.midframe.forget()
+        self.save_image_dialog.botframe.forget()
+        self.save_image_dialog.selection.forget()
+        myframe.pack(side='bottom',fill='x',expand='yes')
+        self.save_image_dialog.midframe.pack(expand=YES, fill=BOTH)
+        self.save_image_dialog.botframe.pack(side=BOTTOM, fill=X)
+        self.save_image_dialog.selection.pack(side=BOTTOM, fill=X)
+
+        self.image_format = Tkinter.StringVar( )
+        self.image_format.set("jpg")
+
+        format_frame = Tkinter.Frame( myframe )
+        
+        jpegradio = Tkinter.Radiobutton( format_frame,
+                                        text = "jpg", variable = self.image_format, value = "jpg",
+                                              command = self.select_image_format )
+        pngradio = Tkinter.Radiobutton( format_frame,
+                                        text = "png", variable = self.image_format, value = "png",
+                                        command = self.select_image_format )
+
+        self.jpeg_res_frame = Tkinter.Frame( myframe )
+        
+#        self.jpeg_res_widget = Tkinter.Scale( self.jpeg_res_frame ,
+#                                           label = 'Jpeg quality',
+#                                           orient = 'horizontal',
+#                                           tickinterval = '10',
+#                                           length = '400',
+#                                           from_ = 0, to_ = 100 )
+        format_frame.pack()
+        jpegradio.select()
+        jpegradio.pack( side = 'left' )
+        pngradio.pack( side = 'left' )
+#        self.jpeg_res_frame.pack()
+#        self.jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
+#        self.jpeg_res_widget.pack()
+
+
+    def build_save_image_dialog_jens(self):
         """Build up the widgets that consitute the save image dialog box with the
            slider to specify the quality of the jpeg.
         """
@@ -740,7 +791,20 @@ class TkMolView(Pmw.MegaToplevel):
         return
         
     def ask_save_image3d(self):
-        self.save_image_dialog.show()
+        #need code here to choose a sensible initial file
+        self.build_save_image_dialog()
+        self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
+        format = self.image_format.get()
+        print 'filename',self.image_filename
+        if format == "png":
+            self.save_image( self.image_filename, format = format )
+        elif format == "jpg":
+#            quality = self.jpeg_res_widget.get()
+            quality = 95
+            self.save_image( self.image_filename, format = format, quality=quality )
+        else:
+            print "ERROR getting format in save_image3d"
+        self.image_filename = None
 
     def save_image3d( self, result ):
         """Save image from main window to a JPEG file"""
@@ -749,10 +813,10 @@ class TkMolView(Pmw.MegaToplevel):
         
         if ( result == 'Save' ):
             if self.image_filename == None:
-                from viewer.paths import gui_path
                 name = 'out.'+format
-                self.image_filename = gui_path + os.sep + name
+                self.image_filename = paths['user'] + os.sep + name
 
+            print 'filename',self.image_filename
             if format == "png":
                 self.save_image( self.image_filename, format = format )
             elif format == "jpg":
@@ -766,10 +830,11 @@ class TkMolView(Pmw.MegaToplevel):
             
         elif ( result == 'Close' ):
             self.save_image_dialog.withdraw()
+
         elif( result == 'Browse...' ):
             if format == "png":
                 self.image_filename = tkFileDialog.asksaveasfilename(
-                    initialfile = self.image_filename,
+                    initialfile = paths['user'] + self.image_filename,
                     filetypes=[("PNG","*.png")])
                 print "png self.image_filename ",self.image_filename
             else:
@@ -1547,6 +1612,8 @@ class TkMolView(Pmw.MegaToplevel):
         return mbutton
 
     def post_view(self):
+
+        print 'POST VIEW'
         menu = self.view_menu
         menu.delete(0,Tkinter.AtEnd())
 
@@ -1599,6 +1666,8 @@ class TkMolView(Pmw.MegaToplevel):
 
             t1 = string.split(str(obj.__class__),'.')
             myclass = t1[len(t1)-1]
+
+            print 'myclass',myclass
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if self.molecule_visualiser:
                     cascade.add_command(
@@ -1614,7 +1683,7 @@ class TkMolView(Pmw.MegaToplevel):
                             cascade.add_command(
                                 label="New Orbital View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.orbital_visualiser,obj=obj: func(r,g,obj)))
+                                      lambda r=s.master,g=s,func=s.orbital_visualiser,obj=obj: func(r,g,obj),open_widget=1))
                             cascade.add_command(
                                 label="New Density View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
@@ -1668,6 +1737,17 @@ class TkMolView(Pmw.MegaToplevel):
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                                   lambda r=s.master,g=s,func=s.vibration_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
+
+            print 'myclass',myclass
+            if myclass == 'File' and obj.MoldenReadable() :
+                if self.wavefunction_visualiser:
+                    cascade.add_command(
+                        label="Run Molden",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
+                                  lambda r=s.master,g=s,func=s.wavefunction_visualiser,obj=obj: func(r,g,obj),
+                                                                  open_widget=1))
+
+
         menu.add_separator()
 
         greyedfont = ("Helvetica", 9, "normal")
@@ -1791,6 +1871,7 @@ class TkMolView(Pmw.MegaToplevel):
         mols = self.loaded_mols()
         ###menu.add_command(label="Test", underline=0, command=self.testcmd2)
         self.add_mol_cmd(menu,mols,"GAMESS-UK",self.gamessuk_calced)
+        self.add_mol_cmd(menu,mols,"MOLPRO",self.molpro_calced)
         self.add_mol_cmd(menu,mols,"MNDO",self.mndo_calced)
         self.add_mol_cmd(menu,mols,"Dalton",self.dalton_calced)
         self.add_mol_cmd(menu,mols,"Mopac",self.mopac_calced)
@@ -1984,19 +2065,21 @@ class TkMolView(Pmw.MegaToplevel):
         self.__update_data_list()
         self.data_dialog.show()
 
-    def quick_mol_view(self,mol):
+    def quick_mol_view(self,mols):
         """create a default image of a molecule and include it
         in the tables (vis_dict, vis_list)
         only for cases where no view already exists
         """
-        vis = self.molecule_visualiser(self.master,self,mol)
-        t = id(mol)
-        self.vis_dict[t] = [vis]
-        self.vis_list.append(vis)
-        self.__update_vis_list()
-        vis.Show()
-        return vis
-
+        flag=1
+        for mol in mols:
+            vis = self.molecule_visualiser(self.master,self,mol)
+            t = id(mol)
+            self.vis_dict[t] = [vis]
+            self.vis_list.append(vis)
+            self.__update_vis_list()
+            if flag:
+                vis.Show()
+#####                flag=0
 
     def build_distance_dialog(self,include_xyz=0):
         """Create a dialog which we will use to 
@@ -2517,6 +2600,8 @@ class TkMolView(Pmw.MegaToplevel):
                        ('PDB','.PDB'),
                        ('CML','.cml'),
                        ('CML','.xml'),
+                       ('DL_POLY CONFIG','CONFIG'),
+                       ('DL_POLY HISTORY','HISTORY'),
                        ('Zmatrix','.zmt'),
                        ('GAMESS-UK Input','.in'),
                        ('Other Output','.out'),
@@ -2551,8 +2636,16 @@ class TkMolView(Pmw.MegaToplevel):
         objs = []
         
         form = 'PUN'
+
+        print 'words',words
+
         if len(words) == 1:
-            pass
+            if filename == 'CONFIG':
+                form = 'dlpcfg'
+                print 'form=dlpcfg'
+            elif filename == 'HISTORY':
+                form = 'dlphist'
+                print 'form=dlphist'
         else:
             ext = words[-1]
             if ext == 'xyz':
@@ -2616,6 +2709,12 @@ class TkMolView(Pmw.MegaToplevel):
             objs = self.rdgamout(filename,root)
         elif form == 'DALOUT':
             objs = self.rddalout(filename,root)
+        elif form == 'dlpcfg':
+            print 'calling rdcfg'
+            objs = self.rdcfg(filename)
+        elif form == 'dlphist':
+            print 'calling rdhist'
+            objs = self.rdhist(filename)
         else:
             fileh = open(filename,'r')
             if form == 'XYZ':
@@ -2632,6 +2731,7 @@ class TkMolView(Pmw.MegaToplevel):
             return 1
         else:
             for o in objs:
+                print 'obj',o
                 t = id(o)
                 self.file_dict[t] = file
             return 0
@@ -2842,7 +2942,7 @@ class TkMolView(Pmw.MegaToplevel):
         model.title = root
         model.name = self.make_unique_name(root)
         self.connect_model(model)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
 
         return [model]
@@ -3185,7 +3285,7 @@ class TkMolView(Pmw.MegaToplevel):
                 except KeyError:
                     print 'calced_dict entry missing??'
 
-    def rdcrd(self,file,root):
+    def rdcrd(self,file,root,map=charmm_map):
 
         """Reader for CHARMM .CRD files
 
@@ -3234,139 +3334,6 @@ class TkMolView(Pmw.MegaToplevel):
         model = None
         models = []
         replica = 0
-        
-        charmm_map = {}
-        charmm_map['N'] = 'N'
-        charmm_map['NE'] = 'N'
-        charmm_map['ND1'] = 'N'
-        charmm_map['ND2'] = 'N'
-        charmm_map['NH1'] = 'N'
-        charmm_map['NH2'] = 'N'
-        charmm_map['NE'] = 'N'
-        charmm_map['NE1'] = 'N'
-        charmm_map['NE2'] = 'N'
-        charmm_map['NZ'] = 'N'
-
-        charmm_map['O'] = 'O'
-        charmm_map['O1'] = 'O'
-        charmm_map['O2'] = 'O'
-        charmm_map['O3'] = 'O'
-        charmm_map['O4'] = 'O'
-        charmm_map['O5'] = 'O'
-        charmm_map['O6'] = 'O'
-        charmm_map['OD1'] = 'O'
-        charmm_map['OD2'] = 'O'
-        charmm_map['OG'] = 'O'
-        charmm_map['OG1'] = 'O'
-        charmm_map['OE'] = 'O'
-        charmm_map['OE1'] = 'O'
-        charmm_map['OE2'] = 'O'
-        charmm_map['OH'] = 'O'
-        charmm_map['OH1'] = 'O'
-        charmm_map['OH2'] = 'O'
-
-        charmm_map['OCT1'] = 'O'        
-        charmm_map['OCT2'] = 'O'        
-        charmm_map['OT1'] = 'O'        
-        charmm_map['OT2'] = 'O'        
-
-        charmm_map['C'] = 'C'
-        charmm_map['C1'] = 'C'
-        charmm_map['C2'] = 'C'
-        charmm_map['C3'] = 'C'
-        charmm_map['CA'] = 'C'
-        charmm_map['CB'] = 'C'
-        charmm_map['CD'] = 'C' 
-        charmm_map['CD'] = 'C' 
-        charmm_map['CD1'] = 'C' 
-        charmm_map['CD2'] = 'C' 
-
-        charmm_map['CE'] = 'C' 
-        charmm_map['CE1'] = 'C' 
-        charmm_map['CE2'] = 'C' 
-        charmm_map['CE3'] = 'C' 
-
-        charmm_map['CG'] = 'C'
-        charmm_map['CG1'] = 'C'
-        charmm_map['CG2'] = 'C'
-
-        charmm_map['CH'] = 'C'
-        charmm_map['CH1'] = 'C'
-        charmm_map['CH2'] = 'C'
-
-        charmm_map['CZ'] = 'C'
-        charmm_map['CZ1'] = 'C'
-        charmm_map['CZ2'] = 'C'
-        charmm_map['CZ3'] = 'C'
-
-        charmm_map['H'] = 'H'
-
-        charmm_map['H1'] = 'H'
-        charmm_map['H2'] = 'H'
-        charmm_map['H3'] = 'H'
-        charmm_map['H4'] = 'H'
-        charmm_map['H5'] = 'H'
-        charmm_map['HA'] = 'H'
-        charmm_map['HA1'] = 'H'
-        charmm_map['HA2'] = 'H'
-        charmm_map['HB'] = 'H'
-        charmm_map['HB1'] = 'H'
-        charmm_map['HB2'] = 'H'
-        charmm_map['HB3'] = 'H'
-        charmm_map['HD1'] = 'H'
-        charmm_map['HD11'] = 'H'
-        charmm_map['HD2'] = 'H'
-        charmm_map['HD3'] = 'H'
-        charmm_map['HD12'] = 'H'
-        charmm_map['HD13'] = 'H'
-        charmm_map['HD21'] = 'H'
-        charmm_map['HD22'] = 'H'
-        charmm_map['HD23'] = 'H'
-
-        charmm_map['HE'] = 'H'
-        charmm_map['HE1'] = 'H'
-        charmm_map['HE2'] = 'H'
-        charmm_map['HE3'] = 'H'
-        charmm_map['HE21'] = 'H'
-        charmm_map['HE22'] = 'H'
-
-        charmm_map['HG'] = 'H'
-        charmm_map['HG1'] = 'H'
-        charmm_map['HG2'] = 'H'
-        charmm_map['HG3'] = 'H'
-
-        charmm_map['HG11'] = 'H'
-        charmm_map['HG12'] = 'H'
-        charmm_map['HG13'] = 'H'
-        charmm_map['HG21'] = 'H'
-        charmm_map['HG22'] = 'H'
-        charmm_map['HG23'] = 'H'
-
-        charmm_map['HH'] = 'H'
-        charmm_map['HH1'] = 'H'
-        charmm_map['HH2'] = 'H'
-
-        charmm_map['HZ'] = 'H'
-        charmm_map['HZ1'] = 'H'
-        charmm_map['HZ2'] = 'H'
-        charmm_map['HZ3'] = 'H'
-
-        charmm_map['HT1'] = 'H'
-        charmm_map['HT2'] = 'H'
-        charmm_map['HT3'] = 'H'
-
-        charmm_map['HH11'] = 'H'
-        charmm_map['HH12'] = 'H'
-        charmm_map['HH21'] = 'H'
-        charmm_map['HH22'] = 'H'
-
-        charmm_map['HN'] = 'H'
-
-        charmm_map['P'] = 'P'
-        charmm_map['SG'] = 'S'
-        charmm_map['SD'] = 'S'
-        charmm_map['ZN'] = 'ZN'
-        charmm_map['CU'] = 'CU'
         
         trans = string.maketrans('a','a')
         line = file.readline()
@@ -3427,7 +3394,7 @@ class TkMolView(Pmw.MegaToplevel):
 
             a.name = txt_type
             try:
-                a.symbol = charmm_map[txt_type]
+                a.symbol = map[txt_type]
                 #a.name = a.symbol + string.zfill(i+1,2)
             except KeyError:
                 # strip off any numbers and punctuation
@@ -3475,7 +3442,7 @@ class TkMolView(Pmw.MegaToplevel):
                   }
             pdbf.writeLine('ATOM',d)
 
-    def rdpdb(self,file,root):
+    def rdpdb(self,file,root,map=charmm_map):
         """PDB reader, based on Konrad Hinsens Scientific Python"""
 
         model = Zmatrix()
@@ -3487,6 +3454,7 @@ class TkMolView(Pmw.MegaToplevel):
         conf = PDB.Structure(file)
         print conf
         i=0
+        trans = string.maketrans('a','a')
         for residue in conf.residues:
             for atom in residue:
                 #print atom
@@ -3498,9 +3466,18 @@ class TkMolView(Pmw.MegaToplevel):
                 # atno = Element.sym2no[atsym]
                 a = ZAtom()
                 a.coord = [x,y,z]
-                trans = string.maketrans('a','a')
-                a.symbol = string.translate(atsym,trans,string.digits)
-                a.symbol = string.capitalize(a.symbol)
+
+                print atsym
+                try:
+                    txt_type = string.strip(atsym)
+                    txt_type = string.upper(txt_type)
+                    print 'trying to map',atsym
+                    a.symbol = map[txt_type]
+                    print 'done',a.symbol
+                    #a.name = a.symbol + string.zfill(i+1,2)
+                except KeyError:
+                    a.symbol = string.translate(atsym,trans,string.digits)
+                    a.symbol = string.capitalize(a.symbol)
                 a.name = a.symbol + string.zfill(i+1,2)
                 model.atom.append(a)
                 #print 'get number', a.symbol, a.get_number()
@@ -3512,6 +3489,28 @@ class TkMolView(Pmw.MegaToplevel):
 
         return [model]
 
+    def rdcfg(self,file):
+        print 'rdcfg'
+        reader = Dl_PolyCONFIGReader()
+        model = reader.scan(file)
+        print 'result', model
+        print 'result', model.list()
+        self.connect_model(model)
+        self.append_data(model)
+        self.quick_mol_view([model])
+        return [reader.model]
+
+    def rdhist(self,file):
+        print 'rdhist'
+        reader = Dl_PolyHISTORYReader()
+        models = reader.scan(file)
+        for model in models:
+            print 'result', model
+            print 'result', model.list()
+            self.connect_model(model)
+            self.append_data(model)
+            self.quick_mol_view([model])
+        return models
 
     def rdpun(self,file,root):
 
@@ -3526,6 +3525,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         # construct the results list for visualisation
 
+        mols = []
         for o in p.objects:
 
             # take the last field of the class specification
@@ -3544,17 +3544,19 @@ class TkMolView(Pmw.MegaToplevel):
                 # assume overwrite for now
 
                 self.append_data(o)
-                self.quick_mol_view(o)
 
                 # Used by visualisers
                 #o.title = name
                 #o.list()
+                mols.append(o)
 
             elif myclass == 'Brick':
                 self.append_data(o)
 
             elif myclass == 'Field':
                 self.append_data(o)
+
+        self.quick_mol_view(mols)
 
         if self.debug:
             print 'data list', self.data_list
@@ -3906,6 +3908,10 @@ class TkMolView(Pmw.MegaToplevel):
         c = GAMESSUKCalc(mol=obj)
         self.edit_calc(c)
 
+    def molpro_calced(self,obj=None):
+        c = MOLPROCalc(mol=obj)
+        self.edit_calc(c)
+
     def dalton_calced(self,obj=None):
         c = DALTONCalc(mol=obj)
         self.edit_calc(c)
@@ -4000,7 +4006,7 @@ class TkMolView(Pmw.MegaToplevel):
             print 'obj already loaded'
         else:
             print 'loading new obj'
-            self.quick_mol_view(obj)
+            self.quick_mol_view([obj])
             self.append_data(obj)
             
         tt = id(obj)
@@ -4108,7 +4114,7 @@ class TkMolView(Pmw.MegaToplevel):
         i.hybridise(new,'sp3')
 
         self.append_data(i)
-        vis = self.quick_mol_view(i)
+        vis = self.quick_mol_view([i])
         # We will need the editing tools
         self.toolwidget.show()
 
@@ -4488,7 +4494,7 @@ class TkMolView(Pmw.MegaToplevel):
                 # will need to organise together with other results
                 # assume overwrite for now
                 self.append_data(o)
-                self.quick_mol_view(o)
+                self.quick_mol_view([o])
 
         self.__update_data_list()
 
@@ -4620,14 +4626,19 @@ class TkMolView(Pmw.MegaToplevel):
             Regenerate the list of objects and refresh the widget if it does.
         """
 
+        print 'start'
         if not self.ani_image_widget:
             from objects import selector
+            print 'sel'
             self.ani_image_widget = selector.Selector( self.master, self )
+            print 'show'
             self.ani_image_widget.show()
         else:
             print "self.ani_image_widget is ",str(self.ani_image_widget)
             self.ani_image_widget.refresh()
             self.ani_image_widget.show()
+
+        print 'done'
         
     def ask_save_movie(self):
         """ The use has clicked on the button to save a movie
@@ -4671,18 +4682,26 @@ class TkMolView(Pmw.MegaToplevel):
         """ Reset the main window so that is clears out all images showing
             and displays the first one in the ani_list
         """
-        for obj in self.data_list:
-            t = id(obj)
-            try:
-                visl = self.vis_dict[t]
-                for vis in visl:
-                    vis.Hide()
-            except KeyError:
-                pass
+        print 'ani_refresh'
+##         for obj in self.data_list:
+##             t = id(obj)
+##             print 'ani_refresh loop'
+##             try:
+##                 visl = self.vis_dict[t]
+##                 for vis in visl:
+##                     vis.Hide()
+##             except KeyError:
+##                 pass
+
+        for v in self.vis_list:
+            if v.IsShowing():
+                v.Hide()
 
         #self._ani_hide_all()
         self.frame_no = 0
+        print '_ani_show'
         if self._ani_show():
+            print 'update'
             self.update()
             
     def ani_rew(self):
@@ -4781,6 +4800,8 @@ class TkMolView(Pmw.MegaToplevel):
         
         self.ani_stop = 0
         while ( self.frame_no <= len(self.ani_list)-2 ):
+
+            print 'Frame:',self.frame_no
             self.interior().update()
             if self.ani_stop:
                 return
@@ -4821,11 +4842,12 @@ class TkMolView(Pmw.MegaToplevel):
             Return 1 if we have an image to show, None if not
         """
         try:
+            print 'show',self.frame_no
             vis = self.ani_list[ self.frame_no ]
             vis._show()
             # Hack so the view menu display what is showing/hidden
             vis.is_showing = 1
-            #vis.Show()
+#            vis.Show()
             #self.update()
             #print '_ani_show frame #',self.frame_no
             return 1

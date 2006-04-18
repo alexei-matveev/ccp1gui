@@ -18,8 +18,8 @@
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 
-from tkmolview.main import *
-from tkmolview.selections import *
+from viewer.main import *
+from viewer.selections import *
 from chempy import cpv
 
 try:

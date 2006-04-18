@@ -25,7 +25,6 @@ import os
 import sys
 import __main__
 
-
 version=sys.version_info #The version of python we are using
 
 try:
@@ -39,9 +38,17 @@ except AttributeError:
 gui_path = os.path.split(mainscriptdir)[0]
 root_path = os.path.split(gui_path)[0]
 python_path = os.path.split(os.__file__)[0]
+user_path = root_path
+
+paths = {}
+paths['root'] = root_path
+paths['gui'] = gui_path
+paths['python'] = python_path
+paths['user'] = user_path
 
 if __name__ == "__main__":
     print 'Python',python_path
     print 'GUI   ',gui_path
     print 'Root  ',root_path
+    print 'User  ',user_path
     
