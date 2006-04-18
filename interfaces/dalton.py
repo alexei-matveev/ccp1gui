@@ -55,7 +55,7 @@ def fortranfloat( sfloat ):
         ttab = string.maketrans('E','D')
         f = string.translate( f, ttab )
     except Exception, e:
-        print "Error reading float in fotranfloat!: %s" %s
+        print "Error reading float in fortranfloat!: %s" %s
         f = None
         
     return f
@@ -626,7 +626,7 @@ class DALTONCalc(QMCalc):
 
 
     def __writedalfile(self, molecule ):
-        """ Build up a list of strings for a dalaton.dal file
+        """ Build up a list of strings for a dalton.dal file
         """
 
         i = [] # the list of strings we will be returning
