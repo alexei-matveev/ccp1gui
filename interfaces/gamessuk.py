@@ -37,6 +37,8 @@ from filepunch import *
 from jobmanager import *
 from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
+from objects.file import *
+
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -507,6 +509,9 @@ class GAMESSUKCalc(QMCalc):
 
         # problem here as that as we are running in a slave thread
         # we cannot use Tk .. so this is silent
+
+        o = File(directory+'/'+job_name+'.out',type=GAMESSUK_OUTPUT)
+        self.results.append(o)
 
         ed = self.get_editor()
         if ed:
