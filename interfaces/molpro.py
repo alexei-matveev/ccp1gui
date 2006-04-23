@@ -346,7 +346,7 @@ class MOLPROCalc(QMCalc):
             return
 
         # load contents of input for viewing
-        file = open(directory+os.sep+job_name+'.in','r')
+        file = open(directory+os.sep+job_name+'.com','r')
         input = file.readlines()
         self.set_input("input_file",input)
         file.close()
