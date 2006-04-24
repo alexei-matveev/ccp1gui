@@ -150,17 +150,18 @@ from viewer.paths import gui_path, python_path, user_path
 from viewer.paths import paths
 
 from interfaces.calc import *
-from interfaces.calced         import *
-from interfaces.gamessuk       import *
-from interfaces.molpro         import *
+from interfaces.calced import *
+from interfaces.gamessuk import *
+from interfaces.molpro import *
+from interfaces.chemshell import *
+from interfaces.dl_poly import *
+from interfaces.mopac import *
+from interfaces.mndo import *
+from interfaces.dalton import *
+
 from interfaces.gamessoutputreader import *
-from interfaces.filepunch      import *
-from interfaces.chemshell      import *
-from interfaces.dl_poly        import *
-from interfaces.mopac          import *
-from interfaces.mndo           import *
-from interfaces.dalton         import *
-from interfaces.cadpac         import *
+from interfaces.cubereader import *
+from interfaces.filepunch import *
 
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el
@@ -2606,6 +2607,7 @@ class TkMolView(Pmw.MegaToplevel):
                        ('GAMESS-UK Input','.in'),
                        ('Other Output','.out'),
                        ('Gaussian Output','.gjf'),
+                       ('Gaussian Cube','.cube'),
                        ('All', '*')])
 
         if filename:
@@ -2670,6 +2672,8 @@ class TkMolView(Pmw.MegaToplevel):
                 form = 'CML'
             if ext == 'gjf':
                 form = 'GAU'
+            if ext == 'cube':
+                form = 'CUBE'
             if ext == 'mol':
                 form = 'MOL'
             elif ext == 'sys':
@@ -2715,6 +2719,8 @@ class TkMolView(Pmw.MegaToplevel):
         elif form == 'dlphist':
             print 'calling rdhist'
             objs = self.rdhist(filename)
+        elif form == 'CUBE':
+            objs = self.rdcube(filename)
         else:
             fileh = open(filename,'r')
             if form == 'XYZ':
@@ -2724,7 +2730,7 @@ class TkMolView(Pmw.MegaToplevel):
             elif form == 'GAU':
                 objs = self.rdgjf(fileh,root)
             else:
-                print 'No reader for form ',form
+                print 'No reader for format ',form
             fileh.close()
 
         if not objs:
@@ -3512,6 +3518,18 @@ class TkMolView(Pmw.MegaToplevel):
             self.quick_mol_view([model])
         return models
 
+    def rdcube(self,file):
+        print 'rdcube'
+        reader = CubeReader()
+        (model,field) = reader.ParseFile(file)
+        model.name = self.make_unique_name("Structure from " + file)
+        field.name = self.make_unique_name("Grid from " + file)
+        self.connect_model(model)
+        self.append_data(model)
+        self.quick_mol_view([model])
+        self.append_data(field)
+        return [model,field]
+
     def rdpun(self,file,root):
 
         """Punchfile reader"""
@@ -3914,10 +3932,6 @@ class TkMolView(Pmw.MegaToplevel):
 
     def dalton_calced(self,obj=None):
         c = DALTONCalc(mol=obj)
-        self.edit_calc(c)
-
-    def cadpac_calced(self,obj=None):
-        c = CADPACCalc(mol=obj)
         self.edit_calc(c)
 
     def chemshell_calced(self,obj=None):
