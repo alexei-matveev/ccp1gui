@@ -358,14 +358,15 @@ class Visualiser:
             self.graph.window2d.show()
         self.graph.update()
         
-    def Show(self,object=None):
+    def Show(self,object=None,update=1):
         if self.status == NULL:
             self._build(object=object)
         self._show()
         self.is_showing=1
         if self.show_2d:
             self.graph.window2d.show()
-        self.graph.update()
+        if update:
+            self.graph.update()
 
     def Hide(self):
         if self.status == BUILT:
@@ -426,6 +427,7 @@ class MoleculeVisualiser(Visualiser):
         self.label_rgb = [255,255,255]
         self.cyl_colour = '#808080'
         self.cyl_rgb = [ 128,128,128 ]
+        self.colour_cyl = 0
 
         self.molecule=obj
 
@@ -524,6 +526,10 @@ class MoleculeVisualiser(Visualiser):
 
         self.stick_var              = Tkinter.BooleanVar()
         self.stick_var.set(self.show_sticks)
+
+        self.stick_col_byat_var              = Tkinter.BooleanVar()
+        self.stick_col_byat_var.set(self.colour_cyl)
+
         if self.graph.check_capability('stick'):
 
             stick_group  = Pmw.Group(self.dialog.topframe, tag_text="Sticks")
@@ -561,7 +567,16 @@ class MoleculeVisualiser(Visualiser):
             self.w_cyl_colour.pack(side='left',padx=5)
 
             labels2.append(self.w_cyl_width)
-            
+
+            self.stick_col_byat_frame = Pmw.LabeledWidget(f,
+                labelpos='w',label_text='By Type')
+            self.stick_col_byat = Tkinter.Checkbutton(self.stick_col_byat_frame.interior())
+            self.stick_col_byat.config(variable=self.stick_col_byat_var)
+            self.stick_col_byat.config(command=lambda s=self: s.__read_buttons() )
+            self.stick_col_byat.pack(side='top')
+            self.stick_col_byat_frame.pack(side='left')
+            labels.append(self.stick_col_byat_frame)
+
             stick_group.pack(side='top',fill='x')
 
         self.labels_var               = Tkinter.BooleanVar()
@@ -643,6 +658,7 @@ class MoleculeVisualiser(Visualiser):
         self.show_labels = self.labels_var.get()
         self.show_sticks = self.stick_var.get()
         self.show_contacts = self.contact_var.get()
+        self.colour_cyl = self.stick_col_byat_var.get()
 
         txt = self.radii_var.get()
         if txt == "Covalent":
@@ -1795,7 +1811,14 @@ class CutSliceVisualiser(SliceVisualiser):
         # Set up a sensible default for the slice plane
         # Try inheriting the origin and x and y axes
         self.cut_plane=Field(nd=2)
-        self.cut_plane.dim = [21,21]
+        
+        # jmht
+        if obj.vtkdata:
+            # Need to check the order here to make sure we are using the correct dims
+            self.cut_plane.dim = [ obj.dim[0], obj.dim[1] ]
+        else:
+            self.cut_plane.dim = [21,21]
+            
         self.cut_plane.origin = obj.origin
 
         len = math.sqrt(obj.axis[1]*obj.axis[1])
