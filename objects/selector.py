@@ -129,33 +129,44 @@ class Selector( Pmw.MegaToplevel ):
         self.show_list_widget.pack(fill='both', expand=1)
 
         # The buttons to add, remove and display images
-        self.scene_control_frame = Tkinter.Frame( self.interior() )
-        self.scene_control_frame.pack()
-        self.add_button = Tkinter.Button( self.scene_control_frame, text='Add', command=self.__addclicked )
-        self.balloon.bind( self.add_button, 'Add image(s) to the animation.' )
+        scene_control_frame = Tkinter.Frame( self.interior() )
+        scene_control_frame.pack()
+        add_button = Tkinter.Button( scene_control_frame, text='Add', command=self.__addclicked )
+        self.balloon.bind( add_button, 'Add image(s) to the animation.' )
         
-        self.remove_button = Tkinter.Button( self.scene_control_frame, text='Remove', command=self.__removeclicked )
-        self.balloon.bind( self.remove_button, 'Remove image(s) from the animation.' )
-        self.display_button = Tkinter.Button( self.scene_control_frame, text='Display Image',
+        remove_button = Tkinter.Button( scene_control_frame, text='Remove', command=self.__removeclicked )
+        self.balloon.bind( remove_button, 'Remove image(s) from the animation.' )
+        display_button = Tkinter.Button( scene_control_frame, text='Display Image',
                                               command=self.__displayclicked )
-        self.balloon.bind( self.display_button, 'Display a selected image' )
-        self.add_button.pack( side='left' )
-        self.remove_button.pack( side='left' )
-        self.display_button.pack( side='left' )
+        self.balloon.bind( display_button, 'Display a selected image' )
+        add_button.pack( side='left' )
+        remove_button.pack( side='left' )
+        display_button.pack( side='left' )
+
+        # The buttons to add, remove layers
+        scene_layer_frame = Tkinter.Frame( self.interior() )
+        scene_layer_frame.pack()
+        add_layer_button = Tkinter.Button( scene_layer_frame, text='Add Layer', command=self.__addlayerclicked )
+        self.balloon.bind( add_layer_button, 'Add a layer to the animation.' )
+        
+        remove_layer_button = Tkinter.Button( scene_layer_frame, text='Remove Layer', command=self.__removelayserclicked )
+        self.balloon.bind( remove_layer_button, 'Remove last layer from the animation.' )
+        add_layer_button.pack( side='left' )
+        remove_layer_button.pack( side='left' )
 
         # The buttons to Refresh, and Quit
-        self.bottom_frame = Tkinter.Frame( self.interior() )
-        self.bottom_frame.pack()
-        self.refresh_button = Tkinter.Button( self.bottom_frame,
+        bottom_frame = Tkinter.Frame( self.interior() )
+        bottom_frame.pack()
+        refresh_button = Tkinter.Button( bottom_frame,
                                               text='Clear and Refresh',
                                               command=self.__refreshclicked )
-        self.balloon.bind( self.refresh_button, 'Generate a fresh list of available images' )
-        self.close_button = Tkinter.Button( self.bottom_frame,
+        self.balloon.bind( refresh_button, 'Generate a fresh list of available images' )
+        close_button = Tkinter.Button( bottom_frame,
                                            text='Close',
                                            command = lambda s=self: s.hideme() )
-        self.balloon.bind( self.close_button, 'Close the selector widget.' )
-        self.refresh_button.pack( side='left' )
-        self.close_button.pack( side='left' )
+        self.balloon.bind( close_button, 'Close the selector widget.' )
+        refresh_button.pack( side='left' )
+        close_button.pack( side='left' )
         #self.quit_save_button.pack( side='left' )
         
 
@@ -170,6 +181,17 @@ class Selector( Pmw.MegaToplevel ):
         """ The remove button was clicked so remove all selected items from the list
         """
         self.remove_from_animation()
+
+    def __addlayerclicked(self):
+        """ The add layer button was clicked
+        """
+        self.add_layer()
+
+    def __removelayerclicked(self):
+        """ The remove layer button was clicked
+        """
+        self.remove_layer()
+
 
     def __displayclicked(self):
         """ The display button was clicked so display the selected image(s)
@@ -795,6 +817,15 @@ class Selector( Pmw.MegaToplevel ):
             
         self.scene_text.tag_config( tag,
                                     background=self.standardbg )
+
+
+    def add_layer( self ):
+        """ Add another layer of images to the animation
+        """
+
+    def remove_layer( self ):
+        """Remove a layer of images from the animation
+        """
 
     ## GENERAL HELPER FUNCTIONS BELOW ###
 

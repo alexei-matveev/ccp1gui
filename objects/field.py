@@ -84,6 +84,9 @@ class Field:
 
         self.title = "untitled"
 
+        #jmht
+        self.vtkdata=None
+
     def dimensions(self):
         try:
             return len(self.dim)
@@ -108,6 +111,10 @@ class Field:
 
     def get_mapping(self,index):
         """Return one of the mapping vectors as per GAMESS-UK punchfile """
+
+        if self.debug:
+            print "Field: get_mapping"
+            
         if index == 0:
             if len(self.dim) == 1:
                 return self.origin + 0.5*self.axis[0]
@@ -127,6 +134,9 @@ class Field:
 
     def get_origin_corner(self):
         """Return origin vector as per GAMESS-UK punchfile"""
+        if self.debug:
+            print "Field: get_origin_corner"
+            
         if len(self.dim) == 1:
             return self.origin - 0.5* self.axis[0]
         if len(self.dim) == 2:
@@ -266,6 +276,9 @@ class Field:
             print 'Data shape', self.shape()
             print 'Axis aligned:', self.axis_aligned()
 
+        if self.vtkdata:
+            print "vtkdata is true"
+
 
         #if self.grid:
         #    print 'Grid shape',shape(self.grid)
@@ -317,7 +330,9 @@ class Field:
         self.tgrid = []
         if len(self.dim) == 1: 
             fac = 1.0 / (self.dim[0] - 1)
-            o = self.origin - 0.5*self.axis[0]
+            #jmht
+            #o = self.origin - 0.5*self.axis[0]
+            o = self.get_origin_corner()
             for i in range(self.dim[0]):
                 p = o + i*fac*self.axis[0]
                 self.tgrid.append(p)
@@ -325,7 +340,9 @@ class Field:
         if len(self.dim) == 2: 
             xfac = 1.0 / (self.dim[0] - 1)
             yfac = 1.0 / (self.dim[1] - 1)
-            o = self.origin - 0.5*self.axis[0] - 0.5*self.axis[1]
+            #jmht
+            #o = self.origin - 0.5*self.axis[0] - 0.5*self.axis[1]
+            o = self.get_origin_corner()
             for j in range(self.dim[1]):
                 t = o + j*yfac*self.axis[1]
                 for i in range(self.dim[0]):
@@ -336,7 +353,9 @@ class Field:
             xfac = 1.0 / (self.dim[0] - 1)
             yfac = 1.0 / (self.dim[1] - 1)
             zfac = 1.0 / (self.dim[2] - 1)
-            o = self.origin - 0.5*self.axis[0] - 0.5*self.axis[1] - 0.5*self.axis[2]
+            #jmht
+            #o = self.origin - 0.5*self.axis[0] - 0.5*self.axis[1] - 0.5*self.axis[2]
+            o = self.get_origin_corner()
             xvec = self.axis[0]
             yvec = self.axis[1]
             zvec = self.axis[2]
@@ -555,7 +574,6 @@ class Field:
         print 'number of points',len(self.data)
         print 'approximate integral',tot * vel
         return tot * vel
-
 
     def read_molden(self,file):
         """Load in the grid from a molden plot
