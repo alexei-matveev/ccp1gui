@@ -110,7 +110,7 @@ http://pmw.sourceforge.net/"""
         print whereget
         sys.exit(-1)
         
-    # Pmw
+    # VTK
     try:
         import vtk
     except ImportError:
@@ -127,6 +127,14 @@ http://public.kitware.com/VTK/get-software.php"""
     # Now append the gui directory to the PYTHONPATH
     from paths import gui_path
     sys.path.append(gui_path)
+
+
+    print 'Module paths:'
+    print vtk.__file__
+    print Numeric.__file__
+    print Scientific.__file__
+    #print Pmw.__file__
+
 
 import sys,os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
@@ -163,6 +171,7 @@ from interfaces.gamessoutputreader import *
 from interfaces.cubereader import *
 from interfaces.filepunch import *
 
+import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el
 
@@ -2069,7 +2078,7 @@ class TkMolView(Pmw.MegaToplevel):
     def quick_mol_view(self,mols):
         """create a default image of a molecule and include it
         in the tables (vis_dict, vis_list)
-        only for cases where no view already exists
+        Then attempt to fit everything on screen
         """
         flag=1
         for mol in mols:
@@ -2079,8 +2088,9 @@ class TkMolView(Pmw.MegaToplevel):
             self.vis_list.append(vis)
             self.__update_vis_list()
             if flag:
-                vis.Show()
+                vis.Show(update=0)
 #####                flag=0
+        self.fit_to_window()
 
     def build_distance_dialog(self,include_xyz=0):
         """Create a dialog which we will use to 
@@ -2676,6 +2686,10 @@ class TkMolView(Pmw.MegaToplevel):
                 form = 'CUBE'
             if ext == 'mol':
                 form = 'MOL'
+            if ext == 'RHO':
+                form = 'SMG'
+            if ext == 'vtk':
+                form = 'vtk'
             elif ext == 'sys':
                 form = 'SYS'
             elif ext == 'bs':
@@ -2713,6 +2727,10 @@ class TkMolView(Pmw.MegaToplevel):
             objs = self.rdgamout(filename,root)
         elif form == 'DALOUT':
             objs = self.rddalout(filename,root)
+        elif form == 'SMG':
+            objs = self.rdsmeagol(filename,root,ext)
+        elif form == 'vtk':
+            objs = self.rdvtk(filename,root)
         elif form == 'dlpcfg':
             print 'calling rdcfg'
             objs = self.rdcfg(filename)
@@ -2749,7 +2767,7 @@ class TkMolView(Pmw.MegaToplevel):
         model.title = root
         model.name = self.make_unique_name(root)
         self.connect_model(model)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
         return [model]
 
@@ -2781,7 +2799,7 @@ class TkMolView(Pmw.MegaToplevel):
             a.name = a.symbol 
 
             model.atom.append(a)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
 
         ###self.connect_model(model)
@@ -2806,7 +2824,7 @@ class TkMolView(Pmw.MegaToplevel):
             if len(r.molecules) > 1:
                 model.title = model.title + ' # ' + str(count)
             model.name = self.make_unique_name(root)
-            self.quick_mol_view(model)
+            self.quick_mol_view([model])
             self.append_data(model)
             self.connect_model(model)
             count = count + 1
@@ -2972,7 +2990,7 @@ class TkMolView(Pmw.MegaToplevel):
                 mol.title = mol.title + ' # ' + str(count)
             mol.name = self.make_unique_name(root)
             mol.connect()
-            self.quick_mol_view(mol)
+            self.quick_mol_view([mol])
             self.append_data(mol)
             #self.connect_model(mol)
             count = count + 1
@@ -3039,7 +3057,7 @@ class TkMolView(Pmw.MegaToplevel):
                     break # jump out of for loop and start next cycle
 
             self.connect_model(model)
-            self.quick_mol_view(model)
+            self.quick_mol_view([model])
             self.append_data(model)
             models.append( model )
 
@@ -3119,15 +3137,15 @@ class TkMolView(Pmw.MegaToplevel):
         model.title = root
         model.name = self.make_unique_name(root)
         self.connect_model(model)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
         return [model]
 
     def rdmol(self,file,root):
         """Read in a small molecule from a file in MDL .mol file format. This reader
-           has been constructed from the information found at:
-           http://www.eyesopen.com/docs/html/smack/node13.html
-           If this reader doesnt work it is almost certainly THEIR problem not MINE...
+        has been constructed from the information found at:
+        http://www.eyesopen.com/docs/html/smack/node13.html
+        If this reader doesnt work it is almost certainly THEIR problem not MINE...
         """
         # root is the default filename, file is the filename, not the file handle
         molname = root
@@ -3204,10 +3222,86 @@ class TkMolView(Pmw.MegaToplevel):
 
         f.close()
         self.update_from_object(model)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
         return [ model ]
-                
+    
+    def rdvtk(self,file,root):
+        """ Read in data contained in a vtk format file.
+            This is currrently a pretty brain-dead hack
+            that assumes we are reading in structured points
+            with aligned axes.
+        
+         """
+        import vtk
+
+        print "Reading VTK File"
+        
+        # Instantiate the field object
+        field = objects.field.Field()
+        
+        reader = vtk.vtkDataSetReader()
+        reader.SetFileName(file)
+        field.vtkdata = reader.GetStructuredPointsOutput()
+        #field.data = reader.GetStructuredGridOutput()
+       
+        if not field.vtkdata:
+            print "Error creating data object while reading vtk file!"
+            return 1
+
+        #print field.data
+        field.title = root
+        field.name = self.make_unique_name(root)
+        self.append_data(field)
+        
+        return [field]
+   
+    def rdsmeagol(self,file,root,ext):
+        """ Read in the ouptut of the smeagol programme
+            This uses the reader defined in the file interfaces/smeagolreader.py
+        """
+
+        # file is the path to the file
+        # root is the filename minus suffix
+        # ext is the filname extension
+        try:
+            from interfaces.smeagolreader import SmeagolReader
+        except e:
+            print "Cannot import smeagolreader in main.py rdsmeagol!"
+            print e
+            return
+
+        if ( ext == 'RHO' ):
+            fstype = ext
+        else:
+            fstype = None
+
+        #print "fstype is ",fstype
+
+        # Instantiate the SmeagolReader
+        smeagolreader = SmeagolReader()
+
+        if ( fstype ):
+            smeagolreader.read( file, ftype=fstype )
+        else:
+            smeagolreader.read( file )
+
+        for o in smeagolreader.objects:
+            # take the last field of the class specification
+            t1 = string.split(str(o.__class__),'.')
+            myclass = t1[len(t1)-1]
+            print 'unique',root, o.title
+            o.name = self.make_unique_name(root,o.title)
+            print 'o.name is', o.name
+
+            if myclass == 'Field' :
+                self.append_data(o)
+            else:
+                print "Unknown class returned by smeagolreader!"
+
+            return smeagolreader.objects
+        
+
     def append_data(self, data):
         self.data_list.append(data)
         # Initially the callback list is empty
@@ -3429,9 +3523,10 @@ class TkMolView(Pmw.MegaToplevel):
             str(rdnat)+" atoms were read"
             self.warn(msg)
 
+        # SHOW THEM ALL
         for model in models:
             self.connect_model(model)
-            self.quick_mol_view(model)
+            self.quick_mol_view([model])
             self.append_data(model)
 
         return models
@@ -3490,7 +3585,7 @@ class TkMolView(Pmw.MegaToplevel):
                 i=i+1
 
         self.connect_model(model)
-        self.quick_mol_view(model)
+        self.quick_mol_view([model])
         self.append_data(model)
 
         return [model]
@@ -3577,7 +3672,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.quick_mol_view(mols)
 
         if self.debug:
-            print 'data list', self.data_list
+            print 'rdpun: data list', self.data_list
 
         return p.objects
 
@@ -3848,7 +3943,7 @@ class TkMolView(Pmw.MegaToplevel):
             model.connect(scale=self.conn_scale,toler=self.conn_toler)
             self.update_from_object(model)
 
-    def extend_model(self,model,all=1):
+    def extend_model(self,model,all=0):
         """Generate a number of cells from the primitive cell
         contents
         """
@@ -3863,9 +3958,10 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             models = [model]
 
-        if len(models[0].cell) != 3 and len(models[0].cell) !=2 :
-            self.warn('cant extend .. system is not periodic')
-            return
+        for model in models:
+            if len(model.cell) != 3 and len(model.cell) !=2 :
+                self.error('cant extend '+model.name+' .. system is not periodic')
+                return
 
         if len(models) == 0:
             self.warn('nothing to extend')

@@ -229,7 +229,16 @@ class vtkTkRenderWidget(Tkinter.Widget):
             self._RenderWindow.Render()
             self.__InExpose = 0
 
-    def Render(self):
+    def Render(self,trace=1):
+
+        if trace:
+            import inspect
+            tmp =  inspect.stack()[1:]
+            print 'U:',
+            for t in tmp:
+                print t[3],t[2],'/',
+            print ''
+
         if (self._CurrentLight):
             light = self._CurrentLight
             light.SetPosition(self._CurrentCamera.GetPosition())

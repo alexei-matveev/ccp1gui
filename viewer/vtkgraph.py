@@ -67,9 +67,10 @@ class VtkGraph(TkMolView,Graph):
         # flags controlling how to draw molecules
         # at present a bit of work is needed to get any other
         # options working
-        self.sphere_type = 0
-        self.line_type = 0
+        self.sphere_type = 2
+        self.line_type = 2
         self.label_type = 0
+        self.stick_type = 2
         
         # Define viewer capabilities and visualiser classes
         self.molecule_visualiser =  VtkMoleculeVisualiser
@@ -161,6 +162,9 @@ class VtkGraph(TkMolView,Graph):
         sy = 500
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
         
+    def fit_to_window(self):
+        self.pane.ResetToFit(0,0)
+
     def myquit(self):
         """Handler for exit, deletes VTK windows before loss of tk"""
         self.pane.destroy()
@@ -169,8 +173,9 @@ class VtkGraph(TkMolView,Graph):
         
     def update(self):
         """Update the VTK images"""
+
         self.pane.Render()
-        self.pane2d.Render()
+        self.pane2d.Render(trace=0)
 
     def save_image(self, file, format=None, quality=None  ):
         """
@@ -524,7 +529,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
         # ---- Sticks ----------
         # 0 = individual vtkCylinderSource
-        self.stick_type = 0
+        self.stick_type = self.graph.stick_type
 
         # ---- Contacts ----------
         # 2 = celldata array
@@ -959,6 +964,11 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 zvals.SetNumberOfComponents(1)
                 zvals.SetNumberOfTuples(np)
 
+                hackrad = vtkFloatArray()
+                hackrad.SetName('sizevecs')
+                hackrad.SetNumberOfComponents(3)
+                hackrad.SetNumberOfTuples(np)
+
                 p.SetNumberOfPoints(np)
                 bonds = []
                 self.molecule.reindex()
@@ -977,6 +987,16 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         except Exception:
                             z = 0
                         zvals.SetTuple1(np,z)
+
+                        
+                        if self.sphere_table == COV_RADII:
+                            fac = 0.529177 * rcov[z] * self.sphere_scale
+                        else:
+                            fac = rvdw[z] * self.sphere_scale
+
+                        # this 5 is empirical
+                        r = fac*5
+                        hackrad.SetTuple3(np,r,r,r)
                         i=i+1
 
                         try:
@@ -1007,6 +1027,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         p.SetPoint(np,a.coord[0], a.coord[1], a.coord[2])
                         orphans.append(np)
                         zvals.SetTuple1(np,105)
+
+                        # dummy radius for shells
+                        fac = 0.529177 * 0.5 * self.sphere_scale
+                        r = fac*5
+                        hackrad.SetTuple3(np,r,r,r)
+
                         np = np + 1
 
                 l = vtkCellArray()
@@ -1030,8 +1056,11 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 poly.SetVerts(v)
 
                 # seems only one of these is needed, not sure which is best
-                poly.GetPointData().AddArray(zvals)
-                #poly.GetPointData().SetScalars(zvals)
+                # SetScalars seems compatible with copying xyzmolreader code (at
+                # least the colouring works for mode 2)
+                #poly.GetPointData().AddArray(zvals)
+                poly.GetPointData().SetScalars(zvals)
+                poly.GetPointData().SetVectors(hackrad)
 
                 self.zvals = zvals
                 self.poly = poly
@@ -1069,14 +1098,19 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     g.SetInput(poly)
                     g.SetSource(s.GetOutput())
                     g.SetScaleFactor(0.4)
-                    g.SetColorModeToColorByScalar()
-                    g.SetScaleModeToDataScalingOff()
+                    #g.SetColorModeToColorByScalar()
+                    #g.SetScaleModeToDataScalingOff()
+                    #from xyz
+                    g.SetColorMode(1)
+                    g.SetScaleMode(2)
 
                     m = vtkPolyDataMapper()
                     m.SetInput(g.GetOutput())
                     m.SetLookupTable(self.colour_table)
                     m.SetScalarRange(rgb_min,rgb_max+1)
-
+                    # from xyz
+                    m.SetScalarVisibility(1)
+                    m.UseLookupTableScalarRangeOff()
                     act = vtkActor()
                     act.SetMapper(m)
                     act.PickableOff()
@@ -1085,6 +1119,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
                     act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
                     act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
+
+                    tmp = 0.5
+                    r = tmp
+                    g = tmp
+                    b = tmp
+                    act.GetProperty().SetColor(r,g,b)
 
                     # colouring of spheres is not working well,
                     # sometimes seems like the integer value for the
@@ -1095,6 +1135,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
 
         if self.show_sticks:
+            print 'stick type', self.stick_type
             if self.stick_type == 0:
                 # Cylinders
                 line_count = 0
@@ -1158,7 +1199,8 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                     if axis[1] < 0:
                                         angle = -angle
 
-                                print 'prj, axis[2], x angle',prj, axis[2], angle
+                                if self.debug:
+                                    print 'prj, axis[2], x angle',prj, axis[2], angle
                                 rot[0] = angle
 
                                 # we dont need a y rotation (cylinder axis)
@@ -1194,6 +1236,56 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                 if self.debug:
                     print 'made list of ', line_count, ' cylinders'
+
+
+            elif self.stick_type == 2:
+
+                Tube= vtkTubeFilter()
+                ####Tube.SetInputConnection(readerGetOutputPort())
+                Tube.SetInput(poly)
+                Tube.SetNumberOfSides(16)
+                Tube.SetCapping(0)
+
+                fac = self.cyl_width
+                Tube.SetRadius(fac)
+                Tube.SetVaryRadius(0)
+                Tube.SetRadiusFactor(10)
+
+                m= vtkPolyDataMapper()
+                ###m.SetInputConnection(TubeGetOutputPort())
+                m.SetInput(Tube.GetOutput())
+
+                # not sure what this does
+                m.SetImmediateModeRendering(1)
+
+                if self.colour_cyl:
+                    m.UseLookupTableScalarRangeOff()
+                    m.SetScalarModeToDefault()
+                    m.SetLookupTable(self.colour_table)
+                    m.SetScalarRange(rgb_min,rgb_max+1)
+                    red = 1.0
+                    green = 1.0
+                    blue = 1.0
+                else:
+                    m.SetScalarVisibility(0)
+                    red = self.cyl_rgb[0] / 255.0
+                    green = self.cyl_rgb[1] / 255.0
+                    blue = self.cyl_rgb[2] / 255.0
+
+                act= vtkActor()
+                act.SetMapper(m)
+                act.GetProperty().SetRepresentationToSurface()
+                act.GetProperty().SetInterpolationToGouraud()
+
+                act.GetProperty().SetAmbient(self.graph.mol_cylinder_ambient)
+                act.GetProperty().SetDiffuse(self.graph.mol_cylinder_diffuse)
+                act.GetProperty().SetSpecular(self.graph.mol_cylinder_specular)
+                act.GetProperty().SetSpecularPower(self.graph.mol_cylinder_specular_power)
+                ##act.GetProperty().SetSpecularColor(1,1,1)
+                act.GetProperty().SetColor(red,green,blue)
+                act.PickableOff()
+
+                self.stick_actors.append(act)
 
         if self.show_contacts:
             if self.contact_type == 2:
@@ -1569,9 +1661,26 @@ class VtkIsoSurf:
     def __init__(self, **kw):
         self.alist = []
         self.alist2d = []
+        # jmht - did I delete this by mistake?
         self.convert_data()
 
     def convert_data(self):
+        """ Set up vtk data structures depending on whether data strucutures
+            held in python or vtk data structures.
+        """
+        #jmht
+        if self.field.vtkdata:
+            self.convert_data_vtk()
+        else:
+            self.convert_data_python()
+
+
+    def convert_data_vtk(self):
+        """ Use the vtkImageData directly - assumes axes are algined for the time being
+        """
+        self.data = self.field.vtkdata
+
+    def convert_data_python(self):
         
         # Policy here should depend on whether data is axis aligned
         axis_aligned = 0
@@ -1681,7 +1790,10 @@ class VtkIsoSurf:
             self.data.SetPoints(points)
 
     def add_outline(self):
-        outline = vtkStructuredGridOutlineFilter()
+        #jmht
+        #outline = vtkStructuredGridOutlineFilter()
+        # outline filter will work with both Structured Grids & vtkImageData
+        outline = vtkOutlineFilter()
         outline.SetInput(self.data)
         outlineMapper = vtkPolyDataMapper()
         outlineMapper.SetInput(outline.GetOutput())
@@ -1715,7 +1827,6 @@ class VtkIsoSurf:
                         offset = offset+1
             data_array2.SetName("MapScalar");
             self.data.GetPointData().AddArray(data_array2)
-            print self.data
 
         s = vtkContourFilter()
         s.SetInput(self.data)
@@ -1760,8 +1871,28 @@ class VtkVolVis:
         # need to convert every time as we are scaling
         # to fit into unsigned byte array
         #self.convert_data()
+        #jmht
+        if self.field.vtkdata:
+            self.data = self.field.vtkdata
+            #print "self.data is ",self.data
+        else:
+            self.convert_data()
 
+#jmht
     def convert_data(self):
+        """
+           Convert the data into a form suitable for VTK
+        """
+
+        if self.field.vtkdata:
+            self.convert_data_vtk()
+        else:
+            self.convert_data_python()
+#jmht
+    def convert_data_python(self):
+        """
+           Convert the data held in a Python field structure
+        """
 
         field = self.field
         
@@ -1805,11 +1936,8 @@ class VtkVolVis:
         data_array = vtkUnsignedShortArray()
         data_array.SetNumberOfValues(bigsize)
 
-        # establish mapping 
-        ltf = len(self.tfv)
-        self.range = self.tfv[ltf-1] - self.tfv[0]
-        self.sfac = 32768 / self.range
-        self.offset = -self.tfv[0] * self.sfac
+        #jmht: This now in a separate routine as also required by vtk
+        volvis_set_mapping()
 
         ioff=0
         for i in range(npts[2]):
@@ -1835,6 +1963,36 @@ class VtkVolVis:
         #data_array.SetFloatArray(tmp,bigsize,1)
 
         data.GetPointData().SetScalars(data_array)
+
+#jmht
+    def convert_data_vtk(self):
+        """
+           Convert the data held in a vtk field structure (floats) into a format suitable
+           for rendering with the volume visualiser (unsigned short)
+           
+        """
+
+        # Set self.sfac & self.offest for scaling
+        self.volvis_set_mapping()
+        
+        # We need to cast the data to unsigned shorts for the volumeMapper, so we
+        # are required to scale & shift the data, as we are converting from floats
+        datacast = vtkImageShiftScale()
+        datacast.SetInput(self.data)
+        datacast.SetScale( self.sfac )
+        datacast.SetShift( self.offset )
+        datacast.SetOutputScalarTypeToUnsignedShort()
+        self.data = datacast.GetOutput()
+        
+#jmht
+    def volvis_set_mapping(self):
+        """
+           Set the scaling factors for the volume visualiser
+        """
+        ltf = len(self.tfv)
+        self.range = self.tfv[ltf-1] - self.tfv[0]
+        self.sfac = 32768 / self.range
+        self.offset = -self.tfv[0] * self.sfac
 
     def add_outline(self):
 
@@ -1985,6 +2143,7 @@ class VtkDensityVisualiser(DensityVisualiser,VtkIsoSurf,VtkVis):
     the user interactions
     """
     def __init__(self, root, graph, obj, **kw):
+        
         apply(DensityVisualiser.__init__, (self,root,graph,obj), kw)
         apply(VtkIsoSurf.__init__, (self,) , kw)
 
@@ -2038,34 +2197,43 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
 
     def _build(self,object=None):
 
-        gridpts = self.field.get_grid()
-        p = vtkPoints()
-        n = len(gridpts)
-        p.SetNumberOfPoints(n)
-        i = 0
-        for pt in gridpts:
-            p.SetPoint(i,pt[0],pt[1],pt[2])
-            i = i + 1
+        if self.field.vtkdata:
+            im2poly = vtkImageDataGeometryFilter()
+            im2poly.SetInput( self.field.vtkdata )
+            poly = im2poly.GetOutput()
             
-        v = vtkCellArray()
-        v.Allocate(n,n)
+        else:
+            # Here we are building up the grid from data stored in python data
+            # structures held in the Field object
+            # Build up the grid
+            gridpts = self.field.get_grid()
+            p = vtkPoints()
+            n = len(gridpts)
+            p.SetNumberOfPoints(n)
+            i = 0
+            for pt in gridpts:
+                p.SetPoint(i,pt[0],pt[1],pt[2])
+                i = i + 1
 
-        i = 0
-        for pt in gridpts:
-            v.InsertNextCell(1)
-            v.InsertCellPoint(i)
-            i = i + 1
+            v = vtkCellArray()
+            v.Allocate(n,n)
 
-        poly = vtkPolyData()
-        poly.SetPoints(p)
-        poly.SetVerts(v)
+            i = 0
+            for pt in gridpts:
+                v.InsertNextCell(1)
+                v.InsertCellPoint(i)
+                i = i + 1
 
-        if self.field.data != None:
-            data_array = vtkFloatArray()
-            data_array.SetNumberOfValues(n)
-            for i in range(n):
-                data_array.SetValue(i,self.field.data[i])
-            poly.GetPointData().SetScalars(data_array)
+            poly = vtkPolyData()
+            poly.SetPoints(p)
+            poly.SetVerts(v)
+
+            if self.field.data != None:
+                data_array = vtkFloatArray()
+                data_array.SetNumberOfValues(n)
+                for i in range(n):
+                    data_array.SetValue(i,self.field.data[i])
+                poly.GetPointData().SetScalars(data_array)
 
         m = vtkPolyDataMapper()
         self.map = m            
@@ -2100,7 +2268,8 @@ class VtkSlice:
     def __init__(self, root, graph, obj, **kw):
         self.alist = []
         self.alist2d = []
-        
+        self.debug = 0
+
     def convert_data(self,field):
 
         """Convert the input field object (class Field) into a
@@ -2111,7 +2280,6 @@ class VtkSlice:
 
         if self.debug: deb('convert slice data')
         npts = Vector(field.dim[0],field.dim[1],1)
-
         self.vtkgrid = vtkStructuredGrid()
         self.vtkgrid.SetDimensions(npts[0],npts[1],1)
 
@@ -2153,7 +2321,6 @@ class VtkSlice:
         ox = -spacex*float(npts[0])/2.0
         oy = -spacey*float(npts[1])/2.0
         self.proj_vtkpoints.SetOrigin(ox,oy,0.)
-
         if self.debug:
             deb('spacings'+str([spacex,spacey]))
             deb('origin  '+str([ox,oy]))
@@ -2327,8 +2494,31 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
         apply(VtkSlice.__init__, (self,root,graph,obj), kw)
         self.convert_3d_data()
 
+
     def convert_3d_data(self):
-        
+        """ Call the correct converter depending on whether we are using Python or VTGK data
+            structures.
+        """
+
+        if self.field.vtkdata:
+            self.convert_3d_data_vtk()
+        else:
+            self.convert_3d_data_python()
+
+
+    def convert_3d_data_vtk(self):
+        """
+           Don't need to perform any manipulations - just use the vtkImageData directly
+           we are currently ignoring the fact that, in future, data might not be aligned
+           along the axes as the Smeagol data will be for the time being.
+        """
+        self.vtkgrid3d = self.field.vtkdata
+
+
+    def convert_3d_data_python(self):
+        """
+            Create the relevant VTK structures from data stored in Pyton data structures
+        """
         # Policy here should depend on whether data is axis aligned
         axis_aligned = 0
 
@@ -2434,6 +2624,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             print 'setPoints'
             self.vtkgrid3d.SetPoints(points)
 
+
     def _build(self,object=None):
 
         # This will set up self.vtkgrid
@@ -2507,6 +2698,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
                 self.make_proj_2d_outline(self.proj_interp)
 
         self.status = BUILT
+
 
 class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
