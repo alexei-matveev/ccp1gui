@@ -6,6 +6,7 @@ assumes a somewhat doctored version of MOLDEN
 
 from objects.field import *
 from jobmanager import *
+import sys
 
 class MoldenDriver:
 
@@ -42,16 +43,25 @@ class MoldenDriver:
 
         # execute MOLDEN
 
-        #import os
-        #os.system("/home/psh/molden4.4_hvd/molden.nox molden.dat")
 
-        # Windows/Cygwin
-        job = jobmanager.BackgroundJob()
-        job.debug = 1
-        job.add_step(DELETE_FILE,'remove 3dgridfile',remote_filename='3dgridfile',kill_on_error=0)        
-        molden_exe = "C:/molden4.4_hvd/molden.exe"
-        job.add_step(RUN_APP,'run molden',local_command=molden_exe + " molden.dat")
-        job.run()
+        if sys.platform[:3] == 'win':
+            # Windows/Cygwin
+            job = jobmanager.BackgroundJob()
+            job.debug = 1
+            job.add_step(DELETE_FILE,'remove 3dgridfile',remote_filename='3dgridfile',kill_on_error=0)        
+            molden_exe = "C:/molden4.4_hvd/molden.exe"
+            job.add_step(RUN_APP,'run molden',local_command=molden_exe + " molden.dat")
+            job.run()
+        else:
+            # Linux
+            job = jobmanager.ForegroundJob()
+            job.debug = 1
+            job.add_step(DELETE_FILE,'remove 3dgridfile',remote_filename='3dgridfile',kill_on_error=0)        
+            molden_exe = "/home/psh/molden4.4_hvd/molden"
+            job.add_step(RUN_APP,'run molden',local_command=molden_exe + " molden.dat")
+            job.run()
+
+            
 
         # Load resultant field into a grid
         self.field = Field(nd=3)

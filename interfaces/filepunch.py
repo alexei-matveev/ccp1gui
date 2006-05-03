@@ -642,7 +642,6 @@ class PunchReader:
          brik.axis.append(vz)
 
    def read_grid_data(self,f,brik):
-
       if not brik:
          print '... skipped - grid_data without data block'
          self.skip_block(f)
@@ -681,8 +680,6 @@ class PunchReader:
                      brik.data.append(999.0)
 
          elif len(brik.dim) == 2:
-            print 'dim',brik.dim
-            print 'reading ',brik.dim[1],':' 
             for y in range(brik.dim[1]):
                if not y % 10:
                   print '....' + str(y),
@@ -698,7 +695,6 @@ class PunchReader:
             print ' '
 
          elif len(brik.dim) == 3:
-            print 'reading ',brik.dim[2],':' 
             for z in range(brik.dim[2]):
                if not z % 10:
                   print '....' + str(z),
@@ -805,7 +801,6 @@ class PunchReader:
             p.append(int(txt[j]))
 
    def read_grid_mask(self,f,brik):
-
       if not brik:
          print '... skipped - grid_mask without data block'
          self.skip_block(f)
