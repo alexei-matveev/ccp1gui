@@ -137,19 +137,34 @@ class Indexed:
 
     # also need to adapt connectivity data
     def delete_atom(self,index):
-        self.delete_atom_obj(self.atom[index])
+
+        self.delete_list([index])
+
+    def delete_list(self,list):
+        deadmen = []
+        for a in self.atom:
+            a.tempflag=0
+        for i in list:
+            deadmen.append(self.atom[i])
+            self.atom[i].tempflag=1
+
+        print 'sorting shells'
+        # keep only attached shells
+        oldshell = self.shell
+        self.shell = []
+        for s in oldshell:
+            if not s.linked_core.tempflag:
+                self.shell.append(s)
+
+        # remove the atoms and clean connectivity
+        for a in deadmen:
+            self.delete_atom_obj(a)
+        self.reindex()
 
     def delete_atom_obj(self,a):
         for c in a.conn:
             c.conn.remove(a)
         self.atom.remove(a)
-
-    def delete_list(self,list):
-        deadmen = []
-        for i in list:
-            deadmen.append(self.atom[i])
-        for a in deadmen:
-            self.delete_atom_obj(a)
 
     def reindex(self):
         k = 0
