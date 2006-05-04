@@ -72,6 +72,10 @@ http://tkinter.unpythonic.net/wiki/How_20to_20install_20Tkinter"""
     try:
         import Numeric
     except ImportError:
+
+
+        print 'sys.path is',sys.path
+
         print header
         print """
 We are sorry but the CCP1GUI cannot run on your system as
@@ -1011,7 +1015,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         self.undo_stack.append(undo)
 
-    def delete_unselected(self):
+    def delete_unselected_old(self):
         print 'phase 1'
         sel = self.sel()
         dsel = sel.get()
@@ -1057,6 +1061,44 @@ class TkMolView(Pmw.MegaToplevel):
             sel.clean_deleted(mol)
             print 'update'
             self.update_from_object(mol)
+
+    def delete_unselected(self):
+        print 'phase 1'
+        sel = self.sel()
+        dsel = sel.get()
+        if self.debug:
+            deb('delete_unselected'+str(dsel))
+        edited = []
+        selats = {}
+        selected_mols = []
+        for mol,atom in dsel:
+            k = id(mol)
+            if mol in selected_mols:
+                selats[k].append(atom)
+            else:
+                selected_mols.append(mol)
+                selats[k] = [atom]
+        print 'phase 2'
+        sel.clear()
+        for mol in selected_mols:
+            k = id(mol)            
+            for atom in mol.atom:
+                atom.tempflag=0
+            for atom in selats[k]:
+                atom.tempflag=1
+            t = []
+            mol.reindex()
+            for atom in mol.atom:
+                print atom.tempflag
+                if not atom.tempflag:
+                    t.append(atom.get_index())
+            print 'delete_list', t
+            mol.delete_list(t)
+            print 'clean'
+            sel.clean_deleted(mol)
+            print 'update'
+            self.update_from_object(mol)
+
 
     def add_bond(self):
         sel = self.sel()
@@ -1792,7 +1834,7 @@ class TkMolView(Pmw.MegaToplevel):
 
 #        menu.add_command(label="Animation...", underline=0, font=myfont,
 #                         command=lambda x=self : x.pack_ani_toolbar())
-        menu.add_separator()
+#        menu.add_separator()
 
         menu.add_command(label="Centre on Selected", underline=0, 
                          command=lambda x=self : x.centre_on_selected())
@@ -4768,13 +4810,15 @@ class TkMolView(Pmw.MegaToplevel):
             self.ani_image_widget.refresh()
 
         # Redraw the main window
-        self.ani_refresh()
+        ##self.ani_refresh()
 
     def new_ani_list(self):
         """Generate a fresh ani_list from the objects in the data_list
            that have representations.
         """
         self.ani_list = [] 
+        self.ani_list2 = [] 
+
         if len( self.data_list ):
             for obj in self.data_list:
                 t = id(obj)
@@ -4919,7 +4963,7 @@ class TkMolView(Pmw.MegaToplevel):
             self.frame_no += 1
             if self._ani_show():
                 self.update()
-                time.sleep(0.2)
+                #time.sleep(0.2)
 
     def _ani_hide(self):
         """ Hide the current image as defined in self.frame_no
@@ -4934,18 +4978,27 @@ class TkMolView(Pmw.MegaToplevel):
         except IndexError:
             print "ani_hide: nothing to hide"
             pass
+        try:
+            vis = self.ani_list2[self.frame_no]
+            vis._hide()
+            # Hack so the view menu display what is showing/hidden
+            vis.is_showing = 0
+            #vis.Hide()
+            #self.update()
+        except IndexError:
+            print "ani_hide: nothing to hide in overlay"
+            pass
 
     def _ani_hide_all(self):
         """ Hide all the images in the animation list
         """
-        for vis in self.ani_list:
+        for vis in self.ani_list + self.ani_list2:
             try:
                 vis._hide()
                 # Hack so the view menu display what is showing/hidden
                 vis.is_showing = 0
             except IndexError:
                 pass
-            #self.update()
 
     def _ani_show(self):
         """ Show the image as specified by the current frame number.
@@ -4957,7 +5010,12 @@ class TkMolView(Pmw.MegaToplevel):
             vis._show()
             # Hack so the view menu display what is showing/hidden
             vis.is_showing = 1
-#            vis.Show()
+
+            if self.frame_no < len(self.ani_list2):
+                vis2 = self.ani_list2[ self.frame_no ]
+                vis2._show()
+                vis2.is_showing = 1
+
             #self.update()
             #print '_ani_show frame #',self.frame_no
             return 1
