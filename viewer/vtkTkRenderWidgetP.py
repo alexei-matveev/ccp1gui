@@ -54,8 +54,6 @@ import Tkinter
 from Tkinter import *
 import math, os, sys
 
-print 'CHECK', sys.path
-
 from vtk import *
 
 from vtk.tk.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets

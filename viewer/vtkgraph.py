@@ -90,8 +90,8 @@ class VtkGraph(TkMolView,Graph):
         self.irregular_data_visualiser =  VtkIrVis
 
         self.capabilities['wire']=1
-        self.capabilities['stick']=1
-        self.capabilities['sphere']=1
+        self.capabilities['sticks']=1
+        self.capabilities['spheres']=1
         self.capabilities['labels']=1
         self.capabilities['contacts']=1
         self.capabilities['hedgehog']=1
