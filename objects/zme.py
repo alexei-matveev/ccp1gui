@@ -2228,37 +2228,38 @@ class ZME(Pmw.MegaToplevel):
 
         self.model = self.reload_func()
 
-        try:
-            ttt = self.model.atom[0].zorc
-            print 'input is already a zmatrix'
+        if len(self.model.atom):
+            try:
+                ttt = self.model.atom[0].zorc
+                print 'input is already a zmatrix'
 
-        except AttributeError:
-            # Fill in the missing internal coordinate info
-            print 'filling z data'
-            self.model.variables = []
-            for a in self.model.atom:
-                a.zorc = 'c'
-                a.r_var = None
-                a.theta_var = None
-                a.phi_var = None
-                a.x_var = None
-                a.y_var = None
-                a.z_var = None
-                a.i1 = None
-                a.i2 = None
-                a.i3 = None
-                a.r = 1.0
-                a.theta = 90.0
-                a.phi = 0.0
-                a.r_sign =1.0
-                a.theta_sign = 1.0
-                a.phi_sign = 1.0
-                a.x_sign = 1.0
-                a.y_sign = 1.0
-                a.z_sign = 1.0
-                a.ok  = 1
+            except AttributeError:
+                # Fill in the missing internal coordinate info
+                print 'filling z data'
+                self.model.variables = []
+                for a in self.model.atom:
+                    a.zorc = 'c'
+                    a.r_var = None
+                    a.theta_var = None
+                    a.phi_var = None
+                    a.x_var = None
+                    a.y_var = None
+                    a.z_var = None
+                    a.i1 = None
+                    a.i2 = None
+                    a.i3 = None
+                    a.r = 1.0
+                    a.theta = 90.0
+                    a.phi = 0.0
+                    a.r_sign =1.0
+                    a.theta_sign = 1.0
+                    a.phi_sign = 1.0
+                    a.x_sign = 1.0
+                    a.y_sign = 1.0
+                    a.z_sign = 1.0
+                    a.ok  = 1
 
-        self.model.reindex()
+            self.model.reindex()
 
         if self.debug > 2:
             self.model.list()
