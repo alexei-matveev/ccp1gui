@@ -585,9 +585,13 @@ class Field:
         line = fp.readline()
         natoms = int(line.split()[0])
         nat = []
-        line = fp.readline()
-        for atom in range(0,natoms):
-            nat.append(int(line.split()[atom]))
+        i = 0
+        while i < natoms:
+            line = fp.readline()
+            for atom in line.split():
+                i = i + 1
+                nat.append(int(atom))
+
         line = fp.readline()
         adjus = float(line.split()[0])
         x = []; y = []; z = []
