@@ -415,7 +415,8 @@ class MoleculeVisualiser(Visualiser):
         apply(Visualiser.__init__, (self, root, graph, obj), kw)
 
         self.show_wire =      self.graph.check_capability('wire')
-        if len(obj.atom) > 100:
+
+        if obj and len(obj.atom) > 100:
             print 'Ball+Stick view is suppressed for initial view with natoms > 100'
             self.show_spheres = 0
             self.show_sticks = 0
