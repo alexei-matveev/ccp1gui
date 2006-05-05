@@ -510,7 +510,10 @@ class GAMESSUKCalc(QMCalc):
         # problem here as that as we are running in a slave thread
         # we cannot use Tk .. so this is silent
 
-        o = File(directory+'/'+job_name+'.out',type=GAMESSUK_OUTPUT)
+        #o = File(directory+'/'+job_name+'.out',type=GAMESSUK_OUTPUT)
+        # relative path should work here (better on windows, molden doesnt
+        # tolerate embedded spaces)
+        o = File(job_name+'.out',type=GAMESSUK_OUTPUT)
         self.results.append(o)
 
         ed = self.get_editor()
