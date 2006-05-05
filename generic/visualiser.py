@@ -415,9 +415,14 @@ class MoleculeVisualiser(Visualiser):
         apply(Visualiser.__init__, (self, root, graph, obj), kw)
 
         self.show_wire =      self.graph.check_capability('wire')
-        self.show_spheres =   self.graph.check_capability('spheres')
+        if len(obj.atom) > 100:
+            print 'Ball+Stick view is suppressed for initial view with natoms > 100'
+            self.show_spheres = 0
+            self.show_sticks = 0
+        else:
+            self.show_spheres = self.graph.check_capability('spheres')
+            self.show_sticks = self.graph.check_capability('sticks')
         self.show_labels = 0
-        self.show_sticks =    self.graph.check_capability('sticks')
         self.show_contacts = 0
         self.sphere_scale = 0.5
         self.sphere_table = COV_RADII
@@ -484,7 +489,7 @@ class MoleculeVisualiser(Visualiser):
 
         self.sphere_var              = Tkinter.BooleanVar()
         self.sphere_var.set(self.show_spheres)
-        if self.graph.check_capability('sphere'):
+        if self.graph.check_capability('spheres'):
 
             sphere_group  = Pmw.Group(self.dialog.topframe, tag_text="Spheres")
             f = sphere_group.interior()
@@ -530,7 +535,7 @@ class MoleculeVisualiser(Visualiser):
         self.stick_col_byat_var              = Tkinter.BooleanVar()
         self.stick_col_byat_var.set(self.colour_cyl)
 
-        if self.graph.check_capability('stick'):
+        if self.graph.check_capability('sticks'):
 
             stick_group  = Pmw.Group(self.dialog.topframe, tag_text="Sticks")
             f = stick_group.interior()
