@@ -65,12 +65,14 @@ class VtkGraph(TkMolView,Graph):
         self.far = None        
         
         # flags controlling how to draw molecules
-        # at present a bit of work is needed to get any other
-        # options working
+        # sphere/line/stick type 1 will also work but is more expensive for
+        # large molecules
+        # At present a bit more work is needed to get option 1 working.
         self.sphere_type = 2
         self.line_type = 2
         self.label_type = 0
         self.stick_type = 2
+        self.show_selection_by_colour = 0
         
         # Define viewer capabilities and visualiser classes
         self.molecule_visualiser =  VtkMoleculeVisualiser
@@ -107,9 +109,10 @@ class VtkGraph(TkMolView,Graph):
         sel = SelectionManager()
         #
         #sel.call_on_add(self.sel_show)
-        #sel.call_on_rem(self.sel_remove)
         sel.call_on_add(self.sel_upd)
         sel.call_on_rem(self.sel_upd)
+        if self.show_selection_by_colour:
+            sel.call_on_rem(self.sel_remove)
                 
         self.title('CCP1 GUI'+25*' '+title)
         self.iconname('CCP1 GUI ')
@@ -995,6 +998,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             fac = rvdw[z] * self.sphere_scale
 
                         # this 5 is empirical
+                        print 'setting size',z,rcov[z]
                         r = fac*5
                         hackrad.SetTuple3(np,r,r,r)
                         i=i+1
@@ -1125,11 +1129,6 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     g = tmp
                     b = tmp
                     act.GetProperty().SetColor(r,g,b)
-
-                    # colouring of spheres is not working well,
-                    # sometimes seems like the integer value for the
-                    # last sphere is used for all
-                    # also rather slow
                     self.sphere_actors.append(act)
 
                 print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
@@ -1334,17 +1333,14 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 print 'made contact polydata with ', len(self.molecule.contacts), ' lines'
 
         if self.show_wire and self.line_type == 2:
-            pass
-            # 
             # Apply selection highlighting by poking into zvals array
-            # !!! This may be happening too soon, before the
-            # selection is adapted to deal with deleted atoms
             #
-            #sels = sel.get_by_mol(self.molecule)
-            #for a in sels:
-            #    if a.get_index() >= 0:
-            #        self.zvals.SetTuple1(a.get_index(),104)
-            #self.zvals.Modified()
+            if self.graph.show_selection_by_colour:
+                sels = sel.get_by_mol(self.molecule)
+                for a in sels:
+                    if a.get_index() >= 0:
+                        self.zvals.SetTuple1(a.get_index(),106)
+                self.zvals.Modified()
 
         # Selection highlighting
         # OLD CODE
@@ -1380,16 +1376,21 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         self.status = BUILT
 
 ####    def sel_show(self,atoms):
+
+
     def sel_upd(self,mol):
         """Display the listed atoms as selected"""
 
         #Old code.. set the scalar value to 104 
-        # for a in atoms:
-        #    if self.debug_selection:
-        #        print 'select',a.get_index()+1
-        #    if a.get_index() >= 0:
-        #        self.zvals.SetTuple1(a.get_index(),104)
-        # self.zvals.Modified()
+
+        if self.graph.show_selection_by_colour:
+            for a in mol.atom:
+                if a.selected:
+                    if self.debug_selection:
+                        print 'select',a.get_index()+1
+                    if a.get_index() >= 0:
+                        self.zvals.SetTuple1(a.get_index(),106)
+            self.zvals.Modified()
 
         #OLD CODE
 ##        for a in atoms:
@@ -1469,16 +1470,16 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
         # Restore the atomic color 
         # Reset the scalar values
-        # for a in atoms:
-        #    if self.debug_selection:
-        #        print 'deselect',a.get_index()+1
-        #    try:
-        #        z = a.get_number()
-        #    except Exception:
-        #        z = 0
-        #    if a.get_index() >= 0:
-        #        self.zvals.SetTuple1(a.get_index(),z)
-        # self.zvals.Modified()
+        for a in atoms:
+            if self.debug_selection:
+                print 'deselect',a.get_index()+1
+            try:
+                z = a.get_number()
+            except Exception:
+                z = 0
+            if a.get_index() >= 0:
+                self.zvals.SetTuple1(a.get_index(),z)
+        self.zvals.Modified()
 
         # OLD CODE
 ##        for a in atoms:
