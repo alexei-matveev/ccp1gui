@@ -90,8 +90,8 @@ class Selector( Pmw.MegaToplevel ):
             self.objlist = []
             self.setup_debug()
 
-        mytitle="Image Selector Widget"
         Pmw.MegaToplevel.__init__( self, self.root, title=mytitle )
+
         
         # Stop the Widget being destroyed when the user deletes the widget from the window manager
         self.userdeletefunc( func = self.hideme )
@@ -149,7 +149,7 @@ class Selector( Pmw.MegaToplevel ):
         add_layer_button = Tkinter.Button( scene_layer_frame, text='Add Layer', command=self.__addlayerclicked )
         self.balloon.bind( add_layer_button, 'Add a layer to the animation.' )
         
-        remove_layer_button = Tkinter.Button( scene_layer_frame, text='Remove Layer', command=self.__removelayserclicked )
+        remove_layer_button = Tkinter.Button( scene_layer_frame, text='Remove Layer', command=self.__removelayerclicked )
         self.balloon.bind( remove_layer_button, 'Remove last layer from the animation.' )
         add_layer_button.pack( side='left' )
         remove_layer_button.pack( side='left' )
