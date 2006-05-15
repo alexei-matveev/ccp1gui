@@ -53,7 +53,7 @@ nametofile = {"Introduction":["index.html","viewer.intro.txt"],
 "Properties Tab":["gamessuk_menus.html#PropTab","gamessuk.proptab.txt"],
 "Optimisation Tab":["gamessuk_menus.html#GeomoptTab","gamessuk.opttab.txt"],
 "Job Tab":["gamessuk_menus.html#JobTab","gamessuk.jobtab.txt"],
-"Grid Editor":["gamessuk_menus.html#EditGrid","grideditor.txt"]}
+"Grid Editor":["gamessuk_menus.html#editgrid","grideditor.txt"]}
 
 global idtoname # maps widget ids to the names for lookup in nametofile
 idtoname = {}
