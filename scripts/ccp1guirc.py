@@ -5,23 +5,35 @@ self.bg_rgb = (0,0,100)
 
 # These are the defaults which you can modify
 
+######################## Display Options ######################
+
+# Change pick_tolerance to determine how close you need to click to
+# an atom of it to be selected
 self.pick_tolerance = 0.01
+
+# Set show_selection_by_colour for an atom to change colour when
+# it is selected (instead of just displaying a yellow dot).
+self.show_selection_by_colour = 1
+
 self.field_line_width  =  1
 self.field_point_size  =  2
 
 self.mol_line_width  =  3
 self.mol_point_size  =  4
 
+# Sphere rending options
 self.mol_sphere_resolution = 8
 self.mol_sphere_specular = 1.0
 self.mol_sphere_diffuse = 1.0       
 self.mol_sphere_specular_power = 5
 
+# Cylinder rending options
 self.mol_cylinder_resolution = 8
 self.mol_cylinder_specular = 0.7
 self.mol_cylinder_diffuse = 0.7
 self.mol_cylinder_specular_power = 10
 
+###################### End Display Options #####################
 
 # An example of a new colour map
 c = self.colourmap_func()
@@ -38,7 +50,7 @@ c.build()
 # Modifying the colouring scheme, this will make The X 
 # atoms (Z=0) red and hydrogens (Z=1) green
 
-from ccp1gui.periodic import colours
+from objects.periodic import colours
 
 colours[0] = (0.9, 0.2, 0.2)
 colours[1] = (0.2, 0.9, 0.2) 
@@ -79,7 +91,7 @@ menu.add_command(label='List Objects', underline=0,command=lambda s=self: listob
 # tools for loading ChemShell hessian eigenmode information from
 # the newopt optimiser
 #
-from ccp1gui.chemshell import chemshell_z_modes, chemshell_c_modes
+from interfaces.chemshell import chemshell_z_modes, chemshell_c_modes
 
 global get_chemshell_z_modes
 def get_chemshell_z_modes(gui):
