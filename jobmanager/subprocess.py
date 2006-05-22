@@ -115,11 +115,11 @@ class SubProcess:
         self.stderr = None
         self.status = IDLE
         self.debug = debug
+        #self.debug = 1
 
         self.output = []
         self.err = []
         self.status = IDLE
-        self.debug = debug
     #
     #   main access functions (need to be replaced)
     #
@@ -162,63 +162,95 @@ class SubProcess:
                 print 'winprocess.Process',self.cmd,kw
             self.child = winprocess.Process(self.cmd, **kw)
         else:
+            if self.debug:
+                print "spawn_child unix code"
 
-            # Pipe for communication with forked process
-            # these are file descriptors, not file objects
-            self.r, self.w = os.pipe() 
+            if self.stdin:
+                # Have an input file so attach the fd to the child input
+                child_stdin = self.stdin.fileno()
+            else:
+                # We don't need to do anything here as we assume that the
+                # child doesn't need stdin
+                pass
 
-            # Code imported ..
+            # For stdout & stderr, if we were given a file give the fd the child,
+            # otherwise we create a pipe to catch the stdout from the child
+            if self.stdout:
+                parent_stdout = None
+                child_stdout = self.stdout.fileno()
+            else:
+                parent_stdout, child_stdout =  os.pipe()
 
-            bufsize=-1
-            child_stdin, stdin = os.pipe()
-            stdout, child_stdout = os.pipe()
-            stderr, child_stderr = os.pipe()
-            self.stdin = os.fdopen(stdin, 'w', bufsize)
-            self.stdout = os.fdopen(stdout, 'r', bufsize)
-            self.stderr = os.fdopen(stderr, 'r', bufsize)
+            if self.stderr:
+                parent_stderr = None
+                child_stderr = self.stderr.fileno()
+            else:
+                parent_stderr, child_stderr =  os.pipe()
 
+            if self.debug:
+                print "calling fork"
+                
             self.pid = os.fork()
 
             if self.pid:
                 # we are the parent
                 if self.debug:
+                    print "parent code excuting"
                     print "process id is", self.pid
-                # use os.close() to close a file descriptor
-                os.close(self.w) 
-                # turn r into a file object
-                self.r = os.fdopen(self.r) 
+
+                # Close all the file descriptors that we don't need
+                # and attach files to the read end of the pipes
+                if self.stdin:
+                    # Calling this causes an error - not sure why though
+                    #os.close( child_stdin )
+                    pass
+                    
+                if not self.stdout:
+                    os.close( child_stdout )
+                    # turn parent_stdout into a file object
+                    self.stdout_file = os.fdopen( parent_stdout )
+                    
+                if not self.stderr:
+                    os.close( child_stderr )
+                    # turn parent_stderr into a file object
+                    self.stderr_file = os.fdopen( parent_stderr )
 
             else:
                 # Child code
-
-                os.close(self.r)
-                self.w = os.fdopen(self.w, 'w')
-                self.w.close()
-
-                os.dup2(child_stdin, 0)
+                
+                # Duplicate the file descriptors so that stdin comes from the file (if applicable)
+                # and stdout & err go to the file descriptor that either points at the file we were
+                # given or the parent end of the pipe
+                if self.stdin:
+                    os.dup2(child_stdin, 0)
                 os.dup2(child_stdout, 1)
                 os.dup2(child_stderr, 2)
 
+                # Close all file descriptors bar stdin,out & err
                 self.MAXFD = 256
-
                 for i in range(3, self.MAXFD):
                     try:
                         os.close(i)
                     except:
                         pass
+
                 try:
                     words = self.cmd.split()
-                    os.setsid() # Make child process group leader
-                    # so we can stop child and all its children
+                    os.setsid() # Make child process group leader so we can stop child and all its children
                     os.nice(19)
+                    # Below sets the handler for SIGHUP to that for SIG_IGN
+                    # i.e. if we get told to hang up, we ignore it
                     signal.signal(signal.SIGHUP, signal.SIG_IGN)
                     os.execvp(words[0],words)
                 finally:
+                    print "child calling exit"
                     os._exit(1)
 
-            os.close(child_stdin)
-            os.close(child_stdout)
-            os.close(child_stderr)
+            #jmht close fd's
+            #os.close(0)
+            #os.close(1)
+            #os.close(2)
+
 
     def _wait_child(self,timeout=-1):
 
@@ -247,30 +279,35 @@ class SubProcess:
         else:
 
             if not self.pid:
+                # This never gets called?
                 print 'Child in Wait'
             else:
                 # parent
-                txt = self.r.read()
-                txt = txt.split("%")
-                #print 'split text is ',txt
 
-                self.output = self.stdout.readlines()
+
                 if self.debug:
-                    print 'OUT:', self.output
-                self.error = self.stderr.readlines()
-                if self.debug:
+                    print "parent executing wait"
+                    if not self.stdout:
+                        self.output = self.stdout_file.read()
+                        print 'OUT:'
+                        print self.output
+                        
+                if not self.stderr:
+                    # No stderr file from user so we read the file
+                    # created from the pipe
+                    self.error = self.stderr_file.read()
                     print 'ERR:'
-                    for er in self.error:
-                        print er,
-
-                # close stdin, stdout and stderr pipes to child process.  Wait
-                # for the exit status of the child and return it."""
-
-                for fd in (self.stdin, self.stdout, self.stderr):
-                    if not fd.closed:
-                        fd.close()
-
-                proc, code = os.waitpid(self.pid, 0) 
+                    print self.error
+                else:
+                    if self.debug:
+                        # User gave us a stderr file so we open it and read it
+                        # THIS IS BUST - NOT SURE OF THE BEST WAY TO FIX IT
+                        # BUT IS PRETTY UNIMPORTANT AS THE FILE HAS BEEN SAVED
+                        print "wait parent self.stderr is ",self.stderr
+                        print 'ERR:'
+                        self.error = self.stderr.read()
+                
+                proc, code = os.waitpid(self.pid, 0)
 
                 return code
             
@@ -343,10 +380,12 @@ class SubProcess:
                 sig = 'KILL'
                 signals = {'QUIT': 3, 'KILL': 9, 'STOP': 23, 'CONT': 25}
                 try:
-                    os.kill(-self.pid,signals[sig]) # -pid since we did set pgid to pid
+                    #os.kill(-self.pid,signals[sig]) # -pid since we did set pgid to pid
+                    os.kill(self.pid,signals[sig]) # -pid since we did set pgid to pid
                     # and we are trying to kill all children too
-                except os.error:
-                    print "kill - %s of process %d failed" % (sig,pid)
+                except os.error,e:
+                    print "kill - %s of process %d failed" % (sig,self.pid)
+                    print e
                                             
                 # The return code from the dying process will be
                 # returned by the waitpid
@@ -594,10 +633,12 @@ class Spawn(SubProcess):
         apply(SubProcess.__init__, (self,cmd,) , kw)        
 
     def run(self,stdin=None,stdout=None,stderr=None):
-        """ execute the command as a subprocess using fork(UNIX) or spawn(Win32) """
+        """ Execute the command as a subprocess using fork(UNIX) or spawn(Win32)
+            If passed in, stdin, stdout & stderr should be open files
+        """
 
         if self.debug:
-            print t.time(), 'class Spawn, method run, _spawn_child'
+           print t.time(), 'class Spawn, method run, _spawn_child'
         self.status = SPAWNING
 
         self.stdin = stdin
@@ -614,7 +655,6 @@ class Spawn(SubProcess):
         return code
 
     def wait(self,**kw):
-
         if self.status == SPAWNED:
 
             if self.debug:
@@ -626,7 +666,7 @@ class Spawn(SubProcess):
             return code
         else:
 
-            print 'in wait',self.status
+            print 'Spawn in wait',self.status
 
             if self.debug:
                 print t.time(), 'class Spawn, err'
@@ -815,7 +855,6 @@ class RemoteProcess(ForegroundPipe):
 if __name__ == "__main__":
 
     print "IF CLAUSE"
-
     if 0:
         os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
         os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
@@ -1007,7 +1046,7 @@ if __name__ == "__main__":
         #print 'p.wait returns',code
         #print p.get_output()
 
-    if 1:
+    if 0:
         print 'Testing simple SlaveSpawn'
         cmd = "echo a b c"
         cmd = "rungamess test1"
@@ -1026,3 +1065,35 @@ if __name__ == "__main__":
         #i.close()
         e.close()
 
+
+# jmht
+    if 1:
+        print 'Testing simple Spawn'
+        cmd = "/home/jmht/test/GAMESS-UK-7.0/bin/gamess"
+        #cmd = "sleep 50"
+        #cmd = "sort -"
+        print cmd
+        #p = Spawn(cmd,debug=1)
+        p = Spawn(cmd)
+        print 'Executing run',os.getpid()
+        stdin = "./untitled.in"
+        #stdin = "./DFT.siosi3.347.in"
+        stdout = "./untitled.out"
+        stderr = "./untitled.err"
+        i = open(stdin,'r')
+        o = open(stdout,'w')
+        e = open(stderr,'w')
+        #p.run()
+        #p.run(stdin=i)
+        #p.run(stdin=i, stdout=o)
+        p.run(stdin=i, stdout=o, stderr=e)
+        #import time
+        #time.sleep(2)
+        #print "calling kill from main"
+        #p.kill()
+        code = p.wait()
+        #print "kill returned"
+        #print 'return code',code
+        #i.close()
+        #o.close()
+        #e.close()

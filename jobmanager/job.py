@@ -396,14 +396,20 @@ class BackgroundJob(Job):
             # !! Paul Feb 2004 what happened to stdin, stdout
             # may need to fix here and the bash version
             # - hacked back April 05
-            cmdtmp = step.local_command
-            if step.stdin_file:
-                cmdtmp = cmdtmp + ' < ' + step.stdin_file
-            if step.stdout_file:
-                cmdtmp = cmdtmp + ' > ' + step.stdout_file                
-            #cmd = step.local_command
-            self.process = subprocess.Spawn(cmdtmp,debug=self.debug)
-            self.process.run()
+            
+            # jmht - this won't work with Spawn, as the command will be executed with
+            # < and > as arguments and won't be used to pipe stdin & stdout
+            #if step.stdin_file:
+            #    cmdtmp = cmdtmp + ' < ' + step.stdin_file
+            #if step.stdout_file:
+            #    cmdtmp = cmdtmp + ' > ' + step.stdout_file                
+            cmd = step.local_command
+            self.process = subprocess.Spawn(cmd,debug=self.debug)
+
+            # Open the files we have been given and give these to the run method
+            stdin = open(step.stdin_file, 'r')
+            stdout = open(step.stdout_file, 'w')
+            self.process.run(stdin=stdin, stdout=stdout)
             code = self.process.wait()
             if code != 0: 
                 msg = ""
