@@ -1341,6 +1341,11 @@ class GAMESSUKCalc(QMCalc):
         # Frequencies
         #
 
+        # Need to specify if using symmetry as these are secondary jobs
+        if not self.get_parameter('symmetry'):
+            file.write('nosym\n')
+            file.write('adapt off\n')
+            
         if self.get_parameter("ana_frequencies"):
             file.write('runtype force\n')
             #file.write('nosym\n')
