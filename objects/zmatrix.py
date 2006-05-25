@@ -43,7 +43,7 @@ import re
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
 
-from objects.periodic import rcov, sym2no, atomic_mass
+from objects.periodic import rcov, sym2no, atomic_mass, name_to_element
 from chempy import cpv
 
 pi_over_180 = math.atan(1.0) / 45.0
@@ -359,17 +359,7 @@ class Zmatrix(Indexed):
                     a.coord = [0.0,0.0,0.0]
                     self.atom.append(a)
                     a.name = fields[0]
-
-                    # Determine the symbol from the first 2 chars of the name
-                    if ( len( a.name ) == 1 ):
-                        a.symbol = a.name
-                    else:
-                        # See if 2nd char is a character - if so use 1st 2 chars as symbol
-                        if re.match( '[a-zA-Z]', a.name[1] ):
-                            a.symbol = a.name[0:2]
-                        else:
-                            a.symbol = a.name[0]
-                    a.symbol = string.capitalize(a.symbol)
+                    a.symbol = name_to_element( a.name )
 
                     if mode == 'z':
 
