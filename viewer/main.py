@@ -256,7 +256,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_vis_dialog()
         self.build_data_dialog()
         self.build_help_dialog()
-        self.build_calctype_dialog()
         self.build_watch_dialog()
         self.build_extend_dialog()
         self.build_distance_dialog()
@@ -341,9 +340,7 @@ class TkMolView(Pmw.MegaToplevel):
         #self.oldvisl = []
 
         # Load user Defaults if present
-        if sys.platform == 'mac':
-            pass
-        elif sys.platform[:3] == 'win':
+        if sys.platform[:3] == 'win':
             try:
                 execfile(os.path.expandvars('$USERPROFILE\ccp1guirc.py'))
                 print "Found User configuration file: $USERPROFILE\ccp1guirc.py"
@@ -1751,7 +1748,7 @@ class TkMolView(Pmw.MegaToplevel):
 
             print 'myclass',myclass
             if myclass == 'File' and obj.MoldenReadable() :
-                if self.wavefunction_visualiser:
+                if self.wavefunction_visualiser:       
                     cascade.add_command(
                         label="Run Molden",command=\
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
@@ -2700,18 +2697,6 @@ class TkMolView(Pmw.MegaToplevel):
             elif ext == 'in':
                 form = 'GAMIN'
 
-        # Funnily enough, lots of output files have the .out extension
-        # so as we can't work out what the user clicked on in the tkfiledialog
-        # we will have to ask them
-        
-        # see build_calctype_dialog for where the list of supported calc types is set
-        if form == 'OUT':
-            calctype = self.__getcalctype()
-            if calctype == 'GAMESS-UK':
-                form = 'GAMOUT'
-            elif calctype == 'Dalton':
-                form = 'DALOUT'
-
         if form == 'PDB':
             objs = self.rdpdb(filename,root)
         elif form == 'PUN':
@@ -2724,10 +2709,6 @@ class TkMolView(Pmw.MegaToplevel):
             objs = self.rdgamin(filename,root)
         elif form == 'MOL':
             objs = self.rdmol(filename,root)
-        elif form == 'GAMOUT':
-            objs = self.rdgamout(filename,root)
-        elif form == 'DALOUT':
-            objs = self.rddalout(filename,root)
         elif form == 'SMG':
             objs = self.rdsmeagol(filename,root,ext)
         elif form == 'vtk':
@@ -2740,6 +2721,8 @@ class TkMolView(Pmw.MegaToplevel):
             objs = self.rdhist(filename)
         elif form == 'CUBE':
             objs = self.rdcube(filename)
+        elif form == 'OUT':
+            objs = self.rdout(filename,root)
         else:
             fileh = open(filename,'r')
             if form == 'XYZ':
@@ -2761,6 +2744,61 @@ class TkMolView(Pmw.MegaToplevel):
                 self.file_dict[t] = file
             return 0
                 
+    def rdout(self,filename,root):
+        """
+           We scan the output to determine what sort of output we are reading
+           and then call the relevant reader to parse the file. We then return
+           the objects found by the reader.
+        """
+
+        objs = None
+        prog = self.scan_output( filename )
+        if not prog:
+            print "Cannot determine output file type for file: %s" % filename
+            return None
+        elif ( prog == "GAMESS-UK"):
+            objs = self.rdgamout( filename, root )
+        elif ( prog == "DALTON"):
+            objs = self.rddalout( filename, root )
+        else:
+            print "Bad output type returned by scan_output!"
+
+        return objs
+
+    def scan_output(self, filename):
+        """ Scan through an output to determine which programme produced it
+            We compare each line against a list of regular expressions that
+            are considered indicative of a particular programmes output and then
+            break out as soon as we hit a match.
+        """
+
+        # Dictionary to hold regular expressions and the return value
+        redict = {
+            re.compile('\s*\*\s*===  G A M E S S - U K    ===\s*\*') : 'GAMESS-UK',
+            re.compile('\s*\*{11}  DALTON - An electronic structure program  \*{11}') : 'DALTON',
+            }
+        
+        f = open( filename, 'r' )
+
+        done = None
+        retval = None
+        while not done:
+
+            line = f.readline()
+            if not line:
+                print "Error reading file in scan_output!"
+                done = 1
+                break
+            
+            for myre in redict.items():
+                if myre[0].match( line ):
+                    retval = myre[1]
+                    done = 1
+                    break
+
+        f.close()
+        return retval
+        
     def rdzmt(self,file,root):
         """Load from a zmatrix
         """
@@ -5035,41 +5073,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.query_result = result
         self.query_dialog.deactivate()
 
-    #-------------calctype options -------------------#
-    def build_calctype_dialog( self ):
-        """ Build the dialog to let the user select the type of calculation ouput
-            that they would like to open.
-        """
-
-        calctypes = [ "GAMESS-UK", "Dalton" ]
-        self.calctype_dialog = Pmw.SelectionDialog( self.master,
-                                                 title = 'Calculation type chooser',
-                                                 buttons = ( 'OK', 'Cancel' ),
-                                                 scrolledlist_labelpos = 'n',
-                                                 label_text = 'Choose a calculation type to open',
-                                                 scrolledlist_items = calctypes,
-                                                 command = self.__choosecalctype )
-        self.calctype_dialog.withdraw()
-
-        
-    def __choosecalctype( self, result ):
-        """ Get the calculation type that the user has chosen
-        """
-
-        self.calctype = None
-        if ( result == 'OK' ):
-            self.calctype = self.calctype_dialog.getcurselection()[0]
-            self.calctype_dialog.deactivate()
-        elif( result == 'Cancel' ):
-            self.calctype = None
-            self.calctype_dialog.deactivate()
-            
-    def __getcalctype( self ):
-        """ Pop up the chooser for the calculation type and return the result
-        """
-        self.calctype_dialog.activate()
-        return self.calctype
-        
 
     #------------- watch -----------------------------
 
