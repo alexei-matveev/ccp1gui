@@ -227,7 +227,7 @@ class vtkTkRenderWidget(Tkinter.Widget):
             self._RenderWindow.Render()
             self.__InExpose = 0
 
-    def Render(self,trace=1):
+    def Render(self,trace=0):
 
         if trace:
             import inspect
