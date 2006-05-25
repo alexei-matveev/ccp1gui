@@ -180,7 +180,6 @@ class DaltonOutputReader:
         line = self.getline()
 
         while( line[0:4] != "DIIS" ):
-            print "line[0:4] is ",line[0:4]
             fields = string.split( line )
             # All sort of crap gets printed, so we need to see if we can
             # convert the first field to an int and assume that's the cycle info line
@@ -240,12 +239,20 @@ class DaltonOutputReader:
 
         # Read in the number of coordinates
         line = string.strip( self.getline() )
-        fields = string.split( line )
+        
+        # The try/except bit here is just a quick hack to deal with the fact that I think
+        # different versions of Dalton may print this differently
         try:
+            fields = string.split( line )
             ncoords = int (fields[4] )
-        except Exception, e:
-            print "Error reading ncoords in _read_initialxyz!: %s" % e
-        natoms = eval( "ncoords / 3" )
+        except IndexError:
+            try:
+                fields = string.split( line, ':' )
+                ncoords = int( fields[1] )
+            except ValueError:
+                print "Error reading coordinates in daltonoutputreader _read_initialxyz!"
+        
+        natoms = ncoords / 3
 
         # Create a molecule
         molecule = zmatrix.Zmatrix()
