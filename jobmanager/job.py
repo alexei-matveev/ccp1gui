@@ -357,7 +357,7 @@ class BackgroundJob(Job):
             cmd = step.local_command 
 
             if self.debug:
-                print cmd
+                print "Background job win: run_app cmd: ",cmd
             self.process = subprocess.Spawn(cmd,debug=self.debug)
             if step.stdin_file:
                 i = open(step.stdin_file,'r')
@@ -403,13 +403,27 @@ class BackgroundJob(Job):
             #    cmdtmp = cmdtmp + ' < ' + step.stdin_file
             #if step.stdout_file:
             #    cmdtmp = cmdtmp + ' > ' + step.stdout_file                
+                
             cmd = step.local_command
+            if self.debug:
+                print "Background job: run_app cmd: ",cmd
+                
             self.process = subprocess.Spawn(cmd,debug=self.debug)
 
-            # Open the files we have been given and give these to the run method
-            stdin = open(step.stdin_file, 'r')
-            stdout = open(step.stdout_file, 'w')
+            # Open any files we may have been given and give these to the run method
+            if step.stdin_file:
+                stdin = open(step.stdin_file,'r')
+            else:
+                stdin = None
+            if step.stdout_file:
+                stdout = open(step.stdout_file,'w')
+            else:
+                stdout = None
+
+            #stderr = open('stderrfile','w')
+                
             self.process.run(stdin=stdin, stdout=stdout)
+            
             code = self.process.wait()
             if code != 0: 
                 msg = ""
