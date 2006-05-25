@@ -821,6 +821,26 @@ atomic_mass = {
    'MT' : 268.14,
 }
 
+# Get atom symbol from the name
+import string,re
+def name_to_element( name ):
+    """ Determine the element type of an atom from its name, e.g. Co_2b -> Co
+    """
+
+    # Determine the element from the first 2 chars of the name
+    if ( len( name ) == 1 ):
+        symbol = name
+    else:
+        # See if 2nd char is a character - if so use 1st 2 chars as symbol
+        if re.match( '[a-zA-Z]', name[1] ):
+            symbol = name[0:2]
+        else:
+            symbol = name[0]
+
+    name = string.capitalize( name )
+    return name
+
+    
 try:
     from Tkinter import *
     import Pmw
