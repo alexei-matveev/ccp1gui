@@ -1341,22 +1341,21 @@ class GAMESSUKCalc(QMCalc):
         # Frequencies
         #
 
-        # Need to specify if using symmetry as these are secondary jobs
-        if not self.get_parameter('symmetry'):
-            file.write('nosym\n')
-            file.write('adapt off\n')
-            
         if self.get_parameter("ana_frequencies"):
+            # Need to re-specify if not using symmetry as these are secondary jobs
+            if not self.get_parameter('symmetry'):
+                file.write('nosym\n')
+                file.write('adapt off\n')
             file.write('runtype force\n')
-            #file.write('nosym\n')
-            #file.write('adapt off\n')
             file.write('punch normal vibr\n')
             file.write('enter 1\n')
 
         if self.get_parameter("ana_hessian"):
+            # Need to re-specify if not using symmetry as these are secondary jobs
+            if not self.get_parameter('symmetry'):
+                file.write('nosym\n')
+                file.write('adapt off\n')
             file.write('runtype hessian\n')
-            #file.write('nosym\n')
-            #file.write('adapt off\n')
             file.write('punch normal vibr\n')
             file.write('enter 1\n')
 
