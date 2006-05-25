@@ -33,6 +33,7 @@ from objects.vibfreq import *
 import re
 #import xreadlines
 from Scientific.Geometry.VectorModule import *
+from objects import periodic # for name_to_element
 
 toAngstrom = 0.529177249
 
@@ -105,6 +106,7 @@ class GamessOutputReader:
         self.DRF_polarisation = 0.0
         self.DRF_totalEnergy = 0.0
         self.DRF_totalArea = 0.0
+        self.zmatrix = None # Flag to monitor if we are in cartesian or zmatrix mode
         self.zmatrix_auto = None
         self.readvar = 0 # flag to monitor calls to _read_variables
         self.molecules = []    # use to hold the list of coordinates as z-matrices
@@ -117,10 +119,11 @@ class GamessOutputReader:
 #        self.manage['nuclear_coords'] = ( re.compile('^ *nuclear coordinates') , self._read_nuclear_coordinates )
 #        self.manage['atomic_coords'] = ( re.compile('^ *\* *atom  *atomic  *coord') , self._read_molecular_geometry )
         self.manage['variables'] = ( re.compile('^ *variable *value *hessian') , self._read_variables )
-        self.manage['zmatrix'] = ( re.compile('^ *input z-matrix') , self._read_zmatrix )
+        self.manage['zmatrix'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix )
         self.manage['zmatrix_auto'] = ( re.compile('^ *automatic z-matrix generation') , self._read_zmatrix_auto )
 #jmht1 z-matrix (angstroms and degrees)
         self.manage['zmatrix2'] = ( re.compile('^ *z-matrix \(angstroms and degrees\)') , self._read_zmatrix2 )
+        self.manage['symm_geom'] = ( re.compile('^ *\*     atom   atomic                coordinates') , self._read_orient_geom )
         self.manage['nuclear_energy'] = ( re.compile('^ *nuclear energy *=') , self._read_energies )
         self.manage['mo_irreps'] = ( re.compile('^ *m.o. irrep') , self._read_orbital_energies )
         self.manage['gross_pops'] = ( re.compile('^ *-.* total gross pop.*atoms') , self._read_total_populations )
@@ -204,8 +207,7 @@ class GamessOutputReader:
             z = float(s[5])*toAngstrom
             p.coord = [ x, y, z ]
             p.name = s[1]
-            p.symbol = string.translate(s[1],trans,string.digits)
-            p.symbol = string.capitalize(p.symbol)
+            p.symbol = periodic.name_to_element( s[1] )
             p.index = cnt
             cnt += 1
             zz.add_atom(p)
@@ -241,7 +243,7 @@ class GamessOutputReader:
             y = float(s[3]*toAngstrom)
             z = float(s[4]*toAngstrom)
             p.coord = [ x, y, z ]
-            p.symbol = s[1]
+            p.symbol = periodic.name_to_element( s[1] )
             p.index = cnt
             cnt += 1
             zz.add_atom(p)
@@ -278,12 +280,9 @@ class GamessOutputReader:
                 x = float(fields[0])*toAngstrom
                 y = float(fields[1])*toAngstrom
                 z = float(fields[2])*toAngstrom
-                #chg = fields[3]
                 a.coord = [ x, y, z ]
-                
                 a.name = tag
-                a.symbol = string.translate(tag,trans,string.digits)
-                a.symbol = string.capitalize(a.symbol)
+                a.symbol = periodic.name_to_element( tag )
                 a.index = count
  
                 zz.add_atom(a)
@@ -347,7 +346,7 @@ class GamessOutputReader:
             if ( var.name in new_var_dict.keys() ):
                 var.value = new_var_dict[var.name]
             else:
-                # print "Error - _read_variables can't find : ",var.name
+                print "Error - _read_variables can't find : ",var.name
                 pass
 
         # Update the molecule somehow...
@@ -399,12 +398,15 @@ class GamessOutputReader:
 #         # end of while
 #     #end def
 
-    def _read_zmatrix(self, line):
+    def _read_input_zmatrix(self, line):
         """ This reads the input z-matrix into a a text buffer and passed it to the
             load_from_file method of the z-matrix class.
             This is pretty messy and in retrospect, it is probably far easier just
             to parse the z-matrix out of the echoed input. But I'd started so...
         """
+        
+        self.zmatrix = 1
+        
         zmat_buffer = []
         zmat_buffer.append("zmatrix angstrom")
         # skip 2 lines
@@ -461,6 +463,73 @@ class GamessOutputReader:
 
         model = Zmatrix( list = zmat_buffer )
         self.molecules.append( model )
+
+    def _read_orient_geom(self, line):
+        """
+           This reads in the geometry printed by gamess after it has read in the user specified
+           geometry and rotated this following the symetry detection routines have done their work.
+           We don't read this in if we are using a zmatrix.
+        """
+        if self.zmatrix:
+            return
+        #print "in _read_orient_geom"
+
+        # The regexp that identifies lines with the coordinates on them
+        # REM: \s=space, \d=digit
+        # strings we are looking for
+        symbol = '[a-zA-Z]{1,2}'
+        charge = '\d{1,3}\.\d{1}'
+        coord  = '[-]{0,1}\d{0,4}\.\d{7}'
+        coord_line = re.compile('^\s*\*\s*'+symbol+'\s*'+charge+'\s*'+coord+'\s*'+coord)
+        endsec = re.compile('^\s*\*{50,}') # at least 50 stars
+
+        gotc = 0 # need to skip the first line of stars
+        done = 0
+        
+        molc = Zmatrix()
+        while not done:
+
+            if not line:
+                print "EOF encountered in gamessoutputreader in _read_orient_geom!"
+                done = 1
+                break
+
+            if not line.isspace():
+                if endsec.match( line ):
+                    if gotc:
+                        # We've read in all the coordinates
+                        done = 1
+                        break
+                    else:
+                        # need to skip the first line of stars
+                        gotc = 1
+                elif coord_line.match( line ):
+                    #print "matched line: ",line
+                    line = string.strip( line )
+                    fields = string.split( line )
+                    tag = fields[1]
+                    try:
+                        charge = float(fields[2])
+                        x = float(fields[3])*toAngstrom
+                        y = float(fields[4])*toAngstrom
+                        z = float(fields[5])*toAngstrom
+                    except:
+                        print "Error reading values in gamessoutputreader in _read_orient_geom!"
+                        print "Offending line is: ",line
+                        
+                    #print "tag:%s q:%s x:%s y:%s z:%s" % ( tag,charge,x,y,z)
+                    a = ZAtom()
+                    a.coord = [ x, y, z ]
+                    a.name = tag
+                    a.symbol = periodic.name_to_element( tag )
+                    molc.add_atom(a)
+
+            line = self.fd.readline()
+
+        # Finished reading so add the molecule to the list    
+        self.molecules.append(molc)
+        return
+
         
     def _read_energies(self, line):
         s = line.split()
@@ -481,7 +550,7 @@ class GamessOutputReader:
             GAMESS-UK doesn't print out the variables that it uses and the we can't
             just update the variables as we do otherwise.
         """
-        self.zmatrix_auto = 1
+        self.zmatrix = self.zmatrix_auto = 1
         return
 
     def _read_zmatrix2(self, line):
@@ -1010,6 +1079,7 @@ if __name__ == "__main__":
     import sys
     import glob
     for file in glob.glob('tests/*.gout'):
+#    for file in ["/tmp/junk/TS-cd-b3lyp-ah.out"]:
         print 'loading %s ...' % file
         g = GamessOutputReader(file)
         print
