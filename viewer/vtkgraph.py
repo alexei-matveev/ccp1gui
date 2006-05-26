@@ -998,7 +998,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             fac = rvdw[z] * self.sphere_scale
 
                         # this 5 is empirical
-                        print 'setting size',z,rcov[z]
+			#   print 'setting size',z,rcov[z]
                         r = fac*5
                         hackrad.SetTuple3(np,r,r,r)
                         i=i+1
