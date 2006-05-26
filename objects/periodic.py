@@ -829,16 +829,20 @@ def name_to_element( name ):
 
     # Determine the element from the first 2 chars of the name
     if ( len( name ) == 1 ):
-        symbol = name
+        if not re.match( '[a-zA-Z]', name ):
+            print "Error converting name to symbol for atom %s!" % name
+            element = 'XX'
+        else:
+            element = name
     else:
         # See if 2nd char is a character - if so use 1st 2 chars as symbol
         if re.match( '[a-zA-Z]', name[1] ):
-            symbol = name[0:2]
+            element = name[0:2]
         else:
-            symbol = name[0]
+            element = name[0]
 
-    name = string.capitalize( name )
-    return name
+    element = string.capitalize( element )
+    return element
 
     
 try:
