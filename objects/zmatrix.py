@@ -405,6 +405,11 @@ class Zmatrix(Indexed):
                             except ValueError, e:
                                 a.phi_var, a.phi_sign = self.find_var_or_create(fields[6],0.0,'a')
 
+                        if(len(fields)) > 7:
+                            if fields[7] == "charge":
+                                a.partial_charge = float(fields[8])
+                            else:
+                                print 'TRAILING JUNK IGNORED', fields[7:]
 
                     if mode == 'x':
 
@@ -426,6 +431,12 @@ class Zmatrix(Indexed):
                             a.z_var = None
                         except ValueError, e:
                             a.z_var, a.z_sign = self.find_var_or_create(fields[3],0.0,'d')
+
+                        if(len(fields)) > 4:
+                            if fields[4] == "charge":
+                                a.partial_charge = float(fields[5])
+                            else:
+                                print 'TRAILING JUNK IGNORED', fields[4:]
 
                 if mode == 'c' or mode == 'v':
                     # At this stage the variables should already exist
