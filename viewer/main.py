@@ -174,7 +174,7 @@ from interfaces.filepunch import *
 
 import objects
 from objects.zme            import *
-from objects.periodic       import sym2no, z_to_el
+from objects.periodic       import sym2no, z_to_el, name_to_element
 
 from interfaces.charmm_map import *
 
@@ -2831,7 +2831,7 @@ class TkMolView(Pmw.MegaToplevel):
                                    
             a = ZAtom()
             a.coord = [x,y,z]
-
+            
             trans = string.maketrans('a','a')
             a.symbol = string.capitalize(atomDict[i]['elementType'])
             #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
@@ -3084,9 +3084,7 @@ class TkMolView(Pmw.MegaToplevel):
                     z = float(words[3])
                     a = ZAtom()
                     a.coord = [x,y,z]
-                    trans = string.maketrans('a','a')
-                    a.symbol = string.translate(words[0],trans,string.digits)
-                    a.symbol = string.capitalize(a.symbol)
+                    a.symbol = name_to_element( words[0] )
                     a.name = a.symbol + string.zfill(i+1,2)
                     model.atom.append(a)
                     # atno = Element.sym2no[atsym]
