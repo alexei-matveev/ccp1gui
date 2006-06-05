@@ -170,6 +170,14 @@ class VtkGraph(TkMolView,Graph):
 
     def myquit(self):
         """Handler for exit, deletes VTK windows before loss of tk"""
+        
+        try:
+            # process rc_vars
+            self.write_ccp1guirc()
+        except Error,e:
+            print "Error writing ccp1guirc file!"
+            print e
+            
         self.pane.destroy()
         self.pane2d.destroy()
         self.quit()
