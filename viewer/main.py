@@ -182,6 +182,55 @@ from slavethread import *
 from jobmanager.jobeditor import *
 from toolpanel import *
 
+# dictionary to hold the variables that can be set in the ccp1guirc file
+global rc_vars 
+rc_vars = {}
+rc_vars['conn_scale'] = 1.0
+rc_vars['conn_toler']   = 0.5
+rc_vars['contact_scale'] = 1.0
+rc_vars['contact_toler']   = 1.5
+rc_vars['bg_rgb'] = (0,0,100)
+rc_vars['pick_tolerance'] = 0.01
+rc_vars['show_selection_by_colour'] = 1
+rc_vars['field_line_width']  =  1
+rc_vars['field_point_size']  =  2
+# Molecule variables
+rc_vars['mol_line_width']  =  3
+rc_vars['mol_point_size']  =  4
+rc_vars['mol_sphere_resolution'] = 8
+rc_vars['mol_sphere_specular'] = 1.0
+rc_vars['mol_sphere_diffuse'] = 1.0
+rc_vars['mol_sphere_ambient'] = 0.4
+rc_vars['mol_sphere_specular_power'] = 5
+rc_vars['mol_cylinder_resolution'] = 8
+rc_vars['mol_cylinder_specular'] = 0.7
+rc_vars['mol_cylinder_diffuse'] = 0.7
+rc_vars['mol_cylinder_ambient'] = 0.4
+rc_vars['mol_cylinder_specular_power'] = 10
+# Script locations
+rc_vars['gamessuk_exe'] = None
+rc_vars['gamessuk_script'] = None
+rc_vars['molden_exe'] = None
+rc_vars['dalton_script'] = None
+
+def set_rc_var( name, value ):
+    """
+       Set an rc_variable.
+       name: the name of the variable in the rc_vars dictionary
+       value: what the variable should be set to
+
+       We return 1 if name is not in the dictionary
+    """
+    global rc_vars
+    
+    if rc_vars.has_key( name ):
+        rc_vars[name] = value
+        return None
+    else:
+        print "Error in set_rc_var! rc_vars has no key %s" % name
+        return 1
+
+
 class TkMolView(Pmw.MegaToplevel):
     """The Tk-based Widget"""
 
@@ -339,21 +388,9 @@ class TkMolView(Pmw.MegaToplevel):
         # list of images from last animation frame
         #self.oldvisl = []
 
-        # Load user Defaults if present
-        if sys.platform[:3] == 'win':
-            try:
-                execfile(os.path.expandvars('$USERPROFILE\ccp1guirc.py'))
-                print "Found User configuration file: $USERPROFILE\ccp1guirc.py"
-            except IOError,e:
-                pass
-
-        elif sys.platform[:5] == 'linux':
-            try:
-                execfile(os.path.expandvars('$HOME/ccp1guirc.py'))
-                print "Found User configuration file: $HOME/ccp1guirc.py"
-            except IOError,e:
-                pass
-
+        # Set any defaults form the ccp1guirc file & any user-defined functions
+        self.read_ccp1guirc()
+        
         self.build_options_dialog()
         self.toolwidget = EditingToolsWidget(self.master,
                                              command=self.handle_edits)
@@ -415,6 +452,130 @@ class TkMolView(Pmw.MegaToplevel):
         #   - by convention this is handled by the on_exit= argument
         self.editing_callbacks = {}
 
+    def read_ccp1guirc(self):
+        """Process the ccp1guirc file:
+           Execute the file to execute any of the users python code, and then
+           check for any variables that are set in the file. These are stored
+           in the rc_vars dictionary. Any variables that are attributes of self
+           are set.
+        """
+        global rc_vars
+
+        # Need to append all variables that we are going to change to locals
+        # in order for them to be in scope when execfile executes
+        #for var_name in rc_vars.keys():
+        #    locals()[var_name] = rc_vars[var_name]
+
+        # Load user Defaults if present
+        if sys.platform[:3] == 'win':
+            rcfile = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
+        else:
+            rcfile = os.path.expandvars('$HOME/ccp1guirc.py')
+            
+
+        if not os.path.isfile( rcfile ):
+            # No ccp1guirc file so we can return
+            print "No user preferences file: %s found" % rcfile
+            return
+        
+        print "Executing ccp1guirc file %s" % rcfile
+        try:
+            execfile( rcfile )
+        except Exception,e:
+                print "Error reading cco1guirc file: %s" % rcfile
+                print e
+                
+        # Now trundle through the variables in rc_vars, seeing if any of them are in scope
+        # as local variables. If they are we place the value in rc_vars and try and set the
+        # variable value if they areattributes of self
+        
+        for var_name in rc_vars.keys():
+            gotvar = None
+            exeline = "tmp = "+var_name
+            try:
+                exec(exeline)
+                #print "%s from ccp1guirc is: %s" % (var_name, tmp)
+                rc_vars[var_name] = tmp
+                gotvar = 1
+            except NameError:
+                #print "%s is not in ccp1guirc file" % var_name
+                pass
+            
+            if gotvar:
+                # Now try and set this if it is an attribute of main
+                # and set it if it is
+                exeline2 = "tmp2 = self."+var_name
+                try:
+                    exec(exeline2)
+                    exeline3 = "self."+var_name+" = "+str(rc_vars[var_name])
+                    exec(exeline3)
+                    #print "Set self."+var_name+" to "+str(rc_vars[var_name])
+                except:
+                    pass
+                    #print "%s is not a self var" % var_name
+                    
+
+    def write_ccp1guirc(self):
+        """ Write out the current state of the rc_vars to file
+        """
+
+        print "writing ccp1guirc file"
+        global rc_vars
+        
+        # find the ccp1guirc file
+        if sys.platform[:3] == 'win':
+            rc_filename = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
+        else:
+            rc_filename = os.path.expandvars('$HOME/ccp1guirc.py')
+
+        if not os.path.isfile( rc_filename ):
+            # No ccp1guirc file found, so just dump out the dictionary to a new ccp1guirc file
+            try:
+                rc_file = open( rc_filename, 'w' ) # Open File in write mode
+            except IOError,e:
+                print "Cant create user rc file. I give up..."
+
+            rc_file.write("# This ccp1guirc file has been created by the CCP1GUI as no\n")
+            rc_file.write("# user file could be found\n#\n#\n")
+            for name in rc_vars.keys():
+                rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
+
+            # Have dumped dictionary so quit here
+            return
+
+        # Read the file into a buffer
+        try:
+            rc_file = open( rc_filename, 'r' )
+            rc_buff = rc_file.readlines()
+            rc_file.close()
+        except Error,e:
+            print "Error reading ccp1guirc file!"
+            print e
+            return
+
+        # For each line of the file, if a variable appears at the start of the line
+        # we replace the old value with the one from the rc_vars dictionary
+        count = 0
+        for line in rc_buff:
+            for var_name in rc_vars.keys():
+                re_str = '^'+var_name+' *='
+                if re.compile( re_str ).match( line ):
+                    # replace that line in the buffer with the new value
+                    if type(rc_vars[var_name]) is str:
+                        rc_buff[ count ] = "%s = \'%s\'\n" % (var_name, str(rc_vars[var_name]) )
+                    else:
+                        rc_buff[ count ] = "%s = %s\n" % (var_name, str(rc_vars[var_name]) )
+            count += 1
+
+        # Write out the ammended file
+        try:
+            rc_file = open( rc_filename, 'w')
+            for line in rc_buff:
+                rc_file.write( line )
+        except Error,e:
+            print "Can't write rc_file %s " % rc_filename
+            print "Error is:"
+            print e
 
     def __createBalloon(self):
         # Create the balloon help manager for the frame.
@@ -1748,7 +1909,7 @@ class TkMolView(Pmw.MegaToplevel):
 
             print 'myclass',myclass
             if myclass == 'File' and obj.MoldenReadable() :
-                if self.wavefunction_visualiser:       
+                if self.wavefunction_visualiser:  
                     cascade.add_command(
                         label="Run Molden",command=\
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
@@ -2831,7 +2992,6 @@ class TkMolView(Pmw.MegaToplevel):
                                    
             a = ZAtom()
             a.coord = [x,y,z]
-            
             trans = string.maketrans('a','a')
             a.symbol = string.capitalize(atomDict[i]['elementType'])
             #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
@@ -5434,9 +5594,11 @@ class TkMolView(Pmw.MegaToplevel):
             # been modified
             print 'Store'
             self.set_bg_colour(self.bg_rgb)
+            set_rc_var( 'bg_rgb', self.bg_rgb )
 
             self.pick_tolerance  = float(self.w_picktol.get())
             self.set_pick_tolerance()
+            set_rc_var( 'pick_tolerance', self.pick_tolerance )
 
             txt = self.w_nearclip.get()
             if txt == "Auto":
@@ -5452,27 +5614,45 @@ class TkMolView(Pmw.MegaToplevel):
             self.set_clipping_planes()
 
             self.conn_toler  = float(self.w_conn_toler.get())
+            set_rc_var( 'conn_toler', self.conn_toler )
             self.conn_scale  = float(self.w_conn_scale.get())
+            set_rc_var( 'conn_scale', self.conn_scale )
             self.contact_toler  = float(self.w_contact_toler.get())
+            set_rc_var( 'contact_toler', self.contact_toler )
             self.contact_scale  = float(self.w_contact_scale.get())
+            set_rc_var( 'contact_scale', self.contact_scale )
 
             self.mol_line_width = int(self.w_mol_line_width.get())
+            set_rc_var( 'mol_line_width', self.mol_line_width )
             self.mol_point_size  = int(self.w_mol_point_size.get())
+            set_rc_var( 'mol_point_size', self.mol_point_size )
 
             self.field_line_width = int(self.w_field_line_width.get())
+            set_rc_var( 'field_line_width', self.field_line_width )
             self.field_point_size  = int(self.w_field_point_size.get())
+            set_rc_var( 'field_point_size', self.field_point_size )
 
             self.mol_sphere_resolution = int(self.w_mol_sphere_resolution.get())
+            set_rc_var( 'mol_sphere_resolution', self.mol_sphere_resolution )
             self.mol_sphere_specular_power = int(self.w_mol_sphere_specular_power.get())
+            set_rc_var( 'mol_sphere_specular_power', self.mol_sphere_specular_power )
             self.mol_sphere_diffuse = float(self.w_mol_sphere_diffuse.get())
+            set_rc_var( 'mol_sphere_diffuse', self.mol_sphere_diffuse )
             self.mol_sphere_ambient = float(self.w_mol_sphere_ambient.get())
+            set_rc_var( 'mol_sphere_ambient', self.mol_sphere_ambient )
             self.mol_sphere_specular = float(self.w_mol_sphere_specular.get())
+            set_rc_var( 'mol_sphere_specular', self.mol_sphere_specular )
 
             self.mol_cylinder_resolution = int(self.w_mol_cylinder_resolution.get())
+            set_rc_var( 'mol_cylinder_resolution', self.mol_cylinder_resolution )
             self.mol_cylinder_specular_power = int(self.w_mol_cylinder_specular_power.get())
+            set_rc_var( 'mol_cylinder_specular_power', self.mol_cylinder_specular_power )
             self.mol_cylinder_diffuse = float(self.w_mol_cylinder_diffuse.get())
+            set_rc_var( 'mol_cylinder_diffuse', self.mol_cylinder_diffuse )
             self.mol_cylinder_ambient = float(self.w_mol_cylinder_ambient.get())
+            set_rc_var( 'mol_cylinder_ambient', self.mol_cylinder_ambient )
             self.mol_cylinder_specular = float(self.w_mol_cylinder_specular.get())
+            set_rc_var( 'mol_cylinder_specular', self.mol_cylinder_specular )
 
         else:
             # Cancel them
