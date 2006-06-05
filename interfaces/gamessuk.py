@@ -392,8 +392,15 @@ class GAMESSUKCalc(QMCalc):
 ##                 file.write(a)
 ##             file.close()
 
-        #Decide if we are keeping any files
-        self.__keepfiles()
+        #Determine how we will be running GAMESS-UK
+        check = self.get_runmethod()
+        if check:
+            ed.Error("Cannot find a working rungamess script or gamess-uk binary!\n"+
+                     "Please either set the gamessuk_script or gamessuk_exe variables\n"+
+                     "in your ccp1guirc file or put the rungamess script in your path\n"+
+                     "Alternatively, set the environment variable GAMESS_EXE to point to\n"+
+                     "the binary, or put the gamess binary in your path.")
+            return
 
         #
         #  Need to decide what kind of job run
@@ -419,6 +426,12 @@ class GAMESSUKCalc(QMCalc):
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
 
+        # See if we are keeeping any files and set environment variables / get the rungamess string
+        if self.rungamess:
+            rungamess_cmdline = self.keepfiles()
+        else:
+            self.keepfiles()
+
         # Local windows job, search for local executable
         if sys.platform[:3] == 'win' and hostname == 'localhost':
 
@@ -432,16 +445,21 @@ class GAMESSUKCalc(QMCalc):
 
             job.add_step(RUN_APP,'run gamess',local_command=gamess_exe,stdin_file=job_name+'.in',stdout_file=job_name+'.out')
 
-        elif sys.platform[:3] == 'mac':
-            pass
         else:
-            if self.userungamess:
-                rungamess_command = "rungamess " + str(self.rungamess_keep['ed0']) + str(self.rungamess_keep['ed2']) \
-                + str(self.rungamess_keep['ed3']) + str(self.rungamess_keep['ed7']) + str(self.rungamess_keep['ed14']) \
-                + " " + job_name
+            if self.rungamess:
+                print "Calling rungamess..."
+                run_command = self.rungamess+" " + rungamess_cmdline + " " + job_name
+                #print "run_command ",run_command
+                job.add_step(RUN_APP,'run gamess',local_command=run_command)
             else:
-                rungamess_command="rungamess " + job_name
-            job.add_step(RUN_APP,'run gamess',local_command=rungamess_command)
+                print "Invoking GAMESS-UK binary directly..."
+                run_command=self.gamessuk_exe
+                stdin_file = job_name + '.in'
+                stdout_file = job_name + '.out'
+                job.add_step(RUN_APP,'run gamess',local_command=run_command, \
+                             stdin_file=stdin_file, stdout_file = stdout_file)
+
+            #job.add_step(RUN_APP,'run gamess',local_command=run_command)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
 
@@ -531,6 +549,80 @@ class GAMESSUKCalc(QMCalc):
                 #name = self.get_input("mol_name")
                 ed.update_func(o)
 
+    def get_runmethod(self):
+        """ See if we can use rungamess, otherwise we invoke the gamessuk binary directly
+        """
+
+        from viewer.main import rc_vars
+        from viewer.paths import find_exe
+
+        self.rungamess = None
+        
+        if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
+            script = rc_vars['gamessuk_script']
+        else:
+            print "No gamessuk_script set in rc file - checking in environment"
+            script = find_exe( ['rungamess'] )
+            if script:
+                print "Found rungamess script: %s" % script
+
+        if script:
+            print "Checking rungammess script is suitable..."
+            # We've found a script so check it's o.k. to use it
+            # Check if rungamess -V works - this prints out the environment variables
+            from jobmanager import subprocess
+            cmd = script + " -V"
+            p = subprocess.ForegroundPipe(cmd)
+            code = p.run()
+            dict = {}
+            if p.error:
+                print "Error trying to check for rungamess!"
+                self.rungamess = None
+            else:
+                for l in p.output:
+                    w = l.split()
+                    if len(w) == 2:
+                        dict[w[0]]=w[1]
+                try:
+                    test = dict['GAMESS_LIB']
+                    self.rungamess = script
+                except KeyError:
+                    print 'Key error checking for rungamess'
+                    self.rungamess = None
+
+        if self.rungamess:
+            print "Using rungamess script: %s" % self.rungamess
+            return None
+
+        # Can't find rungamess, so see if we can find a gamessuk binary
+        if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
+            self.gamessuk_exe = rc_vars['gamessuk_exe']
+            print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
+            return None
+        else:
+            # No path to gamessuk executable found in the ccp1guirc file
+            # so try to see if the environmen variable has been set
+            print "No gamessuk_exe set in rc file - checking in environment"
+            try:
+                gamess_exe=os.environ['GAMESS_EXE']
+                self.gamessuk_exe = gamessuk_exe
+                print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                return None
+            except KeyError:
+                pass
+
+            # Now just trundle through the path
+            gamessuk_exe = find_exe( ['gamess'] )
+            if gamessuk_exe:
+                self.gamessuk_exe = gamessuk_exe
+                print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                return None
+
+        # If we get to here we can't work out how to run the binary so we return 1
+        # so the caller knows we've failed
+        print "Cannot find a rungamess script or gamess-uk binary!"
+        return 1
+
     def get_theory(self):
         """Convenience function for ChemShell interface"""
         postscf_method = self.get_parameter("postscf_method")
@@ -557,48 +649,25 @@ class GAMESSUKCalc(QMCalc):
             return 1
         else:
             return 0
-        
-    def check_rungamess(self):
-        """ See if we can use rungamess and set self.rungamess to 1 if we can.
+    
+
+    def keepfiles(self):
+        """Keep any files the user has selected.
+           For Windoze and when running the GAMESS-UK environment directly, use environment variables,
+           For rungamess, build up a string that can be appended to the rungamess command and use
+           this as the return value of the function
         """
-        # Check if rungamess -V works - this prints out the environment variables
-        from jobmanager import subprocess
-        cmd="rungamess -V"
-        p = subprocess.ForegroundPipe(cmd)
-        code = p.run()
-        dict = {}
-        if p.error:
-            self.userungamess = 0
-        else:
-            for l in p.output:
-                w = l.split()
-                if len(w) == 2:
-                    dict[w[0]]=w[1]
-            try:
-                test = dict['GAMESS_LIB']
-                self.userungamess = 1
-            except KeyError:
-                print 'Key error in __keepfiles checking for rungamess'
-                self.userungamess = 0
 
-        print 'self.userungamess is '+str(self.userungamess)
-
-
-    def __keepfiles(self):
-        """Keep any files the user has selected - for Windoze use environment variables,
-           for unix and its ilk, try rungamess as default and only use env var if we bum out.
-           Also run a quick check to see if we can use rungamess with the -V variable.
-        """
-        #dictionary to hold rungamess command line parameters
-        self.rungamess_keep = {'ed0' : '',
-                               'ed2' : '',
-                               'ed3' : '',
-                               'ed7' : '',
-                               'ed14' : ''}
-
-        # Check if we are using rungamess
-        self.check_rungamess()
+        rungamess_cmdline = ' '
         
+        # Punch file - if not using rungamess, need to ensure that the punch file is named
+        # after the job
+        if not self.rungamess:
+            jobname = self.get_parameter('job_name')
+            punfile = jobname+".pun"
+            os.putenv('ftn058',punfile)
+
+        # Always need to use environment variables for ed0
         if self.get_parameter('ed0_keep'):
             ed0_path = self.get_parameter("ed0_path")
             os.putenv('ed0',ed0_path)
@@ -612,13 +681,10 @@ class GAMESSUKCalc(QMCalc):
                 stem = self.get_parameter('job_name')
                 ed2_path = dir+os.sep+stem+'.ed2'
                 
-            if sys.platform[:3] == 'win':
-                os.putenv('ed2',ed2_path)
+            if self.rungamess:
+                rungamess_cmdline += ' -k ed2='+ed2_path
             else:
-                if self.userungamess:
-                    self.rungamess_keep['ed2'] = ' -k ed2='+ed2_path
-                else:
-                    os.putenv('ed2',ed2_path)
+                os.putenv('ed2',ed2_path)
 
         # ed3
         if self.get_parameter('ed3_keep') or self.get_parameter("guess_method") == "Dumpfile":
@@ -629,13 +695,11 @@ class GAMESSUKCalc(QMCalc):
                 stem = self.get_parameter('job_name')
                 ed3_path = dir+os.sep+stem+'.ed3'
                 
-            if sys.platform[:3] == 'win':
-                os.putenv('ed3',ed3_path)
+            if self.rungamess:
+                rungamess_cmdline += ' -k ed3='+ed3_path
             else:
-                if self.userungamess:
-                    self.rungamess_keep['ed3'] = ' -k ed3='+ed3_path
-                else:
-                    os.putenv('ed3',ed3_path)
+                os.putenv('ed3',ed3_path)
+                
         # ed7
         if self.get_parameter('ed7_keep'):
             if self.get_parameter('ed7_specify'):
@@ -645,13 +709,10 @@ class GAMESSUKCalc(QMCalc):
                 stem = self.get_parameter('job_name')
                 ed7_path = dir+os.sep+stem+'.ed7'
                 
-            if sys.platform[:3] == 'win':
-                os.putenv('ed7',ed7_path)
+            if self.rungamess:
+                rungamess_cmdline += ' -k ed7='+ed7_path
             else:
-                if self.userungamess:
-                    self.rungamess_keep['ed7'] = ' -k ed7='+ed7_path
-                else:
-                    os.putenv('ed7',ed7_path)
+                os.putenv('ed7',ed7_path)
 
         if self.get_parameter("guess_method") == "GETQ":
             if not self.get_parameter('ed14_keep') or self.get_parameter('ed14_path')[0] == '?':
@@ -667,13 +728,15 @@ class GAMESSUKCalc(QMCalc):
                         stem = self.get_parameter('job_name')
                         ed14_path = dir+os.sep+stem+'.ed14'
 
-                    if sys.platform[:3] == 'win':
-                        os.putenv('ed14',ed14_path)
+                    if self.rungamess:
+                        rungamess_cmd_line += ' -k ed14='+ed14_path
                     else:
-                        if self.userungamess:
-                            self.rungamess_keep['ed14'] = ' -k ed14='+ed14_path
-                        else:
-                            os.putenv('ed14',ed14_path)
+                        os.putenv('ed14',ed14_path)
+
+        if self.rungamess:
+            return rungamess_cmdline
+        else:
+            return None
 
     def __WriteInput(self,mol,filename):
         
