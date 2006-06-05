@@ -341,9 +341,11 @@ class FileTool(Tool):
         if self.command:
             self.entry.configure(command=self.command)
             self.entry.component('entry').bind("<Leave>",self.command)
+            self.entry.component('entry').bind("<Return>",self.command)
         else:
             self.entry.configure(command=lambda opt,s=self: s.ReadWidget())
             self.entry.component('entry').bind("<Leave>",self.ReadWidget)
+            self.entry.component('entry').bind("<Return>",self.command)
         self.entry.pack(side="left")
 
         self.button = Tkinter.Button(self.widget,text="Browse...",command=self.FindFile)
@@ -366,7 +368,13 @@ class FileTool(Tool):
         if len(self.browsevalue) == 0:
             self.browsevalue = oldfile
         if self.command:
-            self.command()
+            #self.command()
+            # We pass browsevalue through, although the previous binding means that
+            # the command must also be capable of receiving a Tkinter event.
+            # See the interfaces/dalton.py __update_script method
+            self.command( self.browsevalue )
+            self.entry.setvalue(self.browsevalue)
+            self.editor.calc.set_parameter(self.parameter,self.browsevalue)
         else:
             self.entry.setvalue(self.browsevalue)
             self.editor.calc.set_parameter(self.parameter,self.browsevalue)
