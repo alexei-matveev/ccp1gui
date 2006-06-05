@@ -45,6 +45,45 @@ paths['root'] = root_path
 paths['gui'] = gui_path
 paths['python'] = python_path
 paths['user'] = user_path
+        
+#### Useful functions #####
+def find_exe( executables ):
+    """
+         Find an executable - return the path to the excutable or None if
+         the executable can't be found.
+         
+        'executables' - a list of possible executable names
+    """
+
+    if not executables:
+        print "find_exe needs a list of executable names!"
+        return None
+
+    print "Trying to find executables: ",executables
+    
+    # Get list of paths
+    ospath = os.environ['PATH']
+    pathslist = ospath.split( os.pathsep )
+
+    # Always append the main ccp1gui directory & the root directory
+    pathslist.append( paths['gui'] )
+    pathslist.append( paths['root'] )
+
+    exe = None
+    got = None
+    for path in pathslist:
+        for executable in executables:
+            fname = path + os.sep + executable
+            if os.access( fname, os.X_OK):
+                exe = os.path.abspath( fname )
+                got = 1
+                break
+        if got:
+            break
+
+    return exe
+
+
 
 if __name__ == "__main__":
     print 'Python',python_path
