@@ -1723,11 +1723,14 @@ class Zmatrix(Indexed):
             prim = self.atom
             self.primitive_shell = self.shell
             shellprim = self.shell
+        ##vx = Vector(self.cell[0])
+        vx = self.cell[0]
+        ##vy = Vector(self.cell[1])
+        vy = self.cell[1]
 
-        vx = Vector(self.cell[0])
-        vy = Vector(self.cell[1])
         if  len(self.cell) == 3:
-            vz = Vector(self.cell[2])
+            ###vz = Vector(self.cell[2])
+            vz = self.cell[2]
         else:
             vz = Vector(0., 0., 0.)
             minz=0
@@ -3632,9 +3635,9 @@ if __name__ == "__main__":
     from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
 
-    #model=Zmatrix(file=gui_path+"/examples/import1.zmt")
-    #model.list()
+    model=Zmatrix(file=gui_path+"/examples/import1.zmt")
 
+    model.list()
 
     if 0 :
         # check autoz function
