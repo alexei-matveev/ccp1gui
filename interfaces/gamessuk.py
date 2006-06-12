@@ -632,7 +632,7 @@ class GAMESSUKCalc(QMCalc):
                 if os.access( gamessuk_exe, os.X_OK):
                     self.gamessuk_exe = gamessuk_exe
                     print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
-                return None
+                    return None
             else:
                 # No path to gamessuk executable found in the ccp1guirc file
                 # so try to see if the environmen variable has been set
