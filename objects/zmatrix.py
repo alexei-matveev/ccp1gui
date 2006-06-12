@@ -3163,7 +3163,7 @@ class Zmatrix(Indexed):
 
     def wrtmsi(self,file):
         """Write the MSI format file"""
-        from tkmolview.periodic import z_to_el
+        from objects.periodic import z_to_el
         mol = self
         object_ids = []
         fp = open(file,"w")
@@ -3255,12 +3255,10 @@ class Zmatrix(Indexed):
         """Write a CML file
         this is CML 1 I think
         """
-        from tkmolview.periodic import z_to_el
+        from objects.periodic import z_to_el
         mol = self
         object_ids = []
         fp = open(file,"w")
-
-        print 'len',len(self.atom)
 
         fp.write("<!DOCTYPE molecule SYSTEM \"cml.dtd\">\n")
         fp.write("<molecule xmlns=\"http://www.xmlcml.org/dtd/cml1_0_1\"  convention=\"XYZ\" title=\"%s\">\n" % title)
@@ -3319,7 +3317,7 @@ class Zmatrix(Indexed):
     def wrtres(self,file,title="untitled"):
         """Write a SHELXTL .res  file
         """
-        from tkmolview.periodic import z_to_el
+        from objects.periodic import z_to_el
         mol = self
         object_ids = []
         fp = open(file,"w")
