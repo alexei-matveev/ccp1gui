@@ -1946,7 +1946,7 @@ class VtkVolVis:
         data_array.SetNumberOfValues(bigsize)
 
         #jmht: This now in a separate routine as also required by vtk
-        volvis_set_mapping()
+        self.volvis_set_mapping()
 
         ioff=0
         for i in range(npts[2]):
