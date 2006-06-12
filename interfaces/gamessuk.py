@@ -167,6 +167,9 @@ class GAMESSUKCalc(QMCalc):
         self.field_sized=0
 
         self.basis_manager = BasisManager()
+
+        self.rungamess = None
+        self.gamessuk_exe = None
         
         #Set up the keyword basis sets for GAMESS-UK
         m = self.basis_manager
@@ -387,21 +390,6 @@ class GAMESSUKCalc(QMCalc):
                          "Please make sure you have written an input file.")
                 return
                 
-##            input = self.get_input("input_file")
-##             for a in input:
-##                 file.write(a)
-##             file.close()
-
-        #Determine how we will be running GAMESS-UK
-        check = self.get_runmethod()
-        if check:
-            ed.Error("Cannot find a working rungamess script or gamess-uk binary!\n"+
-                     "Please either set the gamessuk_script or gamessuk_exe variables\n"+
-                     "in your ccp1guirc file or put the rungamess script in your path\n"+
-                     "Alternatively, set the environment variable GAMESS_EXE to point to\n"+
-                     "the binary, or put the gamess binary in your path.")
-            return
-
         #
         #  Need to decide what kind of job run
         # 
@@ -419,12 +407,29 @@ class GAMESSUKCalc(QMCalc):
         else:
             print 'unsupported host'
             return None
-             
-        job.name = job_name
 
+        job.name = job_name
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
+
+        #Determine how we will be running GAMESS-UK
+        # Currently this assumes we are running locally
+        check = self.get_runmethod()
+        if check:
+            if sys.platform[:3] == 'win' and hostname == 'localhost':
+                msg = "Cannot find a working gamess.exe binary!\n" + \
+                "Please either set the gamessuk_exe variable in your ccp1guirc file.\n"+\
+                "Alternatively, set the environment variable GAMESS_BIN to point to\n"+\
+                "the directory containing the binary, or put the gamess binary in your path."
+            else:
+                msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
+                "Please either set the gamessuk_script or gamessuk_exe variables\n"+\
+                "in your ccp1guirc file or put the rungamess script in your path\n"+\
+                "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
+                "the binary, or put the gamess binary in your path."
+            ed.Error(msg)
+            return
 
         # See if we are keeeping any files and set environment variables / get the rungamess string
         if self.rungamess:
@@ -434,22 +439,13 @@ class GAMESSUKCalc(QMCalc):
 
         # Local windows job, search for local executable
         if sys.platform[:3] == 'win' and hostname == 'localhost':
-
-            # Name of executable, assume install of exe into exe subdirectory
-            try:
-                install_dir = os.environ['GAMESS_BIN']
-                gamess_exe=install_dir+'\gamess.exe'
-            except KeyError:
-                gamess_exe=root_path+'/exe/gamess.exe'
-            print 'Using GAMESS-UK path ' + gamess_exe
-
-            job.add_step(RUN_APP,'run gamess',local_command=gamess_exe,stdin_file=job_name+'.in',stdout_file=job_name+'.out')
+            job.add_step(RUN_APP,'run gamess',local_command=self.gamessuk_exe,stdin_file=job_name+'.in',stdout_file=job_name+'.out')
 
         else:
+            # Unix/MacOSX code
             if self.rungamess:
                 print "Calling rungamess..."
                 run_command = self.rungamess+" " + rungamess_cmdline + " " + job_name
-                #print "run_command ",run_command
                 job.add_step(RUN_APP,'run gamess',local_command=run_command)
             else:
                 print "Invoking GAMESS-UK binary directly..."
@@ -462,15 +458,9 @@ class GAMESSUKCalc(QMCalc):
             #job.add_step(RUN_APP,'run gamess',local_command=run_command)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
-
-        if sys.platform[:3] == 'win':
-            job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
-        else:
-            job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
-
+        job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
-
         
         return job
 
@@ -550,78 +540,127 @@ class GAMESSUKCalc(QMCalc):
                 ed.update_func(o)
 
     def get_runmethod(self):
-        """ See if we can use rungamess, otherwise we invoke the gamessuk binary directly
+        """ See if we can use rungamess, otherwise we invoke the gamessuk binary directly.
         """
 
         from viewer.main import rc_vars
         from viewer.paths import find_exe
 
         self.rungamess = None
-        
-        if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
-            script = rc_vars['gamessuk_script']
-        else:
-            print "No gamessuk_script set in rc file - checking in environment"
-            script = find_exe( ['rungamess'] )
-            if script:
-                print "Found rungamess script: %s" % script
 
-        if script:
-            print "Checking rungammess script is suitable..."
-            # We've found a script so check it's o.k. to use it
-            # Check if rungamess -V works - this prints out the environment variables
-            from jobmanager import subprocess
-            cmd = script + " -V"
-            p = subprocess.ForegroundPipe(cmd)
-            code = p.run()
-            dict = {}
-            if p.error:
-                print "Error trying to check for rungamess!"
-                self.rungamess = None
-            else:
-                for l in p.output:
-                    w = l.split()
-                    if len(w) == 2:
-                        dict[w[0]]=w[1]
-                try:
-                    test = dict['GAMESS_LIB']
-                    self.rungamess = script
-                except KeyError:
-                    print 'Key error checking for rungamess'
-                    self.rungamess = None
-
-        if self.rungamess:
-            print "Using rungamess script: %s" % self.rungamess
-            return None
-
-        # Can't find rungamess, so see if we can find a gamessuk binary
-        if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
-            self.gamessuk_exe = rc_vars['gamessuk_exe']
-            print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
-            return None
-        else:
+        # Windows
+        if sys.platform[:3] == 'win':
+            if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
+                gamessuk_exe = rc_vars['gamessuk_exe']
+                if os.access( gamessuk_exe, os.X_OK):
+                    self.gamessuk_exe = gamessuk_exe
+                    print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
+                    return None
+                else:
+                    print "GAMESS-UK binary from rc file: %s" % gamessuk_exe
+                    print "Cannot be excuted!"
+            
             # No path to gamessuk executable found in the ccp1guirc file
-            # so try to see if the environmen variable has been set
+            # so try to see if the environment variable has been set
             print "No gamessuk_exe set in rc file - checking in environment"
             try:
-                gamess_exe=os.environ['GAMESS_EXE']
-                self.gamessuk_exe = gamessuk_exe
-                print "Using gamess-uk binary: %s" % self.gamessuk_exe
-                return None
+                gamessuk_dir=os.environ['GAMESS_BIN']
+                gamessuk_exe= gamessuk_dir + os.sep + "gamess.exe"
+                print "Checking binary ",gamessuk_exe
+                if os.access( gamessuk_exe, os.X_OK):
+                    self.gamessuk_exe = gamessuk_exe
+                    print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                    return None
             except KeyError:
-                pass
+                pass            
 
-            # Now just trundle through the path
-            gamessuk_exe = find_exe( ['gamess'] )
+            # Now just trundle through the users' path looking for an executable
+            print "No GAMESS_BIN environment variable set"
+            print "Checking for gamess.exe binary in users path..."
+            gamessuk_exe = find_exe( ['gamess.exe'] )
             if gamessuk_exe:
                 self.gamessuk_exe = gamessuk_exe
-                print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                print "Using gamess-uk binary from users path: %s" % self.gamessuk_exe
+                return None
+            else:
+                # We couldn't find a binary so state this and return 1
+                print "Could not find gamess.exe binary!"
+                return 1
+
+        else:
+            # Unix / MacOSX code
+            if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
+                script = rc_vars['gamessuk_script']
+            else:
+                print "No gamessuk_script set in rc file - checking in environment"
+                script = find_exe( ['rungamess'] )
+                if script:
+                    print "Found rungamess script: %s" % script
+
+            if script:
+                print "Checking rungammess script is suitable..."
+                # We've found a script so check it's o.k. to use it
+                # Check if rungamess -V works - this prints out the environment variables
+                from jobmanager import subprocess
+                cmd = script + " -V"
+                p = subprocess.ForegroundPipe(cmd)
+                code = p.run()
+                dict = {}
+                if p.error:
+                    print "Error trying to check for rungamess!"
+                    self.rungamess = None
+                else:
+                    for l in p.output:
+                        w = l.split()
+                        if len(w) == 2:
+                            dict[w[0]]=w[1]
+                    try:
+                        test = dict['GAMESS_LIB']
+                        self.rungamess = script
+                    except KeyError:
+                        print 'Key error checking for rungamess'
+                        self.rungamess = None
+
+            if self.rungamess:
+                print "Using rungamess script: %s" % self.rungamess
                 return None
 
-        # If we get to here we can't work out how to run the binary so we return 1
-        # so the caller knows we've failed
-        print "Cannot find a rungamess script or gamess-uk binary!"
-        return 1
+            # Can't find rungamess, so see if we can find a gamessuk binary
+            if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
+                gamessuk_exe = rc_vars['gamessuk_exe']
+                print "Checking binary from ccp1guirc file...",gamessuk_exe
+                if os.access( gamessuk_exe, os.X_OK):
+                    self.gamessuk_exe = gamessuk_exe
+                    print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
+                return None
+            else:
+                # No path to gamessuk executable found in the ccp1guirc file
+                # so try to see if the environmen variable has been set
+                print "No gamessuk_exe set in rc file - checking in environment"
+                try:
+                    gamessuk_exe=os.environ['GAMESS_EXE']
+                    print "Checking binary GAMESS_EXE...",gamessuk_exe
+                    if os.access( gamessuk_exe, os.X_OK):
+                        self.gamessuk_exe = gamessuk_exe
+                        print "Using gamess-uk binary: %s"  % self.gamessuk_exe
+                        return None
+                    else:
+                        print "GAMESS-UK binary %s cannot be executed!" % gamessuk_exe
+                        pass
+                except KeyError:
+                    pass
+
+                # Now just trundle through the path
+                gamessuk_exe = find_exe( ['gamess'] )
+                if gamessuk_exe:
+                    self.gamessuk_exe = gamessuk_exe
+                    print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                    return None
+
+            # If we get to here we can't work out how to run the binary so we return 1
+            # so the caller knows we've failed
+            print "Cannot find a rungamess script or gamess-uk binary!"
+            return 1
 
     def get_theory(self):
         """Convenience function for ChemShell interface"""
