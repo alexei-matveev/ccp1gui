@@ -33,6 +33,10 @@ if __name__ == "__main__":
     # directory so that we can find all of our modules
     
     import sys
+
+    # Append the gui directory to the PYTHONPATH
+    from paths import gui_path
+    sys.path.append(gui_path)
     
     header="""
 ######################################################################
@@ -123,10 +127,6 @@ information on installing VTK, please visit:
 http://public.kitware.com/VTK/get-software.php"""
         print whereget
         sys.exit(-1)
-
-    # Now append the gui directory to the PYTHONPATH
-    from paths import gui_path
-    sys.path.append(gui_path)
 
     print
     print 'Module paths:'
@@ -472,7 +472,6 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             rcfile = os.path.expandvars('$HOME/ccp1guirc.py')
             
-
         if not os.path.isfile( rcfile ):
             # No ccp1guirc file so we can return
             print "No user preferences file: %s found" % rcfile
@@ -487,14 +486,22 @@ class TkMolView(Pmw.MegaToplevel):
                 
         # Now trundle through the variables in rc_vars, seeing if any of them are in scope
         # as local variables. If they are we place the value in rc_vars and try and set the
-        # variable value if they areattributes of self
+        # variable value if they are attributes of self
         
         for var_name in rc_vars.keys():
             gotvar = None
-            exeline = "tmp = "+var_name
+            exeline = 'tmp = '+var_name
+            print 
             try:
                 exec(exeline)
                 #print "%s from ccp1guirc is: %s" % (var_name, tmp)
+                # Need to check if this is a string. Under windows a path could contain the
+                # \b character (backspace). If the string is interpreted as a normal string
+                # this causes the \b and the preceding character to be deleted. We therefore
+                # need to convert the variable to a raw string.
+                if type(tmp) is str:
+                    tmp = self.raw( tmp )
+                    
                 rc_vars[var_name] = tmp
                 gotvar = 1
             except NameError:
@@ -504,16 +511,54 @@ class TkMolView(Pmw.MegaToplevel):
             if gotvar:
                 # Now try and set this if it is an attribute of main
                 # and set it if it is
-                exeline2 = "tmp2 = self."+var_name
                 try:
-                    exec(exeline2)
                     exeline3 = "self."+var_name+" = "+str(rc_vars[var_name])
                     exec(exeline3)
                     #print "Set self."+var_name+" to "+str(rc_vars[var_name])
                 except:
                     pass
                     #print "%s is not a self var" % var_name
+
+        # write out
+        #print "rc_vars are:"
+        #for key in rc_vars.keys():
+        #    print "%s : %s" % (key,rc_vars[key])
                     
+
+    def raw(self, text):
+        """Returns a raw string representation of text
+           Credit where it's due: this function was written by Brett Cannon and was
+           found on the Python Cookbook website:
+           http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65211
+
+        """
+
+        escape_dict={'\a':r'\a',
+               '\b':r'\b',
+               '\c':r'\c',
+               '\f':r'\f',
+               '\n':r'\n',
+               '\r':r'\r',
+               '\t':r'\t',
+               '\v':r'\v',
+               '\'':r'\'',
+               '\"':r'\"',
+               '\0':r'\0',
+               '\1':r'\1',
+               '\2':r'\2',
+               '\3':r'\3',
+               '\4':r'\4',
+               '\5':r'\5',
+               '\6':r'\6',
+               '\7':r'\7',
+               '\8':r'\8',
+               '\9':r'\9'}
+
+        new_string=''
+        for char in text:
+            try: new_string+=escape_dict[char]
+            except KeyError: new_string+=char
+        return new_string
 
     def write_ccp1guirc(self):
         """ Write out the current state of the rc_vars to file
@@ -2808,8 +2853,6 @@ class TkMolView(Pmw.MegaToplevel):
         
         form = 'PUN'
 
-        print 'words',words
-
         if len(words) == 1:
             if filename == 'CONFIG':
                 form = 'dlpcfg'
@@ -3344,6 +3387,7 @@ class TkMolView(Pmw.MegaToplevel):
         http://www.eyesopen.com/docs/html/smack/node13.html
         If this reader doesnt work it is almost certainly THEIR problem not MINE...
         """
+
         # root is the default filename, file is the filename, not the file handle
         molname = root
 
