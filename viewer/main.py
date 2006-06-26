@@ -37,6 +37,7 @@ if __name__ == "__main__":
     # Append the gui directory to the PYTHONPATH
     from paths import gui_path
     sys.path.append(gui_path)
+
     
     header="""
 ######################################################################
@@ -3810,16 +3811,22 @@ class TkMolView(Pmw.MegaToplevel):
                 a.coord = [x,y,z]
 
                 print atsym
+
                 try:
-                    txt_type = string.strip(atsym)
-                    txt_type = string.upper(txt_type)
-                    print 'trying to map',atsym
-                    a.symbol = map[txt_type]
-                    print 'done',a.symbol
-                    #a.name = a.symbol + string.zfill(i+1,2)
+                    # for newer versions of Scientific
+                    a.symbol = atom['element']
                 except KeyError:
-                    a.symbol = string.translate(atsym,trans,string.digits)
-                    a.symbol = string.capitalize(a.symbol)
+                    try:
+                        txt_type = string.strip(atsym)
+                        txt_type = string.upper(txt_type)
+                        print 'trying to map',atsym
+                        a.symbol = map[txt_type]
+                        print 'done',a.symbol
+                        #a.name = a.symbol + string.zfill(i+1,2)
+                    except KeyError:
+                        a.symbol = string.translate(atsym,trans,string.digits)
+                        a.symbol = string.capitalize(a.symbol)
+
                 a.name = a.symbol + string.zfill(i+1,2)
                 model.atom.append(a)
                 #print 'get number', a.symbol, a.get_number()
@@ -6855,7 +6862,7 @@ def copycontents(to,fro):
 
 if __name__ == "__main__":
     import sys
-    import profile
+    #import profile
 
     # test imports
     try:
