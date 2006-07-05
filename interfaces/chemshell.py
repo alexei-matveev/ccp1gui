@@ -33,6 +33,14 @@ from   mopac      import *
 from   mndo       import *
 from   dl_poly    import *
 
+def extend_path(arg):
+    """Add an element to the path if not already present"""
+    t = os.environ['PATH']
+    t2 = t.split(';')
+    print t2
+    if arg not in t2:
+        os.environ['PATH'] = t + ';' + arg
+
 class ChemShellCalc(Calc):
 
     def __init__(self,**kw):
@@ -83,14 +91,14 @@ class ChemShellCalc(Calc):
         self.set_parameter('hdlcopt_memory','10000')
 
         # D Y N A M I C S
-        self.set_parameter('temp',0)
-        self.set_parameter('tstep',0)
+        self.set_parameter('temp',293)
+        self.set_parameter('tstep',0.001)
         self.set_parameter('ensemble','NVE')
-        self.set_parameter('shake_option','None')
+        self.set_parameter('shake_option','none')
         self.set_parameter('update_freq',10)
         self.set_parameter('max_dyn_step',1000)
         self.set_parameter('traj_freq',10)
-        self.set_parameter('store_trajectory',0)
+        self.set_parameter('store_traj',0)
 
     def get_editor_class(self):
         return ChemShellCalcEd
@@ -186,11 +194,13 @@ class ChemShellCalc(Calc):
 
         if sys.platform[:3] == 'win':
 
-            # this way, all the settings in cygwin chemsh and rungamess are
-            # picked ip
+            # This is for the cygwin1.dll
+            extend_path('C:/cygwin/bin')
 
-            t=os.environ['PATH']
-            os.environ['PATH']=t+';C:/chemsh/scripts;C:/GAMESS-UK/rungamess'
+            # this way, all the settings in cygwin chemsh and rungamess are
+            # picked up
+            extend_path('C:/chemsh/scripts')
+            extend_path('C:/GAMESS-UK/rungamess')
 
             use_bash=1
 
@@ -1759,9 +1769,9 @@ class ChemShellCalcEd(CalcEd):
         self.tstep_tool = FloatTool(self,"tstep","Time Step",min=0.0)
         item_labels = [ "NVE", "NVT", "NPT" ]
         self.ensemble_tool = SelectOptionTool(self,"ensemble","Ensemble",item_labels)
-        item_labels = [ "None", "Input", "Ideal" ]
+        item_labels = [ "none", "input", "ideal" ]
         self.shake_option_tool = SelectOptionTool(self,"shake_option","Shake Option",item_labels)
-        self.store_trajectory_tool = BooleanTool(self,"store_trajectory","Store Trajectory")
+        self.store_trajectory_tool = BooleanTool(self,"store_traj","Store Trajectory")
         self.traj_freq_tool = IntegerTool(self,"traj_freq","Trajectory Frame Interval",min=0)
 
         self.LayoutToolsTk()
@@ -2122,8 +2132,11 @@ def chemshell_c_modes():
 
 if __name__ == "__main__":
 
-    from chemshell import *
-    from zmatrix import *
+    import sys
+    print sys.path
+    
+    from interfaces.chemshell import *
+    from objects.zmatrix import *
     from jobmanager import *
     model = Zmatrix()
     model.title = "chemshell test"
