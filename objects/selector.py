@@ -39,11 +39,16 @@ class Selector( Pmw.MegaToplevel ):
     """
     
                          
-    def __init__( self, root, graph,  **kw ):
+    def __init__( self, root, graph,  title=None, **kw ):
 
         self.debug = None
         
         self.root = root
+
+        if title:
+            mytitle=title
+        else:
+            mytitle='Frame Selection Tool'
 
         if not __name__ == '__main__':
             self.graph = graph
