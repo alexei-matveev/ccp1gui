@@ -460,7 +460,7 @@ class GamessOutputReader:
                 
             line = self.fd.readline()
         zmat_buffer.append("end")
-
+        
         model = Zmatrix( list = zmat_buffer )
         self.molecules.append( model )
 
@@ -472,12 +472,12 @@ class GamessOutputReader:
         """
         if self.zmatrix:
             return
-        #print "in _read_orient_geom"
 
         # The regexp that identifies lines with the coordinates on them
         # REM: \s=space, \d=digit
         # strings we are looking for
-        symbol = '[a-zA-Z]{1,2}'
+        #symbol = '[a-zA-Z]{1,2}'
+        symbol = '[a-zA-Z]{1,2}[0-9]*'
         charge = '\d{1,3}\.\d{1}'
         coord  = '[-]{0,1}\d{0,4}\.\d{7}'
         coord_line = re.compile('^\s*\*\s*'+symbol+'\s*'+charge+'\s*'+coord+'\s*'+coord)
@@ -504,7 +504,6 @@ class GamessOutputReader:
                         # need to skip the first line of stars
                         gotc = 1
                 elif coord_line.match( line ):
-                    #print "matched line: ",line
                     line = string.strip( line )
                     fields = string.split( line )
                     tag = fields[1]
@@ -833,6 +832,7 @@ class GamessOutputReader:
         #Create a zero normal mode
         for root in range(1,maxroot+1):       
             v = VibFreq(root)
+            v.disp = []
             for cnt in range(0,n):
                 p = ZAtom()
 ##                p.coord = [ 0.0, 0.0, 0.0 ]
@@ -955,6 +955,8 @@ class GamessOutputReader:
 
     def _read_frequencies_hessian(self,line):
         """Read the frequencies from a hessian calculation"""
+        print "Reading frequencies..."
+        
         line = self.fd.readline()
         line = self.fd.readline()
         line = self.fd.readline()
@@ -963,7 +965,7 @@ class GamessOutputReader:
         self.transitionDipoles = []
         self.transitionStrengths = []
         self.transitionIntensities = []
-        search = re.compile('^ *==*')
+        search = re.compile('^ *====*')
         while not search.match(line):
             s = line.split()
             self.transitionFrequencies.append(float(s[1]))
@@ -977,13 +979,6 @@ class GamessOutputReader:
 
     def _read_frequencies_force(self,line):
         """Read the frequencies from a force calculation"""
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
         self.transitionFrequencies = []
         self.transitionDipoles = []
         self.transitionStrengths = []
@@ -992,34 +987,28 @@ class GamessOutputReader:
         ncoords = natoms*3
         nfreq = ncoords - 6    #there will be a problem here if we have a large linear molecule
         nf = 0
+        freq_re = re.compile('^ *frequencies ----')
+        freq_end =  re.compile('={50}')
+        
         while nf<nfreq:
-            for f in line.split()[2:]:
-                self.transitionFrequencies.append(float(f))
+            #print "line is ",line
+            if freq_end.match( line):
+                print "Error in gamessoutputreader._read_frequencies_force"
+                print "End of frequencies section before all frequencies have been read!"
+                return
+            elif freq_re.match( line ):
+                for f in line.split()[2:]:
+                    try:
+                        self.transitionFrequencies.append(float(f))
+                    except ValueError:
+                        print "Error in gamessoutputreader._read_frequencies_force"
+                        print "Offending line is: %s\n" % line
                 
-            nf = len(self.transitionFrequencies)
-
-            # Quit if we've read all the frequencies in
-            if nf>=nfreq:
-                break
-            
-            #line = self.fd.readline()
-            #line = self.fd.readline()
-            #line = self.fd.readline()
-            #line = self.fd.readline()
-            #for i in range(0,ncoords):
-            #    line = self.fd.readline()
-            #end while
-            
-            # jmht use search to find the next occurence - more reliable
-            line = self.fd.readline()
-            i=0
-            while not re.compile('^ *frequencies ----').match(line):
-                line = self.fd.readline()
-                i+=1
-                # test to make sure we don't run on forever...
-                if (i > ncoords + 10 ):
-                    print "Error in gamessoutputreader._read_frequencies_force"
+                nf = len(self.transitionFrequencies)
+                if nf>=nfreq:
                     break
+                
+            line = self.fd.readline()
         #end while
     #end def
 
