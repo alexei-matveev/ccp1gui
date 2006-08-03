@@ -168,6 +168,7 @@ from interfaces.dl_poly import *
 from interfaces.mopac import *
 from interfaces.mndo import *
 from interfaces.dalton import *
+from interfaces.charmm import *
 
 from interfaces.gamessoutputreader import *
 from interfaces.cubereader import *
@@ -177,7 +178,6 @@ import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
 
-from interfaces.charmm_map import *
 
 from slavethread import *
 from jobmanager.jobeditor import *
@@ -3628,161 +3628,25 @@ class TkMolView(Pmw.MegaToplevel):
                     print 'calced_dict entry missing??'
 
     def rdcrd(self,file,root,map=charmm_map):
+        """Loader for CHARMM CRD format files"""
 
-        """Reader for CHARMM .CRD files
-
-        The CARD file format is the standard means in CHARMM for
-        providing a human readable and write able coordinate file. The
-        format is as follows:
-
-        TITLE (a line starting with "*")
-        NATOM (I5)
-        ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting
-        I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5
-
-        The TITLE is a title for the coordinates, Next comes the
-        number of coordinates. If this number is zero or too large,
-        the entire file will be read.
-
-        Finally, there is one line for each coordinate. ATOMNO gives
-        the number of the atom in the file. It is ignored on
-        reading. RESNO gives the residue number of the atom. It must
-        be specified relative to the first residue in the PSF. The
-        OFFSet option should be specified if one wishes to read
-        coordinates into other positions. It should also be remembered
-        that for card images, residues are identified by RESIDUE
-        NUMBER. This number can be modified by using the OFFSet
-        feature, which allows coordinates to be read from a different
-        PSF. Both positive and negative values are allowed. The RESId
-        option will cause the residue number field to be ignored and
-        map atoms from SEGID and RESID labels instead.
-
-        RES gives the residue type of the atom. RES is checked against
-        the residue type in the PSF for consistency. TYPE gives the
-        IUPAC name of the atom. The coordinates of an atom within a
-        residue need not be specified in any particular order. A
-        search is made within each residue in the PSF for an atom
-        whose IUPAC name is given in the coordinate file.  The RESId
-        option overrides the residue number and fills coordinates
-        based on the SEGID and RESID identifiers in the coordinate
-        file
-
-        If the title contains the string replica, a separate molecule
-        will be generated for each of the unique segids
-
-        """
-
-        old_segid='X99'
-        model = None
-        models = []
-        replica = 0
-        
-        trans = string.maketrans('a','a')
-        line = file.readline()
-        while 1:
-            print line
-            if line[0] == '*':
-                if (line.find("replica") != -1 or \
-                    line.find("REPLICA") != -1):
-                    replica = 1
-                line = file.readline()                
-            else:
-                break
-
-        words = string.split(line)
-        nat = eval(words[0])
-        #print 'NAT', nat
-
-        rdnat = 0
-        while 1:
-            line = file.readline()
-            if not line: break
-
-            #ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting
-            #I5    I5  1X A4 1X A4 F10.5 F10.5 F10.5 1X A4 1X A4 F10.5
-
-            rdnat = rdnat + 1
-
-            txt_n     = line[0:5]
-            txt_resno = line[5:10]
-            txt_res   = line[11:15]
-            txt_type  = line[16:20]
-            txt_x     = line[20:30]
-            txt_y     = line[30:40]
-            txt_z     = line[40:50]
-            txt_segid = line[51:55]
-            txt_resid = line[56:60]
-            txt_weight = line[60:70]
-
-            if not model or (replica and txt_segid != old_segid):
-                model = Zmatrix()
-                model.title = root
-                model.name = self.make_unique_name(root)
-                models.append(model)
-                old_segid = txt_segid
-
-            #print txt_n, txt_resno, txt_res, txt_type, txt_x, txt_y, txt_z, txt_segid, txt_resid
-            txt_type = string.strip(txt_type)
-            #print '--'+txt_type+'--'
-
-            x = float(txt_x)
-            y = float(txt_y)
-            z = float(txt_z)
-
-            a = ZAtom()
-            a.coord = [x,y,z]
-
-            trans = string.maketrans('a','a')
-
-            a.name = txt_type
-            try:
-                a.symbol = map[txt_type]
-                #a.name = a.symbol + string.zfill(i+1,2)
-            except KeyError:
-                # strip off any numbers and punctuation
-                a.symbol = string.translate(txt_type,trans,string.digits)
-                a.symbol = string.translate(a.symbol,trans,string.punctuation)
-                a.symbol = string.upper(a.symbol)[:1] + string.lower(a.symbol)[1:2]
-                try:
-                    testz = sym2no[a.symbol]
-                except KeyError:
-                    print 'unrecognised atom type',txt_type
-                    a.symbol = 'X'
-
-            #a.symbol = string.translate(words[0],trans,string.digits)
-            #a.symbol = string.capitalize(a.symbol)
-            #a.name = a.symbol + string.zfill(i+1,2)
-
-            a.resno = int(txt_resno)
-            #a.resno = int(txt_resid)
-
-            model.atom.append(a)
-
-        print 'Counts', rdnat, nat
-        if rdnat != nat:
-            msg = "Problem reading CHARMM .CRD file\n"+\
-            "Number of atoms found doesn't match the entry\n at the start of the file\n"+\
-            str(rdnat)+" atoms were read"
-            self.warn(msg)
+        t=CRDReader(None,filepointer=file,root=root,map=charmm_map)
 
         # SHOW THEM ALL
-        for model in models:
+        for model in t.objects:
+            model.name = self.make_unique_name(root)
             self.connect_model(model)
             self.quick_mol_view([model])
             self.append_data(model)
-
-        return models
+        return t.objects
 
     def wrtpdb(self,file,model):
         """PDB reader, based on Konrad Hinsens Scientific Python"""
 
         from Scientific.IO import PDB
-
         pdbf = PDB.PDBFile(file,mode='w')
         for atom in model.atom:
-            d = { 'position': atom.coord,
-                  'name' : atom.name
-                  }
+            d = { 'position': atom.coord, 'name' : atom.name }
             pdbf.writeLine('ATOM',d)
 
     def rdpdb(self,file,root,map=charmm_map):
@@ -4126,8 +3990,6 @@ class TkMolView(Pmw.MegaToplevel):
 
     def make_unique_name(self,name,title=None):
 
-        print 'make_unique_name ,name=',name
-        
         old_names = self.get_names()
         suf = []
         suf.append('')
