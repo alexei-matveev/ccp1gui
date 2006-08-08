@@ -1952,6 +1952,13 @@ class TkMolView(Pmw.MegaToplevel):
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                                   lambda r=s.master,g=s,func=s.vibration_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
+            if myclass == 'VibFreqSet' :
+                if self.vibration_set_visualiser:
+                    cascade.add_command(
+                        label="Animate",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
+                                  lambda r=s.master,g=s,func=s.vibration_set_visualiser,obj=obj: func(r,g,obj),
+                                                                  open_widget=1))
 
             print 'myclass',myclass
             if myclass == 'File' and obj.MoldenReadable() :
