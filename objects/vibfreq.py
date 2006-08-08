@@ -21,6 +21,10 @@
 frequencies.
 """
 
+class VibFreqSet:
+   def __init__(self):
+      self.vibs = []
+
 class VibFreq:
    def __init__(self,index):
       self.index=index
