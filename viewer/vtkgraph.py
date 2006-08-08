@@ -85,6 +85,7 @@ class VtkGraph(TkMolView,Graph):
         self.slice_visualiser =  VtkSliceVisualiser
         self.cut_slice_visualiser =  VtkCutSliceVisualiser
         self.vibration_visualiser = VtkVibrationVisualiser
+        self.vibration_set_visualiser = VtkVibrationSetVisualiser
         self.vector_visualiser = VtkVectorVisualiser
         self.wavefunction_visualiser = VtkMoldenWfnVisualiser
         self.colourmap_func = VtkColourMap
@@ -3232,6 +3233,30 @@ class VtkVibrationVisualiser(VibrationVisualiser,VtkMoleculeVisualiser):
         # This hack is needed to restore data overwritten
         self.title = 'Animate ' + self.vib.title
 
+class VtkVibrationSetVisualiser(VibrationSetVisualiser,VtkMoleculeVisualiser):
+
+    """Visualiser for a set of molecular vibrations.
+    Uses all low-level methods of the vtk molvis, for vibration
+    specific code see VibrationSetVisualiser implementation (graph/visualiser.py)
+    """
+    def __init__(self, root, graph, obj, **kw):
+
+        # this will assign self.vib & self.object to the visualisation object
+        # and self.molecule to a copy to be visualised 
+        apply(VibrationSetVisualiser.__init__, (self,root,graph,obj), kw)
+        apply(VtkMoleculeVisualiser.__init__, (self,root,graph,self.molecule), kw)
+
+        # This hack is needed to restore data overwritten
+        self.title = 'Animate ' + self.vib.title
+
+class VtkTrajectoryVisualiser(TrajectoryVisualiser,VtkMoleculeVisualiser):
+    """Visualiser for trajectorues
+    Uses all low-level methods of the vtk molvis, for trajectory
+    specific code see TrajectoryVisualiser implementation (graph/visualiser.py)
+    """
+    def __init__(self, root, graph, obj, **kw):
+        TrajectoryVisualiser.__init__(self,root,graph,obj, **kw)
+        VtkMoleculeVisualiser.__init__(self,root,graph,self.molecule, **kw)
 
 class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
 
