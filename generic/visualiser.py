@@ -693,23 +693,23 @@ class MoleculeVisualiser(Visualiser):
         """ Change the appearance of a group of atoms """
         print "no highlight implemented", list
 
-class VibrationVisualiser(MoleculeVisualiser):
 
+class VibrationVisualiser(MoleculeVisualiser):
     """ A visualiser for normal coordinates
     based on the molecule visualiser
     """
-
     def __init__(self, root, graph, obj, **kw):
 
-        #
         self.frames = 36
         self.scale =  0.3
         self.vib = obj
         self.frame_delay = 20
-
+        self.choose_mode = 0
+        
         if kw.has_key("mol"):
             mol = kw["mol"]
         else:
+            print type(obj), obj.__class__
             try:
                 mol = obj.reference
             except AttributeError:
@@ -743,11 +743,26 @@ class VibrationVisualiser(MoleculeVisualiser):
 
         self.start_button = Tkinter.Button(tf,
                                            text = 'start',
+                                           width = 12,
                                            command = self.start_ani)
 
         self.stop_button = Tkinter.Button(tf,
-                                           text = 'stop',
-                                           command = self.stop_ani)
+                                          text = 'stop',
+                                          width = 12,
+                                          command = self.stop_ani)
+        labels = []
+        if self.choose_mode:
+            list = []
+            for v in self.vs.vibs:
+                list.append(v.title)
+            self.w_mode = Pmw.OptionMenu(
+                self.ani_frame.interior(),
+                labelpos = 'w',
+                label_text = 'Mode:',
+                items = list,
+                initialitem=0,
+                menubutton_width = 8)
+            labels.append(self.w_mode)
 
         self.w_frames = Pmw.Counter(self.ani_frame.interior(),
                                     labelpos = 'w', label_text = 'Number of frames',
@@ -757,6 +772,8 @@ class VibrationVisualiser(MoleculeVisualiser):
                                     datatype = {'counter' : 'integer' },
                                     entryfield_validate = { 'validator' : 'integer' })
 
+        labels.append(self.w_frames)
+
         self.w_scale = Pmw.Counter(self.ani_frame.interior(),
                                    labelpos = 'w', label_text = 'Amplitude',
                                    entryfield_value = self.scale,
@@ -764,6 +781,8 @@ class VibrationVisualiser(MoleculeVisualiser):
                                    increment=0.01,
                                    datatype = {'counter' : 'real' },
                                    entryfield_validate = { 'validator' : 'real' })
+
+        labels.append(self.w_scale)
 
         self.w_delay = Pmw.Counter(self.ani_frame.interior(),
                                    labelpos = 'w', label_text = 'Frame delay',
@@ -773,10 +792,15 @@ class VibrationVisualiser(MoleculeVisualiser):
                                    datatype = {'counter' : 'integer' },
                                    entryfield_validate = { 'validator' : 'integer',
                                                            'min'       : 1 })
+        labels.append(self.w_delay)
 
+        if self.choose_mode:
+            self.w_mode.pack(side='top')
         self.w_frames.pack(side='top')
         self.w_scale.pack(side='top')
         self.w_delay.pack(side='top')
+
+        Pmw.alignlabels(labels)
 
         self.start_button.pack(side='left')
         self.stop_button.pack(side='left')
@@ -791,6 +815,11 @@ class VibrationVisualiser(MoleculeVisualiser):
     def read_widgets(self):
 
         apply(MoleculeVisualiser.read_widgets, (self, ) )
+
+        if self.choose_mode:
+            self.mode = self.w_mode.index(Pmw.SELECT)
+            print 'Mode',self.mode
+            #self.mode =  int(self.w_mode.get())
         self.frames =  int(self.w_frames.get())
         self.scale  =  float(self.w_scale.get())
         self.frame_delay  =  int(self.w_delay.get())
@@ -807,8 +836,12 @@ class VibrationVisualiser(MoleculeVisualiser):
         """Update the structure and draw the next frame"""
         if self.animate == 0:
             return
-        # check if the user has changed the paramaters
+        # check if the user has changed the parameters
         self.read_widgets()
+
+        if self.choose_mode:
+            self.vib = self.vs.vibs[self.mode]
+
         self.angle_increment = 2.0*math.pi / self.frames
         self.angle = self.angle +  self.angle_increment
         fac = self.scale * math.sin(self.angle)
@@ -835,6 +868,127 @@ class VibrationVisualiser(MoleculeVisualiser):
         self.animate=0
         apply(Visualiser.hide, (self,), kw)
 
+
+class VibrationSetVisualiser(VibrationVisualiser):
+    """ Adaption of VibrationVisualiser to handle a whole set of
+    vibrations
+    """
+    def __init__(self, root, graph, obj, **kw):
+        VibrationVisualiser.__init__(self, root, graph, obj, **kw)
+        self.choose_mode = 1
+        self.max_mode = len(obj.vibs)
+        self.mode = 0
+        self.vs = obj
+        self.vib = obj.vibs[0]
+    def make_dialog(self, **kw):
+        VibrationVisualiser.make_dialog(self, **kw)
+
+
+class TrajectoryVisualiser(MoleculeVisualiser):
+    """To update a single image with a sequence of sets coordinates
+    without loading all the structures as molecule objects
+    """
+    def __init__(self, root, graph, obj, **kw):
+        self.frame = 0
+        self.molecule = obj
+        
+    def make_dialog(self, **kw):
+        MoleculeVisualiser.make_dialog(self, **kw)
+
+        self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Play Trajectory")
+
+        bar = Tkinter.Frame(self.ani_frame.interior(),relief=Tkinter.SUNKEN, borderwidth=2)
+        bar.pack(side='bottom', fill=Tkinter.X)
+
+        #b=Tkinter.Button(bar, text='Reset', command=self.reset)
+        #b.pack(side='left')
+        b=Tkinter.Button(bar, text='|<', command=self.rew)
+        b.pack(side='left')
+        b=Tkinter.Button(bar, text='<', command=self.bak)
+        b.pack(side='left')
+        b=Tkinter.Button(bar, text='Stop', command=self.stop)
+        b.pack(side='left')
+        b=Tkinter.Button(bar, text='Play', command=self.play)
+        b.pack(side='left')
+        b=Tkinter.Button(bar, text='>', command=self.fwd)
+        b.pack(side='left')
+        b=Tkinter.Button(bar, text='>|', command=self.end)
+        b.pack(side='left')
+
+        self.ani_frame.pack()
+
+            
+    def rew(self):
+        """ Go to the first frame of the trajectory and display the image
+        """
+        self.frame_no = 0
+        self.show_frame()
+        
+    def end(self):
+        """ Go to the last frame of the animation and display the image.
+        """
+        self.frame_no = self.nframes
+        self.show_frame()
+
+    def bak(self):
+        """ Step back a single frame in the animation
+        """
+        self.frame_no -= 1
+        self.show_frame()
+
+    def fwd(self):
+        """ Step forward a single frame in the animation
+        """
+        self.frame_no += 1
+        self.show_frame()
+    
+    def stop(self):
+        """ Stop the animation
+        """
+        self.ani_stop = 1
+
+    def play(self):
+        """ Play through the sequence of images from self.frame_no to the end
+        """
+        # Need to initialise frame_no if the animation toolbar was
+        # open when objects were read in
+
+        self.ani_stop = 0
+        while 1:
+            print 'Trajectory Frame:',self.frame_no
+            #self.interior().update()
+            if self.ani_stop:
+                return
+            self.frame_no += 1
+            self.show_frame()
+            time.sleep(0.2)
+
+    def show_frame(self):
+        """Update the working molecule with 
+        """
+        # check if the user has changed the parameters
+        self.read_widgets()
+
+        if self.traj_type == STRUCTURE_SEQ:
+
+            for i in range(len(self.molecule.atom)):
+                frame = self.frames[self.frame_no]
+                atom = frame.coords[i]
+                a.coord[0] = atom[0]
+                a.coord[1] = atom[1]
+                a.coord[2] = atom[2]
+
+        elif self.traj_type == MMTK:
+            print "MMTK trajectory"
+
+        # remake images
+        self._delete()
+        self._build()
+        self._show()
+        # update image
+        self.graph.update()
+        # schedule next frame
+        #self.dialog.after(self.frame_delay, self.nextframe)
 
 class OutlineVisualiser:
     """To add outline to the volume widgets"""
@@ -2182,25 +2336,27 @@ if __name__ == "__main__":
     root=Tk()
     root.withdraw()
     vt = VtkGraph(root)
-#    p = PunchReader()
-#]    p.scan("metallo.c")
-#    print p.objects
-#    mol = p.objects[0]
-#    obj1 = p.objects[1]
+    p = PunchReader()
+    p.scan("c:\ccp1gui\ccp1gui\untitled.pun")
+    print p.objects
+    mol = p.objects[0]
+    obj1 = p.objects[1]
+
 #    obj = p.objects[2]
 #    for o in p.objects:
 #        o.name = o.title
 #        vt.data_list.append(o)
-
     #vis = VtkColourSurfaceVisualiser(root,vt,obj1)
     #vis = VtkDensityVisualiser(root,vt,obj1)
     #vis = VtkVectorVisualiser(root,vt,obj)
-    vis2 = VtkMoldenWfnVisualiser(root,vt,"/home/psh/molden4.4_hvd/ex1/cyclopropaan.out")
+    #vis2 = VtkMoldenWfnVisualiser(root,vt,"/home/psh/molden4.4_hvd/ex1/cyclopropaan.out")
+    #vis = VtkTrajectoryVisualiser(root,vt,mol)
+    vis = VtkVibrationSetVisualiser(root,vt,obj1)
     print 'build'
-    #vis.Build()
-    vis2.Build()
+    vis.Build()
+    #vis2.Build()
     print 'open'
-    #vis.Open()
-    vis2.Open()
+    vis.Open()
+    #vis2.Open()
     print 'loop'
     vt.mainloop()
