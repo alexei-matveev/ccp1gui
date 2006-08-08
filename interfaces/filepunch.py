@@ -812,7 +812,6 @@ class PunchReader:
          txt0 = txt[0] 
          brik.mask.append(int(txt0))
 
-
    def read_normal(self,f,obj):
       if self.debug:
          print self.name , self.records, self.index
@@ -825,8 +824,17 @@ class PunchReader:
          vec = Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
          v.displacement.append(vec)
 
+      if len(self.normal) == 0:
+         vs = VibFreqSet()
+         vs.title = "vibrations of " + self.fragment.title
+         print 'assign reference'
+         vs.reference = self.fragment
+         self.vfs = vs
+         self.objects.append(vs)
+      self.vfs.vibs.append(v)
+
       self.normal.append(v)
-      self.objects.append(v)
+      #self.objects.append(v)
       return v
 
    def read_freq(self,f,obj):
@@ -834,6 +842,7 @@ class PunchReader:
          print self.name , self.records, self.index
       tt = f.readline()
       used = {}
+
       for v in self.normal:
          if v.index == self.index:
             v.freq = float(tt)
@@ -1034,11 +1043,11 @@ class PunchReader:
          r = f.readline()
          tt.data.append(float(r))
 
-
    def tidy_frag(self,tt):
       """Complete processing of fragment  after reading, define atom numbers
       """
       tt.reindex()
+
       # Remove function reference
       # It seems to limit our ability to copy the object using copy.deepcopy
       tt.tidy = None
