@@ -598,7 +598,7 @@ class GAMESSUKCalc(QMCalc):
                     print "Found rungamess script: %s" % script
 
             if script:
-                print "Checking rungammess script is suitable..."
+                print "Checking rungamess script is suitable..."
                 # We've found a script so check it's o.k. to use it
                 # Check if rungamess -V works - this prints out the environment variables
                 from jobmanager import subprocess
@@ -624,6 +624,10 @@ class GAMESSUKCalc(QMCalc):
             if self.rungamess:
                 print "Using rungamess script: %s" % self.rungamess
                 return None
+            else:
+                # We couldn't find a binary so state this and return 1
+                print "Could not find gamess.exe binary!"
+                return 1
 
             # Can't find rungamess, so see if we can find a gamessuk binary
             if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
@@ -1577,6 +1581,10 @@ class GAMESSUKCalc(QMCalc):
 
             if myclass == 'VibFreq' :
                 # create a vibration visualiser
+                self.results.append(o)
+
+            if myclass == 'VibFreqSet' :
+                # create a vibration set visualiser
                 self.results.append(o)
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
