@@ -115,11 +115,11 @@ class GamessOutputReader:
         # Define a phrase to search for and the routine to read the data
         self.manage['molsym'] = ( re.compile('^ *molecular point group'), self._read_molecular_symmetry)
         self.manage['nuclear_xyz'] = ( re.compile('^ *point.*nuclear coordinate') , self._read_nuclear_xyz )
-#       The two methods below are redundant now
+#       The three methods below are redundant now
 #        self.manage['nuclear_coords'] = ( re.compile('^ *nuclear coordinates') , self._read_nuclear_coordinates )
 #        self.manage['atomic_coords'] = ( re.compile('^ *\* *atom  *atomic  *coord') , self._read_molecular_geometry )
+#        self.manage['zmatrix'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix )
         self.manage['variables'] = ( re.compile('^ *variable *value *hessian') , self._read_variables )
-        self.manage['zmatrix'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix )
         self.manage['zmatrix_auto'] = ( re.compile('^ *automatic z-matrix generation') , self._read_zmatrix_auto )
 #jmht1 z-matrix (angstroms and degrees)
         self.manage['zmatrix2'] = ( re.compile('^ *z-matrix \(angstroms and degrees\)') , self._read_zmatrix2 )
@@ -1068,7 +1068,7 @@ if __name__ == "__main__":
     import sys
     import glob
     for file in glob.glob('tests/*.gout'):
-#    for file in ["/tmp/junk/TS-cd-b3lyp-ah.out"]:
+#for file in sys.argv[1:]:
         print 'loading %s ...' % file
         g = GamessOutputReader(file)
         print
