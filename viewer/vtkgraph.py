@@ -72,8 +72,10 @@ class VtkGraph(TkMolView,Graph):
         self.line_type = 2
         self.label_type = 0
         self.stick_type = 2
-        self.show_selection_by_colour = 0
-        
+        self.show_selection_by_colour = 1
+        # Set stereo visualiser options.
+        self.stereo = None
+
         # Define viewer capabilities and visualiser classes
         self.molecule_visualiser =  VtkMoleculeVisualiser
         self.orbital_visualiser =  VtkOrbitalVisualiser
@@ -119,20 +121,21 @@ class VtkGraph(TkMolView,Graph):
         self.iconname('CCP1 GUI ')
 
         # create vtkTkRenderWidget
-        self.pane = vtkTkRenderWidget(self.interior())
+        self.pane = vtkTkRenderWidget(self.interior(), stereo=self.stereo)
+        renwin = self.pane.GetRenderWindow()
+        self._set_stereo( renwin ) # See if we are using stereo
 
         self.pane.handlepick = self.mypick2
         self.picked_atomic_actor = 0
         self.picked_atom = None
         self.picked_mol = None
-
         # pack the pane into the tk root
         self.pane.pack(side = 'top', expand=1, fill = 'both',padx=3, pady=3)
         # maybe replace when animation is working
         #self.toolbar()
-        self.ren = vtkRenderer()
-        renwin = self.pane.GetRenderWindow()
-        # print renwin
+
+
+        self.ren = vtkRenderer() #jmht moved from above
         renwin.AddRenderer(self.ren)
         renwin.SetDesiredUpdateRate(0.2)
         self.pane.firstrenderer()
@@ -386,6 +389,32 @@ class VtkGraph(TkMolView,Graph):
             print 'Colourmap name not found',name
         return None
 
+    def _set_stereo( self, RenderWidget ):
+        """ Set the stereo options for the widget
+            We also activate stero here for the time being.
+        """
+        print "Setting Stereo type..."
+        
+        # StereoCapableOn is done already in vtkTkRenderWidget by specifying stereo
+        #RenderWidget.StereoCapableWindowOn()
+
+        if not self.stereo:
+            return
+        elif self.stereo == 'CrystalEyes':
+            print "Setting Stereo to crystal eyes"
+            RenderWidget.SetStereoTypeToCrystalEyes()
+        elif self.stereo == 'RedBlue':
+            print "Setting Stereo to RedBlue"
+            RenderWidget.SetStereoTypeToRedBlue()
+        else:
+            print "Unknown stereo type: %s" % self.stereo
+            print "Setting to RedBlue as default.."
+            RenderWidget.SetStereoTypeToRedBlue()
+            
+        # Below activates stereo, but this should be set through a button
+        # in the future
+        RenderWidget.StereoRenderOn()
+        
 class VtkVis:
 
     """Base class to implement some methods that are common to
@@ -938,7 +967,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(x,y) )
 
 
-        if self.show_wire or (self.sphere_type == 2 and self.show_sphere ) :
+        if self.show_wire or (self.sphere_type == 2 and self.show_spheres ) :
 
             if self.line_type == 2:
                 # construct points, cell data etc
