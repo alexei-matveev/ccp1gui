@@ -213,6 +213,8 @@ rc_vars['gamessuk_exe'] = None
 rc_vars['gamessuk_script'] = None
 rc_vars['molden_exe'] = None
 rc_vars['dalton_script'] = None
+# Stereo visulaisation
+rc_vars['stereo'] = None
 
 def set_rc_var( name, value ):
     """
@@ -492,7 +494,6 @@ class TkMolView(Pmw.MegaToplevel):
         for var_name in rc_vars.keys():
             gotvar = None
             exeline = 'tmp = '+var_name
-            print 
             try:
                 exec(exeline)
                 #print "%s from ccp1guirc is: %s" % (var_name, tmp)
@@ -513,12 +514,16 @@ class TkMolView(Pmw.MegaToplevel):
                 # Now try and set this if it is an attribute of main
                 # and set it if it is
                 try:
-                    exeline3 = "self."+var_name+" = "+str(rc_vars[var_name])
+                    if type(rc_vars[var_name]) is str:
+                        exeline3 = "self."+var_name+" = \'"+str(rc_vars[var_name])+"\'"
+                    else:
+                        exeline3 = "self."+var_name+" = "+str(rc_vars[var_name])
                     exec(exeline3)
                     #print "Set self."+var_name+" to "+str(rc_vars[var_name])
-                except:
-                    pass
+                except Exception, e:
                     #print "%s is not a self var" % var_name
+                    #print e
+                    pass
 
         # write out
         #print "rc_vars are:"
