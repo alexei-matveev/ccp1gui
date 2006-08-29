@@ -22,7 +22,7 @@
 # this implementation is only designed to hold a single
 # selection at a time
 #
-debug=1
+debug=0
 class SelectionManager:
 
     def __init__(self):
@@ -34,13 +34,13 @@ class SelectionManager:
         for atom in atoms:
             mol.selix = mol.selix + 1
             atom.selected=mol.selix
-        print 'len sel mols',len(self.selected_mols)
+        if debug: print 'len sel mols',len(self.selected_mols)
         try:
             t = self.selected_mols.index(mol)
             print 't=',t
         except ValueError:
             self.selected_mols.append(mol)
-        print 'after... len sel mols',len(self.selected_mols)
+        if debug: print 'after... len sel mols',len(self.selected_mols)
         # perform all tasks dependent on the selection
         for f in self.add_funcs:
             f(mol,atoms)
@@ -92,7 +92,7 @@ class SelectionManager:
                 t = self.selected_mols.index(mol)
             except ValueError:
                 self.selected_mols.append(mol)
-            print 'after... len sel mols',len(self.selected_mols)
+            if debug: print 'after... len sel mols',len(self.selected_mols)
         
     def call_on_add(self,f):
         self.add_funcs.append(f)
