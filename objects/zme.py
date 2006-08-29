@@ -116,8 +116,12 @@ class ZME(Pmw.MegaToplevel):
         # Initialise base class (after defining options).
         Pmw.MegaToplevel.__init__(self, parent)
         self.parent = parent
+
         self.title(self.appname)
-        self.geometry('%dx%d+0+0' % (self.frameWidth, self.frameHeight))
+        
+        if sys.platform != 'darwin':
+            # This causes the Editor to get fixed to the top of the screen on Mac OSX
+            self.geometry('%dx%d+0+0' % (self.frameWidth, self.frameHeight))
 
         self.dialogresult = ""
         self.query = Pmw.MessageDialog(self.interior(),
