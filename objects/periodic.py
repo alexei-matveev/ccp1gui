@@ -821,6 +821,146 @@ atomic_mass = {
    'MT' : 268.14,
 }
 
+"""
+# Characteristic lengths of single bonds.
+# Reference: CRC Handbook of Chemistry and Physics, 87th edition, (2006), Sec. 9 p. 46
+   As   Br   C    Cl   F    Ge   H    I    N    O    P    S    Sb   Se   Si
+As 2.10
+Br 2.32 2.28
+C  1.96 1.94 1.53
+Cl 2.17 2.14 1.79 1.99
+F  1.71 1.76 1.39 1.63 1.41
+Ge	2.30 1.95 2.15 1.73 2.40
+H  1.51 1.41 1.09 1.28 0.92 1.53 0.74
+I	2.47 2.13 2.32 1.91 2.51 1.61 2.67
+N	     1.46 1.90 1.37	 1.02	   1.45
+O	     1.42 1.70 1.42	 0.96	   1.43 1.48
+P       2.22 1.85 2.04 1.57	 1.42	   1.65      2.25
+S       2.24 1.82 2.05 1.56	 1.34                     2.00
+Sb	          2.33           1.70
+Se           1.95      1.71      1.47                               2.33
+Si      2.21 1.87 2.05 1.58      1.48 2.44      1.63      2.14           2.33
+Sn           2.14 2.28           1.71 2.67
+Te                     1.82      1.66
+"""
+
+# REM - symbols should be in lower case!
+bond_lengths = {}
+bond_lengths['as'] = { 'as' : 2.10,
+                       'br' : 2.32,
+                       'c'  : 1.96,
+                       'cl' : 2.17,
+                       'f'  : 1.71,
+                       'h'  : 1.51 }
+                       
+bond_lengths['br'] = { 'br': 2.28,
+                       'c' : 1.94,
+                       'cl': 2.14,
+                       'f' : 1.76,
+                       'ge': 2.30,
+                       'h' : 1.41,
+                       'i' : 2.47,
+                       'p' : 2.22,
+                       's' : 2.24,
+                       'si' : 2.21 }
+
+bond_lengths['c'] = { 'c' : 1.53,
+                      'cl': 1.79,
+                      'f' : 1.39,
+                      'ge': 1.95,
+                      'h' : 1.09,
+                      'i' : 2.13,
+                      'n' : 1.46,
+                      'o' : 1.42,
+                      'p' : 1.85,
+                      's' : 1.82,
+                      'se': 1.95,
+                      'si': 1.87,
+                      'sn': 2.14 }
+
+bond_lengths['cl'] = { 'cl' : 1.99,
+                       'f'  : 1.63,
+                       'ge' : 2.15,
+                       'h'  : 1.28,
+                       'i'  : 2.32,
+                       'n'  : 1.90,
+                       'o'  : 1.70,
+                       'p'  : 2.04,
+                       's'  : 2.05,
+                       'sb' : 2.33,
+                       'si' : 2.05,
+                       'sn' : 2.28 }
+
+bond_lengths['f'] = { 'f'  : 1.41,
+                      'ge' : 1.73,
+                      'h'  : 0.92,
+                      'i'  : 1.91,
+                      'n'  : 1.37,
+                      'o'  : 1.42,
+                      'p'  : 1.57,
+                      's'  : 1.56,
+                      'se' : 1.71,
+                      'si' : 1.58,
+                      'te' : 1.82 }
+
+bond_lengths['ge'] = { 'ge' : 2.40,
+                       'h'  : 1.53,
+                       'i'  : 2.51 }
+                       
+bond_lengths['h'] = { 'h' : 0.74,
+                      'i' : 1.61,
+                      'n' : 1.02,
+                      'o' : 0.96,
+                      'p' : 1.42,
+                      's' : 1.34,
+                      'sb': 1.70,
+                      'se': 1.47,
+                      'si': 1.48,
+                      'sn': 1.71,
+                      'te': 1.66 }
+
+bond_lengths['i'] = { 'i'  : 2.67,
+                      'si' : 2.44,
+                      'sn' : 2.67 }
+
+bond_lengths['n'] = { 'n' : 1.45,
+                      'o' : 1.43,
+                      'p' : 1.65 }
+
+bond_lengths['o'] = { 'o'  : 1.48,
+                      'si' : 1.63 }
+
+bond_lengths['p'] = { 'p' : 2.25 }
+
+bond_lengths['s'] = { 's' : 2.00 }
+
+bond_lengths['se'] = { 'se' : 2.33 }
+
+bond_lengths['si'] = { 'si' : 2.33 }
+
+def get_bond_length( symbol1,symbol2 ):
+    """ Get the characteristic lengths of single bonds as defined in:
+        Reference: CRC Handbook of Chemistry and Physics, 87th edition, (2006), Sec. 9 p. 46
+        If we can't find one return 1.0 as a default 
+    """
+    global bond_lengths
+
+    symbol1 = symbol1.lower()
+    symbol2 = symbol2.lower()
+
+    #print "Getting bond length for %s-%s" % ( symbol1, symbol2 )
+
+    if bond_lengths.has_key( symbol1 ):
+        if bond_lengths[ symbol1 ].has_key( symbol2 ):
+            return bond_lengths[ symbol1 ][ symbol2 ]
+        
+    if bond_lengths.has_key( symbol2 ):
+        if bond_lengths[ symbol2 ].has_key( symbol1 ):
+            return bond_lengths[ symbol2 ][ symbol1 ]
+    
+    print 'No data for bond length for %s-%s' % (symbol1,symbol2)
+    return 1.0
+
 # Get atom symbol from the name
 import string,re
 def name_to_element( name ):
