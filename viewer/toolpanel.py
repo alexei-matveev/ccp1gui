@@ -84,16 +84,14 @@ class EditingToolsWidget(Pmw.MegaToplevel):
                              Pmw.Group, left_up,tag_text = 'Editing')
         self.createcomponent('misc2-group',(), None,
                              Pmw.Group, left_down,tag_text = 'Measure')
-
         self.createcomponent('hybridisation-group',(), None,
                              Pmw.Group, right_up,tag_text = 'Hybridisation')
+        self.createcomponent('symmetry-group',(), None,
+                             Pmw.Group,right_up,tag_text = 'Symmetry')
         self.createcomponent('fragment-group',(), None,
                              Pmw.Group,right_down,tag_text = 'Add Fragment')
-
         self.createcomponent('clean-group',(), None,
-                             Pmw.Group,right_down,tag_text = 'Clean ')
-
-
+                             Pmw.Group,right_down,tag_text = 'Optimise ')        
         self.component('element-type-group').pack(side='top')
         tt.pack(side='top')
         left.pack(side='left')
@@ -103,12 +101,13 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         left_down.pack(side='top')
         right_up.pack(side='top')
         right_down.pack(side='top')
-
+        
         self.component('misc-group').pack(side='left')
         self.component('misc2-group').pack(side='left')
         self.component('hybridisation-group').pack(side='left')
         self.component('fragment-group').pack(side='left')
         self.component('clean-group').pack(side='left')
+        self.component('symmetry-group').pack(side='left')
 
         self.createcomponent('periodic-table',(), None,
                              PeriodicTable,
@@ -186,24 +185,44 @@ class EditingToolsWidget(Pmw.MegaToplevel):
                                  Button,
                                  self.component('clean-group').interior(),
                                  command=self.cleanfrag,
-                                 text = "Clean ")
+                                 text = "Optimise")
+        t.pack(side='left')
+
+        t = self.createcomponent('stop-clean-button', (), None,
+                                 Button,
+                                 self.component('clean-group').interior(),
+                                 command=self.stopclean,
+                                 text = "Stop ",
+                                 state = 'disabled' )
         t.pack(side='left')
 
         t = self.createcomponent('cleancode-selector', (), None,
                                  Pmw.OptionMenu,
                                  self.component('clean-group').interior(),
-                                 items=["MOPAC","MNDO", "UFF", "GAMESS-UK"],
+                                 items=["GAMESS-UK","MOPAC","MNDO", "UFF", "AM1"],
                                  menubutton_width=8,
-                                 initialitem="MOPAC")                                 
+                                 initialitem="GAMESS-UK",
+                                 command=self.change_clean_code)                                 
         t.pack(side='left')
 
         t = self.createcomponent('clean-opts-button', (), None,
                                  Button,
                                  self.component('clean-group').interior(),
                                  command=self.cleanopts,
-                                 text = "Opts..")
+                                 text = "Opts..",
+                                 state = 'normal')
 
         t.pack(side='left')
+
+
+        t = self.createcomponent('symmetry-button', (), None,
+                                 Button,
+                                 self.component('symmetry-group').interior(),
+                                 command=self.symmetry,
+                                 text = "Symm. Ops ")
+        t.pack(side='left')
+
+
 
     def show(self,**kw):
         self.reposition(self.parent)
@@ -274,13 +293,34 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         if self['command']:
             self['command']('clean',code)
 
+    def stopclean(self):
+        if self['command']:
+            self['command']('stop',None)
+
     def cleanopts(self):
         sel = self.component('cleancode-selector')
         code = sel.getcurselection()
+        if code == 'AM1':
+            return None
         if self['command']:
             self['command']('cleanopts',code)
 
-    
+    def change_clean_code( self, code ):
+        """Hide/Show the Stop button depending on whether we are using the AM1 code"""
+        if code == "AM1":
+            self.component('stop-clean-button').configure(state='normal')
+            self.component('clean-opts-button').configure(state='disabled')
+        else:
+            self.component('stop-clean-button').configure(state='disabled')
+            self.component('clean-opts-button').configure(state='normal')
+            
+
+    def symmetry(self):
+        print "Displaying Symmetry Widget..."
+        sel = self.component('symmetry-button')
+        if self['command']:
+            self['command']('symmetry',None)
+
 
 if __name__ == "__main__":
     root=Tk()
