@@ -43,4 +43,4 @@ def initialiseTk_unix(root):
     initialiseTk_colors_common(root)
     #root.option_add('*Entry.font', 'courier 10')      
     #root.option_add('*Label.font', 'courier 10 bold')      
-    #root.option_add('*Listbox*font', 'courier 10')
+    root.option_add('*Listbox*font', 'courier 14')
