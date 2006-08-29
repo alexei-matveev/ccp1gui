@@ -39,11 +39,15 @@ import copy
 import exceptions
 import string
 import re
+import symdet
 
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
 
-from objects.periodic import rcov, sym2no, atomic_mass, name_to_element
+import Numeric,LinearAlgebra
+
+
+from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv
 
 pi_over_180 = math.atan(1.0) / 45.0
@@ -118,6 +122,94 @@ class Atom:
             return self.title
         else:
             return "untitled zmat"
+
+    def get_connected( self, root, visited=[], start=None ):
+        """ Determine if an atom is a fragment by recursively finding all atoms connected
+            to it, following all connections bar root, which is the parent atom that lies
+            'above' this one in the connectivity tree. 'start' is the atom attached to the main
+            molecule that the search was first started from. If we end up back at start then
+            the atom is not part of a fragment.
+            We return a list of the atoms that constitute this fragment, or None if the function
+            loops back on itself
+        """
+
+        debug = None
+
+        def remove_duplicates(AtomList):
+            tmp = []
+
+            for atom in AtomList:
+                if atom not in tmp:
+                    tmp.append( atom )
+            return tmp
+            
+        
+        # First call should remember the root - this is then passed down to all other invocations
+        first_pass = None
+        if not start:
+            first_pass = 1
+            start = root
+
+        if not first_pass:
+            if self == start:
+                return None
+
+        if len(self.conn) == 1:
+            if debug: print "Found terminus: %s:%s" % (self.name,self.get_index()+1)
+            return [self]
+
+        all_visited = copy.copy(visited)
+        for bonded in self.conn:
+            if bonded != root:
+                all_visited.append( bonded )
+
+        if self in all_visited:
+            if debug: print "Looped back to atom %s:%s" % (self.name,self.get_index()+1)
+            return []
+        elif start in all_visited:
+            print "Fragment Loops back onto the start atom!"
+            return None
+        
+        # Can now add self
+        all_visited.append(self)
+
+        if debug:
+            print "Checking connectivity for %s:%s" % (self.name,self.get_index()+1)
+            for bonded in self.conn:
+                print "Links %s:%s" % (bonded.name,bonded.get_index()+1)
+                
+        # Get the lists of all atoms bonded to this one
+        atomList = []
+        for bonded in self.conn:
+            if bonded != root and bonded not in visited:
+                if debug: print "Following track down atom: %s:%s" % (bonded.name,bonded.get_index()+1)
+                try:
+                    this=all_visited.index(bonded)
+                    del all_visited[this]
+                    if debug: print "deleting %s:%s from all_visited" % (bonded.name,bonded.get_index()+1)
+                    bondedList = bonded.get_connected( self, visited=all_visited, start=start )
+                    # Need to check we haven't looped back via a ring - this check might be redundant
+                    if self in bondedList: # we've looped back so don't follow this path again
+                        if debug: print "found self in bondedList"
+                        pass
+                    else:
+                        atomList.extend( bondedList )
+                except TypeError:
+                    # we've been returned a None indicating that the fragment connects
+                    # back to the start
+                    return None
+
+        atomList.append( self )
+        if debug: print "Atom %s:%s returning:" % (self.name, self.get_index()+1)
+        atomList = remove_duplicates( atomList )
+        return atomList
+        
+    def rotate(self, angle, axis, center = [0.0,0.0,0.0]):
+        """Rotate the atom around center"""
+        angle = angle *dtorad
+        R = cpv.rotation_matrix(angle,axis)
+        rt = cpv.sub(self.coord,center)
+        self.coord = cpv.add(cpv.transform(R,rt),center)
 
 class Bond:
     def __init__(self):
@@ -784,7 +876,6 @@ class Zmatrix(Indexed):
 
         return txt
 
-    # Jens addition
     def get_element_from_tag(self,atom_type):
         """ Utility to extract the element symbol
             This is a copy of the routine sat in basis/basismanager.py, but
@@ -2279,7 +2370,7 @@ class Zmatrix(Indexed):
 
 
     def convert_to_z(self,atom):
-        """Try and work out an internal coordinate definition for a atom"""
+        """Try and work out an internal coordinate definition for an atom"""
 
         print 'Convert to Z',atom.get_index()
         atom.zorc = 'z'
@@ -2327,7 +2418,6 @@ class Zmatrix(Indexed):
         # first atom is going to be a direct replacement
 
         # bond length change can be added later
-
         r_tmp = atom.r
         theta_tmp = atom.theta
         phi_tmp = atom.phi
@@ -2386,7 +2476,22 @@ class Zmatrix(Indexed):
 
         print 'chosen frag is ',f.title
         f.list()
-        
+
+        # Check if the atom is a terminus - if it is, and it is of type x, we
+        # change the bond length.
+        if len(atom.conn) == 1 and atom.symbol[0].lower() == 'x':
+            root = atom.conn[0]
+            # Use the symbol of the atom this one is connected to as we
+            # will be replacing this one
+            new_length = get_bond_length( root.symbol, f.atom[0].symbol )
+            # For zmatrix, can just change r, otherwise need to calculate the
+            # coordinates
+            if atom.zorc == 'z':
+                tmp_r = new_length
+            else:
+                diff = self.get_bond_coord_diff( atom, root, new_length )
+                coord_tmp = cpv.add( atom.coord, diff )
+
         # First atom inherits definitions from the atom its replacing
         f.atom[0].r = r_tmp
         f.atom[0].theta = theta_tmp
@@ -3351,6 +3456,349 @@ class Zmatrix(Indexed):
                       11.00000))
         fp.write("END \n")
 
+
+    def update_bond_distances( self, atom, newElement):
+        """ Scale the bond for atom so that the bond distance between it
+            and the atom it is connected to (root) is set to be that as defined
+            in the table of bond distances in perioidic. Currently this is only supposed
+            to be used for x-atoms.
+            If we have changed any atoms, we return a function that can be used by undo
+            to undo this change, otherwise we return None
+        """
+
+        debug=1
+        if debug: print "updating bond distances"
+        # Find out if we are connected to more than one x-atom
+        # if so we don't do anything - an alternative would be to create a zmatrix
+        # and change things that way
+        #
+        i=0
+        for bonded in atom.conn:
+            if not bonded.symbol[0].lower() == 'x':
+                root = bonded
+                i+=1
+
+        if i != 1:
+            print "Cannot change bond length as x-atom connected to > 1 non-x atom"
+            return None
+
+        # The new bond length
+        newLength = get_bond_length( newElement, root.symbol )
+        oldLength = cpv.distance( atom.coord, root.coord )
+
+        # See if all atoms have a zmatrix definition
+        connected = atom.get_connected( root )
+        if debug: print "connected is ",connected
+        if not connected:
+            print "Fragment is circular! - cannot change bond length!"
+            return
+        
+        zmat = 1
+        for c in connected:
+            if c.zorc != 'z':
+                zmat = None
+
+        if zmat:
+            # We have a z-matrix definition for all atoms so update the definition
+            # See if this atom and root have a definition defining their distance
+            if debug: print "updating bond distances using zmatrix"
+            if ( atom.i1 == root or root.i1 == atom ):
+                if atom.i1 == root:
+                    defAtom = atom
+                else:
+                    defAtom = root
+
+                if defAtom.r_var:
+                    defAtom.r_var.value = newLength
+                    def undo_move( defAtom, oldLength):
+                        defAtom.r_var.value = oldLength
+                else:
+                    defAtom.r = newLength
+                    def undo_move( defAtom, oldLength):
+                        defAtom.r = oldLength
+                return lambda d=defAtom : undo_move(d, oldLength)
+            
+        # Shift the atoms by directly updating the Cartesian coordinates
+        # Might need to think about what to do if some atoms had zmatrix definitions
+        # as these won't be updated to reflect the change
+        if debug: print "updating bond distances using cartesians"
+        diff = self.get_bond_coord_diff( atom, root, newLength )
+        for c in connected:
+            c.coord = cpv.add( c.coord, diff )
+
+        def undo_move( connected, diff ):
+            for c in connected:
+                c.coord = cpv.sub( c.coord, diff )
+
+        return lambda c = connected: undo_move( c, diff )
+
+    def get_bond_coord_diff( self, atom, root, newLength ):
+        """ Get the change in coordinates that can be applied to all atoms in a fragment
+            to shift them all along the axis of the bond between atom and root so that
+            the new bond length is newLength
+        """
+
+        if newLength <= 0.0:
+            print "Cannot make a bond length 0 or have a negative bond length!"
+            
+        # get translation vector
+        oldLength = cpv.distance( atom.coord, root.coord )
+        oldVec = [ atom.coord[0] - root.coord[0],
+                   atom.coord[1] - root.coord[1],
+                   atom.coord[2] - root.coord[2] ]
+        scale = newLength / oldLength
+        newVec = cpv.scale( oldVec, scale )
+        diff = cpv.sub( newVec, oldVec )
+        return diff
+
+    def rotate_about_bond(self, atom1, atom2, angle):
+        """ Rotate a fragement about an axis defined by two atoms
+            by angle in degrees - this still needs work. Sigh..."""
+
+        debug = 1
+        
+        if atom1 not in atom2.conn:
+            print "Atom %s not connected to atom %s" % ( atom1, atom1)
+            return
+
+        if debug: print "got two selected and connected atoms: %s and %s" % ( atom1,atom2)
+
+        # Find out if at least one of the atoms is part of a fragment that is not
+        # connected back to the rest of the molecule with > 1 bond, and then return
+        # the smallest fragment so that we can rotate it
+        
+        connected1 = atom1.get_connected( atom2 )
+        ok = 0
+        if not connected1:
+            connected1=[]
+        else:
+            ok = 1
+
+        connected2 = atom2.get_connected( atom1 )
+        if not connected2:
+            if not ok:
+                print "Both fragments are not viable - cannot rotate!"
+                return
+            connected2 = []
+        else:
+            pass
+
+        if len(connected1) < len(connected2):
+            smallest = connected1
+            center = atom1
+            root = atom2
+        else:
+            smallest = connected2
+            center = atom2
+            root = atom1
+
+        # See if there is a zmatrix definition for the dihedral angle we want to
+        # rotate about
+        if center.zorc == 'z' and root.zorc == 'z':
+            dihedral=None
+            for clink in center.conn:
+                if clink.zorc == 'z' and clink.i1 == center and clink.i3 in root.conn:
+                    dihedral = clink
+
+            if not dihedral:
+                for clink in root.conn:
+                    if clink.zorc == 'z' and clink.i1 == root and clink.i3 in center.conn:
+                        dihedral = clink
+            if dihedral:
+                if debug:
+                    print "Got dihedral definition for atom %s" % dihedral
+                    print "def is: i1:%s i2:%s i3:%s" % (dihedral.i1,dihedral.i2,dihedral.i3)
+
+            # Now check if all atoms is the fragement we are going to rotate have a zmatrix
+            # definition so that we ensure that we rotate the lot if we rotate using a z-matrix
+            zmat = 1
+            for atom in smallest:
+                if atom.zorc == 'c':
+                    zmat = None
+
+            if zmat:
+                print "Rotating fragment using a zmatrix by angle %s"
+                # Change the dihedral definition
+                if dihedral.phi_var:
+                    dihedral.phi_var.value += (angle * dihedral.phi_sign)
+                else:
+                    dihedral.phi += angle
+                self.calculate_coordinates()
+                return
+
+        # Failed to rotate using a zmatrix, so use Cartesians
+        # Again - need to think what happens to mixed definitions here
+        if debug: print "Rotating fragment using Cartesians by angle %s" % angle
+        axis = cpv.sub( atom1.coord, atom2.coord )
+        print "center is ",center
+        for atom in smallest:
+            print "rotating atom ",atom
+            atom.rotate( angle, axis, center=center.coord )
+
+    def translate(self, dr):
+        """Translate all atoms by a vector dr"""
+        for a in self.atom:
+            a.coord = cpv.add(a.coord,dr)
+
+    def rotate(self, angle, axis, center = [0.0,0.0,0.0]):
+        """Rotate all atoms around center"""
+        R = cpv.rotation_matrix(angle,axis)
+        for a in self.atom:
+            rt = cpv.sub(a.coord,center)
+            a.coord = cpv.add(cpv.transform(R,rt),center)
+            
+    def centerOfCharge(self):
+        r = [0.0,0.0,0.0]
+        mtot = 0
+        for a in self.atom:
+            r = cpv.add(cpv.scale(a.coord,a.formal_charge),r)
+            mtot += a.formal_charge
+        if mtot > 0:
+            return cpv.scale(r,1.0/mtot)
+        else:
+            return r
+
+    def centerOfMass(self):
+        r = [0.0,0.0,0.0]
+        mtot = 0
+        for a in self.atom:
+            try:
+                m = a.get_mass()
+            except Exception:
+                m = 1.0
+            r = cpv.add(cpv.scale(a.coord,m),r)
+            mtot += m
+        if mtot > 0:
+            return cpv.scale(r,1.0/mtot)
+        else:
+            return r
+
+    def inertialTensor(self, origin = [0.0,0.0,0.0]):
+        I = Numeric.reshape(Numeric.array((0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)),(3,3))
+        for a in self.atom:
+            try:
+                m = a.get_mass()
+            except Exception:
+                m = 1.0
+            r = cpv.sub(a.coord, origin)
+            I[0,0] += m*r[0]**2
+            I[0,1] += m*r[0]*r[1]
+            I[0,2] += m*r[0]*r[2]
+            I[1,1] += m*r[1]**2
+            I[1,2] += m*r[1]*r[2]
+            I[2,2] += m*r[2]**2
+        I[1,0] = I[0,1]
+        I[2,0] = I[0,2]
+        I[2,1] = I[1,2]
+        return I
+
+    def mainAxis(self, origin = [0.0,0.0,0.0]):
+        """Return a matrix with the eigenvectors of the
+        inertial tensor, calculated with the given origin."""
+        I = self.inertialTensor( origin )
+        valvec = LinearAlgebra.Heigenvectors(I)
+        res = []
+        for i in range(3):
+            res.append([valvec[0][i],[valvec[1][i][0],
+                                      valvec[1][i][1],
+                                      valvec[1][i][2]]])
+        res.sort()
+        return [res[0][1],res[1][1],res[2][1]]
+
+
+    def toStandardOrientation(self):
+        cm = self.centerOfMass()
+        self.translate(cpv.negate(cm))
+        A = self.mainAxis()
+        for a in self.atom:
+            a.coord = cpv.transform(A,a.coord)
+
+
+    def getMomentsOfInertia(self):
+        """ Get the eigenvalues of the axes. """
+        I = self.inertialTensor()
+        valvec = LinearAlgebra.eigenvectors(I)
+        res = []
+        for i in range(3):
+            res.append(valvec[0][i])
+        res.sort()
+        return res
+
+    def createSymMol(self):
+        """ Create a molecule for the symmetry module."""
+        
+        symmol = symdet.Molecule()
+        
+        for atom in self.atom:
+            symmol.addAtom( atom.name, atom.coord, atom.seqno ) # check seqno
+
+        return symmol
+
+    def updateMolFromSym(self, symmol):
+        """ Update the ccp1gui coordinate definitions from a symmetry adapted
+            molecule. We use the import_geometry method of the Zmatrix class to
+            preserve the Zmatrix definitions, which requries us to copy the molecule
+            update the coordinates of the copy and then call the import_geometry function
+            using the copy.
+        """
+
+        atomlist = symmol.export()
+        atomlist.sort()
+
+        # Use try/except to trap the fact that import_geometry doesn't work for mixed
+        # Zmatrix/Cartesian yet
+        try:
+            copymol = copy.deepcopy( self )
+            for atom in copymol.atom:
+                index = atom.get_index()
+                atom.coord = atomlist[ index ][1]
+                atom.zorc = 'c' 
+                self.import_geometry( copymol )
+                
+        except ImportGeometryError:
+            # Can't import so just update the coordinates and ignore the Zmatrix definitions
+            for atom in self.atom:
+                index = atom.get_index()
+                atom.coord = atomlist[ index ][1]
+                atom.zorc = 'c'
+            
+
+
+    def getSymmetry( self , thresh = None ):
+        """ Return a string with the symmetry of the molecule. """
+        
+
+        if not len( self.atom ) > 1:
+            print "Error in getSymmetry! Molecule has no atoms"
+            return None
+
+        if thresh:
+            symdet.thresh = thresh
+
+        symmol = self.createSymMol()
+        self.toStandardOrientation()
+        eigval = self.getMomentsOfInertia()
+        symmol = self.createSymMol()
+        group = symmol.getGroup( symdet.tightCartesian, eigval )
+        generators = group.generators()
+        label = group.label( gen=generators)
+        return label, generators
+
+        
+    def Symmetrise( self, thresh = None ):
+        """  Update the molecule to the closest symmetry. """
+
+        if thresh:
+            symdet.thresh = thresh
+
+        self.toStandardOrientation()
+        eigval = self.getMomentsOfInertia()
+        symmol = self.createSymMol()
+        symmol.symmetrize( symdet.tightCartesian, eigval )
+        self.updateMolFromSym( symmol )
+        #self.toStandardOrientation()
+        
+
 class ZAtom(Atom):
     """Storage of internal and cartesian coordinates for a single atom
     zorc  - is this z(internal) or c(cartesian)
@@ -3393,13 +3841,16 @@ class ZAtom(Atom):
     def __repr__(self):
         return 'zatom ' + str(self.get_index()) + ' '+self.name + str(self.coord)
     def __str__(self):
-        return 'zatom ' + str(self.get_index()) + self.name
+        return 'zatom ' + str(self.get_index()) + ' '+self.name
         
     def set_symbol(self,symbol):
         self.symbol = symbol
         
     def set_name(self,name):
         self.name = name
+
+
+
 
 class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information
@@ -3463,169 +3914,169 @@ class ZVar:
 fragment_lib = {}
 
 f = Zfragment(title="methyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('h', 1,-1,-2,1.0,109.4, 60.0)
-f.add('h', 1,-1, 2,1.0,109.4,120.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('H', 1,-1,-2,1.0,109.4, 60.0)
+f.add('H', 1,-1, 2,1.0,109.4,120.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
 fragment_lib['Me'] = f
 
 f = Zfragment(title="ethyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('h', 1,-1, 2,1.0,109.4,120.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4, 60.0)
-f.add('h', 2, 1, 3,1.0,109.4,180.0)
-f.add('h', 2, 1, 3,1.0,109.4,300.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('H', 1,-1, 2,1.0,109.4,120.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4, 60.0)
+f.add('H', 2, 1, 3,1.0,109.4,180.0)
+f.add('H', 2, 1, 3,1.0,109.4,300.0)
 fragment_lib['Et'] = f
 
 f = Zfragment(title="propyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('c', 2, 1,-1,1.4,109.4,180.0)
-f.add('h', 1,-1, 2,1.0,109.4,120.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4,120.0)
-f.add('h', 2, 1, 3,1.0,109.4,240.0)
-f.add('h', 3, 2, 1,1.0,109.4, 60.0)
-f.add('h', 3, 2, 1,1.0,109.4,180.0)
-f.add('h', 3, 2, 1,1.0,109.4,300.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('C', 2, 1,-1,1.4,109.4,180.0)
+f.add('H', 1,-1, 2,1.0,109.4,120.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4,120.0)
+f.add('H', 2, 1, 3,1.0,109.4,240.0)
+f.add('H', 3, 2, 1,1.0,109.4, 60.0)
+f.add('H', 3, 2, 1,1.0,109.4,180.0)
+f.add('H', 3, 2, 1,1.0,109.4,300.0)
 fragment_lib['Pr'] = f
 
 
 f = Zfragment(title="iso-propyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('c', 1,-1, 2,1.4,109.4,120.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4, 60.0)
-f.add('h', 2, 1, 3,1.0,109.4,180.0)
-f.add('h', 2, 1, 3,1.0,109.4,300.0)
-f.add('h', 3, 1, 2,1.0,109.4, 60.0)
-f.add('h', 3, 1, 2,1.0,109.4,180.0)
-f.add('h', 3, 1, 2,1.0,109.4,300.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('C', 1,-1, 2,1.4,109.4,120.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4, 60.0)
+f.add('H', 2, 1, 3,1.0,109.4,180.0)
+f.add('H', 2, 1, 3,1.0,109.4,300.0)
+f.add('H', 3, 1, 2,1.0,109.4, 60.0)
+f.add('H', 3, 1, 2,1.0,109.4,180.0)
+f.add('H', 3, 1, 2,1.0,109.4,300.0)
 fragment_lib['i-Pr'] = f
 
 
 f = Zfragment(title="n-butyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('c', 2, 1,-1,1.4,109.4,180.0)
-f.add('c', 3, 2, 1,1.4,109.4,180.0)
-f.add('h', 1,-1, 2,1.0,109.4,120.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4,120.0)
-f.add('h', 2, 1, 3,1.0,109.4,240.0)
-f.add('h', 3, 2, 1,1.0,109.4, 60.0)
-f.add('h', 3, 2, 1,1.0,109.4,300.0)
-f.add('h', 4, 3, 2,1.0,109.4, 60.0)
-f.add('h', 4, 3, 2,1.0,109.4,300.0)
-f.add('h', 4, 3, 2,1.0,109.4,180.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('C', 2, 1,-1,1.4,109.4,180.0)
+f.add('C', 3, 2, 1,1.4,109.4,180.0)
+f.add('H', 1,-1, 2,1.0,109.4,120.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4,120.0)
+f.add('H', 2, 1, 3,1.0,109.4,240.0)
+f.add('H', 3, 2, 1,1.0,109.4, 60.0)
+f.add('H', 3, 2, 1,1.0,109.4,300.0)
+f.add('H', 4, 3, 2,1.0,109.4, 60.0)
+f.add('H', 4, 3, 2,1.0,109.4,300.0)
+f.add('H', 4, 3, 2,1.0,109.4,180.0)
 fragment_lib['Bu'] = f
 
 f = Zfragment(title="iso-butyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('c', 1,-1, 2,1.4,109.4,120.0)
-f.add('c', 2, 1, 3,1.4,109.4,180.0)
-f.add('h', 1,-1, 2,1.0,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4, 60.0)
-f.add('h', 2, 1, 3,1.0,109.4,300.0)
-f.add('h', 3, 1, 2,1.0,109.4, 60.0)
-f.add('h', 3, 1, 2,1.0,109.4,180.0)
-f.add('h', 3, 1, 2,1.0,109.4,300.0)
-f.add('h', 4, 2, 1,1.0,109.4, 60.0)
-f.add('h', 4, 2, 1,1.0,109.4,180.0)
-f.add('h', 4, 2, 1,1.0,109.4,300.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('C', 1,-1, 2,1.4,109.4,120.0)
+f.add('C', 2, 1, 3,1.4,109.4,180.0)
+f.add('H', 1,-1, 2,1.0,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4, 60.0)
+f.add('H', 2, 1, 3,1.0,109.4,300.0)
+f.add('H', 3, 1, 2,1.0,109.4, 60.0)
+f.add('H', 3, 1, 2,1.0,109.4,180.0)
+f.add('H', 3, 1, 2,1.0,109.4,300.0)
+f.add('H', 4, 2, 1,1.0,109.4, 60.0)
+f.add('H', 4, 2, 1,1.0,109.4,180.0)
+f.add('H', 4, 2, 1,1.0,109.4,300.0)
 fragment_lib['i-Bu'] = f
 
 f = Zfragment(title="t-but group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
-f.add('c', 1,-1,-2,1.4,109.4, 60.0)
-f.add('c', 1,-1, 2,1.4,109.4,120.0)
-f.add('c', 1,-1, 2,1.4,109.4,240.0)
-f.add('h', 2, 1, 3,1.0,109.4, 60.0)
-f.add('h', 2, 1, 3,1.0,109.4,180.0)
-f.add('h', 2, 1, 3,1.0,109.4,300.0)
-f.add('h', 3, 1, 2,1.0,109.4, 60.0)
-f.add('h', 3, 1, 2,1.0,109.4,180.0)
-f.add('h', 3, 1, 2,1.0,109.4,300.0)
-f.add('h', 4, 1, 2,1.0,109.4, 60.0)
-f.add('h', 4, 1, 2,1.0,109.4,180.0)
-f.add('h', 4, 1, 2,1.0,109.4,300.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
+f.add('C', 1,-1,-2,1.4,109.4, 60.0)
+f.add('C', 1,-1, 2,1.4,109.4,120.0)
+f.add('C', 1,-1, 2,1.4,109.4,240.0)
+f.add('H', 2, 1, 3,1.0,109.4, 60.0)
+f.add('H', 2, 1, 3,1.0,109.4,180.0)
+f.add('H', 2, 1, 3,1.0,109.4,300.0)
+f.add('H', 3, 1, 2,1.0,109.4, 60.0)
+f.add('H', 3, 1, 2,1.0,109.4,180.0)
+f.add('H', 3, 1, 2,1.0,109.4,300.0)
+f.add('H', 4, 1, 2,1.0,109.4, 60.0)
+f.add('H', 4, 1, 2,1.0,109.4,180.0)
+f.add('H', 4, 1, 2,1.0,109.4,300.0)
 fragment_lib['t-Bu'] = f
 
 f = Zfragment(title="carbonyl group")
-f.add('c',-1,-2,-3,1.4,109.4,120.0)
+f.add('C',-1,-2,-3,1.4,109.4,120.0)
 f.add('x', 1,-1,-2,1.0, 90.0,  0.0)
 f.add('o', 1, 2,-1,1.2, 90.0,180.0)
 fragment_lib['CO'] = f
 
 f = Zfragment(title="phenyl group")
-f.add('c',-1,-2,-3,1.4,120.0,120.0)
-f.add('c', 1,-1,-2,1.4,120.0,  0.0)
-f.add('c', 1,-1,-2,1.4,120.0,180.0)
-f.add('c', 2, 1,-1,1.4,120.0,180.0)
-f.add('c', 3, 1,-1,1.4,120.0,180.0)
-f.add('c', 4, 2, 1,1.4,120.0,  0.0)
-f.add('h', 2, 1, 3,1.0,120.0,180.0)
-f.add('h', 3, 1, 2,1.0,120.0,180.0)
-f.add('h', 4, 2, 1,1.0,120.0,180.0)
-f.add('h', 5, 3, 1,1.0,120.0,180.0)
-f.add('h', 6, 4, 2,1.0,120.0,180.0)
+f.add('C',-1,-2,-3,1.4,120.0,120.0)
+f.add('C', 1,-1,-2,1.4,120.0,  0.0)
+f.add('C', 1,-1,-2,1.4,120.0,180.0)
+f.add('C', 2, 1,-1,1.4,120.0,180.0)
+f.add('C', 3, 1,-1,1.4,120.0,180.0)
+f.add('C', 4, 2, 1,1.4,120.0,  0.0)
+f.add('H', 2, 1, 3,1.0,120.0,180.0)
+f.add('H', 3, 1, 2,1.0,120.0,180.0)
+f.add('H', 4, 2, 1,1.0,120.0,180.0)
+f.add('H', 5, 3, 1,1.0,120.0,180.0)
+f.add('H', 6, 4, 2,1.0,120.0,180.0)
 fragment_lib['Ph'] = f
 
 f = Zfragment(title="eta Cp")
 f.add('x',-1,-2,-3,1.5,120.0,120.0)
-f.add('c', 1,-1,-2,1.3, 90.0,  0.0)
-f.add('c', 1,-1, 2,1.3, 90.0, 72.0)
-f.add('c', 1,-1, 2,1.3, 90.0,144.0)
-f.add('c', 1,-1, 2,1.3, 90.0,216.0)
-f.add('c', 1,-1, 2,1.3, 90.0,288.0)
+f.add('C', 1,-1,-2,1.3, 90.0,  0.0)
+f.add('C', 1,-1, 2,1.3, 90.0, 72.0)
+f.add('C', 1,-1, 2,1.3, 90.0,144.0)
+f.add('C', 1,-1, 2,1.3, 90.0,216.0)
+f.add('C', 1,-1, 2,1.3, 90.0,288.0)
 f.add('x', 2, 1,-1,1.0, 90.0,180.0)
 f.add('x', 3, 1,-1,1.0, 90.0,180.0)
 f.add('x', 4, 1,-1,1.0, 90.0,180.0)
 f.add('x', 5, 1,-1,1.0, 90.0,180.0)
 f.add('x', 6, 1,-1,1.0, 90.0,180.0)
-f.add('h', 2, 7, 1,1.0, 90.0,180.0)
-f.add('h', 3, 8, 1,1.0, 90.0,180.0)
-f.add('h', 4, 9, 1,1.0, 90.0,180.0)
-f.add('h', 5,10, 1,1.0, 90.0,180.0)
-f.add('h', 6,11, 1,1.0, 90.0,180.0)
+f.add('H', 2, 7, 1,1.0, 90.0,180.0)
+f.add('H', 3, 8, 1,1.0, 90.0,180.0)
+f.add('H', 4, 9, 1,1.0, 90.0,180.0)
+f.add('H', 5,10, 1,1.0, 90.0,180.0)
+f.add('H', 6,11, 1,1.0, 90.0,180.0)
 fragment_lib['eta Cp'] = f
 
 f = Zfragment(title="eta Bz")
 f.add('x',-1,-2,-3,1.5,120.0,120.0)
-f.add('c', 1,-1,-2,1.3, 90.0,  0.0)
-f.add('c', 1,-1, 2,1.3, 90.0, 60.0)
-f.add('c', 1,-1, 2,1.3, 90.0,120.0)
-f.add('c', 1,-1, 2,1.3, 90.0,180.0)
-f.add('c', 1,-1, 2,1.3, 90.0,240.0)
-f.add('c', 1,-1, 2,1.3, 90.0,300.0)
+f.add('C', 1,-1,-2,1.3, 90.0,  0.0)
+f.add('C', 1,-1, 2,1.3, 90.0, 60.0)
+f.add('C', 1,-1, 2,1.3, 90.0,120.0)
+f.add('C', 1,-1, 2,1.3, 90.0,180.0)
+f.add('C', 1,-1, 2,1.3, 90.0,240.0)
+f.add('C', 1,-1, 2,1.3, 90.0,300.0)
 f.add('x', 2, 1,-1,1.0, 90.0,180.0)
 f.add('x', 3, 1,-1,1.0, 90.0,180.0)
 f.add('x', 4, 1,-1,1.0, 90.0,180.0)
 f.add('x', 5, 1,-1,1.0, 90.0,180.0)
 f.add('x', 6, 1,-1,1.0, 90.0,180.0)
 f.add('x', 7, 1,-1,1.0, 90.0,180.0)
-f.add('h', 2, 8, 1,1.0, 90.0,180.0)
-f.add('h', 3, 9, 1,1.0, 90.0,180.0)
-f.add('h', 4,10, 1,1.0, 90.0,180.0)
-f.add('h', 5,11, 1,1.0, 90.0,180.0)
-f.add('h', 6,12, 1,1.0, 90.0,180.0)
-f.add('h', 7,13, 1,1.0, 90.0,180.0)
+f.add('H', 2, 8, 1,1.0, 90.0,180.0)
+f.add('H', 3, 9, 1,1.0, 90.0,180.0)
+f.add('H', 4,10, 1,1.0, 90.0,180.0)
+f.add('H', 5,11, 1,1.0, 90.0,180.0)
+f.add('H', 6,12, 1,1.0, 90.0,180.0)
+f.add('H', 7,13, 1,1.0, 90.0,180.0)
 fragment_lib['eta Bz'] = f
 
 f = Zfragment(title="eta Ethylene")
 f.add('x',-1,-2,-3,1.5,120.0,120.0)
-f.add('c', 1,-1,-2,0.65, 90.0,  0.0)
-f.add('c', 1,-1, 2,0.65, 90.0,180.0)
+f.add('C', 1,-1,-2,0.65, 90.0,  0.0)
+f.add('C', 1,-1, 2,0.65, 90.0,180.0)
 f.add('x', 2, 1,-1,1.0, 90.0,180.0)
 f.add('x', 3, 1,-1,1.0, 90.0,180.0)
-f.add('h', 2, 3,-1,1.0,120.0, 90.0)
-f.add('h', 2, 3,-1,1.0,120.0,270.0)
-f.add('h', 3, 2,-1,1.0,120.0, 90.0)
-f.add('h', 3, 2,-1,1.0,120.0,270.0)
+f.add('H', 2, 3,-1,1.0,120.0, 90.0)
+f.add('H', 2, 3,-1,1.0,120.0,270.0)
+f.add('H', 3, 2,-1,1.0,120.0, 90.0)
+f.add('H', 3, 2,-1,1.0,120.0,270.0)
 fragment_lib['eta Ethylene'] = f
 
 if __name__ == "__main__":
