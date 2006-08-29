@@ -178,10 +178,13 @@ import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
 
-
 from slavethread import *
 from jobmanager.jobeditor import *
 from toolpanel import *
+
+import interfaces.am1calc, interfaces.calcmon
+from objects import symed, symdet
+import thread
 
 # dictionary to hold the variables that can be set in the ccp1guirc file
 global rc_vars 
@@ -213,6 +216,7 @@ rc_vars['gamessuk_exe'] = None
 rc_vars['gamessuk_script'] = None
 rc_vars['molden_exe'] = None
 rc_vars['dalton_script'] = None
+rc_vars['am1'] = None
 # Stereo visulaisation
 rc_vars['stereo'] = None
 
@@ -258,6 +262,17 @@ class TkMolView(Pmw.MegaToplevel):
         self.master.bind_all('<F1>', lambda event : viewer.help.helpall(event))
         # Associate helpfile with widget
         viewer.help.sethelp(self.master,'Introduction')
+
+        #jmht test code
+        self.master.bind_all("<q>",
+                       lambda e,s=self: s.rotate_about_bond())
+
+        # Variables required by the AM1 optimiser
+        self.am1 = None
+        self.calcMon = None
+        self.AM1Stop = None
+        self.AM1Lock = None
+        self.AM1Energies = []
         
         # We only want one instance of the allmoleculevisualiser 
         self.allmolecule_visualiser = None
@@ -400,6 +415,13 @@ class TkMolView(Pmw.MegaToplevel):
         self.toolwidget.userdeletefunc(lambda s=self: s.toolwidget.withdraw())
         self.toolwidget.withdraw()
 
+        # Symmetry widget
+        self.symmetryWidget = symed.SymmetryWidget( self.master,
+                                                    command=self.symmetry_operations,
+                                                    balloon = self.balloon  )
+        self.symmetryWidget.withdraw()
+        
+
         # Create a text widget for the debug output
         self.debug_window = Pmw.MegaToplevel(parent)
         self.debug_window.title('CCP1 GUI Debug Output')
@@ -473,7 +495,7 @@ class TkMolView(Pmw.MegaToplevel):
         if sys.platform[:3] == 'win':
             rcfile = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
         else:
-            rcfile = os.path.expandvars('$HOME/ccp1guirc.py')
+            rcfile = os.path.expandvars('$HOME/.ccp1guirc.py')
             
         if not os.path.isfile( rcfile ):
             # No ccp1guirc file so we can return
@@ -577,7 +599,7 @@ class TkMolView(Pmw.MegaToplevel):
         if sys.platform[:3] == 'win':
             rc_filename = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
         else:
-            rc_filename = os.path.expandvars('$HOME/ccp1guirc.py')
+            rc_filename = os.path.expandvars('$HOME/.ccp1guirc.py')
 
         if not os.path.isfile( rc_filename ):
             # No ccp1guirc file found, so just dump out the dictionary to a new ccp1guirc file
@@ -1153,6 +1175,71 @@ class TkMolView(Pmw.MegaToplevel):
         self.add_mol_cmd(menu,mols,"Bond Lengths and Angles",self.list_geom)
         self.add_mol_cmd(menu,mols,"Contacts to Selected Atoms",self.list_contacts)
 
+
+    def show_symmetry_widget( self ):
+        """ Activate the symmetry widget """
+        self.symmetryWidget.show()
+
+    def hide_symmetry_widget( self ):
+        """ Deactivate the symmetry widget """
+        self.symmetryWidget.withdraw()
+
+    def symmetry_operations(self,operation,argument):
+        """Handler for operations requested by the symmetry widget
+        """
+        if operation == 'getSymmetry':
+            return self.get_symmetry( thresh = argument )
+        elif operation == 'symmetrise':
+            self.symmetrise_molecule( thresh = argument)
+        else:
+            self.error('Unimplemented Symmetry Operation: '+operation+' '+argument)
+
+    def get_symmetry(self,thresh=None ):
+        """ Determine the symmetry for the currently selected molecule """
+
+        molecule = self.get_one_molecule()
+        if not molecule:
+            return None
+        
+        label,generators = molecule.getSymmetry( thresh=thresh )
+
+        return label, generators
+        
+
+    def symmetrise_molecule(self, thresh=None ):
+        """ Symmetrise the currently selected molecule. """
+        
+        molecule = self.get_one_molecule()
+        if not molecule:
+            return None
+
+        # Undo code - when symmetrising we only change the coordinates and set all zorc to c
+        # so we only need to remember these when reapplying the change        
+        atom_defs = []
+        for i in range( len(molecule.atom) ): # allocate memory
+            atom_defs.append( None )
+            
+        for atom in molecule.atom:
+            i = atom.get_index()
+            atom_defs[i] = [ atom.zorc, atom.coord ]
+
+        self.undo_stack.append([lambda s = self: s.undo_symmetrise_molecule(molecule,atom_defs)])
+            
+        # Got undo sorted so now carry out the op
+        molecule.Symmetrise( thresh=thresh )
+        self.update_from_object(molecule)
+
+
+    def undo_symmetrise_molecule(self,mol,atom_defs):
+        """ Undo the symmetrisation of a molecule. """
+        
+        for atom in mol.atom:
+            i = atom.get_index()
+            atom.zorc = atom_defs[i][0]
+            atom.coord = atom_defs[i][1]
+
+        self.update_from_object( mol )
+
     def handle_edits(self,operation,argument):
         """Handler for operations requested e.g. from the Editing Tools
         panel
@@ -1171,6 +1258,8 @@ class TkMolView(Pmw.MegaToplevel):
             self.sethyb(argument)
         elif operation == 'clean':
             self.clean(argument)
+        elif operation == 'stop':
+            self.stopAM1Opt()
         elif operation == 'cleanopts':
             self.clean_opts(argument)
         elif operation == 'fragment':
@@ -1181,6 +1270,8 @@ class TkMolView(Pmw.MegaToplevel):
             return self.measure_angle()
         elif operation == 'Torsion':
             return self.measure_torsion()
+        elif operation == 'symmetry':
+            return self.show_symmetry_widget()
         else:
             self.error('Unimplemented Edit: '+operation+' '+argument)
 
@@ -1325,6 +1416,12 @@ class TkMolView(Pmw.MegaToplevel):
         for mol in mols:
             for atom in mol.atom:
                 if atom.symbol == 'X':
+                    func = mol.update_bond_distances( atom, 'H' )
+                    if func:
+                        mol.calculate_coordinates()
+                        undo.append( func )
+                        undo.append( lambda m = mol : m.calculate_coordinates() )
+                        
                     undo.append(lambda a = atom, oldsym = atom.symbol: a.set_symbol(oldsym))
                     undo.append(lambda a = atom, oldname = atom.name: a.set_name(oldname))
                     atom.symbol = 'H'
@@ -1334,20 +1431,196 @@ class TkMolView(Pmw.MegaToplevel):
         self.undo_stack.append(undo)            
 
     def setz(self,z):
+        """ Change the tye of the atom. If the atom is of type x then also change
+            the bond length.
+        """
+
         undo = []
+        newElement = z_to_el[z]
         sel = self.sel()
         mols = sel.get_mols()
         for mol in mols:
+            updated = None
             atoms = sel.get_by_mol(mol)
             for atom in atoms:
+                if atom.symbol[0].lower() == 'x':
+                    # If it's an x atom, try and change the bond length
+                    # This check will change if we implement an 'update'mode
+                    func = mol.update_bond_distances( atom, newElement )
+                    if func:
+                        mol.calculate_coordinates()
+                        undo.append( func )
+                        undo.append( lambda m = mol : m.calculate_coordinates() )
+                        
+                # Change name and symbol - do this whether we've moved the atoms or no
                 undo.append(lambda a = atom, oldsym = atom.symbol: a.set_symbol(oldsym))
                 undo.append(lambda a = atom, oldname = atom.name: a.set_name(oldname))
-                atom.symbol = z_to_el[z]
-                atom.name = z_to_el[z]
+                atom.symbol = atom.name = newElement
+ 
             self.update_from_object(mol)
             undo.append(lambda m = mol, s = self: s.update_from_object(m))
+            
         self.undo_stack.append(undo)
 
+        
+    def runAM1OptThread(self, molecule):
+        """ Run the AM1 optimiser in a separate thread.
+        """        
+        if self.debug:
+            print "Starting AM1 optimisation thread"
+        print "Starting AM1 optimisation thread"
+            
+        if self.AM1Lock:
+            self.error("AM1 optimisation is already running!")
+            return None
+        else:
+            self.AM1Energies = []
+        
+        # Get the selected molecule
+        calc = interfaces.am1calc.AM1Calc( initialMolecule=molecule )
+
+        # Check we have parameters for this atom
+        failed = calc.check_avail_parameters()
+        if failed:
+            txt = ''
+            for element in failed:
+                txt = txt+element+' '
+            self.error("Sorry, cannot run am1 optimisationas there are no parameters for the elements: %s" % txt)
+            return
+
+        if not self.calcMon:
+            self.calcMon = interfaces.calcmon.CalculationMonitor(self.master,command=self.calcmon_ops)
+
+        self.calcMon.clear()
+        self.calcMon.show()
+            
+        optThread = thread.start_new_thread( self.runAM1, (calc,) )
+        self.AM1Lock = thread.allocate_lock()
+        
+        
+    def runAM1(self, calc):
+        """ Run the AM1 Optimiser. This loops over each optimisation point updating the
+            main window with the latest structure.
+        """
+        print "Optimisation running in separate thread."
+
+        finished = None; i=0
+
+        oldmol = calc.initialMolecule
+        
+        while not finished:
+            
+            # See if we've been requested to stop in the main thread
+            got = self.AM1Lock.acquire()
+            while not got:
+                print "runAM1 Failed to get Lock"
+                got = self.AM1Lock.acquire()
+                
+            if self.AM1Stop:
+                print "runAM1 stopping on request from main thread."
+                self.AM1Lock=None
+                self.AM1Stop=None
+                finished = 1
+                break
+            else:
+                self.AM1Lock.release()
+                
+            print "Optimisation step: %d" % i
+            newmol, energy = calc.get_opt_step()
+
+            # We've finished so clean up and break out of the loop
+            if newmol == None:
+                print "runAM1 finished optimisation."
+                # Make sure we get the lock
+                got = self.AM1Lock.acquire()
+                while not got:
+                    print "runAM1 failed to get lock!"
+                    got = self.AM1Lock.acquire()
+                # Can now destroy the lock indicating we've finished
+                self.AM1Lock=None
+                self.AM1Stop=None
+                finished=1
+                break
+
+            # Next iteration so update the values and calcmon
+            got = self.AM1Lock.acquire()
+            while not got:
+                print "runAM1 failed to get lock!"
+                got = self.AM1Lock.acquire()
+                
+            # Make the new energy available to the calcmon
+            self.AM1Energies.append(energy)
+            self.calcMon.update() # not sure how these will work with threads...
+            self.calcMon.show()
+            self.AM1Lock.release()
+
+            # Remove the old strucuture
+            if oldmol:
+                self.delete_obj( oldmol )
+                oldmol = newmol
+
+            # Replace it with the new structure
+            newmol.calculate_coordinates()
+            self.quick_mol_view([newmol])
+            self.append_data(newmol)
+            self.update_from_object(newmol)
+            
+            i+=1 
+
+    def stopAM1Opt(self):
+        """ Stop the AM1 Optimisation
+        """
+
+        print "in stop am1"
+        if not self.AM1Lock:
+            print "Can't stop an optimisation that isn't running. Duh..."
+            return
+        
+        got = self.AM1Lock.acquire()
+        while not got:
+            print "stopAM1Opt failed to get lock!"
+            got = self.AM1Lock.acquire()
+            
+        print "Stopping AM1 optimisation thread."
+        self.AM1Stop = 1
+        self.AM1Lock.release()
+        return
+
+    def calcmon_ops(self,operation,arguments):
+        """ The operations that are passed to the calculation monitor.
+        """
+        if operation == 'newValues':
+            print "refreshing calc from calcmon"
+            # Probably don't need to lock here, as in the worst case we just get slightly
+            # out of date values
+            return self.AM1Energies,None
+        
+        elif operation == 'stop':
+            print "Stopping calc from calcmon"
+            self.stopAM1Opt()
+        
+
+    def rotate_about_bond(self):
+        """ Rotate a fragement about an axis defined by two atoms"""
+        
+        molecule = self.get_one_molecule()
+        if not molecule:
+            return None
+
+        sel = self.sel()
+        atoms = sel.get_by_mol( molecule )
+
+        if len(atoms) != 2:
+            print "Only select two atoms to define the axis!"
+            return
+
+        atom1 = atoms[0]
+        atom2 = atoms[1]
+        molecule.rotate_about_bond( atom1, atom2, 5.0 )
+
+        molecule.calculate_coordinates()
+        self.update_from_object( molecule )
+        
     def sethyb(self,hyb):
         """Set hybridisation for the selected atoms
         Uses methods of the Zmatrix object
@@ -1441,16 +1714,28 @@ class TkMolView(Pmw.MegaToplevel):
     def clean(self,clean_code):
 
         # see how many structures are loaded
-        print len(self.data_list)
-        mol = self.data_list[0]
+        if self.debug: print "Clean got %s structures" % len(self.data_list)
 
-        self.start_clean_calced(mol,clean_code)
+        # Get the selected molecule - just one for now
+        molecule = self.get_one_molecule()
+        if not molecule:
+            return 0
 
-        calced  = self.clean_calced[clean_code]
-        calc  = calced.calc
-        calc.set_input('mol_obj',mol)
-        calced.update_func = lambda o,s=self,t=str(id(mol)) : s.update_model(t,o)
-        calced.Run()
+        if clean_code == "AM1":
+            if self.am1:
+                self.runAM1OptThread( molecule )
+            else:
+                self.info("The AM1 optimiser it sill experimental and is disabled by default\n"+
+                          "Please set the am1 variable to 1 (i.e. include the line: am1=1) in\n"+
+                          "your .ccp1guirc.py file to activate this feature")
+                return
+        else:
+            self.start_clean_calced(molecule,clean_code)
+            calced  = self.clean_calced[clean_code]
+            calc  = calced.calc
+            calc.set_input('mol_obj',molecule)
+            calced.update_func = lambda o,s=self,t=str(id(molecule)) : s.update_model(t,o)
+            calced.Run()
 
 
     def clean_opts(self,clean_code):
@@ -1907,11 +2192,11 @@ class TkMolView(Pmw.MegaToplevel):
                             cascade.add_command(
                                 label="New Density View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.density_visualiser,obj=obj: func(r,g,obj)))
+                                      lambda r=s.master,g=s,func=s.density_visualiser,obj=obj: func(r,g,obj),open_widget=1))
                             cascade.add_command(
-                                label="Density Volume Visualisation View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.volume_density_visualiser,obj=obj: func(r,g,obj)))
+                                 label="Density Volume Visualisation View",command=\
+                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
+                                       lambda r=s.master,g=s,func=s.volume_density_visualiser,obj=obj: func(r,g,obj),open_widget=1))
                             cascade.add_command(
                                 label="Orbital Volume Visualisation View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
@@ -2661,7 +2946,7 @@ class TkMolView(Pmw.MegaToplevel):
                         vis = self.colour_surface_visualiser(self.master,self,o)
                     else:
                         vis = self.orbital_visualiser(self.master,self,o)
-                        
+
                 except KeyError:
                     pass
                     #except AttributeError:
@@ -4524,6 +4809,23 @@ class TkMolView(Pmw.MegaToplevel):
                 txt = txt + "????\n"
                 
         self.info(txt)
+
+
+    def get_one_molecule(self):
+        """ If only one molecule has been selected, return that, otherwise
+            check how many molecules have been loaded, if there's only
+            one, return that.
+        """
+
+        mols = self.loaded_mols()
+        if len(mols) == 1:
+            return mols[0]
+        elif len( self.sel().get_mols() ) == 1:
+            return self.sel().get_mols()[0]
+        else:
+            self.error("Please select a single molecule!")
+            return None
+
 
     def get_selection(self,name):
         """Load the selected atoms from molecule name"""
