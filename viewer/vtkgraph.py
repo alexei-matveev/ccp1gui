@@ -56,7 +56,9 @@ class VtkGraph(TkMolView,Graph):
 
     def __init__(self, parent, title=''):
 
-        Graph.__init__(self) 
+        Graph.__init__(self)
+
+        self.vtkVersion = vtkVersion.GetVTKVersion()
 
         # Set defaults for any attributes properties that may be 
         # superceded by values from ccp1guirc
@@ -125,6 +127,13 @@ class VtkGraph(TkMolView,Graph):
         renwin = self.pane.GetRenderWindow()
         self._set_stereo( renwin ) # See if we are using stereo
 
+        # Bindings for the poor lonesome mac osx mouse button
+        if sys.platform == 'darwin':
+            self.pane.bind("<Shift-B1-Motion>",
+                           lambda e,s=self.pane: s.Zoom(e.x,e.y))
+            self.pane.bind("<Control-B1-Motion>",
+                           lambda e,s=self.pane: s.Pan(e.x,e.y))
+            
         self.pane.handlepick = self.mypick2
         self.picked_atomic_actor = 0
         self.picked_atom = None
@@ -135,7 +144,7 @@ class VtkGraph(TkMolView,Graph):
         #self.toolbar()
 
 
-        self.ren = vtkRenderer() #jmht moved from above
+        self.ren = vtkRenderer()
         renwin.AddRenderer(self.ren)
         renwin.SetDesiredUpdateRate(0.2)
         self.pane.firstrenderer()
@@ -169,6 +178,7 @@ class VtkGraph(TkMolView,Graph):
         sy = 500
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
         
+        
     def fit_to_window(self):
         self.pane.ResetToFit(0,0)
 
@@ -191,6 +201,7 @@ class VtkGraph(TkMolView,Graph):
 
         self.pane.Render()
         self.pane2d.Render(trace=0)
+
 
     def save_image(self, file, format=None, quality=None  ):
         """
@@ -1464,22 +1475,35 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
             m = vtkTextMapper()
             m.SetInput('.')
             #m.SetInput('x\nx')
+
+            # Fonts appear to behave differently under different vtk versions
+            if self.graph.vtkVersion[0] >= 5:
+                fontsize = 1
+            else:
+                fontsize = 2
             try:
                 prop = m.GetTextProperty()
                 prop.SetBold(1)
-                prop.SetFontSize(2)
+                prop.SetFontSize(fontsize)
                 prop.SetJustificationToLeft()
             except AttributeError:
                 m.SetBold(1)
-                m.SetFontSize(2)
+                m.SetFontSize(fontsize)
                 m.SetJustificationToLeft()
                 #m.SetLineOffset(-1.0)
                 #m.SetLineSpacing(3)
                 #m.SetNumberOfLines(2)
                 #m.SetVerticalJustificationToCentered()
 
+                
             # create the actor
-            act = vtkScaledTextActor()
+            # jmht issues with VTK 4 -> 5
+            if self.graph.vtkVersion[0] >= 5:
+                act = vtkTextActor()
+                act.ScaledTextOn()
+            else:
+                act = vtkScaledTextActor()
+
             act.GetProperty().SetColor(1.0,1.0,0.0)
             self.selection_actors.append(act)
             act.SetMapper(m)
@@ -1700,14 +1724,12 @@ class VtkIsoSurf:
     def __init__(self, **kw):
         self.alist = []
         self.alist2d = []
-        # jmht - did I delete this by mistake?
         self.convert_data()
 
     def convert_data(self):
         """ Set up vtk data structures depending on whether data strucutures
             held in python or vtk data structures.
         """
-        #jmht
         if self.field.vtkdata:
             self.convert_data_vtk()
         else:
@@ -1720,7 +1742,7 @@ class VtkIsoSurf:
         self.data = self.field.vtkdata
 
     def convert_data_python(self):
-        
+
         # Policy here should depend on whether data is axis aligned
         axis_aligned = 0
 
@@ -1909,15 +1931,12 @@ class VtkVolVis:
         self.alist2d = []
         # need to convert every time as we are scaling
         # to fit into unsigned byte array
-        #self.convert_data()
-        #jmht
         if self.field.vtkdata:
             self.data = self.field.vtkdata
             #print "self.data is ",self.data
         else:
             self.convert_data()
 
-#jmht
     def convert_data(self):
         """
            Convert the data into a form suitable for VTK
@@ -1927,30 +1946,13 @@ class VtkVolVis:
             self.convert_data_vtk()
         else:
             self.convert_data_python()
-#jmht
+
     def convert_data_python(self):
         """
            Convert the data held in a Python field structure
         """
 
         field = self.field
-        
-        vx = field.mapping[0] - field.origin_corner
-        vy = field.mapping[1] - field.origin_corner
-        vz = field.mapping[2] - field.origin_corner
-
-        print vx,vy,vz
-
-        xxx = Vector([1.,0.,0.])
-        yyy = Vector([0.,1.,0.])
-        zzz = Vector([0.,0.,1.])
-
-        chkx = (sqrt(vx*vx) - vx*xxx)
-        chky = (sqrt(vy*vy) - vy*yyy)
-        chkz = (sqrt(vz*vz) - vz*zzz)
-
-        if chkx > 0.0001 or chky > 0.0001 or chkz > 0.0001:
-            print 'non-aligned axes'
 
         #
         # Use structured points (alias vtkImageData) if data is 
@@ -1960,14 +1962,33 @@ class VtkVolVis:
         data = self.data
         npts = Vector(field.dim[0],field.dim[1],field.dim[2])
 
-        xspacing = vx*xxx / (npts[0] - 1)
-        yspacing = vy*yyy / (npts[1] - 1)
-        zspacing = vz*zzz / (npts[2] - 1)
+        # jmht - noticed that cube reader didn't have a mapping
+        # and so this failed
+        if field.mapping:
+            vx = field.mapping[0] - field.origin_corner
+            vy = field.mapping[1] - field.origin_corner
+            vz = field.mapping[2] - field.origin_corner
 
-        print 'spacing', xspacing,yspacing,zspacing
+            if not field.axis_aligned():
+                print "Field has non-aligned axes"
+
+            xspacing = vx*xxx / (npts[0] - 1)
+            yspacing = vy*yyy / (npts[1] - 1)
+            zspacing = vz*zzz / (npts[2] - 1)
+        else:
+            xspacing = field.axis[0].length() / (npts[0] - 1)
+            yspacing = field.axis[1].length() / (npts[1] - 1)
+            zspacing = field.axis[2].length() / (npts[2] - 1)
+
 
         data.SetDimensions(npts[0],npts[1],npts[2])
-        data.SetOrigin(field.origin_corner[0],field.origin_corner[1],field.origin_corner[2])
+        
+        #jmht
+        if field.mapping:
+            data.SetOrigin(field.origin_corner[0],field.origin_corner[1],field.origin_corner[2])
+        else:
+            data.SetOrigin(field.origin[0],field.origin[1],field.origin[2])
+            
         data.SetSpacing(xspacing,yspacing,zspacing)
 
         bigsize = npts[0]*npts[1]*npts[2]
@@ -1975,7 +1996,7 @@ class VtkVolVis:
         data_array = vtkUnsignedShortArray()
         data_array.SetNumberOfValues(bigsize)
 
-        #jmht: This now in a separate routine as also required by vtk
+        #This now in a separate routine as also required by vtk
         self.volvis_set_mapping()
 
         ioff=0
@@ -2003,7 +2024,6 @@ class VtkVolVis:
 
         data.GetPointData().SetScalars(data_array)
 
-#jmht
     def convert_data_vtk(self):
         """
            Convert the data held in a vtk field structure (floats) into a format suitable
@@ -2023,7 +2043,6 @@ class VtkVolVis:
         datacast.SetOutputScalarTypeToUnsignedShort()
         self.data = datacast.GetOutput()
         
-#jmht
     def volvis_set_mapping(self):
         """
            Set the scaling factors for the volume visualiser
