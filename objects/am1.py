@@ -2,9 +2,7 @@
 from __future__ import generators
 from Numeric import *
 from LinearAlgebra import *
-from misc import *
-import copy
-from copy import copy
+import math
 
 # Global variables
 debug = 0               # For debugging. Displays debugging info
@@ -1378,3 +1376,43 @@ class Molecule:
 #		print self.fd_gradient(fixed)
 		print "Minimum Energy:"
 		print self.get_E()
+
+#####################################################################
+#
+# Miscalleaneous functions that were previously in the file misc.py
+#
+#####################################################################
+# Compute n!
+def factorial(n):
+	if((n == 0) or (n == 1)):
+		return 1
+	if(n<0):
+		return 0
+	p = 1
+	for i in range(n+1)[2:]:
+		p = p * i
+	return p
+# Binomial coefficients
+def binom(n,m):
+	if((n-m<0) or (m<0)):
+		return 0
+	return factorial(n)/(factorial(n-m)*factorial(m))
+# Auxiliary function A(n,a)
+def A(n,a):
+	if(n==0):
+		return (1.0/a)*math.exp(-a)
+	return (1.0/a)*(n*A(n-1,a)+math.exp(-a))
+# Auxiliary function B(n,a)
+def B(n,a):
+	if(a==0.0):
+		return (1.0/(n+1))*(1+(-1)**n)
+	if(n==0):
+		return (1.0/a)*(math.exp(a)-math.exp(-a))
+	return (1.0/a)*(n*B(n-1,a)+((-1)**n)*math.exp(a)-math.exp(-a))
+def gamma(x):
+	if (x == 0.5):
+		return sqrt(pi)
+	elif(x == 1):
+		return 1.0
+	else:
+		return (x-1)*gamma(x-1)
