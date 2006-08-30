@@ -86,6 +86,7 @@ class Field:
 
         #jmht
         self.vtkdata=None
+        self.mapping = None
 
     def dimensions(self):
         try:
@@ -143,7 +144,7 @@ class Field:
             return self.origin - 0.5* self.axis[0]  - 0.5* self.axis[1] 
         if len(self.dim) == 3:
             return self.origin - 0.5* self.axis[0]  - 0.5* self.axis[1] - 0.5* self.axis[2] 
-
+    
     def wrt_mapnet(self):
         # make sure all changes are reflected in the object
         scale = 1.0 / 0.529177
@@ -311,11 +312,15 @@ class Field:
             return 0
         if len(self.dim) == 1:
             return 1
-        if self.axis[1]*self.x > 0.0001 or self.axis[1]*self.y > 0.0001:
+        #jmht
+        #if self.axis[1]*self.x > 0.0001 or self.axis[1]*self.y > 0.0001:
+        if self.axis[1]*self.x > 0.0001 or self.axis[1]*self.z > 0.0001:
             return 0
         if len(self.dim) == 2:
             return 1
-        if self.axis[2]*self.x > 0.0001 or self.axis[2]*self.z > 0.0001:
+        #jmht
+        #if self.axis[2]*self.x > 0.0001 or self.axis[2]*self.z > 0.0001:
+        if self.axis[2]*self.x > 0.0001 or self.axis[2]*self.y > 0.0001:
             return 0
         return 1
     
