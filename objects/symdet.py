@@ -77,6 +77,12 @@ class SymOp:
     def isInversion(self,threshold = 1e-12):
         return self.parity == -1 and abs(self.q[0]-1) < threshold
 
+    def orthogonalTo(self,op):
+	return self.q.orthogonalTo(op.q)
+
+    def parallelTo(self,op):
+	return self.q.parallelTo(op.q)
+
     def __str__(self):
         n = self.getOrder()
         if self.parity == -1:
@@ -88,7 +94,9 @@ class SymOp:
             else:
                 return "S%i" % n + str(Vector(self.q.c[1:]).normalized())
         else:
+            return "C%i" % n + str(self.q.c)
             return "C%i" % n + str(Vector(self.q.c[1:]).normalized())
+
     
 class SymGroup:
     def __init__(self):
@@ -102,6 +110,7 @@ class SymGroup:
         return op.isUnity() or op in self.elements
 
     def addElement(self,op):
+	op.fixAngle()
         if not op.isUnity() and not op in self.elements:
             self.elements.append(op)
             for e in self.elements:
@@ -136,8 +145,7 @@ class SymGroup:
         return gen
 
     def label(self, gen = None):
-        """Return the label of the group, or 'Unknown' if no proper label
-        was found."""
+        """Return point group label"""
         if not gen:
             gen = self.generators()
         inv = SymOp(1,Vector(1,0,0),-1)
@@ -152,29 +160,69 @@ class SymGroup:
                 return 'Cinf,v'
         elif len(gen) == 0:
             return 'C1'
-        elif len(gen) == 1:
-            # Cs, Ci, Cn
-            if has_inv:
-                return 'Ci'
-            elif gen[0].parity == 1:
-                return 'C%i' % gen[0].getOrder()
-            elif gen[0].getOrder() == 1:
-                return 'Cs'
-            else:
-                return 'I2%i' % gen[0].getOrder()
-        elif has_inv:
-            # Dnh, Th, Oh, Ih            
-            if len(gen) == 2:
-                if gen[0].isInversion():
-                    n = gen[1].getOrder()
+        else:
+	    Cnlist = []
+            for e in self.elements:
+                if e.parity == 1 and e.getOrder() >= 3:
+		    found = 0
+                    for Cn in Cnlist:
+                        if e.parallelTo(Cn):
+                           found = 1
+                           break
+                    if not found:
+                        Cnlist.append(e)                        
+            if len(Cnlist) > 1:
+                if not has_inv:
+                    return 'Td'
                 else:
-                    n = gen[0].getOrder()
-                return 'D%ih' % n
+                    for e in self.elements:
+                        if e.parity == 1 and e.getOrder() == 5:
+                            return 'Ih'
+                    return 'Oh'
             else:
-                # fix here                
-                return '?h'
-            
-        return '???'
+                Cn_max = None
+                for e in self.elements:
+                    if e.parity == 1:
+                        if Cn_max:
+                            if e.getOrder() > Cn_max.getOrder():
+                                Cn_max = e
+                        else:
+                            Cn_max = e
+                if Cn_max:
+                    n = Cn_max.getOrder()
+                    sigmah = 0
+                    for e in self.elements:
+                        if e.parity == -1 and e.getOrder() == 2 and e.parallelTo(Cn_max):
+                            sigmah = 1
+                    nC2 = 0
+                    for e in self.elements:
+                         if e.parity == 1 and e.getOrder() == 2 and e.orthogonalTo(Cn_max):
+                             nC2 += 1
+                    if nC2 == n:
+                         if sigmah:
+                                 return 'D%ih' % n
+                         else:
+                             return 'Dn or Dnd'                      
+                    if sigmah:
+                        return 'C%ih' % n
+                    nsigmav = 0
+                    for e in self.elements:
+                        if e.parity == -1 and e.getOrder() == 2 and e.orthogonalTo(Cn_max):
+                            nsigmav += 1
+                    if nsigmav == n:
+                        return 'C%iv' % n
+                    for e in self.elements:
+                        if e.parity == -1 and e.getOrder() == 2*n:
+                            return 'S%i' % 2*n
+                    return 'C%i' % n                                        
+                # no Cn axis
+                for e in self.elements:
+                    if e.parity == -1 and e.getOrder() == 2:
+                        return 'Cs'
+                if has_inv:
+                    return 'Ci'
+                return 'C1'
+        return 'Error2'
                             
     def printGroup(self):
         gen = self.generators()
@@ -183,6 +231,9 @@ class SymGroup:
         if self.Cinf_axis:
             print 'Cinf',self.Cinf_axis
         for e in gen:
+            print e
+	print 'Elements:'
+        for e in self.elements:
             print e
     
 class PointSet:
@@ -542,6 +593,16 @@ class Quaternion:
         """Assuming that the quaternion is normalized, return the
         rotation angle."""
         return 2*math.acos(self.c[0])
+
+    def orthogonalTo(self,q,thres = 1e-6):
+	n1 = Vector(self.c[1],self.c[2],self.c[3]).normalized()
+	n2 = Vector(q.c[1],q.c[2],q.c[3]).normalized()
+	return abs(n1.dot(n2)) < thres
+
+    def parallelTo(self,q,thres = 1e-6):
+	n1 = Vector(self.c[1],self.c[2],self.c[3]).normalized()
+	n2 = Vector(q.c[1],q.c[2],q.c[3]).normalized()
+	return abs(abs(n1.dot(n2)) - 1)  < thres
 
 def rotor(axis,angle):
     """Return a quaternion that rotates angle radians around
