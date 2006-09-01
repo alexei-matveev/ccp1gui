@@ -2677,9 +2677,14 @@ class Zmatrix(Indexed):
 
 
         if somez and somec:
-            raise ImportGeometryError, "cant re-import mixed coordinate systems yet"
-
-
+            ####raise ImportGeometryError, 
+            print "cant re-import mixed coordinate systems yet"
+            print " --------------->> importing as cartesian"
+            somez=0
+            for a in self.atom:
+                if a.zorc == 'z':
+                    a.zorc= 'c'
+                    
         if somec and not somez:
 
             # pure cartesian import
