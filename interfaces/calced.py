@@ -216,9 +216,11 @@ class CalcEd(Pmw.MegaToplevel):
             #   needs to add data_list, vis_dict etc stuff
             #   To simplify we should handle all this before the editor
             #   is invoked (see main.py)
-            self.mol_vis = self.graph.molecule_visualiser(self.root,self.graph,
-                                                          self.calc.get_input("mol_obj"))
-            self.mol_vis.Build()
+            #####self.mol_vis = self.graph.molecule_visualiser(self.root,self.graph,
+            #####self.calc.get_input("mol_obj"))
+            #####self.mol_vis.Build()
+            print 'Warning graph passed to calced but vis=None'
+            self.mol_vis = None
         else:
             self.mol_vis = None
 
