@@ -39,6 +39,10 @@ if __name__ == "__main__":
     sys.path.append(gui_path)
 
     
+    # hack for pshvig3 
+
+    sys.path.append('E:/CCP1 GUI')
+
     header="""
 ######################################################################
 #                                                                    #
@@ -167,6 +171,7 @@ from interfaces.chemshell import *
 from interfaces.dl_poly import *
 from interfaces.mopac import *
 from interfaces.mndo import *
+from interfaces.am1calc import *
 from interfaces.dalton import *
 from interfaces.charmm import *
 
@@ -268,11 +273,10 @@ class TkMolView(Pmw.MegaToplevel):
                        lambda e,s=self: s.rotate_about_bond())
 
         # Variables required by the AM1 optimiser
-        self.am1 = None
-        self.calcMon = None
-        self.AM1Stop = None
-        self.AM1Lock = None
-        self.AM1Energies = []
+        #self.am1 = None
+        #self.calcMon = None
+        #self.AM1Stop = None
+        #self.AM1Lock = None
         
         # We only want one instance of the allmoleculevisualiser 
         self.allmolecule_visualiser = None
@@ -1463,110 +1467,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.undo_stack.append(undo)
 
         
-    def runAM1OptThread(self, molecule):
-        """ Run the AM1 optimiser in a separate thread.
-        """        
-        if self.debug:
-            print "Starting AM1 optimisation thread"
-        print "Starting AM1 optimisation thread"
-            
-        if self.AM1Lock:
-            self.error("AM1 optimisation is already running!")
-            return None
-        else:
-            self.AM1Energies = []
-        
-        # Get the selected molecule
-        calc = interfaces.am1calc.AM1Calc( initialMolecule=molecule )
-
-        # Check we have parameters for this atom
-        failed = calc.check_avail_parameters()
-        if failed:
-            txt = ''
-            for element in failed:
-                txt = txt+element+' '
-            self.error("Sorry, cannot run am1 optimisationas there are no parameters for the elements: %s" % txt)
-            return
-
-        if not self.calcMon:
-            self.calcMon = interfaces.calcmon.CalculationMonitor(self.master,command=self.calcmon_ops)
-
-        self.calcMon.clear()
-        self.calcMon.show()
-            
-        optThread = thread.start_new_thread( self.runAM1, (calc,) )
-        self.AM1Lock = thread.allocate_lock()
-        
-        
-    def runAM1(self, calc):
-        """ Run the AM1 Optimiser. This loops over each optimisation point updating the
-            main window with the latest structure.
-        """
-        print "Optimisation running in separate thread."
-
-        finished = None; i=0
-
-        oldmol = calc.initialMolecule
-        
-        while not finished:
-            
-            # See if we've been requested to stop in the main thread
-            got = self.AM1Lock.acquire()
-            while not got:
-                print "runAM1 Failed to get Lock"
-                got = self.AM1Lock.acquire()
-                
-            if self.AM1Stop:
-                print "runAM1 stopping on request from main thread."
-                self.AM1Lock=None
-                self.AM1Stop=None
-                finished = 1
-                break
-            else:
-                self.AM1Lock.release()
-                
-            print "Optimisation step: %d" % i
-            newmol, energy = calc.get_opt_step()
-
-            # We've finished so clean up and break out of the loop
-            if newmol == None:
-                print "runAM1 finished optimisation."
-                # Make sure we get the lock
-                got = self.AM1Lock.acquire()
-                while not got:
-                    print "runAM1 failed to get lock!"
-                    got = self.AM1Lock.acquire()
-                # Can now destroy the lock indicating we've finished
-                self.AM1Lock=None
-                self.AM1Stop=None
-                finished=1
-                break
-
-            # Next iteration so update the values and calcmon
-            got = self.AM1Lock.acquire()
-            while not got:
-                print "runAM1 failed to get lock!"
-                got = self.AM1Lock.acquire()
-                
-            # Make the new energy available to the calcmon
-            self.AM1Energies.append(energy)
-            self.calcMon.update() # not sure how these will work with threads...
-            self.calcMon.show()
-            self.AM1Lock.release()
-
-            # Remove the old strucuture
-            if oldmol:
-                self.delete_obj( oldmol )
-                oldmol = newmol
-
-            # Replace it with the new structure
-            newmol.calculate_coordinates()
-            self.quick_mol_view([newmol])
-            self.append_data(newmol)
-            self.update_from_object(newmol)
-            
-            i+=1 
-
     def stopAM1Opt(self):
         """ Stop the AM1 Optimisation
         """
@@ -1586,19 +1486,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.AM1Lock.release()
         return
 
-    def calcmon_ops(self,operation,arguments):
-        """ The operations that are passed to the calculation monitor.
-        """
-        if operation == 'newValues':
-            print "refreshing calc from calcmon"
-            # Probably don't need to lock here, as in the worst case we just get slightly
-            # out of date values
-            return self.AM1Energies,None
-        
-        elif operation == 'stop':
-            print "Stopping calc from calcmon"
-            self.stopAM1Opt()
-        
 
     def rotate_about_bond(self):
         """ Rotate a fragement about an axis defined by two atoms"""
@@ -1721,21 +1608,15 @@ class TkMolView(Pmw.MegaToplevel):
         if not molecule:
             return 0
 
-        if clean_code == "AM1":
-            if self.am1:
-                self.runAM1OptThread( molecule )
-            else:
-                self.info("The AM1 optimiser it sill experimental and is disabled by default\n"+
-                          "Please set the am1 variable to 1 (i.e. include the line: am1=1) in\n"+
-                          "your .ccp1guirc.py file to activate this feature")
-                return
-        else:
-            self.start_clean_calced(molecule,clean_code)
-            calced  = self.clean_calced[clean_code]
-            calc  = calced.calc
-            calc.set_input('mol_obj',molecule)
-            calced.update_func = lambda o,s=self,t=str(id(molecule)) : s.update_model(t,o)
-            calced.Run()
+        self.start_clean_calced(molecule,clean_code)
+        calced  = self.clean_calced[clean_code]
+        calc  = calced.calc
+        calc.set_input('mol_obj',molecule)
+        print 'cleaning mol'
+        molecule.list()
+        
+        calced.update_func = lambda o,s=self,t=str(id(molecule)) : s.update_model(t,o)
+        calced.Run()
 
 
     def clean_opts(self,clean_code):
@@ -1765,7 +1646,13 @@ class TkMolView(Pmw.MegaToplevel):
 
         if not self.clean_calced.has_key(clean_code):
 
-            if clean_code == 'MNDO':
+            if clean_code == 'AM1':
+
+                calc = AM1Calc()
+                calc.set_input('mol_obj',mol)
+                ed = AM1CalcEd(root,calc,self,job_editor=self.job_editor)
+
+            elif clean_code == 'MNDO':
 
                 calc = MNDOCalc()
                 calc.set_input('mol_obj',mol)
@@ -7039,6 +6926,8 @@ def copycontents(to,fro):
 if __name__ == "__main__":
     import sys
     #import profile
+
+
 
     # test imports
     try:
