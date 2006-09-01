@@ -124,6 +124,7 @@ class Job:
         self.active_step = None
         self.process = None
         self.tidy = None
+        self.monitor = None
         self.debug = 0
         
     def __repr__(self):
@@ -144,6 +145,12 @@ class Job:
             print 'adding tidy fn'
         self.tidy = func
 
+    def add_monitor(self,func):
+        """Add a monitor function, python code run periodically from the main GUI thread"""
+        if self.debug:
+            print 'adding monitor fn'
+        self.monitor = func
+
     def run(self):
         """Main execution point, execute sequence of steps"""
         count = 0
@@ -161,6 +168,7 @@ class Job:
                 print 'Executing step #',self.step_number,':',step.type, step.name
 
             try:
+
                 if step.type == ALLOCATE_SCRATCH:
                     code,message = self.allocate_scratch(step)
                 elif step.type == DELETE_FILE:
@@ -441,6 +449,7 @@ class BackgroundJob(Job):
         # this seems to help the system command issued from within ChemShell
         # to work properly
         #
+        print 'run_app_bash'
         if sys.platform == 'mac':
             print 'Dont know how to run on mac'
             return -1
@@ -477,7 +486,11 @@ class BackgroundJob(Job):
 
             # This seems the simplest form of the command
             cmd="bash "+step.local_command
-            print 'spawn on ',cmd
+
+            print 'Spawn on ',cmd
+            #import os
+            #print 'PATH is',os.environ['PATH']
+
             self.process = subprocess.Spawn(cmd,debug=self.debug)
             if step.stdin_file:
                 i = open(step.stdin_file,'r')
@@ -747,13 +760,14 @@ if __name__ == "__main__":
         print 'testing local chemshell job (Windows)'
         import os
         os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
-        os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
-        chemshell_exe='"C:/chemsh/bin/chemshprog.exe"'
+        os.environ['TCLLIBPATH']='/cygdrive/e/chemsh/tcl'
+        chemshell_exe='"E:/chemsh/bin/chemshprog.exe"'
         job = ForegroundJob()
-        job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun')
+        job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small2.chm')
-        job.add_step(RUN_APP,'run gamess',local_command=chemshell_exe,stdin_file='small2.chm',stdout_file='small2.out')
+        job.add_step(RUN_APP_BASH,'run gamess',local_command=chemshell_exe,stdin_file='small2.chm',stdout_file='small2.out')
         #job.add_step(COPY_BACK_FILE,'fetch log',remote_filename='small2.out')
         #job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
+        print 'done'
 
