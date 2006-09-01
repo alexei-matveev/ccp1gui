@@ -27,6 +27,8 @@ import sys
 import time
 import Tkinter
 import Pmw
+import sys
+
 import string
 import jobmanager
 from jobmanager.subprocess import *
@@ -50,7 +52,7 @@ class JobEditor(Pmw.MegaToplevel):
     else:
         pass
 
-    update_interval=100
+    update_interval=500
 
     def __init__(self,root,manager,report_func=None):
 
@@ -153,6 +155,8 @@ class JobEditor(Pmw.MegaToplevel):
     def check_jobs(self):
         """Load the selectionbox with the current status information
         on all the jobs
+        Also runs any monitor code in the master thread. This can perform
+        such tasks as updating a molecule or diagnostic graph
         """
         items = []
         items.append('Job# Host       Jobname  Status  Job Step')
@@ -206,6 +210,11 @@ class JobEditor(Pmw.MegaToplevel):
                 if job.msg and job.popup:
                     info_messages.append(job.msg)
                     job.popup=0
+
+            if job.status == JOBSTATUS_RUNNING:
+                # Run any monitor code
+                if job.monitor:
+                    job.monitor()
 
             if job.status == JOBSTATUS_DONE:
                 if job.msg and job.popup:
