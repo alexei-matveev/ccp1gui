@@ -57,13 +57,19 @@ class AM1Calc(QMCalc):
 
         self.molecules = []
         self.AM1Energies = []
+        self.KillFlag = None
+        self.AM1Mol = None
 
+        
     def set_defaults( self ):
         """ Set up the default values for the calculation """
         print 'set def'
 
+        # these to reset for new opt
+        self.molecules = []
         self.AM1Energies = []
         self.AM1Mol = None
+        self.KillFlag = None
 
         self.set_program('AM1')
         self.set_title('x')
@@ -122,11 +128,14 @@ class AM1Calc(QMCalc):
         if ed:
             job.add_monitor(ed.monitor)
 
-        job.add_step(PYTHON_CMD,'am1 optimisation',proc=self.runAM1)
+        job.add_step(PYTHON_CMD,'am1 optimisation',proc=self.runAM1,kill_cmd=self.killAM1)
         #job.add_tidy(self.endjob2)
         
         return job
 
+    def killAM1(self):
+        self.KillFlag = JOBCMD_KILL
+        
     def endjob(self,graph):
         """This is executed in the slave thread when the job completes
         successfully.
@@ -218,14 +227,23 @@ class AM1Calc(QMCalc):
         i=0
         while not finished:
             print "Optimisation step: %d" % i
-            newmol, energy = self.get_opt_step()
-            if newmol == None:
-                # We've finished so clean up and break out of the loop
-                print "runAM1 finished optimisation."
-                finished=1
-                self.generator = None
-                break
-            i+=1 
+
+            if self.KillFlag == JOBCMD_KILL:
+                # Kill the job 
+                print 'kill'
+                return 1,"Killed"
+            elif self.KillFlag == JOBCMD_CANCEL:
+                # Kill the job and revert.
+                print 'cancel'
+            else:
+                newmol, energy = self.get_opt_step()
+                if newmol == None:
+                    # We've finished so clean up and break out of the loop
+                    print "runAM1 finished optimisation."
+                    finished=1
+                    self.generator = None
+                    break
+                i+=1 
         return 0,""
 
     def get_editor_class(self):
@@ -315,6 +333,7 @@ class AM1CalcEd(QMCalcEd):
         """
         #print 'monitor'
         # Update displayed structure if a new geomtry has arrived
+    
         if self.calc.AM1Mol:
             mol = self.calc.get_input('mol_obj')
             print 'UPDATE GEOM',self.calc.AM1Mol.atom[0].coord
