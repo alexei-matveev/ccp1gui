@@ -188,21 +188,13 @@ class EditingToolsWidget(Pmw.MegaToplevel):
                                  text = "Optimise")
         t.pack(side='left')
 
-        t = self.createcomponent('stop-clean-button', (), None,
-                                 Button,
-                                 self.component('clean-group').interior(),
-                                 command=self.stopclean,
-                                 text = "Stop ",
-                                 state = 'disabled' )
-        t.pack(side='left')
-
         t = self.createcomponent('cleancode-selector', (), None,
                                  Pmw.OptionMenu,
                                  self.component('clean-group').interior(),
                                  items=["GAMESS-UK","MOPAC","MNDO", "UFF", "AM1"],
                                  menubutton_width=8,
-                                 initialitem="GAMESS-UK",
-                                 command=self.change_clean_code)                                 
+                                 initialitem="GAMESS-UK")
+########                                 command=self.change_clean_code)                                 
         t.pack(side='left')
 
         t = self.createcomponent('clean-opts-button', (), None,
@@ -300,20 +292,10 @@ class EditingToolsWidget(Pmw.MegaToplevel):
     def cleanopts(self):
         sel = self.component('cleancode-selector')
         code = sel.getcurselection()
-        if code == 'AM1':
-            return None
+        #if code == 'AM1':
+        #    return None
         if self['command']:
             self['command']('cleanopts',code)
-
-    def change_clean_code( self, code ):
-        """Hide/Show the Stop button depending on whether we are using the AM1 code"""
-        if code == "AM1":
-            self.component('stop-clean-button').configure(state='normal')
-            self.component('clean-opts-button').configure(state='disabled')
-        else:
-            self.component('stop-clean-button').configure(state='disabled')
-            self.component('clean-opts-button').configure(state='normal')
-            
 
     def symmetry(self):
         print "Displaying Symmetry Widget..."
