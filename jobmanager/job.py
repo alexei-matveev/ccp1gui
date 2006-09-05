@@ -67,8 +67,11 @@ JOBSTATUS_KILLPEND= 'Kill Pending'
 JOBSTATUS_KILLED  = 'Killed'
 JOBSTATUS_FAILED  = 'Failed'
 JOBSTATUS_WARNING = 'Warning'
-JOBSTATUS_OK      = 'OK'
+#JOBSTATUS_OK      = 'OK'
 JOBSTATUS_DONE    = 'Done'
+
+JOBCMD_KILL ='Kill'
+JOBCMD_CANCEL ='Cancel'
 
 class JobStep:
     """A container class for an element of a job"""
@@ -84,7 +87,8 @@ class JobStep:
                  stdout_file=None,
                  monitor_file=None,
                  warn_on_error=0,
-                 kill_on_error=1):
+                 kill_on_error=1,
+                 kill_cmd=None):
         
         # see list of valid types above
         self.type = type
@@ -102,6 +106,7 @@ class JobStep:
         self.monitor_file=monitor_file
         self.kill_on_error=kill_on_error
         self.warn_on_error = warn_on_error
+        self.kill_cmd = kill_cmd
 
 class Job:
 
@@ -206,7 +211,7 @@ class Job:
                 print 'test code',code,message
 
             if code == 0:
-                self.status = JOBSTATUS_OK
+                #self.status = JOBSTATUS_OK
                 if self.debug:
                     print 'Step OK :',step.name, message
 
@@ -237,7 +242,7 @@ class Job:
                 #        break
 
             else:
-                self.status = JOBSTATUS_OK
+                #self.status = JOBSTATUS_OK
                 if self.debug:
                     print 'Step failed, but proceed anyway:',step.name, message
 
@@ -314,7 +319,8 @@ class Job:
 
     def kill(self):
         """Attempt to kill the job (dummy)"""
-        pass    
+        print 'Kill unimplemented for this job type'
+            
 
     def get_status(self):
         """Return the current status of the job"""
@@ -559,10 +565,18 @@ class BackgroundJob(Job):
         return 0,None
 
     def kill(self):
-        if self.process:
+
+        if self.active_step and self.active_step.kill_cmd:
+                print 'running kill cmd for the current step'
+                self.status = JOBSTATUS_KILLPEND
+                self.active_step.kill_cmd()
+                #    self.status = JOBSTATUS_KILLED
+
+        elif self.process:
+            print 'attempting to kill process'
             self.status = JOBSTATUS_KILLPEND
             code = self.process.kill()
-            print 'kill code',code
+            print 'kill return code',code
             self.status = JOBSTATUS_KILLED
             return code
         else:
@@ -649,6 +663,14 @@ class ForegroundJob(Job):
 
     def clean_scratch(self,step):
         return 0,None
+
+    def kill(self):
+        """Attempt to kill the job (dummy)"""
+        if self.active_step:
+            if self.active_step.kill_cmd:
+                self.status = JOBSTATUS_KILLPEND
+                print 'running kill cmd'
+                self.active_step.kill_cmd()
 
 class RemoteForegroundJob(Job):
     """Control of the job using rsh/plink"""
