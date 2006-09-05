@@ -100,7 +100,6 @@ class JobEditor(Pmw.MegaToplevel):
 
     def update(self):
         """ update of the status of the job editor widget and reschedule the next call"""
-        print 'job editor update'
         try:
             self.check_jobs()
             self.after(self.update_interval,self.update)
@@ -143,7 +142,6 @@ class JobEditor(Pmw.MegaToplevel):
 
     def __kill_job(self):
         sels = self.sel.getcurselection()
-        print sels
         for sel in sels:
             words = string.split(sel)
             print words
@@ -207,10 +205,10 @@ class JobEditor(Pmw.MegaToplevel):
                     warning_messages.append(job.msg)
                     job.popup=0
 
-            if job.status == JOBSTATUS_OK:
-                if job.msg and job.popup:
-                    info_messages.append(job.msg)
-                    job.popup=0
+##            if job.status == JOBSTATUS_OK:
+##                if job.msg and job.popup:
+##                    info_messages.append(job.msg)
+##                    job.popup=0
 
             if job.status == JOBSTATUS_RUNNING:
                 try:
