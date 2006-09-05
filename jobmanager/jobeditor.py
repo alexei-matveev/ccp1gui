@@ -52,7 +52,7 @@ class JobEditor(Pmw.MegaToplevel):
     else:
         pass
 
-    update_interval=500
+    update_interval=200
 
     def __init__(self,root,manager,report_func=None):
 
@@ -100,6 +100,7 @@ class JobEditor(Pmw.MegaToplevel):
 
     def update(self):
         """ update of the status of the job editor widget and reschedule the next call"""
+        print 'job editor update'
         try:
             self.check_jobs()
             self.after(self.update_interval,self.update)
@@ -212,9 +213,14 @@ class JobEditor(Pmw.MegaToplevel):
                     job.popup=0
 
             if job.status == JOBSTATUS_RUNNING:
-                # Run any monitor code
-                if job.monitor:
-                    job.monitor()
+                try:
+                    # Run any monitor code
+                    if job.monitor:
+                        if job.debug:
+                            print 'Running job monitor'
+                        job.monitor()
+                except Exception, e:
+                    print 'update of monitor code failed',e
 
             if job.status == JOBSTATUS_DONE:
                 if job.msg and job.popup:
