@@ -60,6 +60,8 @@ class VtkGraph(TkMolView,Graph):
 
         self.vtkVersion = vtkVersion.GetVTKVersion()
 
+        self.render_in_tk = 1
+
         # Set defaults for any attributes properties that may be 
         # superceded by values from ccp1guirc
         self.pick_tolerance = 0.01
@@ -122,10 +124,33 @@ class VtkGraph(TkMolView,Graph):
         self.title('CCP1 GUI'+25*' '+title)
         self.iconname('CCP1 GUI ')
 
-        # create vtkTkRenderWidget
-        self.pane = vtkTkRenderWidget(self.interior(), stereo=self.stereo)
-        renwin = self.pane.GetRenderWindow()
-        self._set_stereo( renwin ) # See if we are using stereo
+        if self.render_in_tk == 1:
+            # create vtkTkRenderWidget
+            self.pane = vtkTkRenderWidget(self.interior(), stereo=self.stereo)
+            renwin = self.pane.GetRenderWindow()
+            self._set_stereo( renwin ) # See if we are using stereo
+
+
+            self.ren = vtkRenderer()
+            renwin.AddRenderer(self.ren)
+            renwin.SetDesiredUpdateRate(0.2)
+            self.pane.firstrenderer()
+            self.pane.SetCamera(0.,0.,15.)
+            self.pane.Reset()
+
+        else:
+            renwin = vtkRenderWindow()
+            self.ren = vtkRenderer()
+            renwin.AddRenderer(self.ren)
+            # create an interactor
+            iren = vtkRenderWindowInteractor()
+            iren.SetRenderWindow(renwin)
+            self.pane = vtkTkRenderWidget(self.interior())
+            if self.stereo:
+                renwin.SetStereoCapableWindow()
+            self.renwin = renwin
+            renwin.Render()
+
 
         # Bindings for the poor lonesome mac osx mouse button
         if sys.platform == 'darwin':
@@ -134,6 +159,7 @@ class VtkGraph(TkMolView,Graph):
             self.pane.bind("<Control-B1-Motion>",
                            lambda e,s=self.pane: s.Pan(e.x,e.y))
             
+
         self.pane.handlepick = self.mypick2
         self.picked_atomic_actor = 0
         self.picked_atom = None
@@ -143,13 +169,6 @@ class VtkGraph(TkMolView,Graph):
         # maybe replace when animation is working
         #self.toolbar()
 
-
-        self.ren = vtkRenderer()
-        renwin.AddRenderer(self.ren)
-        renwin.SetDesiredUpdateRate(0.2)
-        self.pane.firstrenderer()
-        self.pane.SetCamera(0.,0.,15.)
-        self.pane.Reset()
 
         # create vtkTkRenderWidget
         self.pane2d = vtkTkRenderWidget(self.window2d.interior())
@@ -199,7 +218,10 @@ class VtkGraph(TkMolView,Graph):
     def update(self):
         """Update the VTK images"""
 
-        self.pane.Render()
+        if self.render_in_tk == 1:
+            self.pane.Render()
+        else:
+            self.renwin.Render()    
         self.pane2d.Render(trace=0)
 
 
