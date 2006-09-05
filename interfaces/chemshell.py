@@ -21,6 +21,7 @@
 calculation editor classes.
 """
 
+import sys
 import os
 import time
 import string
@@ -37,7 +38,7 @@ def extend_path(arg):
     """Add an element to the path if not already present"""
     t = os.environ['PATH']
     t2 = t.split(';')
-    print t2
+    #print t2
     if arg not in t2:
         os.environ['PATH'] = t + ';' + arg
 
@@ -145,7 +146,6 @@ class ChemShellCalc(Calc):
         file.close
         print 'file done'
     
-
         self.infile = job_name+'.chm'
         self.outfile = job_name+'.log'
 
@@ -192,6 +192,18 @@ class ChemShellCalc(Calc):
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.chm')
 
+
+        ed = self.get_editor()
+        # connect up the monitor to load structure back
+        if ed:
+            print 'add_mon'
+            job.add_monitor(ed.monitor)
+        else:
+            print 'DONT add_mon'            
+        
+
+        from viewer.main import rc_vars
+
         if sys.platform[:3] == 'win':
 
             # This is for the cygwin1.dll
@@ -199,15 +211,22 @@ class ChemShellCalc(Calc):
 
             # this way, all the settings in cygwin chemsh and rungamess are
             # picked up
-            extend_path('C:/chemsh/scripts')
-            extend_path('C:/GAMESS-UK/rungamess')
+
+            if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
+                # Need to strip off the last field
+                extend_path(os.path.dirname(rc_vars['gamessuk_script']))
+
+            if rc_vars.has_key('chemsh_script_dir') and rc_vars['chemsh_script_dir']:
+                extend_path(rc_vars['chemsh_script_dir'])
 
             use_bash=1
 
             if not use_bash:
                 os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
-                os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
-                chemshell_exe='"C:/chemsh/bin/chemshprog.exe"'
+#                os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
+                os.environ['TCLLIBPATH']='/cygdrive/e/chemsh/tcl'
+#                chemshell_exe='"C:/chemsh/bin/chemshprog.exe"'
+                chemshell_exe='"E:/chemsh/bin/chemshprog.exe"'                
                 print 'Using ChemShell path ' + chemshell_exe
                 job.add_step(RUN_APP,'run ChemShell',
                              local_command=chemshell_exe,
@@ -228,6 +247,8 @@ class ChemShellCalc(Calc):
             # running with an argument (rather than stdin redirection)
             # takes advantage of Tcls handling of errors, this way the
             # script will return on error without writing the punchfile 
+
+            print 'FINAL PATH',os.path.environ('PATH')
             cmd="chemsh " + self.infile
             job.add_step(RUN_APP,'run ChemShell',local_command=cmd,
                          stdout_file=self.outfile)
@@ -1646,6 +1667,9 @@ class ChemShellCalc(Calc):
         file.write("     dyn1 force \n")
         file.write("     if { $store_traj } {  \n")
         file.write(" 	if { ! [ expr $count % $traj_freq ] } { \n")
+        file.write(" 	    copy_object from=dyn1.tempc to=FRAME type=fragment \n")
+        file.write(" 	    set fp [ open FRAME.stamp w ]  \n")
+        file.write(" 	    close $fp\n")
         file.write(" 	    dyn1 trajectory  \n")
         file.write(" 	} \n")
         file.write("     } \n")
@@ -1915,6 +1939,27 @@ class ChemShellCalcEd(CalcEd):
                                               reload_func=self.reload_func)
         self.qmeditor.Show()
 
+
+
+    def monitor(self):
+        """Transfer partially completed structure to GUI and update the graph widget
+        """
+        print 'monitor'
+        # Update displayed structure if a new geometry has arrived
+        if os.path.exists('FRAME.stamp'):
+            p=PunchReader()
+            os.unlink('FRAME.stamp')
+            p.scan('FRAME')
+            mol = self.calc.get_input('mol_obj')
+            print 'UPDATE GEOM'
+            mol.import_geometry(p.objects[0] )
+            if self.graph:
+                print 'UPDATE GRAPH'
+                self.graph.update_from_object(mol)
+            # Update graph widget
+            #self.calcMon.update()
+            #self.calcMon.show()
+
     def _get_qm_mol(self):
         """return the QM part of the system
         This is used by the qm calc editor to control (for example)
@@ -2133,10 +2178,11 @@ def chemshell_c_modes():
 if __name__ == "__main__":
 
     import sys
-    print sys.path
+#    print sys.path
     
     from interfaces.chemshell import *
     from objects.zmatrix import *
+
     from jobmanager import *
     model = Zmatrix()
     model.title = "chemshell test"
@@ -2154,6 +2200,7 @@ if __name__ == "__main__":
     atom.name = 'H'
     atom.coord = [ 1.,1.,0. ]
     model.insert_atom(1,atom)
+
 
     root=Tk()
     calc = ChemShellCalc()
