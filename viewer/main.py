@@ -1647,7 +1647,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         if not self.clean_calced.has_key(clean_code):
 
-            if clean_code == 'AM1':
+            if clean_code == 'AM1 (built-in)':
 
                 calc = AM1Calc()
                 calc.set_input('mol_obj',mol)

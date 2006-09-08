@@ -191,7 +191,7 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         t = self.createcomponent('cleancode-selector', (), None,
                                  Pmw.OptionMenu,
                                  self.component('clean-group').interior(),
-                                 items=["GAMESS-UK","MOPAC","MNDO", "UFF", "AM1"],
+                                 items=["GAMESS-UK","MOPAC","MNDO", "UFF", "AM1 (built-in)"],
                                  menubutton_width=8,
                                  initialitem="GAMESS-UK")
 ########                                 command=self.change_clean_code)                                 
