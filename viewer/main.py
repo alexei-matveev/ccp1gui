@@ -190,41 +190,7 @@ from toolpanel import *
 import interfaces.am1calc, interfaces.calcmon
 from objects import symed, symdet
 import thread
-
-# dictionary to hold the variables that can be set in the ccp1guirc file
-global rc_vars 
-rc_vars = {}
-rc_vars['conn_scale'] = 1.0
-rc_vars['conn_toler']   = 0.5
-rc_vars['contact_scale'] = 1.0
-rc_vars['contact_toler']   = 1.5
-rc_vars['bg_rgb'] = (0,0,0)
-rc_vars['pick_tolerance'] = 0.01
-rc_vars['show_selection_by_colour'] = 1
-rc_vars['field_line_width']  =  1
-rc_vars['field_point_size']  =  2
-# Molecule variables
-rc_vars['mol_line_width']  =  3
-rc_vars['mol_point_size']  =  4
-rc_vars['mol_sphere_resolution'] = 8
-rc_vars['mol_sphere_specular'] = 1.0
-rc_vars['mol_sphere_diffuse'] = 1.0
-rc_vars['mol_sphere_ambient'] = 0.4
-rc_vars['mol_sphere_specular_power'] = 5
-rc_vars['mol_cylinder_resolution'] = 8
-rc_vars['mol_cylinder_specular'] = 0.7
-rc_vars['mol_cylinder_diffuse'] = 0.7
-rc_vars['mol_cylinder_ambient'] = 0.4
-rc_vars['mol_cylinder_specular_power'] = 10
-# Executable, script and directory locations
-rc_vars['gamessuk_exe'] = None
-rc_vars['gamessuk_script'] = None
-rc_vars['molden_exe'] = None
-rc_vars['dalton_script'] = None
-rc_vars['am1'] = None
-rc_vars['chemsh_script_dir'] = None
-# Stereo visulaisation
-rc_vars['stereo'] = None
+from viewer.rc_vars import rc_vars
 
 def set_rc_var( name, value ):
     """
@@ -513,50 +479,49 @@ class TkMolView(Pmw.MegaToplevel):
         except Exception,e:
                 print "Error reading cco1guirc file: %s" % rcfile
                 print e
-                
-        # Now trundle through the variables in rc_vars, seeing if any of them are in scope
-        # as local variables. If they are we place the value in rc_vars and try and set the
-        # variable value if they are attributes of self
-        
-        for var_name in rc_vars.keys():
-            gotvar = None
-            exeline = 'tmp = '+var_name
-            try:
-                exec(exeline)
-                #print "%s from ccp1guirc is: %s" % (var_name, tmp)
-                # Need to check if this is a string. Under windows a path could contain the
-                # \b character (backspace). If the string is interpreted as a normal string
-                # this causes the \b and the preceding character to be deleted. We therefore
-                # need to convert the variable to a raw string.
-                if type(tmp) is str:
-                    tmp = self.raw( tmp )
-                    
-                rc_vars[var_name] = tmp
-                gotvar = 1
-            except NameError:
-                #print "%s is not in ccp1guirc file" % var_name
-                pass
-            
-            if gotvar:
+
+        # Pull any rc_vars out
+        rc_buff = []
+        f = open( rcfile )
+
+        for line in f.readlines():
+            rc_buff.append(line)
+        f.close()
+
+        for line in rc_buff:
+            if re.compile( '###################### End User Defaults #####################' ).match( line ):
+                break
+            elif re.compile( '^[a-zA-Z][a-zA-Z1-9 _-]*={1}.*' ).match( line ):
+                split = line.split('=')
+                key = split[0].strip()
+                execline = 'tmp = '+key
+                try:
+                    exec(execline)
+                    #print "%s from ccp1guirc is: %s" % (key, tmp)
+                    # Need to check if this is a string. Under windows a path could contain the
+                    # \b character (backspace). If the string is interpreted as a normal string
+                    # this causes the \b and the preceding character to be deleted. We therefore
+                    # need to convert the variable to a raw string.
+                    if type(tmp) is str:
+                        tmp = self.raw( tmp )
+                   
+                    rc_vars[key] = tmp
+                except NameError:
+                    #print "%s is not in ccp1guirc file" % key
+                    pass
                 # Now try and set this if it is an attribute of main
                 # and set it if it is
                 try:
-                    if type(rc_vars[var_name]) is str:
-                        exeline3 = "self."+var_name+" = \'"+str(rc_vars[var_name])+"\'"
+                    if type(rc_vars[key]) is str:
+                        execline = "self."+key+" = \'"+str(rc_vars[key])+"\'"
                     else:
-                        exeline3 = "self."+var_name+" = "+str(rc_vars[var_name])
-                    exec(exeline3)
-                    #print "Set self."+var_name+" to "+str(rc_vars[var_name])
+                        execline = "self."+key+" = "+str(rc_vars[key])
+                    exec(execline)
+                    #print "Set self."+key+" to "+str(rc_vars[key])
                 except Exception, e:
-                    #print "%s is not a self var" % var_name
+                    #print "%s is not a self var" % key
                     #print e
                     pass
-
-        # write out
-        #print "rc_vars are:"
-        #for key in rc_vars.keys():
-        #    print "%s : %s" % (key,rc_vars[key])
-                    
 
     def raw(self, text):
         """Returns a raw string representation of text
@@ -618,6 +583,7 @@ class TkMolView(Pmw.MegaToplevel):
             for name in rc_vars.keys():
                 rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
 
+            rc_file.write( '###################### End User Defaults #####################\n' )
             # Have dumped dictionary so quit here
             return
 
@@ -634,16 +600,35 @@ class TkMolView(Pmw.MegaToplevel):
         # For each line of the file, if a variable appears at the start of the line
         # we replace the old value with the one from the rc_vars dictionary
         count = 0
+        last_var = 0
+        keys = [] # list to remember which keys we have written out
         for line in rc_buff:
             for var_name in rc_vars.keys():
                 re_str = '^'+var_name+' *='
                 if re.compile( re_str ).match( line ):
+                    last_var = count
+                    keys.append( var_name )
                     # replace that line in the buffer with the new value
                     if type(rc_vars[var_name]) is str:
                         rc_buff[ count ] = "%s = \'%s\'\n" % (var_name, str(rc_vars[var_name]) )
                     else:
                         rc_buff[ count ] = "%s = %s\n" % (var_name, str(rc_vars[var_name]) )
             count += 1
+
+        # Now see if there are any variables in the rc_vars that we didn't write out
+        # because they have been added this session. We add these into the file at the
+        # spot we found the last variable.
+        newvar_buff = []
+        for key,var in rc_vars.iteritems():
+            if  key not in keys:
+                if type(rc_vars[key]) is str:
+                    newvar_buff.append("%s = \'%s\'\n" % (key, str(rc_vars[key]) ))
+                else:
+                    newvar_buff.append("%s = %s\n" % (key, str(rc_vars[key]) ))
+                    
+        if len(newvar_buff) > 0:
+            for line in newvar_buff:
+                rc_buff.insert(last_var+1,line)
 
         # Write out the ammended file
         try:
@@ -1202,19 +1187,17 @@ class TkMolView(Pmw.MegaToplevel):
     def get_symmetry(self,thresh=None ):
         """ Determine the symmetry for the currently selected molecule """
 
-        molecule = self.get_one_molecule()
+        molecule = self.choose_mol()
         if not molecule:
             return None
         
         label,generators = molecule.getSymmetry( thresh=thresh )
-
         return label, generators
-        
 
     def symmetrise_molecule(self, thresh=None ):
         """ Symmetrise the currently selected molecule. """
         
-        molecule = self.get_one_molecule()
+        molecule = self.choose_mol()
         if not molecule:
             return None
 
@@ -1491,7 +1474,7 @@ class TkMolView(Pmw.MegaToplevel):
     def rotate_about_bond(self):
         """ Rotate a fragement about an axis defined by two atoms"""
         
-        molecule = self.get_one_molecule()
+        molecule = self.choose_mol()
         if not molecule:
             return None
 
@@ -1605,7 +1588,7 @@ class TkMolView(Pmw.MegaToplevel):
         if self.debug: print "Clean got %s structures" % len(self.data_list)
 
         # Get the selected molecule - just one for now
-        molecule = self.get_one_molecule()
+        molecule = self.choose_mol()
         if not molecule:
             return 0
 
@@ -4341,67 +4324,6 @@ class TkMolView(Pmw.MegaToplevel):
         c= MNDOCalc(mol=obj)
         self.edit_calc(c)
 
-    def choose_mol(self):
-
-        mol_list = self.get_names(molecules_only=1)
-        if len(mol_list) == 0:
-            #
-            # No molecules present ??? 
-            #
-            message_text = "No molecules to choose from present in viewer.\n" + \
-                           "Please load a structure and retry."
-            self.error(message_text)
-            raise EditError,"No molecular structures present!"
-        elif len(mol_list) == 1:
-            #
-            # Select the 1 molecule present...
-            #
-            mol_name = mol_list[0]
-        else:
-            #
-            # Bring up a selection widget
-            #
-            self.result = Tkinter.StringVar()
-            self.dialog = Pmw.Dialog(self.master,
-                                     buttons = ('OK','Cancel'),
-                                     title = 'Select Molecule',
-                                     command = self.__StoreResult)
-            self.var = Tkinter.StringVar()
-            self.dialog.mol = Pmw.OptionMenu(
-                self.dialog.interior(),
-                labelpos = 'n', 
-                label_text="Please select a molecular\nstructure "+
-                "from the list",
-                menubutton_textvariable = self.var,
-                items = mol_list,
-                initialitem = mol_list[0])
-            self.dialog.mol.pack(fill='both')
-            self.dialog.activate()
-            if self.result.get() == 'OK':
-                mol_name = self.var.get()
-            else:
-                raise EditError,"No molecular structure selected!"
-
-        print 'mol_name',mol_name
-        print 'data list', self.data_list
-
-        for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
-            print 'class', myclass
-            if myclass == 'Indexed' or myclass == 'Zmatrix':
-                print 'check name ', d.name
-                if mol_name == d.name:
-                    t = d;
-        return t
-
-
-    def __StoreResult(self,option):
-        """Store the name of the pressed button and destroy the 
-           dialog box."""
-        self.result.set(option)
-        self.dialog.destroy()
-
     def edit_calc(self,calc):
         """Open an editor for a given calculation
         Also ensures correct handling of the target structure
@@ -4699,21 +4621,69 @@ class TkMolView(Pmw.MegaToplevel):
         self.info(txt)
 
 
-    def get_one_molecule(self):
-        """ If only one molecule has been selected, return that, otherwise
-            check how many molecules have been loaded, if there's only
-            one, return that.
+    def choose_mol(self):
+        """ Select a single molecule (i.e of class zmatrix). If more than
+            one is present in the structures, choose teh one that is selected,
+            or if none are selected, get the user to choose one from a list.
         """
 
         mols = self.loaded_mols()
-        if len(mols) == 1:
+        if len(mols) == 0:
+            message_text = "No molecules to choose from present in viewer.\n" + \
+                           "Please load a structure and retry."
+            self.error(message_text)
+            raise EditError,"No molecular structures present!"
+        elif len(mols) == 1:
+            # Select the 1 molecule present...
             return mols[0]
         elif len( self.sel().get_mols() ) == 1:
+            # There is one selected molecule, so use that
             return self.sel().get_mols()[0]
         else:
-            self.error("Please select a single molecule!")
-            return None
+            # Get a list of the names of the molecules\
+            name_list = []
+            for m in mols:
+                name_list.append(m.name)
+            # Bring up a selection widget
+            self.result = Tkinter.StringVar()
+            self.dialog = Pmw.Dialog(self.master,
+                                     buttons = ('OK','Cancel'),
+                                     title = 'Select Molecule',
+                                     command = self.__StoreResult)
+            self.var = Tkinter.StringVar()
+            self.dialog.mol = Pmw.OptionMenu(
+                self.dialog.interior(),
+                labelpos = 'n', 
+                label_text="Please select a molecular\nstructure "+
+                "from the list",
+                menubutton_textvariable = self.var,
+                items = name_list,
+                initialitem = mols[0].name)
+            self.dialog.mol.pack(fill='both')
+            self.dialog.activate()
+            if self.result.get() == 'OK':
+                mol_name = self.var.get()
+            else:
+                raise EditError,"No molecular structure selected!"
 
+        #print 'mol_name',mol_name
+        #print 'data list', self.data_list
+
+        for d in self.data_list:
+            t1 = string.split(str(d.__class__),'.')
+            myclass = t1[len(t1)-1]
+            #print 'class', myclass
+            if myclass == 'Indexed' or myclass == 'Zmatrix':
+                #print 'check name ', d.name
+                if mol_name == d.name:
+                    t = d;
+        return t
+    
+    def __StoreResult(self,option):
+        """Store the name of the pressed button and destroy the 
+           dialog box."""
+        self.result.set(option)
+        self.dialog.destroy()
 
     def get_selection(self,name):
         """Load the selected atoms from molecule name"""
