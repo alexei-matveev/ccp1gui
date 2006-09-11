@@ -202,7 +202,7 @@ class ChemShellCalc(Calc):
             print 'DONT add_mon'            
         
 
-        from viewer.main import rc_vars
+        from viewer.rc_vars import rc_vars
 
         if sys.platform[:3] == 'win':
 

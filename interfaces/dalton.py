@@ -35,7 +35,9 @@ from tools import *
 from qmtools import *
 #from filepunch import *
 from jobmanager import *
-from viewer.paths import root_path
+from viewer.paths import root_path,find_exe
+from viewer.rc_vars import rc_vars
+
 from objects.periodic import *
 from daltonoutputreader import DaltonOutputReader
 
@@ -1387,8 +1389,7 @@ class DALTONCalcEd(QMCalcEd):
             We either return the script or None if we can't find one
         """
 
-        from viewer.main import rc_vars
-        from viewer.paths import find_exe
+        global rc_vars,find_exe
 
         if rc_vars.has_key('dalton_script') and rc_vars['dalton_script']:
             script = rc_vars['dalton_script']
