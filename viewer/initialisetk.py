@@ -17,6 +17,7 @@ def initialiseTk_colors_common(root):
     root.option_add('*Listbox*background', 'white')
     root.option_add('*Listbox*Font', 'Courier 8')
     root.option_add('*Text.background', 'white')
+    root.option_add('*Entry.background', 'white')
     #root.option_add('*background', 'grey')
     #root.option_add('*foreground', 'black')
     #root.option_add('*EntryField.Entry.background', 'white')
