@@ -19,6 +19,7 @@
 #
 import os
 import sys
+import getpass
 
 from interfaces.calced import *
 from Scientific.Geometry.VectorModule import *
@@ -77,12 +78,7 @@ of any program using or generating them. The parameters however will be
         self.debug = 0
         self.debug_slave = 0
 
-        if sys.platform[:3] == 'win':
-            user = 'user'
-        elif sys.platform[:3] == 'win':
-            user = 'user'
-        else:
-            user = os.environ['USER']
+        user = getpass.getuser()
 
 ##         self.jobopt    = { "hostname"  : "localhost",
 ##                            "directory" : ".",
