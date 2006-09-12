@@ -49,7 +49,19 @@ import sys
 import os
 import re
 import time
-
+from viewer.rc_vars import rc_vars
+import shutil
+# Before we do owt, make sure we can find the required modules
+try:
+    import SOAPpy
+    import interfaces.rmcs as rmcs
+    import interfaces.srbftp as srbftp
+    print SOAPpy
+    print rmcs
+    print srbftp
+except ImportError:
+    print "Cannot import SOAPpy, rmcs or srbftp modules!"
+    print "RMCS submission will not work!"
 
 ALLOCATE_SCRATCH='allocate-scratch'
 DELETE_FILE='delete-file'
@@ -85,11 +97,12 @@ class JobStep:
                  remote_command=None,
                  stdin_file=None,
                  stdout_file=None,
+                 stderr_file=None,
                  monitor_file=None,
                  warn_on_error=0,
                  kill_on_error=1,
                  kill_cmd=None):
-        
+
         # see list of valid types above
         self.type = type
         # just a descriptor for following progress
@@ -103,6 +116,7 @@ class JobStep:
         self.remote_command=remote_command
         self.stdin_file=stdin_file
         self.stdout_file=stdout_file
+        self.stderr_file=stderr_file
         self.monitor_file=monitor_file
         self.kill_on_error=kill_on_error
         self.warn_on_error = warn_on_error
@@ -130,7 +144,7 @@ class Job:
         self.process = None
         self.tidy = None
         self.monitor = None
-        self.debug = 0
+        self.debug = 1
         
     def __repr__(self):
         txt = self.jobtype + ':'
@@ -141,7 +155,7 @@ class Job:
     def add_step(self,type,name,**kw):
         """Add a new job Step"""
         if self.debug:
-            print 'adding job step',kw
+            print 'adding job step: %s : %s' % (name,kw)
         self.steps.append(JobStep(type,name,**kw))
 
     def add_tidy(self,func):
@@ -200,8 +214,8 @@ class Job:
                 
             except Exception, e:
                 if self.debug:
-                    print 'Fatal Exception:', step.name, e
-                    print e
+                    print 'Fatal Exception in step: %s' % step.name
+                    print 'Exception is: %s' % e
                 self.status = JOBSTATUS_FAILED
                 self.msg = str(e)
                 return 1
@@ -219,7 +233,7 @@ class Job:
             elif code == -1 and step.kill_on_error:
                 self.status = JOBSTATUS_FAILED
                 if message:
-                    self.msg =  'Step Failed :' + step.name + " " + message
+                    self.msg =  'Step \"%s\" failed: %s' % (step.name,message)
                 else:
                     self.msg =  'Step Failed : no msg available'
                 return 1
@@ -741,6 +755,303 @@ class LoadLevelerJob(Job):
     def clean_scratch(self,step):
         return 0,None
 
+
+class RMCSJob(Job):
+    """Class for running job's using Rik's Remote MyCondorSubmit"""
+    def __init__(self,editor=None,**kw):
+        apply(Job.__init__, (self,), kw)
+
+        self.jobtype='RMCS Job'
+        self.jobID = None # used to query the job status
+        self.poll_interval = 30 # how often to check the job state in the loop
+        self.srbftp = None
+        self.rmcs = None
+        
+        # Variables that we use to write out the MCS file
+        # Set to none so that we can check we have been passed them
+        self.job_parameters = {}
+        self.job_parameters['srb_config_file'] = None
+        self.job_parameters['srb_input_dir'] = None
+        self.job_parameters['srb_output_dir'] = None
+        self.job_parameters['srb_executable_dir'] = None
+        self.job_parameters['srb_executable']   = None
+        self.job_parameters['rmcs_user'] = None
+        self.job_parameters['rmcs_password'] = None
+        self.job_parameters['myproxy_user'] = None
+        self.job_parameters['myproxy_password'] = None
+        self.job_parameters['machine_list'] = None
+        self.job_parameters['nproc'] = None
+
+        self._get_rcvars()
+            
+        self.input_files = []
+        self.output_files = []
+
+    def _get_rcvars(self):
+        """ Get the job parameters from the rc_vars.
+        """
+        global rc_vars
+        if rc_vars.has_key('srb_config_file'):
+            self.job_parameters['srb_config_file']= rc_vars['srb_config_file']
+        if rc_vars.has_key('srb_input_dir'):
+            self.job_parameters['srb_input_dir'] = rc_vars['srb_input_dir']
+        if rc_vars.has_key('srb_output_dir'):
+            self.job_parameters['srb_output_dir'] = rc_vars['srb_output_dir']
+        if rc_vars.has_key('srb_executable_dir'):
+            self.job_parameters['srb_executable_dir'] = rc_vars['srb_executable_dir']
+        if rc_vars.has_key('srb_executable'):
+            self.job_parameters['srb_executable'] = rc_vars['srb_executable']
+        if rc_vars.has_key('machine_list'):
+            self.job_parameters['machine_list'] = rc_vars['machine_list']
+        if rc_vars.has_key('nproc'):
+            self.job_parameters['nproc']= rc_vars['nproc']
+        if rc_vars.has_key('rmcs_user'):
+            self.job_parameters['rmcs_user'] = rc_vars['rmcs_user']
+        if rc_vars.has_key('rmcs_password'):
+            self.job_parameters['rmcs_password'] = rc_vars['rmcs_password']
+        if rc_vars.has_key('myproxy_user'):
+            self.job_parameters['myproxy_user'] = rc_vars['myproxy_user']
+        if rc_vars.has_key('myproxy_password'):
+            self.job_parameters['myproxy_password'] = rc_vars['myproxy_password']        
+
+    def copy_out_file(self,step,kill_on_error=1):
+        """Add file to the list of files that we copy out
+           and place the file in the srb.
+           step.local_filename is the name of the file. If we are supplied with
+           a step.remote_filename argument, we rename the file when putting it
+           in the srb."""
+
+        if not step.local_filename or not os.access( step.local_filename,os.R_OK ):
+            return -1,"RMCS copy_out_file error accessing file: %s!" % step.local_filename
+
+        self.input_files.append(step.local_filename)
+        try:
+            srbftp_intfce = self._get_srbftp()
+        except:
+            return -1,"Error initialising srbftp interface in copy_out_file!"
+
+        # Put input file in the srb and rename if necessary
+        srbftp_intfce.cd(self.job_parameters['srb_input_dir'])
+        
+        if step.remote_filename:
+            shutil.copyfile( step.local_filename, step.remote_filename )
+            srbftp_intfce.put(step.remote_filename)
+        else:
+            srbftp_intfce.put(step.local_filename)
+        return 0,"Placed file %s in the srb" % step.local_filename
+            
+    def copy_back_file(self,step,kill_on_error=None):
+        """Get the file from the srb and rename it if necessary"""
+
+        if not step.remote_filename or not os.access( step.remote_filename,os.R_OK ):
+            return -1,"RMCS copy_back_file error accessing file: %s!" % step.remote_filename
+
+        if not step.remote_filename:
+            remote_filename = step.local_filename
+        else:
+            remote_filename = step.remote_filename
+
+        try:
+            srbftp_intfce = self._get_srbftp()
+        except:
+            return -1,"Error initialising srbftp interface in copy_back_file!"
+        
+        srbftp_intfce.cd(self.job_parameters['srb_output_dir'])
+        srbftp_intfce.get(remote_filename)
+
+        if step.local_filename != remote_filename:
+            os.rename(remote_filename,step.local_filename)
+            
+        return 0,"Retrived file %s from srb" % step.local_filename
+
+    def _get_srbftp(self):
+        """Return the srbftp object. If one doesn't exist create it"""
+        
+        if not self.srbftp:
+            try:
+                s = srbftp.srb_ftp_interface(self.job_parameters['srb_config_file'])
+                self.srbftp = s
+            except Exception,e:
+                raise JobError,"Error getting srb_ftp_interface: %s" % e
+                return None
+            
+        return self.srbftp
+            
+    def run_app(self,step,kill_on_error=1,**kw):
+        """ This step covers rather a lot of tasks:
+        
+            1. Get any variables passed in when the step was added
+            2. Write the MCS file
+            4. Submit the MCS file
+            5. Loop to check on the status of the job
+        """
+
+        #1 update any variables we may have been passed
+        # This may be redundant
+        try:
+            self.job_parameters['srb_input_dir'] = step.srb_input_dir
+        except:
+            pass
+        try:
+            self.job_parameters['srb_output_dir'] = step.srb_output_dir
+        except:
+            pass
+        try:
+            self.job_parameters['srb_executable']  = step.srb_executable
+        except:
+            pass
+        try:
+            self.job_parameters['srb_executable_dir'] = step.srb_executable_dir
+        except:
+            pass
+        try:
+            self.job_parameters['nproc'] = step.nproc
+        except:
+            pass
+        
+        # Make sure all the parameters have been set
+        self._check_parameters()
+
+        if step.stdin_file:
+            if step.stdin_file not in self.input_files:
+                self.input_files.append(step.stdin_file)
+        if step.stdout_file:
+            if step.stdout_file not in self.output_files:
+                self.output_files.append(step.stdout_file)
+        if step.stderr_file:
+            if step.stderr_file not in self.output_files:
+                self.output_files.append(step.stderr_file)
+
+        # Get the string with the mcs_file
+        mcs_file = self._write_mcsfile(stdin=step.stdin_file,
+                                       stdout=step.stdout_file)
+
+        if self.debug:
+            print "submitting job:"
+            print mcs_file
+        #raise JobError,"No Fucking Way Dude!"
+        
+        #Submit Job
+        self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
+                               self.job_parameters['rmcs_password'])
+        self.jobID = self.rmcs.submitJob( mcs_file,
+                                     self.job_parameters['myproxy_user'],
+                                     self.job_parameters['myproxy_password'],
+                                     self.jobtype,
+                                     False)
+
+        #Monitor Job Information
+        running = 1
+        result = 1
+        while running:
+            print "running"
+            info = self.rmcs.getJobDetails(self.jobID)
+            # NB: info is a dictionary with the following structure:
+            # message          prog running on lake.esc.cam.ac.uk
+            # jobName          Jens Job
+            # jobState         RUNNING
+            # submitted        2006-09-05 14:45:08.868
+            # jobID
+
+            # Possible jobStates:
+            # SUBMIT-PENDING
+            # SUBMIT-FAILED
+            # QUEING
+            # RUNNING
+            # FINISHED
+            for key, val in info.items():
+                print "%s \t %s" % (key, val)
+                
+            if info['jobState'] == 'FINISHED':
+                msg = info['message']
+                result = 0
+                running = None
+                break
+            elif info['jobState'] == 'SUBMIT-FAILED':
+                msg = info['message']
+                result = -1
+                running = None
+                break
+            
+            time.sleep(self.poll_interval)
+
+        return result,msg
+
+    def _check_parameters(self):
+        """Check that we have everything we need to run the job
+           Raise a JobError if there is anything missing
+        """
+        for key,value in self.job_parameters.iteritems():
+            if value == None:
+                msg = "Cannot run job as parameter: <%s> has not been set!" % key
+                raise JobError, msg
+
+    def _write_mcsfile(self,stdin=None,stdout=None):
+        """ Return  string containing the mcsfile"""
+        
+        # Write out the MCS file
+        mcs_file = ''
+        mcs_file+='Executable           = %s\n' % self.job_parameters['srb_executable']
+        
+        # Add stdin & stdout if necessary
+        if stdin:
+            mcs_file+='Input                = %s\n' % stdin
+        if stdout:
+            mcs_file+='Output               = %s\n' % stdout
+            
+        mcs_file+='notification         = NEVER\n'
+        mcs_file+='GlobusRSL            = (job_type=single)\n'
+        mcs_file+='pathToExe            = %s\n' % self.job_parameters['srb_executable_dir']
+        
+        # Buld up the machine list
+        s = 'preferredMachineList = '
+        for machine in self.job_parameters['machine_list']:
+            s += ' %s ' % machine
+        s += '\n'
+        mcs_file+=s
+        
+        mcs_file+='jobType              = performance\n'
+        mcs_file+='numOfProcs           = %s\n'% self.job_parameters['nproc']
+        mcs_file+='Sforce               = true\n'
+        mcs_file+='Sdir                = %s\n' % self.job_parameters['srb_input_dir']
+        
+        # Build up the list of input files
+        s = 'Sget                 = '
+        for ifile in self.input_files:
+            s += ' %s ' % ifile
+        s += '\n'
+        mcs_file+=s
+        
+        mcs_file+='Srecursive           = true\n'
+        mcs_file+='Sdir                 = %s\n' % self.job_parameters['srb_output_dir']
+
+        # Build up list of output files
+        s = 'Sput                 = '
+        for ofile in self.output_files:
+            s += ' %s ' % ofile
+        s += '\n'
+        mcs_file+=s
+        
+        mcs_file+='Queue\n'
+
+        return mcs_file
+
+    def kill(self):
+        """ Kill the job if we are running. We either use the supplied kill command, or
+            our own if one wasn't supplied
+        """
+
+        if self.active_step and self.active_step.kill_cmd:
+                print 'running kill cmd for the current step'
+                self.status = JOBSTATUS_KILLPEND
+                self.active_step.kill_cmd()
+                self.status = JOBSTATUS_KILLED
+        elif self.active_step and not self.active_step.kill_cmd:
+            print 'Running built-in kill for this step'
+            self.status = JOBSTATUS_KILLPEND
+            self.rmcs.cancelJob(self.jobId)
+            self.status = JOBSTATUS_KILLED
+
 class JobError(RuntimeError):
     def __init__(self,args=None):
         self.args = args
@@ -778,7 +1089,7 @@ if __name__ == "__main__":
         job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
 
-    if 1:
+    if 0:
         print 'testing local chemshell job (Windows)'
         import os
         os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
@@ -792,4 +1103,28 @@ if __name__ == "__main__":
         #job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
         print 'done'
+
+    if 1:
+        print 'testing rmcs job'
+        rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
+        rc_vars[ 'nproc'] = '1'
+        rc_vars['srb_config_file'] ='/home/jmht/srb.cfg'
+        rc_vars['srb_executable'] = 'gamess'
+        rc_vars['srb_executable_dir'] = '/home/jmht.eminerals/test/executables'
+        rc_vars['srb_input_dir'] = '/home/jmht.eminerals/test/test1'
+        rc_vars['srb_output_dir'] = '/home/jmht.eminerals/test/test1'
+        rc_vars['rmcs_user'] = 'jmht'
+        rc_vars['rmcs_password'] = '4235227b51436ad86d07c7cf5d69bda2644984de'
+        rc_vars['myproxy_user'] = 'jmht'
+        rc_vars['myproxy_password'] = 'pythonGr1d'
+        
+        job = RMCSJob()
+        #job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun',kill_on_error=0)
+        #job.add_step(COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in', remote_filename='zoom.in')
+        job.add_step(COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in')
+        job.add_step(RUN_APP,'run rmcs',stdin_file='c2001_a.in',stdout_file='c2001_a.out')
+        job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out')
+        #job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out',remote_filename='output.txt')
+        job.run()
+        print 'rmcs done'
 
