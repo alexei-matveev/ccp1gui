@@ -304,12 +304,41 @@ def testit():
         manager.RegisterJob(job)
         job.run()
 
-    job = jobmanager.BackgroundJob()
-    manager.RegisterJob(job)
-    job.add_step(PYTHON_CMD,'sleepy',proc=sleepy)
-    job.add_step(PYTHON_CMD,'crappy',proc=crappy)
-    job.run()
-    print 'XXX'
+    if 0:
+        job = jobmanager.BackgroundJob()
+        manager.RegisterJob(job)
+        job.add_step(PYTHON_CMD,'sleepy',proc=sleepy)
+        job.add_step(PYTHON_CMD,'crappy',proc=crappy)
+        job.run()
+        print 'XXX'
+
+    if 1:
+        import getpass
+        rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
+        rc_vars[ 'nproc'] = '1'
+        rc_vars['srb_config_file'] = os.path.expanduser('~/srb.cfg')
+        rc_vars['srb_executable'] = 'gamess'
+        rc_vars['srb_executable_dir'] = '/home/jmht.eminerals/test/executables'
+        rc_vars['srb_input_dir'] = '/home/jmht.eminerals/test/test1'
+        rc_vars['srb_output_dir'] = '/home/jmht.eminerals/test/test1'
+        rc_vars['rmcs_user'] = getpass.getuser()
+        rc_vars['rmcs_password'] = '4235227b51436ad86d07c7cf5d69bda2644984de'
+        rc_vars['myproxy_user'] = getpass.getuser()
+        rc_vars['myproxy_password'] = 'pythonGr1d'
+        job = jobmanager.RMCSJob()
+        manager.RegisterJob(job)
+        job.add_step(COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in')
+        job.add_step(RUN_APP,'run rmcs',stdin_file='c2001_a.in',stdout_file='c2001_a.out')
+        job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out')
+        #job.run()
+        
+        job_thread = jobmanager.JobThread(job)
+        try:
+            #self.CheckData()
+            job_thread.start()
+        except Exception,e:
+            print 'exception'
+            print str(e)
 
 if __name__ == "__main__":
 
