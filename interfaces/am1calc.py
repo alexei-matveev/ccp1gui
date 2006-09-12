@@ -115,7 +115,7 @@ class AM1Calc(QMCalc):
             for element in failed:
                 txt = txt+element+' '
             if ed:
-                ed.error("Sorry, cannot run am1 optimisationas there are no parameters for the elements: %s" % txt)
+                ed.error("Sorry, cannot run am1 optimisation as there are no parameters for the elements: %s" % txt)
             else:
                 print "Sorry, cannot run am1 optimisationas there are no parameters for the elements: %s" % txt
             return
