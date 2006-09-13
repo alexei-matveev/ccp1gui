@@ -832,6 +832,7 @@ class GamessOutputReader:
         #Create a zero normal mode
         for root in range(1,maxroot+1):       
             v = VibFreq(root)
+            v.reference = mol
             v.disp = []
             for cnt in range(0,n):
                 p = ZAtom()
