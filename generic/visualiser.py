@@ -709,12 +709,12 @@ class VibrationVisualiser(MoleculeVisualiser):
         if kw.has_key("mol"):
             mol = kw["mol"]
         else:
-            print type(obj), obj.__class__
-            try:
-                mol = obj.reference
-            except AttributeError:
-                print 'Vibration visualiser requires a reference structure'
+            #print type(obj), obj.__class__
+            if not obj.reference:
+                raise AttributeError, 'Vibration visualiser requires a reference structure'
                 return
+            else:
+                mol = obj.reference
 
         # take 2 copies of reference mol
         mol = copy.deepcopy(mol)
