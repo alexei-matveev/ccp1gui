@@ -20,7 +20,20 @@
 
 from viewer.main import *
 from viewer.selections import *
+from generic.visualiser import *
+from generic.colourmap import ColourMap
 from chempy import cpv
+
+from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
+from viewer.selections2 import *
+
+#
+# Extend the path to access GLUT - the main bit we will be missing 
+# os the DLL/.so File  This works for windows, maybe also linux ...
+# to check
+#
+os.environ['PATH'] = os.environ['PATH'] + gui_path + os.sep + 'glut-3.7.6-bin'
+print os.environ['PATH']
 
 try:
     from OpenGL.GLUT import *
@@ -28,7 +41,7 @@ try:
     from OpenGL.Tk import *
 except:
     print '''
-    ERROR: PyOpenGL not installed properly.
+    ERROR: PyOpenGL + GLUT not installed properly.
     '''
     sys.exit()
 
@@ -36,31 +49,53 @@ except:
 class OpenGLGraph(TkMolView,Graph):
 
     def __init__(self, parent, title=''):
-        TkMolView.__init__(self, parent) 
+
         Graph.__init__(self)
         
-        self.master.title('GLMolView'+25*' '+title)
-        self.master.iconname('GLMolView')
-
-        self.gl=GLView(self)
-        self.gl.pack(side = 'top', expand=1, fill = 'both',padx=3, pady=3)
-
-        self.toolbar()
-        
-        self.gl.sphere_list = None
-        self.gl.line_list = None
-
-        self.gl.tkRedraw()
 
         self.molecule_visualiser =  OpenGLMoleculeVisualiser
+        self.colourmap_func = OpenGLColourMap
 
         self.capabilities['wire']=1
         self.capabilities['stick']=0
         self.capabilities['sphere']=1
         self.capabilities['labels']=0
 
-        self.pack()
+        # Set defaults for any attributes properties that may be 
+        # superceded by values from ccp1guirc
+        self.pick_tolerance = 0.01
+        self.near = None
+        self.far = None        
 
+        self.capabilities['wire']=1
+        self.capabilities['sticks']=0
+        self.capabilities['spheres']=1
+        self.capabilities['labels']=0
+        self.capabilities['contacts']=0
+        self.capabilities['hedgehog']=0
+        self.capabilities['orientedglyphs']=0
+        self.capabilities['streamlines']=0
+
+
+        TkMolView.__init__(self, parent)
+        
+        self.gl=GLView(self.interior())
+        self.gl.pack(side = 'top', expand=1, fill = 'both',padx=3, pady=3)
+
+        #self.toolbar()
+        
+        self.gl.tkRedraw()
+
+
+        self.title('GLMolView'+25*' '+title)
+        self.iconname('GLMolView')
+
+
+
+        #self.pack()
+
+    def fit_to_window(self):
+        pass
 
     def drawmol(self,obj):
         self.gl.drawmol(obj)
@@ -81,8 +116,12 @@ class GLView(Opengl):
     def __init__(self, parent):
         Opengl.__init__(self, parent, width=500,height=500)
 
-        self.config(depth=1, double = 1)
+        self.sphere_list = None
+        self.line_list = None
+
+        self.cc=[0.0,0.0,0.0]
         self.redraw = self.display
+        #self.config(depth=1, double = 1)
 
         self.bind_events()
 
@@ -90,8 +129,8 @@ class GLView(Opengl):
         self.cull=0
         self.smooth=0
         self.color=0
-        self.cc=[0.0,0.0,0.0]
         self.bw_bg=0
+
         # can be controlled by visualiser controls
         self.show_sphere=1
         self.show_line=1
@@ -135,6 +174,7 @@ class GLView(Opengl):
     def display(self, gl):
         glClearColor(self.cc[0], self.cc[1], self.cc[2], 0)
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
         glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 5.0, 0.0))
         if self.sphere_list and self.show_sphere:
             glCallList(gl.sphere_list)
@@ -253,7 +293,8 @@ class GLView(Opengl):
                 z = a.get_number()
             except Exception:
                 z = 0
-            r,g,b = rgb_tab[z]
+            r,g,b = colours[z]
+
             glColor3f(r,g,b)
             glPushMatrix()
             x = a.coord[0]
@@ -288,7 +329,7 @@ class GLView(Opengl):
                     except Exception:
                         z = 0
 
-                    r,g,b = rgb_tab[z]
+                    r,g,b = colours[z]
                     glColor3f(r, g, b)
                     glVertex3f(a.coord[0],a.coord[1],a.coord[2])
                     glVertex3f(mid[0],mid[1],mid[2])
@@ -298,7 +339,7 @@ class GLView(Opengl):
                     except Exception:
                         z = 0
 
-                    r,g,b = rgb_tab[z]
+                    r,g,b = colours[z]
                     glColor3f(r, g, b)
                     glVertex3f(mid[0],mid[1],mid[2])
                     glVertex3f(t.coord[0],t.coord[1],t.coord[2])
@@ -317,19 +358,26 @@ class OpenGLMoleculeVisualiser(MoleculeVisualiser):
     def __init__(self, root, graph, obj, **kw):
         apply(MoleculeVisualiser.__init__, (self,root,graph,obj), kw)
 
-    def _build(self):
+    def _build(self,selected=None,object=None):
         ''' Create the molecular images'''
-        self.obj.reindex()
-        for a in self.obj.atom:
+
+        if object:
+            if self.debug:
+                print 'mol build_ new obj'
+            self.molecule = object
+
+        mol=self.molecule
+        mol.reindex()
+        for a in mol.atom:
             a.conn = []
 
-        for b in self.obj.bond:
-            print 'bond', b
-            self.obj.atom[b.index[0]].conn.append(self.obj.atom[b.index[1]])
-            self.obj.atom[b.index[1]].conn.append(self.obj.atom[b.index[0]])
+        for b in mol.bond:
+            self.molecule.update_bonds()
+            mol.atom[b.index[0]].conn.append(mol.atom[b.index[1]])
+            mol.atom[b.index[1]].conn.append(mol.atom[b.index[0]])
 
         # create line and sphere images
-        self.graph.gl.drawmol(self.obj)
+        self.graph.gl.drawmol(mol)
 
         # set current visibility
         self.graph.gl.show_sphere = self.show_spheres
@@ -351,6 +399,16 @@ class OpenGLMoleculeVisualiser(MoleculeVisualiser):
         self.graph.gl.show_sphere = self.show_spheres
         self.graph.gl.show_line = self.show_wire
 
+
+class OpenGLColourMap(ColourMap):
+    def _build(self):
+        pass
+
 if __name__ == "__main__":
-    root=Tk()
-    OpenGLGraph(root).mainloop()
+
+    # For help on why we don't create a new root instance see
+    #http://tech.groups.yahoo.com/group/pyopengl/message/121
+
+    Tkinter._default_root.withdraw()
+    OpenGLGraph(None).mainloop()
+    

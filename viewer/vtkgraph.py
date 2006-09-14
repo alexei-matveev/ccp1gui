@@ -30,7 +30,7 @@ from chempy.cpv import *
 from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
 
 from viewer.vtkTkRenderWidgetP import *
-from viewer.selections2 import *
+
 from viewer.main import *
 from viewer.debug import deb,trb
 
@@ -113,7 +113,7 @@ class VtkGraph(TkMolView,Graph):
         TkMolView.__init__(self, parent) 
 
         global sel
-        sel = SelectionManager()
+        sel = self.sel()
         #
         #sel.call_on_add(self.sel_show)
         sel.call_on_add(self.sel_upd)
@@ -387,11 +387,6 @@ class VtkGraph(TkMolView,Graph):
         for t in zme_keys:
             zme = self.zme_dict[t]
             zme.update_selection_from_graph()
-
-    def sel(self):
-        """Return the selection manager for use in other modules"""
-        global sel
-        return sel
 
     def set_origin(self,point):
         """Set the rotation origin"""

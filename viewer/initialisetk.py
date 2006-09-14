@@ -6,6 +6,7 @@ def initialiseTk(root):
     pad = ' '
     # Initialise platform-specific options
     import sys
+
     if sys.platform == 'mac':
         initialiseTk_mac(root)
     elif sys.platform == 'win32':

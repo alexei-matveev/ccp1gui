@@ -179,6 +179,8 @@ from interfaces.gamessoutputreader import *
 from interfaces.cubereader import *
 from interfaces.filepunch import *
 
+from viewer.selections2 import *
+
 import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
@@ -223,7 +225,10 @@ class TkMolView(Pmw.MegaToplevel):
         # This is to provide a handle for the shell window to access
         # variables from this class
         env.tkmol = self
-        
+
+        if not parent:
+            parent = Tkinter._default_root
+
         initialiseTk(parent)
         self.parent = parent
 
@@ -427,6 +432,9 @@ class TkMolView(Pmw.MegaToplevel):
         self.mBar2d = Frame(self.window2d.interior(),relief=RAISED, borderwidth=2)
         self.mBar2d.pack(side='top', fill=X)
         self.FileMenu2d()
+
+        global sel
+        sel = SelectionManager()
 
         # Paul debug
         self.job_editor.mainobj = self
@@ -1927,6 +1935,11 @@ class TkMolView(Pmw.MegaToplevel):
                 pass
 
         self.update()
+
+    def sel(self):
+        """Return the selection manager for use in other modules"""
+        global sel
+        return sel
 
     def select_connected(self):
         # First build a list of structures
@@ -6898,8 +6911,6 @@ if __name__ == "__main__":
     import sys
     #import profile
 
-
-
     # test imports
     try:
         import Scientific
@@ -6908,10 +6919,10 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     from vtkgraph import *
-    root=Tk()
-    root.withdraw()
+    root = Tkinter.Tk()
     vt = VtkGraph(root)
     for file in sys.argv[1:]:
         print 'loading',file
         vt.load_from_file(file)
+    root.withdraw()
     vt.mainloop()
