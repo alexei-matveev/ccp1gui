@@ -179,8 +179,6 @@ class PunchReader:
       
       if self.debug:
          print 'read_object Obj=',object,'Subbl=',subblocks
-         
-
       
       if self.debug:
          print 'read_object header', self.name
@@ -200,8 +198,9 @@ class PunchReader:
                print 'calling known reader for ', self.name
             try:
                self.readers[self.name](f,object)
-            except:
+            except Exception,e:
                print 'Problem reading ',self.name
+               print "Error was: %s" % e
 
                #self.skip_rest_of_block(f)
                return Read_Error
@@ -826,11 +825,14 @@ class PunchReader:
 
       if len(self.normal) == 0:
          vs = VibFreqSet()
+         if not self.fragment:
+            raise AttributeError,"Error in read_normal: No molecular fragment to serve as a reference!"
+            
          vs.title = "vibrations of " + self.fragment.title
-         print 'assign reference'
          vs.reference = self.fragment
          self.vfs = vs
          self.objects.append(vs)
+
       self.vfs.vibs.append(v)
 
       self.normal.append(v)
