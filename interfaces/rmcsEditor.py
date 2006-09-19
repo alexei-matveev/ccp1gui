@@ -3,51 +3,22 @@ import Pmw
 import tkFileDialog
 import viewer.initialisetk
 import os,getpass
+from interfaces.jobsubEditor import JobSubEditor
+from viewer.rc_vars import rc_vars
 
-if __name__ != "__main__":
-    from viewer.rc_vars import rc_vars
-
-class RMCSEditor(Pmw.MegaToplevel):
+class RMCSEditor(JobSubEditor):
 
     """ A widget to hold all the symmetry tools.
     """
 
-    frameWidth       = 300
-    frameHeight      = 200
+    def __init__(self, root,**kw):
 
+        # Initialse everything in the base class
+        JobSubEditor.__init__(self,root,**kw)
 
-    def __init__(self, root, onkill = None,**kw):
-
-        self.debug = 1
-        self.onkill = onkill
-
-        viewer.initialisetk.initialiseTk(root)
-
-        # Initialise base class (after defining options).
-        Pmw.MegaToplevel.__init__( self, root, title='RMCS Editor' )
+        # Set up the defaults
+        self.title = 'RMCS JobEditor'
         
-        # Ensure that when the user kills us with the window manager we behave as expected
-        self.userdeletefunc( lambda s=self: s.QuitNoSave() )
-        #self.usermodaldeletefunc( func = self.withdraw )
-
-        #try and get the thing to be a decent size
-        #self.interior( height = self.frameWidth, width = self.frameWidth )
-        #self.component('hull').configure( height = self.frameWidth, width = self.frameWidth )
-
-        # Get the balloon help from the main widget
-        if kw.has_key('balloon'):
-            self.balloon = kw['balloon']
-        else:
-            self.balloon = Pmw.Balloon(self.interior())
-
-        self.getValue = {} # maps the name of the variable to the function to call to query
-                           # the widget and return its value
-        self.setValue = {} # maps the name of a variable to a function that sets the widget
-                           # to the desired value
-        
-        self.values = {} # Dictionary of the values held by this widget at any point
-        self.values[ 'machine_list'] = ['hpcx.ac.uk']
-        self.values[ 'nproc'] = '1'
         self.values['srb_config_file'] = os.path.expanduser('~/srb.cfg')
         self.values['srb_input_dir'] = 'SET ME'
         self.values['srb_executable_dir'] = 'SET ME'
@@ -58,68 +29,18 @@ class RMCSEditor(Pmw.MegaToplevel):
         self.values['myproxy_user'] = getpass.getuser()
         self.values['myproxy_password'] = 'SET ME'
 
-        self.LayoutWidgets()
         self.GetInitialValues()
+        self.LayoutWidgets()
         self.UpdateWidgets()
 
-
-    def GetInitialValues(self):
-        """Query the rc_vars dictionary to get the initial values to set self.values with
-        """
-        
-        global rc_vars
-        for key,value in rc_vars.iteritems():
-            #print "rc_vars: %s : %s" %(key,value)
-            if self.values.has_key( key ):
-                self.values[key] = value
-                #print "Setting %s to %s" %(key,value)
-
-    def UpdateWidgets(self):
-        """Set all the widgets to the value in self.values
-        """
-        for key,value in self.values.iteritems():
-            #print "Setting values for %s : %s" % (key,value)
-            self.setValue[key]( value )
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
         
-        # Create the widgets to edit the list of machines
-        machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
-        machListFrame.pack(fill='both',expand=1)
-        self.machList = Pmw.ScrolledListBox(
-            machListFrame.interior(),
-            items=['hpcx.ac.uk', 'scarf.rl.ac.uk', 'ccp1.dl.ac.uk']
-            )
-        self.getValue['machine_list'] = lambda s=self: s.machList.get()
-        self.setValue['machine_list'] = self.machList.setlist
-        self.machList.pack(side='left')
-        buttonFrame=Tkinter.Frame( machListFrame.interior() )
-        buttonFrame.pack(side='left')
-        addMachButton = Tkinter.Button( buttonFrame,
-                                        text = 'Add',
-                                        command = self.AddMachine)
-        addMachButton.pack(side='left')
-        #self.balloon.bind( addMachButton, 'Add a machine to the list. )
-        delMachButton = Tkinter.Button( buttonFrame,
-                                        text = 'Del',
-                                        command = self.DelMachine)
-        delMachButton.pack(side='left')
-        self.machEntry = Tkinter.Entry( machListFrame.interior(),
-                                        width=20)
-        self.machEntry.pack(side='left')
 
-        self.nProc = Pmw.Counter( self.interior(),
-                                  labelpos = 'w',
-                                  label_text = 'Number of Processors:',
-                                  entryfield_entry_width = 4,
-                                  entryfield_validate = {'validator' : 'integer' ,
-                                              'min' : 1 },
-                                  increment = 1
-                                  )
-        self.getValue['nproc'] = lambda s=self: s.nProc.getvalue()
-        self.setValue['nproc'] = self.nProc.setentry
-        self.nProc.pack(side='top')
+        # These are found in the base class JobSubEditor (see jobsubEditor.py)
+        self.LayoutMachListWidget()
+        self.LayoutNprocWidget()
 
         # The SRB options
         srbFrame = Pmw.Group( self.interior(), tag_text='SRB Options' )
@@ -229,43 +150,6 @@ class RMCSEditor(Pmw.MegaToplevel):
                                 command=self.QuitNoSave)
         quitNoSaveButton.pack(side='left')
 
-    def AddMachine(self):
-        """ Add a machine to the list and update the list widget"""
-        
-        mach = self.machEntry.get()
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
-        machines.append( mach )
-        self.machList.setlist( machines )
-        self.machEntry.delete(0,'end')
-
-    def DelMachine(self):
-        """ Remove a machine from the list and update the list widget
-            This gets a bit silly as we are returned a tuple and need to
-            use a list.
-        """
-        
-        toRemove = self.machList.getcurselection()
-
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
-        for mach in toRemove:
-            machines.remove( mach )
-        self.machList.setlist( machines )
-
-    def GetMachines(self):
-        """Return a list of the machines"""
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
-        return machines
-
-
     def SrbBrowseDir(self):
         # askdirectory() cant create new directories so use asksaveasfilename is used instead
         # and the filename  is discarded - also fixes problem with no askdirectory in Python2.1
@@ -279,20 +163,9 @@ class RMCSEditor(Pmw.MegaToplevel):
             self.srbConfigFile.setvalue(path)
 
         
-    def GetValueDict(self):
-        """Return a dirctionary with all of the values in it"""
-
-        for key,func in self.getValue.iteritems():
-            self.values[key]= func()
-        #print self.values
-        return self.values
-
     def QuitNoSave(self):
         """It's all gone Pete Tong so we do the honourable thing..."""
-        self.destroy()
-        if self.onkill:
-            self.onkill()
-        #self.GetValueDict()
+        self.Quit()
 
     def QuitAndSave(self):
         """Update the rc_vars with the new values"""
@@ -301,30 +174,14 @@ class RMCSEditor(Pmw.MegaToplevel):
         for key,func in self.getValue.iteritems():
             rc_vars[key] = func()
             #print "Updating rc_vars with %s : %s" % (key,rc_vars[key])
-        
-        self.destroy()
-        if self.onkill:
-            self.onkill()
+        self.Quit()
             
-    def __str__(self):
-       """The string to return when we are asked what we are"""
-       return 'RMCS JobEditor'
 
 if __name__ == "__main__":
-    
-    rc_vars = {} # Dictionary of the values held by this widget at any point
     rc_vars[ 'machine_list'] = ['computers','are','evil']
-    rc_vars[ 'nproc'] = '4'
-    rc_vars['srb_input_dir'] = 'foo',
-    rc_vars['srb_executable_dir'] = 'woo',
-    rc_vars['srb_executable'] = 'bar',
-    rc_vars['srb_output_dir'] = 'out',
-    rc_vars['rmcs_user'] = 'das',
-    rc_vars['rmcs_password'] = 'adsda',
-    rc_vars['myproxy_user'] = 'adsads',
-    rc_vars['srb_config_file'] = 'adsada',
-    rc_vars['myproxy_password'] = 'twdde'
+    rc_vars[ 'count'] = '4'
 
     root=Tkinter.Tk()
     ed = RMCSEditor( root )
+    print "ed is ",ed
     root.mainloop()
