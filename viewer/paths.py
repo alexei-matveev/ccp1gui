@@ -23,6 +23,8 @@
 # see http://www.pythonmac.org/wiki/FAQ#head-c88c53edb2f911e57c92adf2625ca2b73aa6fc6d
 import os
 import sys
+import tarfile
+import shutil
 import __main__
 
 version=sys.version_info #The version of python we are using
@@ -83,11 +85,37 @@ def find_exe( executables ):
 
     return exe
 
+def backup_dir(directory):
+    """ Tar and gzip a given directory and then delete the directory.
+    """
 
+    print "Backing up directory %s" % directory
+    nbackup = 15 # Number of supported backup copies
+    
+    zipname = directory + ".tar.gz"
+    if os.access( zipname, os.F_OK ):
+        for i in range(nbackup):
+            newname = zipname + "." + str(i)
+            if not os.access( newname, os.F_OK ):
+                zipname = newname
+                break
+            if i == nbackup-1:
+                print "backup_dir ran out of backups!"
+                return None
+            
+    # zipname is now the name of the new archive
+    t = tarfile.open( zipname,'w:gz')
+    for dlist in os.walk( directory ):
+        for f in dlist[2]:
+            fpath = os.path.join( dlist[0],f )
+            print "Adding file: %s" % fpath
+            t.add( fpath )
+
+    t.close()
+    
 
 if __name__ == "__main__":
     print 'Python',python_path
     print 'GUI   ',gui_path
     print 'Root  ',root_path
     print 'User  ',user_path
-    
