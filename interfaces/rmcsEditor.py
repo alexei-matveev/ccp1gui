@@ -37,7 +37,6 @@ class RMCSEditor(JobSubEditor):
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
         
-
         # These are found in the base class JobSubEditor (see jobsubEditor.py)
         self.LayoutMachListWidget()
         self.LayoutNprocWidget()
@@ -140,15 +139,8 @@ class RMCSEditor(JobSubEditor):
         self.myProxyPassword.pack(side='top')
         Pmw.alignlabels( [self.myProxyUser, self.myProxyPassword] )
 
-        # Buttons to save or quit
-        quitAndSaveButton = Tkinter.Button(self.interior(),
-                                text="Quit and Save",
-                                command=self.QuitAndSave)
-        quitAndSaveButton.pack(side='left')
-        quitNoSaveButton = Tkinter.Button(self.interior(),
-                                text="Quit do not save",
-                                command=self.QuitNoSave)
-        quitNoSaveButton.pack(side='left')
+        self.LayoutQuitButtons()
+
 
     def SrbBrowseDir(self):
         # askdirectory() cant create new directories so use asksaveasfilename is used instead
@@ -162,20 +154,7 @@ class RMCSEditor(JobSubEditor):
         else:
             self.srbConfigFile.setvalue(path)
 
-        
-    def QuitNoSave(self):
-        """It's all gone Pete Tong so we do the honourable thing..."""
-        self.Quit()
-
-    def QuitAndSave(self):
-        """Update the rc_vars with the new values"""
-        
-        global rc_vars
-        for key,func in self.getValue.iteritems():
-            rc_vars[key] = func()
-            #print "Updating rc_vars with %s : %s" % (key,rc_vars[key])
-        self.Quit()
-            
+                    
 
 if __name__ == "__main__":
     rc_vars[ 'machine_list'] = ['computers','are','evil']
