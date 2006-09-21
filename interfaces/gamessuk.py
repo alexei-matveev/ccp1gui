@@ -39,6 +39,7 @@ from jobmanager import *
 from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
 from interfaces.rmcsEditor import RMCSEditor
+from interfaces.ngridEditor import NordugridEditor
 from objects.file import *
 #
 from viewer.rc_vars import rc_vars
@@ -464,6 +465,12 @@ class GAMESSUKCalc(QMCalc):
             
         elif submission_policy == 'Nordugrid':
             job_desc = 'Running GAMESS-UK on Nordugrid'
+            
+            # Update any parameters the user may have set
+            if self.has_parameter('job_parameters'):
+                ndict = self.get_parameter('job_parameters')
+                job.update_job_parameters( ndict )
+
             self.setup_nordugrid_job( job, punchfile=punchfile, editor=ed )
                 
         job.add_step( RUN_APP,
@@ -735,7 +742,7 @@ class GAMESSUKCalc(QMCalc):
         if job.job_parameters['count'] == '1':
             # On 1 proc therefore need to see if we have an executable to run on the machine
             # and if a gamessuk environment exists there. If not we copy out our own gamess-uk executable
-            if not job.job_parameters['ngrid_executable'] and not job.job_parameters['ngrid_runTimeEnvironment']:
+            if not job.job_parameters['executable'] and not job.job_parameters['runTimeEnvironment']:
                 # No executable set and no environment, so we need to copy out the executable
                 executable = self.get_gamessuk_exe()
                 if not executable:
@@ -754,18 +761,21 @@ class GAMESSUKCalc(QMCalc):
                     if editor:
                         editor.Error("Error copy Nordugrid excutable to working directory!\n- %s" % e )
                     return
-                job.job_parameters['ngrid_executable'] = exe_name
+                job.job_parameters['executable'] = exe_name
                 job.job_parameters['inputfiles'][exe_name] = None
                 # hack
                 if punchfile:
-                    job.job_parameters['ngrid_environment']['ftn058'] = punchfile
-                job.job_parameters['ngrid_memory']='500' # Need as otherwise jobs die with Error 11
+                    job.job_parameters['environment']['ftn058'] = punchfile
+                if not job.job_parameters['memory']:
+                    job.job_parameters['memory']='500' # Need as otherwise jobs die with Error 11
         else:
             # Running parallel GAMESS-UK so assume look for clusters with the correct environment
-            if not job.job_parameters['ngrid_runTimeEnvironment']:
-                job.job_parameters['ngrid_executable'] = "/usr/bin/time"
-                job.job_parameters['ngrid_runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
-                job.job_parameters['ngrid_environment']['ftn058'] = punchfile
+            if not job.job_parameters['runTimeEnvironment']:
+                job.job_parameters['runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
+            if not job.job_parameters['executable']:
+                job.job_parameters['executable'] = "/usr/bin/time"
+                
+            job.job_parameters['environment']['ftn058'] = punchfile
 
     def get_theory(self):
         """Convenience function for ChemShell interface"""
@@ -2142,12 +2152,8 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         if policy == 'localhost':
             self.submission_config_button.forget()
-        elif policy == 'RMCS':
-            self.submission_tool.widget.forget()
-            self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
+        elif policy == 'RMCS' or policy == 'Nordugrid':
             self.submission_config_button.pack(side='left')
-        elif policy == 'Nordugrid':
-            self.submission_config_button.forget()
 
     def configure_jobSubmitEd(self):
         """Fire up the appropriate widget to configure the job depending on
@@ -2156,7 +2162,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         jobSubmitEd = self.get_jobSubmitEd()
         jobSubmitEd.show()
                 
-    def get_jobSubmitEd(self,manager=None):
+    def get_jobSubmitEd(self):
         """Return the appropriate jobSubmitEd widget or create one if it doens't exist
            if the manager string is supplied we return the instance of that type of manager
         """
@@ -2166,40 +2172,28 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         if self.jobSubmitEd:
             edtype = str(self.jobSubmitEd).split()[0]
-            if manager:
-                if edtype == manager:
-                    return self.jobSubmitEd
-                else:
-                    self.jobSubmitEd.destroy()
+            #print "edtype is ",edtype
+            if edtype == editor:
+                return self.jobSubmitEd
             else:
-                if edtype == editor:
-                    return self.jobSubmitEd
-                else:
-                    # Should ask here first...
-                    self.jobSubmitEd.destroy()
+                # Should ask here first...
+                self.jobSubmitEd.destroy()
 
         # We either didn't have a job editor or we have destroyed the old one
-        if manager:
-            if manager == 'RMCS':
-                print "creating jobSubmitEd"
-                self.jobSubmitEd = RMCSEditor(self.interior(), onkill=self.jobSubmitEd_die)
-            else:
-                print "Error: get_jobSubmitEd - unrecognised job editor: %s" % editor
-                return None
+        #print "creating jobSubmitEd"
+        if editor == 'RMCS':
+            self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die)
+        elif editor == 'Nordugrid':
+            self.jobSubmitEd = NordugridEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc)
         else:
-            if editor == 'RMCS':
-                print "creating jobSubmitEd"
-                self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die)
-            else:
-                print "Error: get_jobSubmitEd - unrecognised job editor: %s" % editor
-                return None
+            print "Error: get_jobSubmitEd - unrecognised job editor: %s" % editor
+            return None
 
         return self.jobSubmitEd
 
     def jobSubmitEd_die(self):
         """Set the jobSubmitEditor variable to None"""
         self.jobSubmitEd = None
-        
             
     def __dftradialgridpoints(self,choice):
         """Select the number of gridpoints dependant on the radial grid selected
