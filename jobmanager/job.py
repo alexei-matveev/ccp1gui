@@ -340,10 +340,30 @@ class Job:
     def get_rcvars(self):
         """ Update any job parameters from the rc_vars.
         """
+
         global rc_vars
         for key,value in self.job_parameters.iteritems():
             if rc_vars.has_key(key):
                 self.job_parameters[key]= rc_vars[key]
+                
+        if self.debug:
+            print "job get_rcvars: parameters are now:"
+            print self.job_parameters
+
+    def update_job_parameters(self, job_dict):
+        """Update the job parameters from the supplied dictionary
+           Only updates for variables that already exist as keys in the
+           job_parameters dictionary are permitted.
+        """
+
+        for key,value in self.job_parameters.iteritems():
+            if job_dict.has_key( key ):
+                self.job_parameters[key] = job_dict[key]
+                
+        if self.debug:
+            print "job update_job_parameters: parameters are now:"
+            print self.job_parameters
+
 
 class BackgroundJob(Job):
     """Sub class for a job running on the local resource
@@ -928,7 +948,6 @@ class RMCSJob(Job):
         if self.debug:
             print "submitting job:"
             print mcs_file
-        #raise JobError,"No Fucking Way Dude!"
         
         #Submit Job
         self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
@@ -1055,7 +1074,7 @@ class NordugridJob(Job):
     """Class for running job's on the Nordugrid"""
     def __init__(self,editor=None,**kw):
         apply(Job.__init__, (self,), kw)
-        
+
         # Check the arclib module is available
         global arclib
         try:
@@ -1078,36 +1097,36 @@ class NordugridJob(Job):
         # Set to none so that we can check we have been passed them
         self.job_parameters = {}
         self.job_parameters['count'] = '1'
-        self.job_parameters['machine_list'] = None
         self.job_parameters['inputfiles'] = {}
         self.job_parameters['outputfiles'] = {}
         self.job_parameters['outputfiles']["\"/\""]=None # Means keep everything
-        self.job_parameters['ngrid_executable'] = None
-        self.job_parameters['ngrid_arguments'] = None
-        self.job_parameters['ngrid_jobName'] = None
-        self.job_parameters['ngrid_stdin'] = None
-        self.job_parameters['ngrid_stdout'] = None
-        self.job_parameters['ngrid_stderr'] = None
-        self.job_parameters['ngrid_cpuTime'] = None
-        self.job_parameters['ngrid_wallTime'] = None
-        self.job_parameters['ngrid_memory'] = None
-        self.job_parameters['ngrid_disk'] = None
-        self.job_parameters['ngrid_runTimeEnvironment'] = None
-        self.job_parameters['ngrid_opsys'] = None
-        self.job_parameters['ngrid_gmlog'] = 'gmlog'
-        self.job_parameters['ngrid_architechture'] = None
-        self.job_parameters['ngrid_environment'] = {}
+        self.job_parameters['executable'] = None
+        self.job_parameters['arguments'] = None
+        self.job_parameters['jobName'] = None
+        self.job_parameters['stdin'] = None
+        self.job_parameters['stdout'] = None
+        self.job_parameters['stderr'] = None
+        self.job_parameters['cpuTime'] = None
+        self.job_parameters['wallTime'] = None
+        self.job_parameters['memory'] = None
+        self.job_parameters['disk'] = None
+        self.job_parameters['runTimeEnvironment'] = None
+        self.job_parameters['opsys'] = None
+        self.job_parameters['gmlog'] = 'gmlog'
+        self.job_parameters['architechture'] = None
+        self.job_parameters['environment'] = {}
 
         # Update the defaults with anything that is in the rc_vars dict
         self.get_rcvars()
-        # HACK - scrub the machine_list as we currently don't support inheriting old machines
-        self.job_parameters['machine_list'] = None
 
         if self.name:
-            self.job_parameters['ngrid_jobName'] = self.name
+            self.job_parameters['jobName'] = self.name
         else:
             self.name = "CCP1GUINordugridJob"
-            self.job_parameters['ngrid_jobName'] = self.name
+            self.job_parameters['jobName'] = self.name
+
+        if self.debug:
+            print "Nordugrid job iniited successfully"
 
     def CheckProxy(self):
         """ Check that the user has a valid proxy and throw an exception if not"""
@@ -1163,8 +1182,8 @@ class NordugridJob(Job):
 
         # Not used as we build up the xrsl using the relevant tools instead
         xrsl_string = '&'
-        for key,value in self.job_parameters.iteritems():
-            rsl_name = key.replace('ngrid_','')
+        for rsl_name,value in self.job_parameters.iteritems():
+            #rsl_name = key.replace('ngrid_','')
             #print "CreateRSL got: %s : %s" % (rsl_name,value)
             if value:
                 if type(value) == list:
@@ -1181,7 +1200,8 @@ class NordugridJob(Job):
                                 xrsl_string += '(%s %s)' % ( dkey, dvalue )
                         xrsl_string += ')'
                 else:
-                    xrsl_string += '(%s=%s)' % (rsl_name,value)
+#                    xrsl_string += '(%s=%s)' % (rsl_name,value)
+                    xrsl_string += '(%s="%s")' % (rsl_name,value)
 
         print "CreateRsl xrsl_string is: ",xrsl_string
 
@@ -1256,18 +1276,19 @@ class NordugridJob(Job):
 
         print "Nordugrid run_app"
         if step.stdin_file:
-            self.job_parameters['ngrid_stdin'] = step.stdin_file
+            self.job_parameters['stdin'] = step.stdin_file
         if step.stdout_file:
-            self.job_parameters['ngrid_stdout'] = step.stdout_file
+            self.job_parameters['stdout'] = step.stdout_file
         if step.stderr_file:
-            self.job_parameters['ngrid_stderr'] = step.stderr_file
+            self.job_parameters['stderr'] = step.stderr_file
 
         xrsl = self.CreateRSL()
+    
         machines = self.GetTargets( xrsl )
         if len(machines) == 0:
             raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
         
-        #raise JobError,"No Fucking Way Dude!"
+        #raise JobError,'No Way Dude!'
         self.Submit( xrsl, machines )
 
         running = 1
@@ -1314,6 +1335,9 @@ class NordugridJob(Job):
         """Copy back the directory with all the output files in it.
            This often dies with: Leaked globus_ftp_control_t
         """
+        if self.debug:
+            print "Nordugrid copy_bck_rundir:"
+            
         if jobid:
             myjobid = jobid
         else:
@@ -1367,7 +1391,9 @@ class NordugridJob(Job):
     def copy_out_file(self,step,kill_on_error=1):
         """Append the file to the list of files that are to be copied out"""
 
-        #print "Nordugrid copying out file: %s : %s" %( step.local_filename,step.remote_filename)
+        if self.debug:
+            print "Nordugrid copying out file: %s : %s" %( step.local_filename,step.remote_filename)
+            
         if not step.remote_filename and not step.local_filename:
             return -1,"Nordugrid copy_out_file needs a filename!"
 
@@ -1384,7 +1410,9 @@ class NordugridJob(Job):
     def copy_back_file(self,step,kill_on_error=None):
         """Get the file back from Nordugrid and rename it if necessary"""
 
-        print "Nordugrid copying back file"
+        if self.debug:
+            print "Nordugrid copy_back_file: %s : %s" %( step.local_filename,step.remote_filename)
+            
         if not step.remote_filename and not step.local_filename:
             return -1,"Nordugrid copy_back_file needs a filename!"
 
@@ -1423,7 +1451,6 @@ class NordugridJob(Job):
             raise JobError,"Nordugrid copy_back_file error retrieving file: %s" % fileURL
             
         return 0,"Retrived file %s from Nordugrid" % local_filename
-
 
     def kill(self):
         """ Kill the job if we are running. We either use the supplied kill command, or
