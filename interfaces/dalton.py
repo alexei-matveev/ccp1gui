@@ -430,18 +430,18 @@ class DALTONCalc(QMCalc):
         except Exception,e:
             raise Exception,"Error getting Dalton output in endjob2: %e" % e
 
+
         # Merge the stdout and output to give a full output
-        all_output = stdout
-        all_output = stdout.append( "\n\t===*** END OF DALTON SCRIPT OUTPUT ***==\n" )
-        all_output = stdout + readout
+        all_output = stdout  +  ["\n\t===*** END OF DALTON SCRIPT OUTPUT ***==\n"] + readout
 
         self.set_output( "all_output", all_output )
+
         #self.set_output( "log_file",output )
 
         # Bit of a hack - if we are running a geometry optimisation, get the structures
         geomopt = self.get_parameter( 'geomopt' )
         if ( geomopt ):
-            d = DaltonOutputReader( olist = all_output )
+            d = DaltonOutputReader( olist = all_output)
             molecules = d.get_molecules()
             index = 1
             if ( molecules ):

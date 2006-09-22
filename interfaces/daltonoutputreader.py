@@ -19,6 +19,7 @@
 #
 import re
 import string
+import copy
 from objects import zmatrix
 
 # Define bohrs 2 anstrom - this really needs to be stored globally
@@ -83,7 +84,7 @@ class DaltonOutputReader:
                 return
             
         elif( olist ):
-            self.list = olist
+            self.list = copy.deepcopy(olist)
         else:
             print "Dalton output reader must be called with a file or a list as an argument!"
             return
