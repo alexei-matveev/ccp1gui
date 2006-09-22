@@ -20,6 +20,7 @@
 import Pmw
 import Tkinter
 import tkFileDialog
+import os
 
 from interfaces.calc import *
 from viewer.initialisetk import initialiseTk
@@ -29,17 +30,26 @@ class Editor(Pmw.MegaToplevel):
    """A simple editor class for editing text data.
    """
 
-#   def __init__(self,parent,title=None,data=None,**kw):
-   def __init__(self,parent,title=None,data=None,directory=None,**kw):
-
+#   def __init__(self,parent,title=None,data=None,directory=None,**kw):
+   def __init__(self,parent,**kw):
 
        self.parent = parent
-       self.data = data
-       self.inputtitle = title
-       self.user_directory=directory
 
-       Pmw.MegaToplevel.__init__(self, parent, title="Calculation Input Editor" )
-       initialiseTk(parent)
+       if kw.has_key('title'):
+          self.edtitle = kw['title']
+       else:
+          self.edtitle = 'No Title'
+       if kw.has_key('directory'):
+          self.directory = kw['directory']
+       else:
+          self.directory = os.getcwd()
+       if kw.has_key('data'):
+          self.data = kw['data']
+       else:
+          self.data = None
+
+       Pmw.MegaToplevel.__init__(self, self.parent, title=self.edtitle )
+       initialiseTk(self.parent)
        
        # Ensure that when the user kills us with the window manager we behave as expected
        self.userdeletefunc( func = self.Quit )
@@ -74,17 +84,17 @@ class Editor(Pmw.MegaToplevel):
        
        self.text = Pmw.ScrolledText(self.interior(),
                                           labelpos = 'n',
-                                          label_text=self.inputtitle)
+                                          label_text=self.edtitle)
        self.text.pack(fill='both',expand=1)
        
-       self.__settext()
+       self.settext()
 
         
-   def __settext(self):
+   def settext(self):
        """ Fill the widget with the input text
        """
        if self.data == None:
-           self.Quit()
+           pass
        else:
            self.text.clear()
            for a in self.data:
@@ -102,7 +112,7 @@ class Editor(Pmw.MegaToplevel):
        """Save this version  as a named file.
        """
        savefilename = tkFileDialog.asksaveasfilename(
-           initialdir = self.user_directory,
+           initialdir = self.directory,
            filetypes=[("All Files","*.*")])
        if len(savefilename) == 0:
            return
@@ -124,13 +134,28 @@ class InputEd(Editor):
 
    """A simple text editor to edit the inputs to calculations.
    
+      We can be passed a keyword "onsave" that is a command to run when the
+      user hits "save" - this should set anything up requried by the calculation
+      editor and reutrn the filname that we are to write out.
    """
 
    def __init__(self,parent,calc,calced,**kw):
 
+       
+       Editor.__init__( self, parent, **kw )
+       
        self.parent = parent
        self.calc = calc
        self.calced = calced
+
+       if kw.has_key('onsave'):
+          self.onsave = kw['onsave']
+       else:
+          self.onsave = None
+          
+       #Get the data
+       if not self.data:
+          self.data = self.calc.get_input('input_file')
 
        # Use the job_name if one set, else the calc name
        try:
@@ -138,13 +163,7 @@ class InputEd(Editor):
        except KeyError, e:
           self.edtitle= self.calc.get_name()
 
-       #Get the data 
-       self.input = self.calc.get_input('input_file')
-
-       #Initialise the base editor class
-       Editor.__init__(self,self.parent,self.edtitle,self.input)
-                               
-       #self.__settext()
+       self.settext()
 
         
                
@@ -156,14 +175,24 @@ class InputEd(Editor):
    def Save(self):
        """Make this the input
        """
+
        input = self.text.get()
        self.calc.set_input('input_file',input)
        
-       try:
-          filename = str(self.calc.get_parameter("job_name"))+".in"
-       except KeyError, e:
-          filename = str(self.calc.get_name())+".in"
-       
+       # Check if there is any command we should run on saving
+       if self.onsave:
+          try:
+             filename = self.onsave()
+          except Exception,e:
+             self.calced.Error("Error running onsave commmand in InputEditor!\n%s" % e )
+             return
+
+       if not filename:
+          try:
+             filename = str(self.calc.get_parameter("job_name"))+".in"
+          except KeyError, e:
+             filename = str(self.calc.get_name())+".in"
+          
        inputfile = open(filename,"w")
        inputfile.write(input)
        inputfile.close()

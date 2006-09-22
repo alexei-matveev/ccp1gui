@@ -24,6 +24,7 @@
 import os
 import string
 import sys
+import copy
 
 import Tkinter
 import Pmw
@@ -184,10 +185,12 @@ class DALTONCalc(QMCalc):
     def get_editor_class(self):
         return DALTONCalcEd
 
-    def WriteInput(self, nowrite=None ):
+    def WriteInput(self, nowrite=None, only_dal=None, only_mol=None ):
         """ Write out the Dalton input files. This takes the rather unintuitive optional
             parameter nowrite, which, if set, just creates the input for viewing and doesn't
             write any files. This used by the __updateinput method.
+            if only_dal or only_mol are set, only write out the dal or mol files
+            
         """
 
         #Get an editor object so we can pop up tk error widgets
@@ -208,51 +211,54 @@ class DALTONCalc(QMCalc):
                 return None
         
         # Create the input for the .dal file & write out if necessary
-        dalfilename = self.get_parameter('dalfilename')
-        dalfile = workdir+os.sep+dalfilename+'.dal'
-        dalinput = []
-        dalinput = self.__writedalfile( mol_obj )
-        if not dalinput:
-            ed.Error ( "There was a problem writing %s!" % dalfile )
-            return 1
-        else:
-            self.set_input( 'dalinput', dalinput )
-            if ( not nowrite ):
-                d = open( dalfile, 'w' )
-                for line in dalinput:
-                    d.write( line )
-                d.close()
+        if not only_mol:
+            dalfilename = self.get_parameter('dalfilename')
+            dalfile = workdir+os.sep+dalfilename+'.dal'
+            dal_input = []
+            dal_input = self.__writedalfile( mol_obj )
+            if not dal_input:
+                ed.Error ( "There was a problem writing %s!" % dalfile )
+                return 1
+            else:
+                self.set_input( 'input_file', dal_input )
+                if ( not nowrite ):
+                    d = open( dalfile, 'w' )
+                    for line in dal_input:
+                        d.write( line )
+                    d.close()
+
+        if only_dal:
+            return
 
         # start to set up the input list that will be displayed in the window
-        #input = dalinput
+        #input = dal_input
         #input.append( "\n\n\t***************\n" )
 
         # Create the .mol file and write it out if necessary
         molfilename = self.get_parameter( 'molfilename' )
         molfile = workdir+os.sep+molfilename+'.mol'
-        molinput = []
-        molinput = self.__writemolfile( mol_obj )
-        if not molinput:
+        mol_input = []
+        mol_input = self.__writemolfile( mol_obj )
+        if not mol_input:
             ed.Error ( "There was a problem writing %s!" % molfile )
             return 1
         else:
-            self.set_input( 'mol_input', molinput )
+            self.set_input( 'mol_input', mol_input )
             if ( not nowrite ):
                 m = open( molfile, 'w' )
-                for line in molinput:
+                for line in mol_input:
                     m.write( line )
                 m.close()
 
+        if only_mol:
+            return
 
-        # Create an input that consists of both dalinput & molinput
-        # shopuld I  use deepcopy here or else am I just copying the
-        # reference to dalinput?
-        all_input = dalinput
+        # Create an input that consists of both dal_input & mol_input
+        all_input = copy.copy(dal_input)
         all_input.append( "\n\n\t==*******************************==\n" )
-        all_input = all_input + molinput
+        all_input = all_input + mol_input
         
         self.set_input( "all_input", all_input )
-
 
         # Set up the jobname and the dal and mol files
         # need to be careful as this is different depending on whether the names differ or not
@@ -282,33 +288,33 @@ class DALTONCalc(QMCalc):
         if writeinput:
             werr = self.WriteInput()
             if werr:
-                return 1
+                return None
         # Make sure the files exist and have owt in them
         else:
+            err_msg = "Trying to run a calculation with an empty .mol file!\n" +\
+                      "Please make sure you have written a valid Dalton moleclue file."
             try:
                 molfile = self.get_parameter( 'molfile' )
                 size = os.path.getsize( molfile )
                 if ( size == 0 ):
-                    ed.Error("Trying to run a calculation with an empty .dal file!\n"+
-                             "Please make sure you have written a valid Dalton input file.")
-                    return 1
+                    ed.Error( err_msg )
+                    return None
                 #except IOError,e:
             except os.error,e:
-                ed.Error("Trying to run a calculation with no .dal file!\n"+
-                         "Please make sure you have written a dalton input file.")
-                return 1
+                ed.Error( err_msg )
+                return None
 
+            err_msg = "Trying to run a calculation with an empty .dal file!\n" +\
+                      "Please make sure you have written a valid Dalton input file."
             try:
                 dalfile = self.get_parameter( 'dalfile' )
                 size = os.path.getsize( dalfile )
                 if ( size == 0 ):
-                    ed.Error("Trying to run a calculation with an empty .dal file!\n"+
-                             "Please make sure you have written a valid Dalton input file.")
-                    return 1
+                    ed.Error( err_msg )
+                    return None
             except os.error,e:
-                ed.Error("Trying to run a calculation with no .dal file!\n"+
-                         "Please make sure you have written a Dalton input file.")
-                return 1
+                ed.Error( err_msg )
+                return None
 
         #
         #  Need to decide what kind of job run
@@ -321,14 +327,14 @@ class DALTONCalc(QMCalc):
             # We purge Windows here and assume that all other platforms are o.k.
             if sys.platform[:3] == 'win':
                 ed.Error("Dalton on Windows?!? - I think not... :-)")
-                return 1
+                return None
             else:
                 # Haven't implemented UNIX fork interface yet
                 os.chdir(workdir) #Run job in the specified directory
                 job = jobmanager.ForegroundJob()
         else:
             print 'unsupported host'
-            return 1
+            return None
 
         #mol_name = self.get_input("mol_name")
         #directory = self.get_parameter("directory")
@@ -337,12 +343,6 @@ class DALTONCalc(QMCalc):
         dalfilename = self.get_parameter( 'dalfilename' )
         molfilename = self.get_parameter( 'molfilename' )
         
-        # Dont need to do any of this for Dalton as the script does it all for us
-        #job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out')
-        #job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun')
-        #job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
-
-
         # Now need to build up the arguments to the dalton script depending on what
         # options the user has chosen. The arguments are built up as a series of strings.
         # by default these have 0 length unless the user has selected that option, in which
@@ -370,6 +370,10 @@ class DALTONCalc(QMCalc):
             keepscratchstr = " -D "
 
         dalton_script = self.get_parameter( 'dalton_script' )
+
+        if dalton_script == 'PLEASE SET ME!':
+            ed.Error( "Cannot run the calculation as you have not set the path to the Dalton script!" )
+            return None
 
         rundaltonscript_cmd = dalton_script + workdirstr + basisstr + keepscratchstr + scratchstr +\
                               " " + dalfilename + " " + molfilename 
@@ -1083,8 +1087,10 @@ class DALTONCalcEd(QMCalcEd):
         """Check if there is an input, if there is make sure we are
            not editing it before firing up an editor.
         """
+
+        self.calc.WriteInput(nowrite=1) # Update the input
         
-        input = self.calc.get_input('all_input')
+        input = self.calc.get_input('input_file')
         if input == None:
             self.Info("No input file available currently")
         else:
@@ -1093,10 +1099,22 @@ class DALTONCalcEd(QMCalcEd):
                 self.inputeditor.show()
                 return
             else:
-                self.inputeditor = InputEd(self.interior(),self.calc,self)
+                self.inputeditor = InputEd(self.interior(),
+                                           self.calc,
+                                           self,
+                                           data=input,
+                                           onsave=self._InputEditorSaveCmd)
                 return 
-       
 
+    def _InputEditorSaveCmd(self):
+        """The commands to be carried out when the use hits "Save" in the Input editor
+           returns the name of the file to write out.
+        """
+
+        # Make sure we write out the mol input file
+        self.calc.WriteInput( only_mol=1 )
+        return self.calc.get_parameter('dalfilename') + '.dal'
+        
     def ViewOutput(self):
         """Drag out the output file and show in a text widget."""
         output = self.calc.get_output('all_output')
@@ -1127,7 +1145,6 @@ class DALTONCalcEd(QMCalcEd):
         self.inputviewer.component('columnheader').tag_config("job_name",justify="center")
         self.inputviewer.configure( Header_state = 'disabled' )
 
-        #input = self.calc.get_input("input_file")
         dinput = self.calc.get_input( "all_input" )
         self.inputviewer.clear()
         
