@@ -394,7 +394,7 @@ class DALTONCalc(QMCalc):
 
     def endjob2(self,code=0):
         """This function is executed in the main thread"""
-        print 'endjob2'
+
         if self.debug:
             print 'running endjob2 code=',code
 
@@ -402,22 +402,33 @@ class DALTONCalc(QMCalc):
         if self.debug_slave:
             print 'endjob....'
 
+        # Get an editor so we can display messages and access the main graph object
+        ed = self.get_editor()
+
         # Jens - need to think about a ReadOutput and ReadInput
         # this just for testing purposes
         job_name = self.get_parameter("job_name")
         workdir = self.get_parameter("workdir")
 
         # Get the stdout
-        stdoutfile = open("daltonstd.out")
-        stdout = stdoutfile.readlines()
-        stdoutfile.close()
+        try:
+            stdoutfile = open("daltonstd.out")
+            stdout = stdoutfile.readlines()
+            stdoutfile.close()
+        except Exception,e:
+            ed.Error("WARNING! - Problem getting output of Dalton Script!\n%s" %e)
+            stdout = ["Error Getting output of Dalton Script!\n",e]
+
         self.set_output( "script_stdout",  stdout )        
 
         # Get the output file
-        outputfile = open( workdir + os.sep + job_name + ".out" )
-        readout = outputfile.readlines()
-        outputfile.close()
-        self.set_output( "dalton_output", readout )
+        try:
+            outputfile = open( workdir + os.sep + job_name + ".out" )
+            readout = outputfile.readlines()
+            outputfile.close()
+            self.set_output( "dalton_output", readout )
+        except Exception,e:
+            raise Exception,"Error getting Dalton output in endjob2: %e" % e
 
         # Merge the stdout and output to give a full output
         all_output = stdout
@@ -425,35 +436,29 @@ class DALTONCalc(QMCalc):
         all_output = stdout + readout
 
         self.set_output( "all_output", all_output )
-        
         #self.set_output( "log_file",output )
-
-        # Get an editor so we can display messages and access the main graph object
-        ed = self.get_editor()
 
         # Bit of a hack - if we are running a geometry optimisation, get the structures
         geomopt = self.get_parameter( 'geomopt' )
         if ( geomopt ):
             d = DaltonOutputReader( olist = all_output )
             molecules = d.get_molecules()
-            
-            # bin the first molecule as it will be the same as the one sat in the GUI
-            if molecules:
-                molecules.pop(0)
-                
             index = 1
             if ( molecules ):
+                if len(molecules) > 1:
+                    # bin the first molecule as it will be the same as the one sat in the GUI
+                    molecules.pop(0)
+
                 for mol in molecules:
                     #print "mol is ",mol
                     #print "mol.title is ",mol.title
                     #if not mol.title:
                     mol.title = job_name + str( index )
                     mol.name = ed.graph.make_unique_name( mol.title )
-                    ed.graph.quick_mol_view( mol )
                     ed.graph.append_data( mol )
                     ed.graph.connect_model( mol )
                     index += 1
-
+            ed.graph.quick_mol_view( molecules )
         # Parsing the ouput files to get structures, orbitals would be called from here
         ed.Info( "Dalton calculation has completed. Please check the output to see if \n" +
                  "what you thought should happen actually has..." )
