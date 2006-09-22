@@ -25,9 +25,9 @@ class RMCSEditor(JobSubEditor):
         self.values['srb_executable'] = 'SET ME'
         self.values['srb_output_dir'] = 'SET ME'
         self.values['rmcs_user'] = getpass.getuser()
-        self.values['rmcs_password'] = 'SET ME'
+        self.values['rmcs_password'] = ''
         self.values['myproxy_user'] = getpass.getuser()
-        self.values['myproxy_password'] = 'SET ME'
+        self.values['myproxy_password'] = ''
 
         self.GetInitialValues()
         self.LayoutWidgets()
@@ -89,6 +89,7 @@ class RMCSEditor(JobSubEditor):
                                             label_text = 'SRB Executable:',
                                             validate = None
                                             )
+        self.srbExecutable.pack(side='top')
         self.getValue['srb_executable'] = lambda s=self: s.srbExecutable.getvalue()
         self.setValue['srb_executable'] = self.srbExecutable.setentry
         Pmw.alignlabels( [self.srbInputDir, self.srbOutputDir,
