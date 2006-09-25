@@ -91,7 +91,7 @@ class JobEditor(Pmw.MegaToplevel):
         #self.error.show()
 
     def show(self, **kw):
-        m = re.match('(\d+)x(\d+)\+(\d+)\+(\d+)',self.root.geometry())
+        m = re.match('(\d+)x(\d+)\+(-?\d+)\+(-?\d+)',self.root.geometry())
         msx,msy,mpx,mpy = int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4))
         print 'master geom',    msx,msy,mpx,mpy
         #self.geometry('%dx%d+%d+%d' % (self.frameWidth, self.frameHeight, mpx+msx+8,mpy+msy+24))
