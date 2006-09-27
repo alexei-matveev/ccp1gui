@@ -422,7 +422,6 @@ class GAMESSUKCalc(QMCalc):
             except Exception,e:
                 ed.Error(e)
                 return
-            
 
         # These steps carried out for all jobs
         job.name    = job_name
@@ -430,7 +429,11 @@ class GAMESSUKCalc(QMCalc):
         stdout_file = job_name+'.out'
         punchfile  = job_name+'.pun'
 
-        
+        # Update any parameters the user may have set with the jobsubeditor widget
+        if self.has_parameter('job_parameters'):
+            ndict = self.get_parameter('job_parameters')
+            job.update_job_parameters( ndict )
+
         job.add_step( DELETE_FILE,
                       'remove old output',
                       remote_filename=stdout_file,
@@ -465,12 +468,6 @@ class GAMESSUKCalc(QMCalc):
             
         elif submission_policy == 'Nordugrid':
             job_desc = 'Running GAMESS-UK on Nordugrid'
-            
-            # Update any parameters the user may have set
-            if self.has_parameter('job_parameters'):
-                ndict = self.get_parameter('job_parameters')
-                job.update_job_parameters( ndict )
-
             self.setup_nordugrid_job( job, punchfile=punchfile, editor=ed )
                 
         job.add_step( RUN_APP,
@@ -2182,7 +2179,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         # We either didn't have a job editor or we have destroyed the old one
         #print "creating jobSubmitEd"
         if editor == 'RMCS':
-            self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die)
+            self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die,  calc=self.calc)
         elif editor == 'Nordugrid':
             self.jobSubmitEd = NordugridEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc)
         else:
