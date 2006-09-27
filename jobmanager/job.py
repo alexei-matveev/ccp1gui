@@ -948,15 +948,39 @@ class RMCSJob(Job):
         if self.debug:
             print "submitting job:"
             print mcs_file
-        
-        #Submit Job
-        self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
-                               self.job_parameters['rmcs_password'])
-        self.jobID = self.rmcs.submitJob( mcs_file,
-                                     self.job_parameters['myproxy_user'],
-                                     self.job_parameters['myproxy_password'],
-                                     self.jobtype,
-                                     False)
+
+        #raise JobError,"Not on your nelly squire!"
+        try:
+            self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
+                                   self.job_parameters['rmcs_password'])
+        except Exception,e:
+            msg =  "Exception while creating rmcs:\n%s" % e
+            raise JobError,msg
+
+        try:
+            self.jobID = self.rmcs.submitJob( mcs_file,
+                                              self.job_parameters['myproxy_user'],
+                                              self.job_parameters['myproxy_password'],
+                                              self.jobtype,
+                                              False)
+        except Exception,e:
+            msg = None
+            try:
+                faultstring = e.faultstring
+            except AttributeError:
+                pass
+            else:
+                if faultstring == 'Authentication Failed':
+                    msg =  "There was an Authentication Error on submitting your job!\n" +\
+                          "Please check that your password is correct for the user: %s" % self.job_parameters['rmcs_user']
+                else:
+                    msg = "There was an Error on submitting your job!\n" +\
+                          "The soap faultstring is: %s" %  faultstring
+
+            if not msg:
+                msg = "There was an error submitting your job! The error returned was:\n%s" % e
+            
+            raise JobError,msg
 
         #Monitor Job Information
         running = 1
@@ -1134,7 +1158,7 @@ class NordugridJob(Job):
         cert = arclib.Certificate(arclib.PROXY)
         if cert.IsExpired():
             raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
-            a proxy with a lifetime sufficient for your job and then restart the CCP1GUI."
+            a proxy with a lifetime sufficient for your job."
             return 1
         else:
             return None
@@ -1204,10 +1228,12 @@ class NordugridJob(Job):
                     xrsl_string += '(%s="%s")' % (rsl_name,value)
 
         print "CreateRsl xrsl_string is: ",xrsl_string
-
         try:
             xrsl = arclib.Xrsl( xrsl_string )
-        #except Exception,e:
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+        except Exception,e:
+            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
         except:
             raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
 
@@ -1221,6 +1247,8 @@ class NordugridJob(Job):
 
         try:
             targets = arclib.PrepareJobSubmission( xrsl )
+#        except arclib.ARCLibError,e:
+#            raise JobError, "Nordugrid GetTargets hit problems preparing job submission!\n%s" % e
         except Exception,e:
             raise JobError, "Nordugrid GetTargets hit problems preparing job submission!\n%s" % e
         except:
@@ -1239,6 +1267,8 @@ class NordugridJob(Job):
 
         try:
             self.jobID = arclib.SubmitJob( xrsl, targets )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Job Submission of job: <%s> failed!\n%s" % (xrsl,e)
         except Exception,e:
             raise JobError,"Job Submission of job: <%s> failed!\n%s" % (xrsl,e)
         except:
@@ -1264,6 +1294,8 @@ class NordugridJob(Job):
 
         try:
             jobinfo = arclib.GetJobInfo( myjobid )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s"
         except Exception,e:
             raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s"
         except:
@@ -1373,6 +1405,8 @@ class NordugridJob(Job):
 
         try:
             ftpc = arclib.FTPControl()
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugird copy_back_dir hit error initialising FTPControl!\n%s" %e
         except Exception,e:
             raise JobError,"Nordugird copy_back_dir hit error initialising FTPControl!\n%s" %e
         except:
@@ -1383,6 +1417,10 @@ class NordugridJob(Job):
 
         try:
             ftpc.DownloadDirectory( myjobid, dirname )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
+        except arclib.FTPControlError,e:
+            raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
         except Exception,e:
             raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
         except:
@@ -1432,6 +1470,8 @@ class NordugridJob(Job):
 
         try:
             ftpc = arclib.FTPControl()
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid copy_back_file error intialising FTPControl!\n%s" % e
         except Exception,e:
             raise JobError,"Nordugrid copy_back_file error intialising FTPControl!\n%s" % e
         except:
@@ -1445,6 +1485,8 @@ class NordugridJob(Job):
             
         try:
             ftpc.Download( fileURL, local_filename )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid copy_back_file error retrieving file: %s\n%s" % (fileURL,e)
         except Exception,e:
             raise JobError,"Nordugrid copy_back_file error retrieving file: %s\n%s" % (fileURL,e)
         except:
@@ -1471,6 +1513,8 @@ class NordugridJob(Job):
 
             try:
                 arclib.CancelJob( self.jobID )
+#            except arclib.ARCLibError,e:
+#                raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
             except Exception,e:
                 raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
             except:
@@ -1493,6 +1537,8 @@ class NordugridJob(Job):
 
         try:
             arclib.CleanJob( myjobid )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid clean error cleaning job: %s!\n%s" %( myjobid,e)
         except Exception,e:
             raise JobError,"Nordugrid clean error cleaning job: %s!\n%s" %( myjobid,e)
         except:
@@ -1500,6 +1546,8 @@ class NordugridJob(Job):
         
         try:
             arclib.RemoveJobID( myjobid)
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid clean error removing jobID: %s\n%s" % (myjobid,e)
         except Exception,e:
             raise JobError,"Nordugrid clean error removing jobID: %s\n%s" % (myjobid,e)
         except:
