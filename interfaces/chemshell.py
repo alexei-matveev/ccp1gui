@@ -247,8 +247,6 @@ class ChemShellCalc(Calc):
             # running with an argument (rather than stdin redirection)
             # takes advantage of Tcls handling of errors, this way the
             # script will return on error without writing the punchfile 
-
-            print 'FINAL PATH',os.path.environ('PATH')
             cmd="chemsh " + self.infile
             job.add_step(RUN_APP,'run ChemShell',local_command=cmd,
                          stdout_file=self.outfile)
@@ -363,6 +361,10 @@ class ChemShellCalc(Calc):
 
             if myclass == 'VibFreq' :
                 # create a vibration visualiser
+                self.results.append(o)
+
+            if myclass == 'VibFreqSet' :
+                # create a vibration set visualiser
                 self.results.append(o)
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
