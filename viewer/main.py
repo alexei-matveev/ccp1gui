@@ -2806,6 +2806,7 @@ class TkMolView(Pmw.MegaToplevel):
             vis = None
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 vis = self.molecule_visualiser(self.master,self,o)
+
             elif myclass == 'VibFreq' :
                 # create a vibration visualiser
                 try:
@@ -2815,6 +2816,17 @@ class TkMolView(Pmw.MegaToplevel):
                 vis = self.vibration_visualiser(self.master, self, o, mol=refmol)
                 # best have this one open from the start or nothing will happen
                 vis.Open()
+
+            elif myclass == 'VibFreqSet' :
+                # create a vibration visualiser
+                try:
+                    refmol = o.reference
+                except AttributeError:
+                    refmol = self.choose_mol()
+                vis = self.vibration_set_visualiser(self.master, self, o, mol=refmol)
+                # best have this one open from the start or nothing will happen
+                vis.Open()
+
             elif myclass == 'Field':
                 # Data visualisation - rather confusing
                 # New Field Class
@@ -3943,6 +3955,9 @@ class TkMolView(Pmw.MegaToplevel):
             print 'o.name is', o.name
 
             if myclass == 'VibFreq' :
+                self.append_data(o)
+
+            if myclass == 'VibFreqSet' :
                 self.append_data(o)
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
