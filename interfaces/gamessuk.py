@@ -752,12 +752,15 @@ class GAMESSUKCalc(QMCalc):
                 # "Server does not support executable from PATH"
                 # So it looks like we'll have to copy the executable to this directory for now
                 exe_name = os.path.basename(executable)
-                try:
-                    shutil.copyfile( executable, os.getcwd()+os.sep+exe_name )
-                except Exception,e:
-                    if editor:
-                        editor.Error("Error copy Nordugrid excutable to working directory!\n- %s" % e )
-                    return
+                exe_path = os.getcwd()+os.sep+exe_name
+                if not executable == exe_path: # If these the same shutil complains
+                    try:
+                        shutil.copyfile( executable, exe_path )
+                    except Exception,e:
+                        if editor:
+                            editor.Error("Error copying Nordugrid executable to working directory!\n- %s" % e )
+                            return
+                        
                 job.job_parameters['executable'] = exe_name
                 job.job_parameters['inputfiles'][exe_name] = None
                 # hack
@@ -786,10 +789,10 @@ class GAMESSUKCalc(QMCalc):
             else:
                 theory = scf_method
         else:
-            print 'else clause'
+            #print 'else clause'
             theory = postscf_method
 
-        print 'done',theory
+        #print 'done',theory
         return theory
 
     def check_direct(self):
