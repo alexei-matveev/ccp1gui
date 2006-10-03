@@ -1150,18 +1150,34 @@ class NordugridJob(Job):
             self.job_parameters['jobName'] = self.name
 
         if self.debug:
-            print "Nordugrid job iniited successfully"
+            #arclib.SetNotifyLevel(arclib.VERBOSE)
+            arclib.SetNotifyLevel(arclib.INFO)
+            #print "Nordugrid job inited successfully"
 
     def CheckProxy(self):
         """ Check that the user has a valid proxy and throw an exception if not"""
-
-        cert = arclib.Certificate(arclib.PROXY)
-        if cert.IsExpired():
+        cmd = 'grid-proxy-info'
+        arg = '-e'
+        ret = os.spawnlp(os.P_WAIT, cmd, cmd, arg )
+            
+        if ret:
             raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
             a proxy with a lifetime sufficient for your job."
-            return 1
         else:
+            if self.debug:
+                print "Proxy server is o.k."
             return None
+
+#     def CheckProxy(self):
+#         """ Check that the user has a valid proxy and throw an exception if not"""
+
+#         cert = arclib.Certificate(arclib.PROXY)
+#         if cert.IsExpired():
+#             raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
+#             a proxy with a lifetime sufficient for your job."
+#             return 1
+#         else:
+#             return None
 
 #     def CreateRSL(self, rsl_dict=None):
 #         """ Create a suitable rsl to run the job from the job_parameters and
@@ -1199,9 +1215,10 @@ class NordugridJob(Job):
 #         return xrsl
 
 
-    def CreateRSL(self ):
+    def CreateRSL(self,string=None ):
         """ Create a suitable rsl string to run the job from the job_parameters and
             the input and output files, executable, etc
+            set string to 1 to only create an xrsl string not the xrsl object
         """
 
         # Not used as we build up the xrsl using the relevant tools instead
@@ -1227,18 +1244,22 @@ class NordugridJob(Job):
 #                    xrsl_string += '(%s=%s)' % (rsl_name,value)
                     xrsl_string += '(%s="%s")' % (rsl_name,value)
 
-        print "CreateRsl xrsl_string is: ",xrsl_string
-        try:
-            xrsl = arclib.Xrsl( xrsl_string )
-#        except arclib.ARCLibError,e:
-#            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
-        except Exception,e:
-            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
-        except:
-            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
+        if self.debug:
+            print "CreateRsl xrsl_string is: ",xrsl_string
 
-        return xrsl
-    
+        if not string:
+            try:
+                xrsl = arclib.Xrsl( xrsl_string )
+    #        except arclib.ARCLibError,e:
+    #            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+            except Exception,e:
+                raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+            except:
+                raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
+            return xrsl
+        else:
+            return xrsl_string
+
     def GetTargets( self, xrsl ):
         """ Return a list of suitable targets based on the supplied xrsl_string"""
 
@@ -1254,11 +1275,7 @@ class NordugridJob(Job):
         except:
             raise JobError, "Nordugrid GetTargets hit problems preparing job submission!"
 
-        #print "Nordugrid GetTargets returning"
-        #for t in targets:
-        #    print t
         return targets
-
 
     def Submit( self, xrsl, targets ):
         """Submit the job described by the xrsl to the list of machines in targets
@@ -1276,9 +1293,86 @@ class NordugridJob(Job):
 
         # Add job to ~/.ngjobs
         arclib.AddJobID( self.jobID, self.name )
-        print "Submit submitted jobname %s as: %s" % (self.name, self.jobID )
-
+        if self.debug:
+            print "Submit submitted jobname %s as: %s" % (self.name, self.jobID )
         return self.jobID
+
+    def SubmitInSeparateProcess(self,xrsl):
+        """
+          Due to a problem with the querying of targets and submission needs to be run as two
+          seperate processes as Python is not thread safe and the arclib library does not
+          explicitly release the Global Interpereter Lock (GIL) when it queries the network,
+          so the job thread will hang everything while it waits for the network call to return.
+       """
+
+        # Create a file we can used for dumping out the targets in one process and read
+        # them back in, in t'other
+        cwd = os.getcwd()
+        jobid_file = cwd + os.sep + '.arclibCurrentJobID'
+        if not os.access( cwd, os.W_OK ) or ( os.access(jobid_file,os.F_OK)
+                                              and not os.access(jobid_file,os.W_OK) ):
+            raise JobError,"Cannot create file %s in Nordugrid run_app!\n"+\
+                      "Please make sure that you have read/write permission for the directory:\n%s" \
+                      %(jobid_file,cwd)
+
+        if os.access(jobid_file,os.F_OK):
+            try:
+                os.remove( jobid_file )
+            except:
+                raise JobError,"Cannot delete file %s in Nordugrid GetTargets!\n" % jobid_file
+
+        pid = os.fork()
+        if not pid:
+            jobid = ''
+            # Child process - submits job and writes out the jobid
+            try:
+                machines = self.GetTargets( xrsl )
+                jobid = self.Submit( xrsl, machines )
+            except Exception,e:
+                print "Child encountered exception submitting job!"
+                print e
+            except:
+                print "Child encountered exception submitting job!"
+
+            f = open( jobid_file, 'w' )
+            f.write( jobid )
+            f.close()
+            os._exit(0)
+        else:
+            # Parent code
+            # loop and see if file has been created
+            while 1:
+                if os.access( jobid_file,os.R_OK ):
+                    time.sleep( 1 ) # Make sure that the child has a chance to write everything out
+                    break
+                time.sleep( 0.2)
+
+            try:
+                f = open( jobid_file, 'r' )
+                jobid = f.readline()
+                f.close()
+            except:
+                raise JobError,"Error loading in jobid from %s in Nordugrid GetTargets!" % jobid_file
+
+            # Probably uncessary...
+            if jobid.endswith('\n'):
+                jobid = jobid[:-1]
+
+            # v. Check that we've got something sensible
+            try:
+                self.GetJobInfo( jobid=jobid )
+            except:
+                print "Main read jobid and found it was not valid"
+                raise JobError,"There was a problem submitting the job!"
+
+            # Looks valid so remove the file and set self.jobID
+            try:
+                os.remove( jobid_file )
+            except:
+                pass
+            self.jobID = jobid
+            return
+        
 
     def GetJobInfo(self,jobid=None):
         """Get the job info for a job. Default is self.jobID unless we are
@@ -1304,7 +1398,9 @@ class NordugridJob(Job):
         return jobinfo
 
     def run_app(self,step,kill_on_error=None,**kw):
-        """Setup the job, submit it, loop and query status"""
+        """Setup the job, submit it, loop and query status
+           
+        """
 
         print "Nordugrid run_app"
         if step.stdin_file:
@@ -1315,13 +1411,16 @@ class NordugridJob(Job):
             self.job_parameters['stderr'] = step.stderr_file
 
         xrsl = self.CreateRSL()
-    
-        machines = self.GetTargets( xrsl )
-        if len(machines) == 0:
-            raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
+
+        if 1:
+            self.SubmitInSeparateProcess( xrsl )
+        else:
+            # Below requires the arclib threading stuff to have been sorted out
+            machines = self.GetTargets( xrsl )
+            if len(machines) == 0:
+                raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
+            self.Submit( xrsl, machines )
         
-        #raise JobError,'No Way Dude!'
-        self.Submit( xrsl, machines )
 
         running = 1
         message = 'None'
@@ -1358,7 +1457,8 @@ class NordugridJob(Job):
 
         if result == -1:
             # Job failed in some way so bring back all the files for a postmortem
-            self.copy_back_rundir()
+            directory = self.copy_back_rundir()
+            message = "Job failed! All files have been copied back to the directory:\n%s\nPlease check this directory to see what went wrong." % directory
             
         return result, message
         
@@ -1366,6 +1466,7 @@ class NordugridJob(Job):
     def copy_back_rundir(self,jobid=None):
         """Copy back the directory with all the output files in it.
            This often dies with: Leaked globus_ftp_control_t
+           This returns the name of the directory where all the files have been placed
         """
         if self.debug:
             print "Nordugrid copy_bck_rundir:"
@@ -1425,6 +1526,8 @@ class NordugridJob(Job):
             raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
         except:
             raise JobError,"Nordugird copy_back_dir hit error during download!"
+
+        return dirname
 
     def copy_out_file(self,step,kill_on_error=1):
         """Append the file to the list of files that are to be copied out"""
@@ -1632,24 +1735,19 @@ if __name__ == "__main__":
     if 1:
         print 'testing nordugrid job'
         
-        #rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
-        #rc_vars[ 'ngrid_executable'] = '/bin/hostname' 
-        #rc_vars['ngrid_stdout'] = 'jens.out'
-        #targets = job.GetTargets( xrsl )
-        #jobid = job.Submit( xrsl, targets )
-        
-        #rc_vars[ 'ngrid_executable'] = 'gamess'
+        job_parameters = {}
+        job_parameters['count'] = '1'
+        job_parameters['outputfiles'] = {"\"/\"": None}
+        job_parameters['executable'] = '/bin/hostname'
+        job_parameters['jobName'] = 'Check_Hostname'
+        job_parameters['stdout'] = 'hostname.out'
+        job_parameters['stderr'] = 'hostname.err'
+
         job = NordugridJob()
-        job.copy_back_rundir( jobid = 'gsiftp://lheppc10.unibe.ch:2811/jobs/192241158660877746759701')
-        
-#         job.add_step(COPY_OUT_FILE,'Copying out files',local_filename='gamess')
-#         job.add_step(COPY_OUT_FILE,'Copying out files',local_filename='SC4H4.in')
-# #         #job.run()
-# #         #xrsl = job.CreateRSL()
-#         job.add_step(RUN_APP,'run nordugrid',stdin_file='SC4H4.in',stdout_file='SC4H4.out',executable='gamess')
+        job.update_job_parameters( job_parameters )
+        job.add_step(RUN_APP,'run nordugrid')
 #         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
-#         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='xxxx.ed3')
-#         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='pun.ed3')
-#         job.run()
+        job.run()
+#         job.copy_back_rundir()
 #         job.clean()
         print 'end jens job'
