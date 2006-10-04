@@ -38,11 +38,6 @@ if __name__ == "__main__":
     from paths import gui_path
     sys.path.append(gui_path)
 
-    
-    # hack for pshvig3 
-
-    sys.path.append('E:/CCP1 GUI')
-
     header="""
 ######################################################################
 #                                                                    #
@@ -1127,7 +1122,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.add_mol_cmd(menu,mols,"Edit Coords",self.edit_coords)
         self.add_field_cmd(menu,fields,"Edit Grid",self.edit_grid)
         self.add_mol_cmd(menu,mols,"Connect",self.connect_model,all=1)
-        self.add_mol_cmd(menu,mols,"Extend",self.extend_model)
+        self.add_mol_cmd(menu,mols,"Extend",self.extend_model,all=1)
 
         menu.add_separator()
         self.add_mol_cmd(menu,self.data_list,"Delete",self.delete_obj,all=1)
@@ -2002,9 +1997,46 @@ class TkMolView(Pmw.MegaToplevel):
 
     def post_view(self):
 
-        print 'POST VIEW'
         menu = self.view_menu
         menu.delete(0,Tkinter.AtEnd())
+
+        greyedfont = ("Helvetica", 9, "normal")
+        showfont = ("Helvetica", 9, "bold")
+        
+        # Create the Menu Item to Alter all molecules
+        # First instantiate the visualiser if it doesn't exist
+        if not self.allmolecule_visualiser:
+            # Need to import this here because the others are set up in vtkgraph.py but we are different
+            # because we are not tied to a single image and so have no vtk-specific code
+            from generic.visualiser import AllMoleculeVisualiser
+            self.allmolecule_visualiser = AllMoleculeVisualiser( self.master, self )
+            
+        # update_mol_list returns None if no molecules to display
+        if self.allmolecule_visualiser.update_mol_list(): 
+            menu.add_command(label="Adust All Molecules", underline=0, font=showfont,
+                             command = lambda s=self : s.adjust_allmolc(1) )
+        else:
+            menu.add_command(label="Adust All Molecules", underline=0, font=greyedfont,
+                             command = lambda s=self : s.adjust_allmolc(0) )
+        
+        if ( len( self.vis_list ) >= 1 ):
+            myfont = showfont
+        else:
+            myfont = greyedfont
+                
+        menu.add_command(label="Show All", underline=0, font=myfont,
+                         command=lambda x=self : x.showall(1))
+        menu.add_command(label="Hide All", underline=0, font=myfont,
+                         command=lambda x=self : x.showall(0))
+#        menu.add_separator()
+#        menu.add_command(label="Animation...", underline=0, font=myfont,
+#                         command=lambda x=self : x.pack_ani_toolbar())
+        menu.add_separator()
+
+        menu.add_command(label="Centre on Selected", underline=0, 
+                         command=lambda x=self : x.centre_on_selected())
+
+        menu.add_separator()
 
         for obj in self.data_list:
             # one submenu for each object
@@ -2056,7 +2088,6 @@ class TkMolView(Pmw.MegaToplevel):
             t1 = string.split(str(obj.__class__),'.')
             myclass = t1[len(t1)-1]
 
-            print 'myclass',myclass
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if self.molecule_visualiser:
                     cascade.add_command(
@@ -2143,45 +2174,6 @@ class TkMolView(Pmw.MegaToplevel):
                                   lambda r=s.master,g=s,func=s.wavefunction_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
 
-
-        menu.add_separator()
-
-        greyedfont = ("Helvetica", 9, "normal")
-        showfont = ("Helvetica", 9, "bold")
-        
-        # Create the Menu Item to Alter all molecules
-        # First instantiate the visualiser if it doesn't exist
-        if not self.allmolecule_visualiser:
-            # Need to import this here because the others are set up in vtkgraph.py but we are different
-            # because we are not tied to a single image and so have no vtk-specific code
-            from generic.visualiser import AllMoleculeVisualiser
-            self.allmolecule_visualiser = AllMoleculeVisualiser( self.master, self )
-            
-        # update_mol_list returns None if no molecules to display
-        if self.allmolecule_visualiser.update_mol_list(): 
-            menu.add_command(label="Adust All Molecules", underline=0, font=showfont,
-                             command = lambda s=self : s.adjust_allmolc(1) )
-        else:
-            menu.add_command(label="Adust All Molecules", underline=0, font=greyedfont,
-                             command = lambda s=self : s.adjust_allmolc(0) )
-        
-        if ( len( self.vis_list ) >= 1 ):
-            myfont = showfont
-        else:
-            myfont = greyedfont
-                
-        menu.add_command(label="Show All", underline=0, font=myfont,
-                         command=lambda x=self : x.showall(1))
-        menu.add_command(label="Hide All", underline=0, font=myfont,
-                         command=lambda x=self : x.showall(0))
-        menu.add_separator()
-
-#        menu.add_command(label="Animation...", underline=0, font=myfont,
-#                         command=lambda x=self : x.pack_ani_toolbar())
-        menu.add_separator()
-
-        menu.add_command(label="Centre on Selected", underline=0, 
-                         command=lambda x=self : x.centre_on_selected())
 
     def add_vis_menu(self,menu,txt,fnc,objects):
         """ make a list of objects that can be visualised in a particular way
@@ -2282,13 +2274,15 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             cascade = Menu(menu,tearoff=0)
             menu.add_cascade(label=txt, menu=cascade)
+
+            if all:
+                cascade.add_command(label='All',
+                                    command= lambda f=fnc,o=None : f(o,all=1))
+                cascade.add_separator()
+
             for obj in mols:
                 cascade.add_command(label=obj.name,
                                     command= lambda f=fnc,o=obj : f(o))
-            if all:
-                cascade.add_separator()
-                cascade.add_command(label='All',
-                                    command= lambda f=fnc,o=None : f(o,all=1))
                 
     def add_field_cmd(self,menu,fields,txt,fnc):
         if len(fields) == 0:
@@ -4285,7 +4279,7 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             return
 
-        if model in models:
+        for model in models:
             model.extend(minx,maxx,miny,maxy,minz,maxz)
             self.connect_model(model)
             # update_from_model skipped as there is a call at end of connect_model
