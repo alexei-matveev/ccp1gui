@@ -1195,6 +1195,8 @@ class TkMolView(Pmw.MegaToplevel):
             return None
         
         label,generators = molecule.getSymmetry( thresh=thresh )
+        # Need to refresh the view as we've reoriented the molecule
+        self.update_from_object(molecule)
         return label, generators
 
     def symmetrise_molecule(self, thresh=None ):
