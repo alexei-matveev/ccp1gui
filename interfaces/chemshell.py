@@ -2016,6 +2016,15 @@ def copycontents(to,fro):
     for k in d2.keys():
         to.__dict__[k] = fro.__dict__[k]
 
+
+# helper routine for sorting normal modes by frequency
+def fcomp(a,b):
+    if a.sorter > b.sorter:
+        return 1
+    if a.sorter < b.sorter:
+        return -1
+    return 0
+
 def chemshell_z_modes():
 
     # First load the zmatrix defining the coordinate system
@@ -2055,14 +2064,17 @@ def chemshell_z_modes():
 
     scale = 0.5
 
-    results = []
+    vs=VibFreqSet()
+    vs.reference=z2
+    vs.title = "modes of " + z2.title
+    vs.name = "modes of " + z2.title
 
     # Loop over the eigenvectors
     for i in range(n):
         print '================ evec',i,'================'
         val = eval[i]
         vec = evec[i]
-        print 'Applying vec',vec
+        #print 'Applying vec',vec
         # Apply a shift to the Internal coordinates relative to 
         # the reference structure
         for j in range(n):
@@ -2076,8 +2088,9 @@ def chemshell_z_modes():
         z.calculate_coordinates()
         # Create a vibrational freq structure
         v = VibFreq(i)
-        v.reference = z2
         v.displacement = []
+        # extra field for ordering
+        v.sorter=val
         for ia in range(len(z.atom)):
             atom = z.atom[ia]
             ref  = z2.atom[ia]
@@ -2092,9 +2105,12 @@ def chemshell_z_modes():
             v.title = t
             v.name = t
 
-        results.append(v)
+        vs.vibs.append(v)
 
-    return results
+    # Finally sort vibrations into ascending order
+    vs.vibs.sort(fcomp)
+
+    return [vs]
 
 def chemshell_c_modes():
 
@@ -2121,61 +2137,76 @@ def chemshell_c_modes():
     # Generate evals and evecs
     from LinearAlgebra import eigenvectors
     eval,evec = eigenvectors(h.array)
-    print 'eval',eval
-    print 'evec',evec
+    #print 'eval',eval
+    #print 'evec',evec
 
     # Generate Initial cartesians
-    z.calculate_coordinates()
+    # z.calculate_coordinates()
     # Save a reference structure
     z2 = z.copy()
 
-    scale = 0.2
+    # if the hessian is smaller than expected, load active atoms specification
+    tester = 3*len(z.atom) - n
+    if tester > 0:
+        try:
+            f = open("copt.vis_active.txt","r")
+        except:
+            print "copt.vis_active.txt file is needed to define active atoms"
+            return []
+        txt = f.readlines()
+        f.close()
+        active_atoms=[]
+        for t in txt:
+            for tt in t.split():
+                active_atoms.append(int(tt)-1)
+        print "Active atoms : ",active_atoms,"hessian dim ",n
+        if 3*len(active_atoms) != n:
+            print "active atoms list is incorrect length for newopt.h_vis matrix"
+            return []
+    else:
+        active_atoms = range(len(z.atom))
 
-    results = []
-
+    vs=VibFreqSet()
+    vs.reference=z2
+    vs.title = "modes of " + z2.title
+    vs.name = "modes of " + z2.title
     # Loop over the eigenvectors
     for i in range(n):
-        print '================ evec',i,'================'
+        #print '================ evec',i,'================'
         val = eval[i]
         vec = evec[i]
-        print 'Applying vec',vec
 
-        # WORK NEEDED HERE
-
-        # Apply a shift to the Internal coordinates relative to 
-        # the reference structure
-        for j in range(n):
-            if z.variables[j].metric == 'a':
-                fac = scale*radtodeg
-            else:
-                fac = scale
-            print z.variables[j].name, z2.variables[j].value, vec[j]*scale
-            z.variables[j].value = z2.variables[j].value + vec[j]*fac
-        # Compute new coordinates
-        z.calculate_coordinates()
         # Create a vibrational freq structure
         v = VibFreq(i)
         v.reference = z2
         v.displacement = []
-        for ia in range(len(z.atom)):
-            atom = z.atom[ia]
+        # extra field for ordering
+        v.sorter=val
+
+        nullv = Vector(0.,0.,0.)
+        for i in range(len(z.atom)):
+            v.displacement.append(nullv)
+
+        for i in range(len(active_atoms)):
+            ia = active_atoms[i]
             ref  = z2.atom[ia]
-            dx = atom.coord[0] - ref.coord[0]
-            dy = atom.coord[1] - ref.coord[1]
-            dz = atom.coord[2] - ref.coord[2]
+            off=3*(i)
+            dx = vec[off]
+            dy = vec[off+1]
+            dz = vec[off+2]
             d = Vector(dx,dy,dz)
-            print d
-            v.displacement.append(d)
+            v.displacement[ia]=d
             v.freq = float(val)
             t='v%-10.5f' % v.freq
             v.title = t
             v.name = t
 
-        results.append(v)
+        vs.vibs.append(v)
 
-    return results
+    # Finally sort vibrations into ascending order
+    vs.vibs.sort(fcomp)
 
-
+    return [vs]
 
 if __name__ == "__main__":
 
