@@ -38,9 +38,7 @@ from filepunch import *
 from jobmanager import *
 from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
-from interfaces.rmcsEditor import RMCSEditor
-from interfaces.ngridEditor import NordugridEditor
-from interfaces.growlEditor import GrowlEditor
+from interfaces.jobsubEditor import RMCSEditor,NordugridEditor,GrowlEditor
 from objects.file import *
 #
 from viewer.rc_vars import rc_vars
