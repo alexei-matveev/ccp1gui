@@ -1,4 +1,4 @@
-#
+##
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
 #   (C) 2002-2005 CCLRC Daresbury Laboratory
@@ -192,7 +192,6 @@ class ChemShellCalc(Calc):
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.chm')
 
-
         ed = self.get_editor()
         # connect up the monitor to load structure back
         if ed:
@@ -240,15 +239,17 @@ class ChemShellCalc(Calc):
                 # have not established why yet)
                 #
                 job.add_step(RUN_APP_BASH,'run ChemShell',
-                             local_command='chemsh '+self.infile,
+                             local_command='chemsh',
+                             local_command_args=[self.infile],
                              stdout_file=self.outfile)
 
         else:
             # running with an argument (rather than stdin redirection)
             # takes advantage of Tcls handling of errors, this way the
             # script will return on error without writing the punchfile 
-            cmd="chemsh " + self.infile
-            job.add_step(RUN_APP,'run ChemShell',local_command=cmd,
+            job.add_step(RUN_APP,'run ChemShell',
+                         local_command='chemsh',
+                         local_command_args=[self.infile],
                          stdout_file=self.outfile)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
