@@ -1284,6 +1284,23 @@ class GrowlJob(GridJob):
         self.job_parameters['user_remote_dir'] = None # directory specified by the user
         self.job_parameters['count'] = 1
         self.job_parameters['machine_list'] = []
+
+        # Make sure that the growl environment is set up:
+        self.check_growl()
+        
+        # Now make sure that we have a valid proxy
+        self.CheckProxy()
+
+
+    def check_growl(self):
+        """ Make sure that Growl has been set up and we can access the programmes we need to"""
+
+        try:
+            growl_home = os.environ['GROWL_HOME']
+        except KeyError:
+            raise JobError,"Cannot find environment variable GROWL_HOME!\n" +\
+                  "Please run the command \". setup.sh\" in your Growl directory\n"+\
+                  "and then restart the CCP1GUI."
     
     def get_host(self):
         """Return the name of the host that we are running on """
@@ -1558,6 +1575,7 @@ class GrowlJob(GridJob):
         cmdline = []
         host = self.get_host()
         jobmanager = self.run_command('grid-get-jobmanager',args=[host])
+        #jobmanager = 'jobmanager-ll'
         cmdline.append(host+'/'+jobmanager)
 
         # Handle stdin,out& err with i,o, and e flags?
