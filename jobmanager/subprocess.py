@@ -87,6 +87,7 @@ SLAVE_PIPE=3
 SLAVE_SPAWN=4
 KILLED=5
 EXITED=6
+FAILED=7
 
 RUNTIME_ERROR='runtime-error'
 KILL_CHILD='kill-child'
@@ -106,9 +107,23 @@ def list_to_string(list):
 
 class SubProcess:
 
-    def __init__(self,cmd,on_end=None,debug=0):
+    #def __init__(self,cmd,on_end=None,debug=0):
+    def __init__(self,cmd,args=None,on_end=None,debug=0):
+        """
+           Base class for subprocess management.
+           cmd  - the command to be excuted as a string (without any arguments)
+           args - a list of strings that are the arguments that the command should be
+                  invoked with. This can be None if the command is just to be invoked with
+                  no additional arguments.
+        """
 
+        if cmd:
+            assert type(cmd) == str, "jobmanager/subprocess.py: cmd argument to SubProcess must be a string!"
         self.cmd = cmd
+        if args:
+            assert type(args) == list, "jobmanager/subprocess.py: Arguments to SubProcess must be a list!"
+        self.args =  args
+
         self.on_end = on_end
         self.stdin = None
         self.stdout = None
@@ -120,6 +135,10 @@ class SubProcess:
         self.output = []
         self.err = []
         self.status = IDLE
+
+        if self.debug:
+            print "SubProcess: self.cmd is: %s" % self.cmd
+            print "            self.args is: %s" % self.args
     #
     #   main access functions (need to be replaced)
     #
@@ -152,6 +171,7 @@ class SubProcess:
             default is caller's stdin,stdout & stderr;
             kw:    see Process.__init__ for more keyword options
             """
+            cmd = self.cmd_as_string()
             if self.stdin is not None:
                 kw['hStdin'] = msvcrt.get_osfhandle(self.stdin.fileno())
             if self.stdout is not None:
@@ -159,8 +179,8 @@ class SubProcess:
             if self.stderr is not None:
                 kw['hStderr'] = msvcrt.get_osfhandle(self.stderr.fileno())
             if self.debug:
-                print 'winprocess.Process',self.cmd,kw
-            self.child = winprocess.Process(self.cmd, **kw)
+                print 'winprocess.Process',cmd,kw
+            self.child = winprocess.Process(cmd, **kw)
         else:
             if self.debug:
                 print "spawn_child unix code"
@@ -234,23 +254,34 @@ class SubProcess:
                     except:
                         pass
 
+                # Need to include the command in the second argument to the execvp command
+                if self.args:
+                    self.args = [self.cmd] + self.args
+                else:
+                    self.args = [self.cmd]
+                    
                 try:
-                    words = self.cmd.split()
                     os.setsid() # Make child process group leader so we can stop child and all its children
                     os.nice(19)
                     # Below sets the handler for SIGHUP to that for SIG_IGN
                     # i.e. if we get told to hang up, we ignore it
                     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-                    os.execvp(words[0],words)
-                finally:
-                    print "child calling exit"
+                    #words = self.cmd.split()
+                    if self.debug:
+                        #print "child running:  os.execvp(%s,%s)"  % (words[0],words)
+                        print "child running:  os.execvp(%s,%s)"  % (self.cmd,self.args)
+                    #os.execvp(words[0],words)
+                    os.execvp(self.cmd,self.args)
+                except Exception,e:
+                    #print "Error trying to execute: os.execvp(%s,%s)"  % (words[0],words)
+                    print "Error trying to execute: os.execvp(%s,%s)"  % (self.cmd,self.args)
+                    print e
+                    os._exit(-1)
+                #finally:
+                else:
+                    if self.debug:
+                        print "child calling exit"
                     os._exit(1)
-
-            #jmht close fd's
-            #os.close(0)
-            #os.close(1)
-            #os.close(2)
-
 
     def _wait_child(self,timeout=-1):
 
@@ -283,14 +314,12 @@ class SubProcess:
                 print 'Child in Wait'
             else:
                 # parent
-
-
                 if self.debug:
                     print "parent executing wait"
-                    if not self.stdout:
-                        self.output = self.stdout_file.read()
-                        print 'OUT:'
-                        print self.output
+                if not self.stdout:
+                    self.output = self.stdout_file.read()
+                    print 'OUT:'
+                    print self.output
                         
                 if not self.stderr:
                     # No stderr file from user so we read the file
@@ -308,7 +337,7 @@ class SubProcess:
                         self.error = self.stderr.read()
                 
                 proc, code = os.waitpid(self.pid, 0)
-
+                self.status = EXITED
                 return code
             
 #                if code == 0:
@@ -391,6 +420,14 @@ class SubProcess:
                 # returned by the waitpid
                 return 0
 
+    def cmd_as_string(self):
+        """Return the command to be invoked, together with it's arguments as a single string
+        """
+        cmd = self.cmd
+        if self.args:
+            for arg in self.args:
+                cmd += ' ' + arg
+        return cmd
 
 class ForegroundPipe(SubProcess):
     """Class to manage os.popen3
@@ -414,7 +451,8 @@ class ForegroundPipe(SubProcess):
             # These methods do not make it possible to retrieve
             # the return code from the child processes
 
-            (stdin,stdout,stderr) = os.popen3(self.cmd)
+            cmd = self.cmd_as_string()
+            (stdin,stdout,stderr) = os.popen3(cmd)
             self.output = stdout.readlines()
             self.error = stderr.readlines()
             if self.debug:
@@ -570,10 +608,11 @@ class SlavePipe(SubProcess):
         will return stdout and stderr over the queue
         queue1 is not used
         """
+        cmd = self.cmd_as_string()
         if self.debug:
-            print t.time(), 'invoke command', self.cmd
+            print t.time(), 'invoke command',cmd
 
-        (stdin,stdout,stderr) = os.popen3(self.cmd)
+        (stdin,stdout,stderr) = os.popen3(cmd)
 
         if self.debug:
             print t.time(),'command exits'
@@ -629,8 +668,10 @@ class Spawn(SubProcess):
     kill is available
     ToDo: introduce internal status to trap wait/kill
     """
-    def __init__(self,cmd,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)        
+    #def __init__(self,cmd,**kw):
+    def __init__(self,cmd,args=None,**kw):
+        #apply(SubProcess.__init__, (self,cmd,args,) , kw)        
+        SubProcess.__init__(self,cmd,args=args,**kw)        
 
     def run(self,stdin=None,stdout=None,stderr=None):
         """ Execute the command as a subprocess using fork(UNIX) or spawn(Win32)
@@ -645,9 +686,12 @@ class Spawn(SubProcess):
         self.stdout = stdout
         self.stderr = stderr
 
-        self._spawn_child()
-
-        self.status = SPAWNED
+        ret = self._spawn_child()
+        if ret == -1:
+            print "subprocess:Spawn - _spawn_child failed!"
+            self.status = FAILED
+        else:
+            self.status = SPAWNED
 
     def kill(self):
         code = self._kill_child()
@@ -655,7 +699,12 @@ class Spawn(SubProcess):
         return code
 
     def wait(self,**kw):
-        if self.status == SPAWNED:
+        if self.status == FAILED:
+            if self.debug:
+                print "subprocess:Spawn wait got FAILED!"
+                return -1
+            
+        elif self.status == SPAWNED:
 
             if self.debug:
                 print t.time(), 'class Spawn, method wait _wait_child'
@@ -665,16 +714,25 @@ class Spawn(SubProcess):
                 print 'wait code',code
             return code
         else:
-
             print 'Spawn in wait',self.status
-
             if self.debug:
                 print t.time(), 'class Spawn, err'
 
             if self.debug:
                 print 'return -2'
             return -2
+    #jmht
+    def get_output(self):
+        if self.status == EXITED:
+            return self.output
+        else:
+            return None
 
+    def get_error(self):
+        if self.status == EXITED:
+            return self.error
+        else:
+            return None
 
 class SlaveSpawn(SubProcess):
     """Use a pythonwin process or fork with controlling thread
@@ -723,7 +781,7 @@ class SlaveSpawn(SubProcess):
         """
 
         if self.debug:
-            print t.time(), 'slave spawning', self.cmd
+            print t.time(), 'slave spawning', self.cmd_as_string()
 
         self._spawn_child()
 
@@ -847,10 +905,12 @@ class RemoteProcess(ForegroundPipe):
             print 'Dont know how to run on mac'
             return -1
         elif sys.platform[:3] == 'win':
-            self.cmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + host + ' ' + cmd 
-            print 'remote command:',self.cmd
+            self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
+            self.args = [host, cmd ]
+            print 'remote command:',self.cmd_as_string()
         else:
-            self.cmd = 'ssh' + ' ' + host + ' ' + cmd
+            self.cmd = 'ssh'
+            self.args =  [host, cmd]
 
 if __name__ == "__main__":
 
@@ -1069,31 +1129,32 @@ if __name__ == "__main__":
 # jmht
     if 1:
         print 'Testing simple Spawn'
-        cmd = "/home/jmht/test/GAMESS-UK-7.0/bin/gamess"
+        cmd = "grid-pwd scarf.rl.ac.uk"
         #cmd = "sleep 50"
         #cmd = "sort -"
         print cmd
-        #p = Spawn(cmd,debug=1)
-        p = Spawn(cmd)
-        print 'Executing run',os.getpid()
-        stdin = "./untitled.in"
+        p = Spawn(cmd,debug=1)
+        #p = Spawn(cmd)
+        #print 'Executing run',os.getpid()
+        #stdin = "./untitled.in"
         #stdin = "./DFT.siosi3.347.in"
-        stdout = "./untitled.out"
-        stderr = "./untitled.err"
-        i = open(stdin,'r')
-        o = open(stdout,'w')
-        e = open(stderr,'w')
-        #p.run()
+        #stdout = "./untitled.out"
+        #stderr = "./untitled.err"
+        #i = open(stdin,'r')
+        #o = open(stdout,'w')
+        #e = open(stderr,'w')
+        p.run()
         #p.run(stdin=i)
         #p.run(stdin=i, stdout=o)
-        p.run(stdin=i, stdout=o, stderr=e)
+        #p.run(stdin=i, stdout=o, stderr=e)
         #import time
         #time.sleep(2)
         #print "calling kill from main"
         #p.kill()
         code = p.wait()
         #print "kill returned"
-        #print 'return code',code
+        print 'return code',code
+        print "output ",p.get_output()
         #i.close()
         #o.close()
         #e.close()
