@@ -476,12 +476,12 @@ class TkMolView(Pmw.MegaToplevel):
             print "No user preferences file: %s found" % rcfile
             return
         
-        print "Executing ccp1guirc file %s" % rcfile
-        try:
-            execfile( rcfile )
-        except Exception,e:
-                print "Error reading cco1guirc file: %s" % rcfile
-                print e
+        #print "Executing ccp1guirc file %s" % rcfile
+        #try:
+        execfile( rcfile )
+        #except Exception,e:
+        #        print "Error reading ccp1guirc file: %s" % rcfile
+        #        print e
 
         # Pull any rc_vars out
         rc_buff = []
@@ -2275,12 +2275,13 @@ class TkMolView(Pmw.MegaToplevel):
                                  command=lambda f=fnc,o=mols[0] : f(o))
         else:
             cascade = Menu(menu,tearoff=0)
-            menu.add_cascade(label=txt, menu=cascade)
 
             if all:
                 cascade.add_command(label='All',
                                     command= lambda f=fnc,o=None : f(o,all=1))
                 cascade.add_separator()
+
+            menu.add_cascade(label=txt, menu=cascade)
 
             for obj in mols:
                 cascade.add_command(label=obj.name,
@@ -3880,7 +3881,10 @@ class TkMolView(Pmw.MegaToplevel):
                         a.symbol = string.translate(atsym,trans,string.digits)
                         a.symbol = string.capitalize(a.symbol)
 
-                a.name = a.symbol + string.zfill(i+1,2)
+                if 0:
+                    a.name = atsym
+                else:
+                    a.name = a.symbol + string.zfill(i+1,2)
                 model.atom.append(a)
                 #print 'get number', a.symbol, a.get_number()
                 i=i+1
@@ -3946,11 +3950,14 @@ class TkMolView(Pmw.MegaToplevel):
             t1 = string.split(str(o.__class__),'.')
             myclass = t1[len(t1)-1]
 
-            print 'unique',root, o.title
+            #print 'unique',root, o.title
             o.name = self.make_unique_name(root,o.title)
-            print 'o.name is', o.name
+            #print 'o.name is', o.name
 
-            if myclass == 'VibFreq' :
+            if myclass == 'VibFreq':
+                self.append_data(o)
+
+            if myclass == 'VibFreqSet':
                 self.append_data(o)
 
             if myclass == 'VibFreqSet' :
