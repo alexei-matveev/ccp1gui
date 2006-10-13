@@ -114,8 +114,8 @@ class JobSubEditor(Pmw.MegaToplevel):
                            # to the desired value
         
         self.values = {} # Dictionary of the values held by this widget at any point
-        self.values['machine_list'] = []
-        self.values['count'] = 1
+                         # These need to be set to default values in the classes that inherit
+                         # form this one
 
         # RSL parameters
         
@@ -156,24 +156,27 @@ class JobSubEditor(Pmw.MegaToplevel):
                         self.values[key] = value
                         if self.debug:
                             print "GetInitialValues calc setting: %s : %s" % (key,value)
-                    if self.rslVariables.has_key( key ):
-                        if key == 'environment':
-                            self._AddDictAsPair( key, value)
-                        else:
-                            self.selected_RSL[key] = ('=',value) # Currently only assume = op
-            
+                    if self.rslActive:
+                        if self.rslVariables.has_key( key ):
+                            if key == 'environment':
+                                self._AddDictAsPair( key, value)
+                            else:
+                                self.selected_RSL[key] = ('=',value) # Currently only assume = op
+
+        # Now update any variables that are set in the rc_vars
         global rc_vars
         for key,value in rc_vars.iteritems():
-            #print "rc_vars: %s : %s" %(key,value)
+            print "rc_vars: %s : %s" %(key,value)
             if self.values.has_key( key ):
                 self.values[key] = value
                 if self.debug:
                     print "GetInitialValues rc_vars setting: %s : %s" % (key,value)
-            if self.rslVariables.has_key( key ):
-                if key == 'environment':
-                    self._AddDictAsPair( key, value)
-                else:
-                    self.selected_RSL[key] = ('=',value) # Currently only assume = op
+            if self.rslActive:
+                if self.rslVariables.has_key( key ):
+                    if key == 'environment':
+                        self._AddDictAsPair( key, value)
+                    else:
+                        self.selected_RSL[key] = ('=',value) # Currently only assume = op
 
     def _AddDictAsPair(self,key,value):
         """ Take a dictionary we have been given and split it up into separate variables
@@ -191,8 +194,12 @@ class JobSubEditor(Pmw.MegaToplevel):
         """Set all the widgets to the value in self.values
         """
         for key,value in self.values.iteritems():
-            #print "Setting values for %s : %s" % (key,value)
+            if self.debug:
+                print "Setting values for %s : %s" % (key,value)
             try:
+                # Need to convert any None's to empty strings
+                if value == None:
+                    value = ''
                 self.setValue[key]( value )
             except KeyError:
                 pass
@@ -461,6 +468,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         """ Lay out the machine list widget"""
         
         # Create the widgets to edit the list of machines
+        self.values['machine_list'] = [] # set default value here
         machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
         machListFrame.pack(fill='both',expand=1)
         self.machList = Pmw.ScrolledListBox(
@@ -488,6 +496,7 @@ class JobSubEditor(Pmw.MegaToplevel):
 
     def LayoutNprocWidget(self):
         """ Layout the widget to set the number of processors"""
+        self.values['count'] = 1 # set default value here
         self.nProc = Pmw.Counter( self.interior(),
                                   labelpos = 'w',
                                   label_text = 'Number of Processors:',
@@ -622,8 +631,8 @@ class GrowlEditor(JobSubEditor):
         # Set up the defaults
         self.title = 'GROWL JobEditor'
 
-        self.GetInitialValues()
         self.LayoutWidgets()
+        self.GetInitialValues()
         self.UpdateWidgets()
 
 
@@ -644,6 +653,7 @@ class GrowlEditor(JobSubEditor):
                                             validate = None
                                             )
         self.executableWidget.pack(side='top')
+        self.values['executable'] = None
         self.getValue['executable'] = lambda s=self: s.executableWidget.getvalue()
         self.setValue['executable'] = self.executableWidget.setentry
         self.remoteDirWidget = Pmw.EntryField( self.interior(),
@@ -653,6 +663,7 @@ class GrowlEditor(JobSubEditor):
                                             validate = None
                                             )
         self.remoteDirWidget.pack(side='top')
+        self.values['user_remote_dir'] = None
         self.getValue['user_remote_dir'] = lambda s=self: s.remoteDirWidget.getvalue()
         self.setValue['user_remote_dir'] = self.remoteDirWidget.setentry
         Pmw.alignlabels( [self.executableWidget, self.remoteDirWidget] )
@@ -670,8 +681,8 @@ class NordugridEditor(JobSubEditor):
         # Set up the defaults
         self.title = 'Nordugrid JobEditor'
 
-        self.GetInitialValues()
         self.LayoutWidgets()
+        self.GetInitialValues()
         self.UpdateWidgets()
 
 
@@ -708,8 +719,8 @@ class RMCSEditor(JobSubEditor):
         self.values['myproxy_user'] = getpass.getuser()
         self.values['myproxy_password'] = ''
 
-        self.GetInitialValues()
         self.LayoutWidgets()
+        self.GetInitialValues()
         self.UpdateWidgets()
 
 
