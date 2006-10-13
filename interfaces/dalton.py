@@ -342,44 +342,36 @@ class DALTONCalc(QMCalc):
         job.name = job_name
         dalfilename = self.get_parameter( 'dalfilename' )
         molfilename = self.get_parameter( 'molfilename' )
-        
-        # Now need to build up the arguments to the dalton script depending on what
-        # options the user has chosen. The arguments are built up as a series of strings.
-        # by default these have 0 length unless the user has selected that option, in which
-        # case the string contains the argument
 
-        # This always gets set
-        workdir = self.get_parameter( 'workdir' )
-        workdirstr = " -w %s " % workdir
-
-        basisstr = ''
-        setbasis = self.get_parameter( 'setbasis' )
-        if ( setbasis ):
-            basisdir = self.get_parameter( 'basisdir' )
-            basisstr = " -b %s " % basisdir
-
-        scratchstr = ''
-        setscratch = self.get_parameter( 'setscratch' )
-        if ( setscratch ):
-            scratchdir = self.get_parameter( 'scratchdir' )
-            scratchstr = " -t %s " % scratchdir
-
-        keepscratchstr = ''
-        keepscratch = self.get_parameter( 'keepscratch' )
-        if ( keepscratch ):
-            keepscratchstr = " -D "
-
+        # Get the script to run the job
         dalton_script = self.get_parameter( 'dalton_script' )
-
         if dalton_script == 'PLEASE SET ME!':
             ed.Error( "Cannot run the calculation as you have not set the path to the Dalton script!" )
             return None
+        
+        # Now need to build up the arguments to the dalton script depending on what
+        # options the user has chosen. These are built up as a list
+        
+        # workdir always gets set
+        workdir = self.get_parameter( 'workdir' )
+        args = [ '-w', workdir ]
+        
+        # Optional parameters
+        if self.get_parameter( 'setbasis' ):
+            args += ['-b', self.get_parameter('basisdir') ]
+        if self.get_parameter( 'setscratch' ):
+            args += ['-t', self.get_parameter('scratchdir') ]
+        if self.get_parameter( 'keepscratch' ):
+            args += ['-D']
 
-        rundaltonscript_cmd = dalton_script + workdirstr + basisstr + keepscratchstr + scratchstr +\
-                              " " + dalfilename + " " + molfilename 
+        args += [ dalfilename, molfilename]
 
-        #job.add_step(RUN_APP,'run dalton shell-script',local_command=rundaltonscript_cmd)
-        job.add_step(RUN_APP,'run dalton shell-script',local_command=rundaltonscript_cmd, stdout_file = "daltonstd.out" )
+        job.add_step(RUN_APP,
+                     'run dalton shell-script',
+                     local_command=dalton_script,
+                     local_command_args=args,
+                     stdout_file = "daltonstd.out" )
+        
         job.add_tidy( self.endjob2 )
         
         return job
