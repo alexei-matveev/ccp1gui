@@ -48,7 +48,7 @@ import Numeric,LinearAlgebra
 
 
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
-from chempy import cpv
+from chempy import cpv, atomic_number
 
 pi_over_180 = math.atan(1.0) / 45.0
 dtorad = pi_over_180

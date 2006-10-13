@@ -577,6 +577,10 @@ rc = {
 
 # the display table (aus)
 # H=.7 is just for appearance
+#
+#
+# note that indexing with -1 accesses the last element (0.4 copied at start and edn)
+#
 rcov = [
 0.4,
 0.7,                                   3.80,    
@@ -595,10 +599,11 @@ rcov = [
                          3.61,3.42,3.04,3.61,3.61,3.80,
 4.94,4.09,
      3.71,
-     3.42,3.42,3.33,3.33,3.33,3.33,3.23,3.13,3.13,3.13,3.13,3.13,3.13,3.13, 1., 1., 1.,1.,1.,1.]
+     3.42,3.42,3.33,3.33,3.33,3.33,3.23,3.13,3.13,3.13,3.13,3.13,3.13,3.13, 1., 1., 1.,1.,1.,1., 0.4,]
      
 
 # joe lennards table angstroms
+# 1.0 added as index [0] and [-1] see above
 rvdw = [  1.0,
   1.20,                              1.40,
   1.82,1.78,1.74,1.70,1.55,1.52,1.47,1.54,
@@ -608,7 +613,7 @@ rvdw = [  1.0,
             2.40,2.10,1.85,1.90,1.85,2.02,
   3.10,2.80,
        2.77,2.74,2.71,2.68,2.65,2.62,2.59,2.56,2.53,2.51,
-            2.50,2.20,2.10,2.06,1.98,2.16, 1., 1. ]
+            2.50,2.20,2.10,2.06,1.98,2.16, 1., 1., 1.]
 
 # double check these values...
 #hvd values obtained from http://www.webelements.com/ and recorded to their
