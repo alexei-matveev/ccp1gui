@@ -22,7 +22,6 @@ class EntryPair( Tkinter.Frame ):
         self.entry2 = Pmw.EntryField( self )
         self.entry2.pack(side='left')
 
-
     def get(self):
         """Alias for getvalue"""
         return self.getvalue()
@@ -155,6 +154,8 @@ class JobSubEditor(Pmw.MegaToplevel):
                 for key,value in jobdict.iteritems():
                     if self.values.has_key( key ):
                         self.values[key] = value
+                        if self.debug:
+                            print "GetInitialValues calc setting: %s : %s" % (key,value)
                     if self.rslVariables.has_key( key ):
                         if key == 'environment':
                             self._AddDictAsPair( key, value)
@@ -166,7 +167,8 @@ class JobSubEditor(Pmw.MegaToplevel):
             #print "rc_vars: %s : %s" %(key,value)
             if self.values.has_key( key ):
                 self.values[key] = value
-                #print "GetInitialValues Setting %s to %s" %(key,value)
+                if self.debug:
+                    print "GetInitialValues rc_vars setting: %s : %s" % (key,value)
             if self.rslVariables.has_key( key ):
                 if key == 'environment':
                     self._AddDictAsPair( key, value)
@@ -576,13 +578,20 @@ class JobSubEditor(Pmw.MegaToplevel):
             self._SaveCurrentRSL()
 
         if self.calc:
-            self.calc.set_parameter('job_parameters', self.GetValueDict() )
+            jobdict = self.GetValueDict()
+            for key,value in jobdict.iteritems():
+                if type(value) == str and len(value) == 0: # Need to convert empty strings to null
+                    value = None
+                if self.debug:
+                    print "QuitAndSave setting: %s : %s" % (key,value)
+            self.calc.set_parameter('job_parameters', jobdict )
 
         if default:
             global rc_vars
             for key,value in self.GetValueDict().iteritems():
                 rc_vars[key] = value
-                print "Updating rc_vars with %s : %s" % (key,rc_vars[key])
+                if self.debug:
+                    print "QuitAndSave updating rc_vars with %s : %s" % (key,rc_vars[key])
                 
         self.Quit()
 
@@ -598,6 +607,234 @@ class JobSubEditor(Pmw.MegaToplevel):
            return self.title
        else:
            return 'JobSubmissionEditor'
+
+
+class GrowlEditor(JobSubEditor):
+
+    """ A widget to edit Growl Jobs
+    """
+
+    def __init__(self, root,**kw):
+
+        # Initialse everything in the base class
+        JobSubEditor.__init__(self,root,**kw)
+
+        # Set up the defaults
+        self.title = 'GROWL JobEditor'
+
+        self.GetInitialValues()
+        self.LayoutWidgets()
+        self.UpdateWidgets()
+
+
+    def LayoutWidgets(self):
+        """ Create and lay out all of the widgets"""
+
+        # These are found in the base class JobSubEditor (see jobsubEditor.py)
+        self.LayoutMachListWidget()
+        self.LayoutNprocWidget()
+        self.LayoutExeDirWidget()
+        self.LayoutQuitButtons()
+
+    def LayoutExeDirWidget(self):
+        """ Lay out the executable and working directory"""
+        self.executableWidget = Pmw.EntryField( self.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'Executable Name:',
+                                            validate = None
+                                            )
+        self.executableWidget.pack(side='top')
+        self.getValue['executable'] = lambda s=self: s.executableWidget.getvalue()
+        self.setValue['executable'] = self.executableWidget.setentry
+        self.remoteDirWidget = Pmw.EntryField( self.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'Remote Directory:',
+                                            entry_width = '30',
+                                            validate = None
+                                            )
+        self.remoteDirWidget.pack(side='top')
+        self.getValue['user_remote_dir'] = lambda s=self: s.remoteDirWidget.getvalue()
+        self.setValue['user_remote_dir'] = self.remoteDirWidget.setentry
+        Pmw.alignlabels( [self.executableWidget, self.remoteDirWidget] )
+
+class NordugridEditor(JobSubEditor):
+
+    """ A widget to edit Nordugrid Jobs
+    """
+
+    def __init__(self, root,**kw):
+
+        # Initialse everything in the base class
+        JobSubEditor.__init__(self,root,**kw)
+
+        # Set up the defaults
+        self.title = 'Nordugrid JobEditor'
+
+        self.GetInitialValues()
+        self.LayoutWidgets()
+        self.UpdateWidgets()
+
+
+    def LayoutWidgets(self):
+        """ Create and lay out all of the widgets"""
+
+        # These are found in the base class JobSubEditor (see jobsubEditor.py)
+        #self.LayoutMachListWidget()
+        self.LayoutNprocWidget()
+        self.LayoutRSLWidget()
+        self.LayoutQuitButtons()
+
+
+class RMCSEditor(JobSubEditor):
+
+    """ A widget to hold all the symmetry tools.
+    """
+
+    def __init__(self, root,**kw):
+
+        # Initialse everything in the base class
+        JobSubEditor.__init__(self,root,**kw)
+
+        # Set up the defaults
+        self.title = 'RMCS JobEditor'
+        
+        self.values['srb_config_file'] = os.path.expanduser('~/srb.cfg')
+        self.values['srb_input_dir'] = 'SET ME'
+        self.values['srb_executable_dir'] = 'SET ME'
+        self.values['srb_executable'] = 'SET ME'
+        self.values['srb_output_dir'] = 'SET ME'
+        self.values['rmcs_user'] = getpass.getuser()
+        self.values['rmcs_password'] = ''
+        self.values['myproxy_user'] = getpass.getuser()
+        self.values['myproxy_password'] = ''
+
+        self.GetInitialValues()
+        self.LayoutWidgets()
+        self.UpdateWidgets()
+
+
+    def LayoutWidgets(self):
+        """ Create and lay out all of the widgets"""
+        
+        # These are found in the base class JobSubEditor (see jobsubEditor.py)
+        self.LayoutMachListWidget()
+        self.LayoutNprocWidget()
+
+        # The SRB options
+        srbFrame = Pmw.Group( self.interior(), tag_text='SRB Options' )
+        srbFrame.pack(fill='both',expand=1)
+
+        srbFileFrame = Tkinter.Frame( srbFrame.interior() )
+        srbFileFrame.pack( side='top' )
+        self.srbConfigFile = Pmw.EntryField( srbFileFrame,
+                                        labelpos = 'w',
+                                        label_text = 'SRB config file'
+                                        )
+        self.getValue['srb_config_file'] = lambda s=self: s.srbConfigFile.getvalue()
+        self.setValue['srb_config_file'] = self.srbConfigFile.setentry
+        self.srbConfigFile.pack(side="left")
+
+        srbConfFileBrowseButton = Tkinter.Button(srbFileFrame,
+                                           text="Browse...",
+                                           command=self.SrbBrowseDir)
+        srbConfFileBrowseButton.pack(side="left", padx=10)
+
+        self.srbInputDir = Pmw.EntryField( srbFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'SRB Input Directory:',
+                                            validate = None
+                                            )
+        self.getValue['srb_input_dir'] = lambda s=self: s.srbInputDir.getvalue()
+        self.setValue['srb_input_dir'] = self.srbInputDir.setentry
+        self.srbInputDir.pack(side='top')
+        self.srbOutputDir = Pmw.EntryField( srbFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'SRB Output Directory:',
+                                            validate = None
+                                            )
+        self.getValue['srb_output_dir'] = lambda s=self: s.srbOutputDir.getvalue()
+        self.setValue['srb_output_dir'] = self.srbOutputDir.setentry
+        self.srbOutputDir.pack(side='top')
+        self.srbExecutableDir = Pmw.EntryField( srbFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'SRB Executable Directory:',
+                                            validate = None
+                                            )
+        self.getValue['srb_executable_dir'] = lambda s=self: s.srbExecutableDir.getvalue()
+        self.setValue['srb_executable_dir'] = self.srbExecutableDir.setentry
+        self.srbExecutableDir.pack(side='top')
+        self.srbExecutable = Pmw.EntryField( srbFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'SRB Executable:',
+                                            validate = None
+                                            )
+        self.srbExecutable.pack(side='top')
+        self.getValue['srb_executable'] = lambda s=self: s.srbExecutable.getvalue()
+        self.setValue['srb_executable'] = self.srbExecutable.setentry
+        Pmw.alignlabels( [self.srbInputDir, self.srbOutputDir,
+                          self.srbExecutableDir,self.srbExecutable] )
+
+
+        # The RMCS options
+        rmcsFrame = Pmw.Group( self.interior(), tag_text='RMCS Options' )
+        rmcsFrame.pack(fill='both',expand=1)
+        self.rmcsUser = Pmw.EntryField( rmcsFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'RMCS User',
+                                            validate = None
+                                            )
+        self.getValue['rmcs_user'] = lambda s=self: s.rmcsUser.getvalue()
+        self.setValue['rmcs_user'] = self.rmcsUser.setentry
+        self.rmcsUser.pack(side='top')
+        self.rmcsPassword = Pmw.EntryField( rmcsFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'RMCS Password',
+                                            validate = None
+                                            )
+        self.getValue['rmcs_password'] = lambda s=self: s.rmcsPassword.getvalue()
+        self.setValue['rmcs_password'] = self.rmcsPassword.setentry
+        self.rmcsPassword.configure( entry_show = '*')
+        self.rmcsPassword.pack(side='top')
+        Pmw.alignlabels( [self.rmcsUser, self.rmcsPassword] )
+
+        # The myProxy Options
+        myProxyFrame = Pmw.Group( self.interior(), tag_text='myProxy Options' )
+        myProxyFrame.pack(fill='both',expand=1)
+        self.myProxyUser = Pmw.EntryField( myProxyFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'myProxy User',
+                                            validate = None
+                                            )
+        self.getValue['myproxy_user'] = lambda s=self: s.myProxyUser.getvalue()
+        self.setValue['myproxy_user'] = self.myProxyUser.setentry
+        self.myProxyUser.pack(side='top')
+        self.myProxyPassword = Pmw.EntryField( myProxyFrame.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'myProxy Password',
+                                            validate = None
+                                            )
+        self.myProxyPassword.configure( entry_show = '*')
+        self.getValue['myproxy_password'] = lambda s=self: s.myProxyPassword.getvalue()
+        self.setValue['myproxy_password'] = self.myProxyPassword.setentry
+        self.myProxyPassword.pack(side='top')
+        Pmw.alignlabels( [self.myProxyUser, self.myProxyPassword] )
+
+        self.LayoutQuitButtons()
+
+
+    def SrbBrowseDir(self):
+        # askdirectory() cant create new directories so use asksaveasfilename is used instead
+        # and the filename  is discarded - also fixes problem with no askdirectory in Python2.1
+        oldFile = self.srbConfigFile.get()
+        dummyfile='srb.cfg'
+        #path=tkFileDialog.asksaveasfilename(initialfile=dummyfile, initialdir=olddir)
+        path=tkFileDialog.asksaveasfilename(initialfile=dummyfile)
+        if len(path) == 0: #
+            self.srbConfigFile.setvalue(oldFile)
+        else:
+            self.srbConfigFile.setvalue(path)
+
+       
 if __name__ == "__main__":
     rc_vars = {} # Dictionary of the values held by this widget at any point
     rc_vars['machine_list'] = ['computers','are','evil']
