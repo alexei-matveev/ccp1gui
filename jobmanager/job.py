@@ -90,7 +90,9 @@ class JobStep:
                  proc=None,
                  jobname=None,
                  local_command=None,
+                 local_command_args = None,
                  remote_command=None,
+                 remote_command_args=None,
                  stdin_file=None,
                  stdout_file=None,
                  stderr_file=None,
@@ -109,7 +111,9 @@ class JobStep:
         self.jobname=jobname
         self.proc=proc
         self.local_command=local_command
+        self.local_command_args=local_command_args
         self.remote_command=remote_command
+        self.remote_command_args=remote_command_args
         self.stdin_file=stdin_file
         self.stdout_file=stdout_file
         self.stderr_file=stderr_file
@@ -117,7 +121,6 @@ class JobStep:
         self.kill_on_error=kill_on_error
         self.warn_on_error = warn_on_error
         self.kill_cmd = kill_cmd
-        self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
 
 class Job:
 
@@ -126,7 +129,7 @@ class Job:
     handles construction of the job as a list of steps
     """
 
-    def __init__(self,name=None):
+    def __init__(self,name=None,**kw):
 
         self.steps=[]
         self.msg=""
@@ -265,16 +268,33 @@ class Job:
 
     def delete_file(self,step):
         if sys.platform[:3] == 'win':
-            cmd = 'del ' + step.remote_filename
+            cmd = 'del'
+            args =  [step.remote_filename]
         else:
-            cmd = 'rm ' + step.remote_filename
+            cmd = 'rm'
+            args = [step.remote_filename]
 
-        pipe=subprocess.ForegroundPipe(cmd,debug=self.debug)
+        pipe=subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
         code = pipe.run()
         if code:
             msg = pipe.msg
         else:
             msg = None
+        return code,msg
+
+    def delete_local_file(self,step):
+        """ Delete a file on the local filesystem"""
+
+        if not step.local_filename:
+            return -1,"delete_local_file needs a filename!"
+        
+        try:
+            os.remove( step.local_filename)
+            msg = "Removed local file: %s" % step.local_filename
+            code = 0
+        except OSError:
+            msg = "Failed to remove local file: %s" % step.local_filename
+            code = -1
         return code,msg
 
     def copy_out_file(self,step):
@@ -284,16 +304,31 @@ class Job:
 
         if '\0' in data:
             print file, "BinaryFile!"
-            cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + step.local_filename + ' ' + self.remoteuser + '@' + self.host + ':' + self.remote_filename
+            #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + step.local_filename + ' ' + self.remoteuser + '@' + self.host + ':' + self.remote_filename
+            cmd = 'C:/Program Files/PuTTY/pscp.exe'
+            args = [step.local_filename,
+                    self.remoteuser,
+                    '@',
+                    self.host,
+                    ':',
+                    self.remote_filename]
         else:
             newdata = re.sub("\r\n", "\n", data)
             t = open('unx_'+step.local_filename,"wb")
             t.write(newdata)
             t.close()
-            cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + 'unx_' + step.local_filename  + ' ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename
+            #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + 'unx_' + step.local_filename  + ' ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename
+            cmd = 'C:/Program Files/PuTTY/pscp.exe'
+            args = ['unx_',
+                    step.local_filename,
+                    self.remoteuser,
+                    '@',
+                    self.host,
+                    ':',
+                    step.remote_filename]
 
-        print 'copy out cmd',cmd
-        p = subprocess.ForegroundPipe(cmd,debug=self.debug)
+        print 'copy out cmd',[cmd] + args
+        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
@@ -305,9 +340,16 @@ class Job:
         if not step.local_filename:
             step.local_filename = step.remote_filename
 
-        cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename + ' ' + self.local_filename
-        print 'copy back cmd',cmd
-        p = subprocess.ForegroundPipe(cmd,debug=self.debug)
+        #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename + ' ' + self.local_filename
+        cmd = 'C:/Program Files/PuTTY/pscp.exe'
+        args = [self.remoteuser,
+                '@',
+                self.host,
+                ':',
+                step.remote_filename,
+                self.local_filename]
+        print 'copy back cmd',[cmd] + args
+        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
@@ -388,10 +430,14 @@ class BackgroundJob(Job):
             step.remote_filename = step.local_filename
 
         if step.local_filename != step.remote_filename:
-            cmd = 'del ' + self.remote_filename
-            subprocess.ForegroundPipe(cmd,debug=self.debug).run()
-            cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
-            subprocess.ForegroundPipe(cmd,debug=self.debug).run()
+            #cmd = 'del ' + self.remote_filename
+            cmd = 'del'
+            args = [self.remote_filename]
+            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+            #cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
+            cmd = 'ren'
+            args = [self.local_filename, step.remote_filename]
+            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
         return 0,None
 
     def run_app(self,step):
@@ -407,11 +453,13 @@ class BackgroundJob(Job):
                 status2 = f.close()
 
             #cmd = self.local_command + ' < ' + step.stdin_file + ' > ' + step.stdout_file
-            cmd = step.local_command 
+            #cmd = step.local_command
 
+            self.process = subprocess.Spawn(step.local_command,
+                                            args=step.local_command_args,
+                                            debug=self.debug)
             if self.debug:
-                print "Background job win: run_app cmd: ",cmd
-            self.process = subprocess.Spawn(cmd,debug=self.debug)
+                print "Background job win: run_app cmd: ",self.process.cmd_as_string()
             if step.stdin_file:
                 i = open(step.stdin_file,'r')
             else:
@@ -457,11 +505,12 @@ class BackgroundJob(Job):
             #if step.stdout_file:
             #    cmdtmp = cmdtmp + ' > ' + step.stdout_file                
                 
-            cmd = step.local_command
+            #cmd = step.local_command
+            self.process = subprocess.Spawn(step.local_command,
+                                            args=step.local_command_args,
+                                            debug=self.debug)
             if self.debug:
-                print "Background job: run_app cmd: ",cmd
-                
-            self.process = subprocess.Spawn(cmd,debug=self.debug)
+                print "Background job: run_app cmd: ",self.process.cmd_as_string()
 
             # Open any files we may have been given and give these to the run method
             if step.stdin_file:
@@ -530,13 +579,17 @@ class BackgroundJob(Job):
             # in contrast to the foreground case where its OK
 
             # This seems the simplest form of the command
-            cmd="bash "+step.local_command
-
-            print 'Spawn on ',cmd
+            #cmd="bash "+step.local_command
+            #print 'Spawn on ',cmd
             #import os
             #print 'PATH is',os.environ['PATH']
 
-            self.process = subprocess.Spawn(cmd,debug=self.debug)
+            self.process = subprocess.Spawn(step.local_command,
+                                            args=step.local_command_args,
+                                            debug=self.debug)
+            if self.debug:
+                print "Background job: run_app_bash cmd: ",self.process.cmd_as_string()
+
             if step.stdin_file:
                 i = open(step.stdin_file,'r')
             else:
@@ -569,16 +622,16 @@ class BackgroundJob(Job):
 
         else:
             # Unix code
-            cmd = step.local_command
-            self.process = subprocess.Spawn(cmd,debug=self.debug)
+            #cmd = step.local_command
+            self.process = subprocess.Spawn(step.local_command,
+                                            args=step.local_command_args,
+                                            debug=self.debug)
             self.process.run()
             code = self.process.wait()
             if code != 0: 
                 raise JobError, "Unexpected Exit code=" + str(code)
 
         return 0,None
-
-
 
     def copy_back_file(self,step):
         """ This provides a rename function when used in a local job"""
@@ -588,13 +641,17 @@ class BackgroundJob(Job):
 
         if step.local_filename != step.remote_filename:
             if sys.platform[:3] == 'win':
-                cmd = 'ren ' + step.remote_filename + ' ' + step.local_filename
-                code = subprocess.ForegroundPipe(cmd,debug=self.debug).run()
+                #cmd = 'ren ' + step.remote_filename + ' ' + step.local_filename
+                cmd = 'ren'
+                args = [step.remote_filename,step.local_filename]
+                code = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
             else:
-                cmd = 'mv ' + step.remote_filename + ' ' + step.local_filename
-                code = subprocess.ForegroundPipe(cmd,debug=self.debug).run()
+                #cmd = 'mv ' + step.remote_filename + ' ' + step.local_filename
+                cmd = 'mv'
+                args = [step.remote_filename,step.local_filename]
+                code = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
         return 0,None
@@ -647,27 +704,43 @@ class ForegroundJob(Job):
             step.remote_filename = step.local_filename
 
         if step.local_filename != step.remote_filename:
-            cmd = 'del ' + self.remote_filename
-            subprocess.ForegroundPipe(cmd,debug=self.debug).run()
-            cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
-            subprocess.ForegroundPipe(cmd,debug=self.debug).run()
+            #cmd = 'del ' + self.remote_filename
+            cmd = 'del'
+            args = [self.remote_filename]
+            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+            #cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
+            cmd = 'ren'
+            args = [self.local_filename,step.remote_filename]
+            subprocess.ForegroundPipe(cmd,arg=args,debug=self.debug).run()
         return 0,None
 
     def run_app(self,step):
+        """
+        """
 
         cmd = step.local_command
+        args = step.local_command_args
+        #if step.stdin_file:
+        #    cmd = cmd + ' < '+ step.stdin_file
+        #if step.stdout_file:
+        #    cmd = cmd + ' > ' + step.stdout_file
         if step.stdin_file:
-            cmd = cmd + ' < '+ step.stdin_file
+            args=[]
+            args.append('<')
+            args.append(step.stdin_file)
         if step.stdout_file:
-            cmd = cmd + ' > ' + step.stdout_file
+            if not args:
+                args = []
+            args.append('>')
+            args.append(step.stdout_file)
 
         #print 'checking path'
         #p = subprocess.ForegroundPipe("echo $PATH",debug=self.debug)
         #code = p.run()        
 
+        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
         if self.debug:
-            print 'ForegroundJob: cmd=',cmd
-        p = subprocess.ForegroundPipe(cmd,debug=self.debug)
+            print 'ForegroundJob: cmd=',p.cmd_as_string()
         code = p.run()
         if code:
             print 'code from run_app',code
@@ -685,14 +758,14 @@ class ForegroundJob(Job):
             cmd = cmd + ' < '+ step.stdin_file
         if step.stdout_file:
             cmd = cmd + ' > ' + step.stdout_file
-        print 'ForegroundJob: cmd=',cmd
-
         file=open("bash.txt","wb")
         file.write(cmd)
         file.close()
 
-        cmd="C:/cygwin/bin/bash.exe < bash.txt"
-        p = subprocess.ForegroundPipe(cmd,debug=self.debug)
+        #cmd="C:/cygwin/bin/bash.exe < bash.txt"
+        cmd="C:/cygwin/bin/bash.exe"
+        args= ['<','bash.txt']
+        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
         code = p.run()
 
         return code,None
@@ -725,9 +798,11 @@ class RemoteForegroundJob(Job):
 
     def run_gamessuk(self,step):
         cmd = "/usr/local/packages/gamessuk/rungamess/rungamess " + step.jobname
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
-        print 'remote command:',rcmd
-        p = subprocess.Spawn(rcmd,debug=1)
+        #rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
+        rcmd = 'C:/Program Files/PuTTY/plink.exe'
+        args = [self.host,cmd ]
+        p = subprocess.Spawn(rcmd,args=args,debug=1)
+        print 'remote command:',p.cmd_as_string()
         code = p.run()
         print 'run code',code
         code = p.wait()
@@ -762,9 +837,11 @@ class LoadLevelerJob(Job):
 
         #cmd = "/usr/local/packages/gamessuk/rungamess/rungamess -p 4 -T 10 -q " + step.jobname
         cmd = "/hpcx/home/z001/z001/psh/GAMESS-UK/rungamess/rungamess -p 4 -T 10 -q " + step.jobname
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
-        print 'remote command:',rcmd
-        p = subprocess.SlavePipe(rcmd,debug=0)
+        #rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
+        rcmd = 'C:/Program Files/PuTTY/plink.exe'
+        args = [self.host,cmd ]
+        p = subprocess.SlavePipe(rcmd,args=args,debug=0)
+        print 'remote command:',p.cmd_as_string()
         code = p.run()
         print 'run code',code
         code = p.wait()
@@ -783,7 +860,7 @@ class LoadLevelerJob(Job):
 
 class RMCSJob(Job):
     """Class for running job's using Rik's Remote MyCondorSubmit"""
-    def __init__(self,editor=None,**kw):
+    def __init__(self,**kw):
 
         # Before we do anything, make sure we can import the required modules
         global rmcs,srbftp,SOAPpy
@@ -859,11 +936,16 @@ class RMCSJob(Job):
         if not step.remote_filename and not step.local_filename:
             return -1,"RMCS copy_back_file error needs a filename!"
 
+        if not step.local_filename:
+            local_filename = step.remote_filename
+        else:
+            local_filename = step.local_filename
+            
         if not step.remote_filename:
             remote_filename = step.local_filename
         else:
             remote_filename = step.remote_filename
-
+            
         try:
             srbftp_intfce = self._get_srbftp()
         except:
@@ -872,8 +954,8 @@ class RMCSJob(Job):
         srbftp_intfce.cd(self.job_parameters['srb_output_dir'])
         srbftp_intfce.get(remote_filename)
 
-        if step.local_filename != remote_filename:
-            os.rename(remote_filename,step.local_filename)
+        if local_filename != remote_filename:
+            os.rename(remote_filename,local_filename)
             
         return 0,"Retrived file %s from srb" % step.local_filename
 
@@ -1090,14 +1172,470 @@ class RMCSJob(Job):
         elif self.active_step and not self.active_step.kill_cmd:
             print 'Running built-in kill for this step'
             self.status = JOBSTATUS_KILLPEND
-            self.rmcs.cancelJob(self.jobId)
+            self.rmcs.cancelJob(self.jobID)
             self.status = JOBSTATUS_KILLED
 
 
-class NordugridJob(Job):
-    """Class for running job's on the Nordugrid"""
-    def __init__(self,editor=None,**kw):
-        apply(Job.__init__, (self,), kw)
+class GridJob(Job):
+    """ Base class for Grid jobs - defines various methods and data structures
+        that should be common to most grid jobs.
+        """
+    def __init__(self,**kw):
+        Job.__init__(self)
+
+        self.jobtype='Grid Job'
+        self.jobID = None # holds the url of the job
+        self.poll_interval = 30 # How often we should poll for the job status when running
+        self.gsissh_port = 2222
+        
+        self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
+        self.job_parameters['machine_list'] = None
+        self.job_parameters['count'] = '1'
+        self.job_parameters['executable'] = None
+        self.job_parameters['jobName'] = None
+        self.job_parameters['jobtype'] = None
+        self.job_parameters['stdin'] = None
+        self.job_parameters['stdout'] = None
+        self.job_parameters['stderr'] = None
+        self.job_parameters['remote_home'] = None
+        self.job_parameters['environment'] = {}
+
+        # This is a list of all parameters that are usable in the CreateRSLString method
+        # Only ones that are universally used should be added here, others should be added
+        # by the relevant init method
+        self.xrsl_parameters = ['arguments',
+                                'count',
+                                'cpuTime',
+                                 'executable',
+                                 'environment',
+                                 'jobName',
+                                 'jobtype',
+                                 'stdin',
+                                 'stdout',
+                                 'stderr',
+                                'wallTime'
+                                ]
+            
+
+    def CheckProxy(self):
+        """ Check that the user has a valid proxy and throw an exception if not"""
+        cmd = 'grid-proxy-info'
+        arg = '-e'
+        ret = os.spawnlp(os.P_WAIT, cmd, cmd, arg )
+        if ret:
+            raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
+            a proxy with a lifetime sufficient for your job."
+        else:
+            if self.debug:
+                print "Proxy server is o.k."
+            return None
+
+    def CreateRSLString(self):
+        """ Create a suitable rsl string to run the job from the job_parameters and
+            the input and output files, executable, etc
+            To save including all the job parameters in the xrsl string, we use the xrsl_variables
+            list to determine which are valid.
+        """
+
+        # Not used as we build up the xrsl using the relevant tools instead
+        #xrsl_string = '&'
+        xrsl_string = ''
+        for rsl_name,value in self.job_parameters.iteritems():
+            #rsl_name = key.replace('ngrid_','')
+            #print "CreateRSL got: %s : %s" % (rsl_name,value)
+            if rsl_name not in self.xrsl_parameters:
+                # Not a valid parameter so skip it
+                continue
+            if value:
+                if type(value) == list:
+                    pass
+                elif type(value) == dict:
+                    # Dictionaries currently for input & outputfiles and environment variables
+                    # can all be handled in the same way
+                    if len(value) > 0:
+                        xrsl_string += '(%s=' % rsl_name
+                        for dkey,dvalue in value.iteritems():
+                            if dvalue == None:
+                                xrsl_string += '(%s "")' % dkey
+                            else:
+                                xrsl_string += '(%s %s)' % ( dkey, dvalue )
+                        xrsl_string += ')'
+                else:
+                    #xrsl_string += '(%s=%s)' % (rsl_name,value)
+                    xrsl_string += '(%s="%s")' % (rsl_name,value)
+
+        if self.debug:
+            print "CreateRsl xrsl_string is: ",xrsl_string
+        return xrsl_string
+
+class GrowlJob(GridJob):
+    """Class for running jobs with GROWL:
+       http://www.growl.org.uk/
+
+       Check we have a host to run on (len machine_list)
+       Get the path to the users home directory: grid-pwd
+       
+    """
+    def __init__(self,**kw):
+        GridJob.__init__(self)
+
+        self.job_parameters['remote_home'] = None
+        self.job_parameters['remote_dir'] = None
+        self.job_parameters['user_remote_dir'] = None # directory specified by the user
+        self.job_parameters['count'] = 1
+        self.job_parameters['machine_list'] = []
+    
+    def get_host(self):
+        """Return the name of the host that we are running on """
+        if len( self.job_parameters['machine_list'] ) != 1:
+            raise JobError, "GridJob need a single hostname to run job on!"
+        return self.job_parameters['machine_list'][0]
+
+    def get_remote_homedir(self):
+        """Get the path to the home directory on the target machine """
+
+        if self.debug:
+            print "Getting remote_home_dir"
+
+        if not self.job_parameters['remote_home']:
+            host = self.get_host()
+            #homedir = self.run_command( 'grid-pwd', args=host )
+            homedir = self.run_command( 'grid-pwd', args=[host] )
+            self.job_parameters['remote_home'] = homedir
+        else:
+            homedir = self.job_parameters['remote_home']
+            
+        if self.debug:
+            print "Growl get_remote_homedir returning: %s" %  homedir
+        return homedir
+
+    def get_remote_dir(self):
+        """Get full path to the working directory on the target machine.
+           self.job_parameters['remote_dir'] should be None the first time
+           this function is called so we set this on the first call.
+           Subsequent calls just retrieve the value from the dictionary.
+          
+        """
+
+        if not self.job_parameters['remote_dir']:
+            # Need to work out the path
+            homedir = self.get_remote_homedir()
+            if not self.job_parameters['user_remote_dir']:
+                # Working in home directory
+                remote_dir =  homedir+"/"
+                self.job_parameters['remote_dir'] = remote_dir
+            else:
+                # User has specified a working directory
+                remote_dir = self.job_parameters['user_remote_dir']
+                if remote_dir[-1] != "/": # Ensure there is a trailing slash
+                    remote_dir += "/"
+                if remote_dir[0] == "/": # Absolute path
+                    self.job_parameters['remote_dir'] = remote_dir
+                else: # Relative path
+                    if remote_dir[0] == "~":
+                        remote_dir = remote_dir[1:]
+                    remote_dir = homedir+"/"+remote_dir
+                    self.job_parameters['remote_dir'] = remote_dir
+        else:
+            remote_dir = self.job_parameters['remote_dir']
+
+        if self.debug:
+            print "get_remote_dir returning: %s" % remote_dir
+        return remote_dir
+
+    def run_command( self, command, args=None ):
+        """Use subprocess Spawn to run a command and get the output and error
+           These are then concatenated and passed to parse_output to check for
+           any errors and get the return value
+        """
+        if args:
+            cmd_string= command + ' ' + ' '.join(args)
+        else:
+            cmd_string = command
+            
+        if self.debug:
+            print "GrowlJob run_command running: %s" % (cmd_string)
+            
+        p = subprocess.Spawn( command, args=args ,debug=1)
+        p.run()
+        ret = p.wait()
+        if ret < 0:
+            raise JobError,"GrowlJob Error running command: %s!" % cmd_string
+        
+        output = p.get_output()
+        error = p.get_error()
+
+        result = self.parse_output( command, output, error )
+
+        return result
+
+    def parse_output( self, command, output,error ):
+        """ Parse the output from a command to determine if it worked and return whatever
+            the caller expects to get back - if we detect an error we raise a JobError so
+            that the caller does not need to worry about checking if a command worked
+            The idea is to keep all this stuff together so that if the output format changes,
+            we only have to change things here.
+        """
+
+        # Concatenate output and error for the time being
+        if output and error:
+            output = output + "\n" + error
+        if not output:
+            output = error
+
+        # maps common error re's to the string we use when we raise the JobError
+        # we cycle through this before we do owt to pick out any general errors we know about
+        common_errors = {
+            re.compile("Usage error:") : "Usage error for %s:\n%s" % (command,output),
+            re.compile("Permission denied") : "Proxy Error for command: %s\nPlease run grid-proxy-init" % (command),
+            re.compile(".*Name or service not known") : "Cannot contact machine!\n%s" % output,
+            re.compile(".*cannot parse RSL stub") : "Supplied RSL was not valid!\n%s" % output,
+            re.compile(".*No such file or directory") : "Cannot find file on remote machine!\n%s" % output,
+            re.compile("GRAM Job submission failed") : "Job submission failed!\n%s" % output
+            }
+
+        if self.debug:
+            print "parse_output command: %s" % command
+            print "parse_output output: %s" % output
+
+        if type(output) == str:
+            # If it's multi-line we need to split it up
+            output = output.split('\n')
+
+        # Check for any common errors
+        for line in output:
+            for error,msg in common_errors.iteritems():
+                if error.match( line ):
+                    raise JobError,msg
+
+        # Decide how to parse the output of each command we support
+        if command == 'grid-cp':
+            # Nothing to be done for this one
+            return None
+        
+        if command == 'grid-rm':
+            # Nothing to be done for this one
+            return None
+        
+        elif command == 'grid-pwd':
+            dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
+            for line in output:
+                m = dir_re.match( line )
+                if m:
+                    return m.group(1)
+            if not m:
+                raise JobError,"GrowlJob parse_output: grid-pwd failed!\n%s" % output
+            
+        elif command == 'grid-which':
+            dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
+            for line in output:
+                m = dir_re.match( line )
+                if m:
+                    return m.group(1)
+            if not m:
+                # We can't find it so return None so we can try and work out the full path ourselves
+                return None
+
+        elif command == 'grid-get-jobmanager':
+            jman_re = re.compile("(^jobmanager-.*)") # group starts with / then anything that's not white space
+            for line in output:
+                m = jman_re.match( line )
+                if m:
+                    return m.group(1)
+            if not m:
+                raise JobError,"GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
+            
+        elif command == 'grid-submit' or command == 'globus-job-submit':
+            # Need to get the url
+            url_re = re.compile("(^https://.*)") # Group is the url string
+            for line in output:
+                m = url_re.match( line )
+                if m:
+                    return m.group(1)
+            if not m:
+                raise JobError,"GrowlJob parse_output: grid-submit could not find returned url!\n%s" % output
+            
+        elif command == 'grid-status':
+            stat_re = re.compile("(UNSUBMITTED|DONE|FAILED|ACTIVE|PENDING)") # Group is the any of the accepted stati
+            for line in output:
+                m = stat_re.match( line )
+                if m:
+                    return m.group(1)
+            # Only get here if we don't get a match
+            raise JobError,"GrowlJob grid-staus got unrecognised output!\n%s" % output
+        
+        else:
+            raise JobError,"GrowlJob parse_ouptut unrecognised command: %s" % command
+
+
+    def copy_out_file(self,step,kill_on_error=1):
+        """ Copy out the file to the resource.
+        """
+        
+        if not step.local_filename or not os.access( step.local_filename,os.R_OK ):
+            return -1,"copy_out_file error accessing file: %s!" % step.local_filename
+        
+        host = self.get_host()
+        path = self.get_remote_dir()
+
+        # Format is similar to scp e.g. <local_file> <host>:<remote_path>
+        args = [step.local_filename]
+        if step.remote_filename:
+            args.append( "%s:%s" % (  host, path+step.remote_filename ) )
+        else:
+            args.append( "%s:%s" % (  host, path+step.local_filename ) )
+
+        if self.debug:
+            print "GrowlJob copy_out_file running: %s" % 'grid-cp '+' '.join(args)
+            
+        self.run_command( 'grid-cp', args=args )
+            
+        return 0,"Copied file %s to %s" % (step.local_filename,host)
+
+    def copy_back_file(self,step,kill_on_error=0):
+        """ Copy out the file to the resource.
+        """
+        if self.debug:
+            print "Growl copy_back_file: %s : %s" %( step.local_filename,step.remote_filename)
+            
+        if not step.remote_filename and not step.local_filename:
+            return -1,"copy_back_file needs a filename!"
+
+        if not step.remote_filename:
+            remote_filename = step.local_filename
+        else:
+            remote_filename = step.remote_filename
+
+        if not step.local_filename:
+            local_filename = step.remote_filename
+        else:
+            local_filename = step.local_filename
+
+        host = self.get_host()
+        path = self.get_remote_dir()
+        args = []
+        args.append( "%s:%s" % ( host, path+remote_filename ))
+        args.append( local_filename )
+
+        if self.debug:
+            print "GrowlJob copy_back_file running: %s" % 'grid-cp '+ ' '.join(args)
+        self.run_command( 'grid-cp', args=args )
+        
+        if local_filename != remote_filename:
+            os.rename(remote_filename,local_filename)
+            
+        return 0,"Copied file %s from %s" % (step.local_filename,host)
+
+    def delete_file(self,step):
+        """ Delete a file on the remote machine
+        """
+
+        if not step.remote_filename:
+            return -1,"GrowlJob delete_file needs a remote filename!"
+        
+        host = self.get_host()
+        path = self.get_remote_dir() + step.remote_filename
+        ret = self.run_command('grid-rm',args=[host,path])
+
+        if ret:
+            code = -1
+            msg = "Delete of remote file: %s failed!" % step.remote_filename
+        else:
+            code = 0
+            msg = "Deleted remote file: %s" % step.remote_filename
+            
+        return code,msg
+    
+
+    def run_app(self,step,kill_on_error=None,**kw):        
+        """Submit the Growl Job using globus-job-submit
+           We need to build up a string suitable for globus-job-submit of the form:
+           globus-job-submit <hostname>/<jobmanager> -x <xrsl_string> <executable_path>
+        
+        """
+
+        remote_dir = self.get_remote_dir()
+        cmdline = []
+        host = self.get_host()
+        jobmanager = self.run_command('grid-get-jobmanager',args=[host])
+        cmdline.append(host+'/'+jobmanager)
+
+        # Handle stdin,out& err with i,o, and e flags?
+        # Set these to None so that they don't end up in the RSL string we create
+#         if step.stdin_file:
+#             path = remote_dir+step.stdin_file
+#             self.job_parameters['stdin'] = None
+#             cmdline.append('-i')
+#             cmdline.append('%s' % path)
+#         if step.stdout_file:
+#             path = remote_dir+step.stdout_file 
+#             self.job_parameters['stdout'] = None
+#             cmdline.append('-o')
+#             cmdline.append('%s' % path)
+#         if step.stderr_file:
+#             path = remote_dir+step.stderr_file 
+#             self.job_parameters['stderr'] = None
+#             cmdline.append('-e')
+#             cmdline.append('%s' % path)
+
+
+        # Set up any parameters so that we get a suitable rsl string when we call
+        # CreateRSLString
+        
+        if step.stdin_file:
+            path = remote_dir+step.stdin_file
+            self.job_parameters['stdin'] = path
+        if step.stdout_file:
+            path = remote_dir+step.stdout_file 
+            self.job_parameters['stdout'] = path
+        if step.stderr_file:
+            path = remote_dir+step.stderr_file 
+            self.job_parameters['stderr'] = path
+
+        if not self.job_parameters['executable']:
+            raise JobError,"GrowlJob run_app needs an executable to run!"
+        else:
+            executable = self.job_parameters['executable']
+            # Need to null this so it doesn't end up in the rsl_string
+            self.job_parameters['executable'] = None
+            
+        rsl_string = self.CreateRSLString()
+        cmdline.append('-x')
+        cmdline.append('%s' % rsl_string)
+
+        # Get the full path to the executable on the machine
+        exe = self.run_command('grid-which',args=[host,executable])
+        if not exe:
+            # exe not in path, so we guess it's in the working directory we've been given
+            exe = remote_dir + executable
+        
+        cmdline.append( exe )
+
+        if self.debug:
+            print "GrowlJob run_app running command: %s " % ('globus-job-submit '+' '.join(cmdline))
+
+        #raise JobError,"Noooooooo!!!!"
+        url = self.run_command( 'globus-job-submit', args = cmdline )
+
+        # Loop to check status
+        fin_stat = ['DONE', 'FAILED']
+        running = 1
+        while running:
+            ret = self.run_command( 'grid-status', args=[url] )
+            if ret in fin_stat:
+                break
+            else:
+                time.sleep( self.poll_interval )
+                continue
+        return 0,ret
+
+
+class NordugridJob(GridJob):
+    """Class for running job's on the Nordugrid using ARCLIB:
+       http://www.nordugrid.org
+    """
+    def __init__(self,**kw):
+        GridJob.__init__(self)
 
         # Check the arclib module is available
         global arclib
@@ -1113,9 +1651,6 @@ class NordugridJob(Job):
         # Looks like we are good to go...
         
         self.jobtype='Nordugrid Job'
-        self.jobID = None # used to query the job status
-        self.poll_interval = 30 # how often to check the job state in the loop
-
         
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
@@ -1140,6 +1675,10 @@ class NordugridJob(Job):
         self.job_parameters['architechture'] = None
         self.job_parameters['environment'] = {}
 
+        xrsl_parameters = ['inputfiles','outputfiles','arguments','memory','disk','runTimeEnvironment',
+                           'opsys','architechture','environment']
+        self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
+
         # Update the defaults with anything that is in the rc_vars dict
         self.get_rcvars()
 
@@ -1154,20 +1693,7 @@ class NordugridJob(Job):
             arclib.SetNotifyLevel(arclib.INFO)
             #print "Nordugrid job inited successfully"
 
-    def CheckProxy(self):
-        """ Check that the user has a valid proxy and throw an exception if not"""
-        cmd = 'grid-proxy-info'
-        arg = '-e'
-        ret = os.spawnlp(os.P_WAIT, cmd, cmd, arg )
-            
-        if ret:
-            raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
-            a proxy with a lifetime sufficient for your job."
-        else:
-            if self.debug:
-                print "Proxy server is o.k."
-            return None
-
+#     BELOW TWO METHODS ARE BROKEN with ARLIB < 0.5.56
 #     def CheckProxy(self):
 #         """ Check that the user has a valid proxy and throw an exception if not"""
 
@@ -1215,50 +1741,23 @@ class NordugridJob(Job):
 #         return xrsl
 
 
-    def CreateRSL(self,string=None ):
-        """ Create a suitable rsl string to run the job from the job_parameters and
-            the input and output files, executable, etc
-            set string to 1 to only create an xrsl string not the xrsl object
+    def CreateRSL(self):
+        """ Create the RSL for the Nordugrid job (using the GridJob CreateRSLString method)
         """
 
         # Not used as we build up the xrsl using the relevant tools instead
-        xrsl_string = '&'
-        for rsl_name,value in self.job_parameters.iteritems():
-            #rsl_name = key.replace('ngrid_','')
-            #print "CreateRSL got: %s : %s" % (rsl_name,value)
-            if value:
-                if type(value) == list:
-                    pass
-                elif type(value) == dict:
-                    # Dictionaries currently for input & outputfiles and environment variables
-                    # can all be handled in the same way
-                    if len(value) > 0:
-                        xrsl_string += '(%s=' % rsl_name
-                        for dkey,dvalue in value.iteritems():
-                            if dvalue == None:
-                                xrsl_string += '(%s "")' % dkey
-                            else:
-                                xrsl_string += '(%s %s)' % ( dkey, dvalue )
-                        xrsl_string += ')'
-                else:
-#                    xrsl_string += '(%s=%s)' % (rsl_name,value)
-                    xrsl_string += '(%s="%s")' % (rsl_name,value)
-
-        if self.debug:
-            print "CreateRsl xrsl_string is: ",xrsl_string
-
-        if not string:
-            try:
-                xrsl = arclib.Xrsl( xrsl_string )
-    #        except arclib.ARCLibError,e:
-    #            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
-            except Exception,e:
-                raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
-            except:
-                raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
+        xrsl_string = self.CreateRSLString()
+        xrsl_string = '&'+xrsl_string
+        
+        try:
+            xrsl = arclib.Xrsl( xrsl_string )
             return xrsl
-        else:
-            return xrsl_string
+        #except arclib.ARCLibError,e:
+        #    raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+        except Exception,e:
+            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+        except:
+            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
 
     def GetTargets( self, xrsl ):
         """ Return a list of suitable targets based on the supplied xrsl_string"""
@@ -1275,6 +1774,10 @@ class NordugridJob(Job):
         except:
             raise JobError, "Nordugrid GetTargets hit problems preparing job submission!"
 
+        if self.debug:
+            print "Nordugird GetTargets returning:"
+            print targets
+
         return targets
 
     def Submit( self, xrsl, targets ):
@@ -1287,12 +1790,12 @@ class NordugridJob(Job):
 #        except arclib.ARCLibError,e:
 #            raise JobError,"Job Submission of job: <%s> failed!\n%s" % (xrsl,e)
         except Exception,e:
-            raise JobError,"Job Submission of job: <%s> failed!\n%s" % (xrsl,e)
+            raise JobError,"arclib job submission of job: <%s> failed!\n%s" % e
         except:
-            raise JobError,"Job Submission of job: <%s> failed!" % xrsl
+            raise JobError,"arclib job submission failed!"
 
         # Add job to ~/.ngjobs
-        arclib.AddJobID( self.jobID, self.name )
+        #arclib.AddJobID( self.jobID, self.name )
         if self.debug:
             print "Submit submitted jobname %s as: %s" % (self.name, self.jobID )
         return self.jobID
@@ -1583,7 +2086,7 @@ class NordugridJob(Job):
         rundir = self.jobID
         fileURL = rundir + "/" + remote_filename
         print "copy_back_file fileURL: %s" % fileURL
-        local_filename = os.getcwd() + os.sep + os.path.basename( local_filename )
+        local_filenam = os.getcwd() + os.sep + os.path.basename( local_filename )
         print "copy_back_file local_filename: %s" % local_filename
             
         try:
@@ -1594,7 +2097,7 @@ class NordugridJob(Job):
             raise JobError,"Nordugrid copy_back_file error retrieving file: %s\n%s" % (fileURL,e)
         except:
             raise JobError,"Nordugrid copy_back_file error retrieving file: %s" % fileURL
-            
+
         return 0,"Retrived file %s from Nordugrid" % local_filename
 
     def kill(self):
@@ -1732,7 +2235,7 @@ if __name__ == "__main__":
         job.run()
         print 'rmcs done'
 
-    if 1:
+    if 0:
         print 'testing nordugrid job'
         
         job_parameters = {}
@@ -1746,8 +2249,32 @@ if __name__ == "__main__":
         job = NordugridJob()
         job.update_job_parameters( job_parameters )
         job.add_step(RUN_APP,'run nordugrid')
+        print job.CreateRSL()
 #         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
-        job.run()
+        #job.run()
 #         job.copy_back_rundir()
 #         job.clean()
         print 'end jens job'
+
+    if 1:
+        print 'testing GROWL job'
+        
+        job = GrowlJob()
+        job.job_parameters['machine_list'] = ['scarf.rl.ac.uk']
+        job.job_parameters['count'] = 2
+        job.job_parameters['jobtype'] = 'mpi'
+        
+        #job.job_parameters['executable'] = "hostname"
+        #job.job_parameters['executable'] = "env"
+        job.job_parameters['executable'] = "gamess-uk"
+        job.job_parameters['environment']['ftn058'] = 'untitled.pun'
+        #job.job_parameters['user_remote_dir'] = "jens"
+        job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='untitled.out',kill_on_error=0)
+        job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='ftn058',kill_on_error=0)
+        job.add_step(COPY_OUT_FILE,'Growl Copy Out File',local_filename='untitled.in')
+        #job.add_step(RUN_APP,'Run Growl Job',stdout_file='untitled.out',stderr_file='untitled.err')
+        job.add_step(RUN_APP,'Run Growl Job',stdin_file='untitled.in',stdout_file='untitled.out',stderr_file='untitled.err')
+        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.out')
+        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='ftn058')
+        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.err')
+        job.run()
