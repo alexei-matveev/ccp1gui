@@ -22,7 +22,8 @@ from   qm import *
 from   filepunch import *
 import os
 import string
-from viewer.paths import root_path
+from viewer.paths import root_path,find_exe
+from viewer.rc_vars import rc_vars
 homolumoa = 0
 
 class MopacCalc(QMCalc):
@@ -71,6 +72,10 @@ class MopacCalc(QMCalc):
 
     def makejob(self,writeinput=1,graph=None):
         """ build the mopac job"""
+
+        #Get an editor instance to pop up tk-error widgets
+        ed = self.get_editor()
+
         self.GetModel()
         mol_obj  = self.get_input("mol_obj")
         job_name = self.get_name()
@@ -121,25 +126,22 @@ class MopacCalc(QMCalc):
         job.add_step(DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=self.infile,kill_on_error=0)
 
+
+        mopac_exe = self.get_executable()
+        if not mopac_exe:
+            ed.Error('Cannot find a mopac executable!')
+            return None
+        
         # Local windows job, search for local executable
         if sys.platform[:3] == 'win' and hostname == 'localhost':
-            # Name of executable, assume install of exe into exe subdirectory
-            try:
-                install_dir = os.environ['MOPAC_BIN']
-                mopac_exe=install_dir+'\mopac.exe'
-            except KeyError:
-                mopac_exe=root_path+'/exe/mopac.exe'
-            print 'Using MOPAC path ' + mopac_exe
             job.add_step(RUN_APP,'run mopac',local_command=mopac_exe)
         else:
-            # See if we can work out the location of the sript
-            mopac_exe = self.find_runmopac()
-            if not mopac_exe:
-                return
-            mopac_cmd=mopac_exe+" "+job_name
-            #mopac_exe="runmopac "+job_name
             #job.add_step(RUN_APP,'run mopac',local_command=mopac_exe,stdin_file=self.infile)
-            job.add_step(RUN_APP,'run mopac',local_command=mopac_cmd,stdout_file=self.outfile)
+            job.add_step(RUN_APP,
+                         'run mopac',
+                         local_command=mopac_exe,
+                         local_command_args=[job_name],
+                         stdout_file=self.outfile)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
@@ -289,33 +291,32 @@ class MopacCalc(QMCalc):
 
                 break
             
-    def find_runmopac(self):
+    def get_executable(self):
         """
-           Try to work out the location of the run_mopac script
+           Try to work out the location of the executable/run_mopac script
         """
-        # Get an editor for popping up error widgets
-        ed = self.get_editor()
+        global rc_vars,find_exe
         
-        # See if we can work out where the runmopac script lives
-        from jobmanager import subprocess
-        cmd="which run_mopac"
-        p = subprocess.ForegroundPipe(cmd)
-        code = p.run()
-        script = None
-        if p.error:
-            print 'Error trying to locate run_mopac script '+str(p.error)
+        if rc_vars.has_key('mopac_exe'):
+            mopac_exe = rc_vars['mopac_exe']
+            print "Using mopac_exe: %s from ccp1guirc.py file" % mopac_exe
+            return mopac_exe
+        
+        if sys.platform[:3] == 'win' and hostname == 'localhost':
+            # Name of executable, assume install of exe into exe subdirectory
+            try:
+                install_dir = os.environ['MOPAC_BIN']
+                mopac_exe=install_dir+'\mopac.exe'
+            except KeyError:
+                mopac_exe=root_path+'/exe/mopac.exe'
         else:
-            if ( len( p.output ) > 0 ):
-                # Output is a list containing a string with an endline char
-                output = p.output[0]
-                script = output[:-1]
-                
-        if not script:
-            ed.Error("A script called \"run_mopac\" could not be found.\n" +
-                      "Please ensure that a script called \"run_mopac\" is\n" +
-                     "in your path before starting the GUI.")
-            
-        return script
+            # Unix case - check default path and gui directories
+            mopac_exe = find_exe('runmopac')
+
+        if self.debug:
+            print "Using mopac_exe: %s" % mopac_exe
+        
+        return mopac_exe
         
     def get_editor_class(self):
         return MopacCalcEd

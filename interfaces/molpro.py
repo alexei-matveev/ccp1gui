@@ -35,7 +35,8 @@ from tools import *
 from qmtools import *
 from filepunch import *
 from jobmanager import *
-from viewer.paths import root_path
+from viewer.paths import root_path,find_exe
+from viewer.rc_vars import rc_vars
 ##from interfaces.molprooutputreader import MolproOutputReader
 
 MENU_ENER  = "Energy"
@@ -364,8 +365,9 @@ class MOLPROCalc(QMCalc):
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
 
+        file_ext = '.com'
         if writeinput:
-            filename = directory+os.sep+job_name+'.com'
+            filename = directory+os.sep+job_name+file_ext
             mol_obj  = self.get_input("mol_obj")
             writeinput_err = self.__WriteInput(mol_obj,filename)
 
@@ -373,14 +375,14 @@ class MOLPROCalc(QMCalc):
                 return
             
             # load contents of input for viewing
-            file = open(directory+os.sep+job_name+'.in','r')
+            file = open(directory+os.sep+job_name+file_ext,'r')
             input = file.readlines()
             self.set_input("input_file",input)
             file.close()
         else:
             try:
                 print directory,os.sep,job_name
-                file = open(directory+os.sep+job_name+'.in','r')
+                file = open(directory+os.sep+job_name+file_ext,'r')
             except IOError,e:
                 print str(e)
                 ed.Error("Trying to run a calculation with no input file!\n"+
@@ -420,32 +422,28 @@ class MOLPROCalc(QMCalc):
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
-        # Local windows job, search for local executable
+
+        
+        molpro_exe = self.get_executable()
+        if not molpro_exe:
+            ed.Error('Cannot find an executable to run!\n'+
+                     'Please make sure an executable is in your path or set the\n'
+                     'molpro_exe variable in your ccp1guirc file to point at one.')
+            return
+        print 'Using MOLPRO path ' + molpro_exe
+
+        stdout_file=None
+        local_command_args = ['-X',job_name+'.com']
+        
         if sys.platform[:3] == 'win' and hostname == 'localhost':
+            stdout_file=job_name+'.out'
 
-            # Name of executable, assume install of exe into exe subdirectory
-            try:
-                install_dir = os.environ['MOLPRO_BIN']
-                molpro_exe=install_dir+'\molpro.exe'
-            except KeyError:
-                molpro_exe=root_path+'/exe/molpro.exe'
-
-            molpro_exe = '/c/qcg/psh/codes/molpro2002.10/bin/molpro'
-            print 'Using MOLPRO path ' + molpro_exe
-            cmd = molpro_exe + " -X " + job_name + ".com"
-            job.add_step(RUN_APP,'run molpro',local_command=cmd,stdout_file=job_name+'.out')
-
-        elif sys.platform[:3] == 'mac':
-            pass
-        else:
-            # Code for unix case
-            command="molpro " + job_name
-            molpro_exe = '/c/qcg/psh/codes/molpro2002.10/bin/molpro'
-            print 'Using MOLPRO path ' + molpro_exe
-            cmd = molpro_exe + " -X " + job_name + ".com"
-            #cmd = molpro_exe + " " + job_name + ".com"
-            job.add_step(RUN_APP,'run molpro',local_command=cmd)
-
+        job.add_step(RUN_APP,
+                     'run molpro',
+                     local_command=molpro_exe,
+                     local_command_args=local_command_args,
+                     stdout_file=stdout_file)
+        
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
 
         if sys.platform[:3] == 'win':
@@ -455,8 +453,6 @@ class MOLPROCalc(QMCalc):
 
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
-
-        
         return job
 
     def endjob(self,graph):
@@ -531,6 +527,28 @@ class MOLPROCalc(QMCalc):
                 #name = self.get_input("mol_name")
                 ed.update_func(o)
 
+    def get_executable(self):
+        """Return the path to the Molpro Executable"""
+        global rc_vars,find_exe
+
+        if rc_vars.has_key('molpro_executable'):
+            molpro_exe = rc_vars['molpro_executable']
+            print "Using molpro exectable location defined in ccp1guirc.py file"
+            return molpro_exe
+        
+        if sys.platform[:3] == 'win':
+            return None
+        elif sys.platform[:3] == 'mac':
+            return None
+        else:
+            molpro_exe = find_exe( 'molpro', path=['/c/qcg/psh/codes/molpro2002.10/bin/'])
+            if not molpro_exe:
+                return None
+            else:
+                # Set rc_vars to point to the binary we've found
+                rc_vars['molpro_exe'] = molpro_exe
+                return molpro_exe
+        
     def get_theory(self):
         """Convenience function for ChemShell interface"""
         postscf_method = self.get_parameter("postscf_method")
