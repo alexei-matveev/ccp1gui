@@ -40,6 +40,7 @@ from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
 from interfaces.rmcsEditor import RMCSEditor
 from interfaces.ngridEditor import NordugridEditor
+from interfaces.growlEditor import GrowlEditor
 from objects.file import *
 #
 from viewer.rc_vars import rc_vars
@@ -422,12 +423,22 @@ class GAMESSUKCalc(QMCalc):
             except Exception,e:
                 ed.Error(e)
                 return
+        elif submission_policy == 'Growl':
+            try:
+                job = jobmanager.GrowlJob()
+            except Exception,e:
+                ed.Error(e)
+                return
 
         # These steps carried out for all jobs
         job.name    = job_name
         stdin_file  = job_name+'.in'
         stdout_file = job_name+'.out'
-        punchfile  = job_name+'.pun'
+        if submission_policy == 'Growl':
+            remote_punch  = 'ftn058'
+            local_punch  = job_name+'.pun'
+        else:
+            local_punch = remote_punch  = job_name+'.pun'
 
         # Update any parameters the user may have set with the jobsubeditor widget
         if self.has_parameter('job_parameters'):
@@ -440,7 +451,7 @@ class GAMESSUKCalc(QMCalc):
                       kill_on_error=0)
         job.add_step( DELETE_FILE,
                       'remove old punch',
-                      remote_filename=punchfile,
+                      remote_filename=remote_punch,
                       kill_on_error=0)
         job.add_step( COPY_OUT_FILE,
                       'transfer input',
@@ -448,6 +459,7 @@ class GAMESSUKCalc(QMCalc):
             
         # Set up the run step depending on how we are submitting the job
         local_command = None
+        local_command_args = None
         if submission_policy == 'localhost':
             # Determine how we will be running GAMESS-UK
             runmethod = self.get_runmethod( ErrorWidget = ed.Error)
@@ -457,27 +469,34 @@ class GAMESSUKCalc(QMCalc):
             if self.rungamess:
                 rungamess_cmdline = self.keepfiles()
                 job_desc = 'Running GAMESS-UK with rungamess script'
-                local_command = self.rungamess+" " + rungamess_cmdline + " " + job_name
+                #local_command = self.rungamess+" " + rungamess_cmdline + " " + job_name
+                local_command = self.rungamess
+                local_command_args = rungamess_cmdline + [job_name]
             else:
                 self.keepfiles()
                 job_desc = 'Invoking GAMESS-UK binary directly'
-                local_command = local_command=self.gamessuk_exe
+                local_command = self.gamessuk_exe
             
         elif submission_policy == 'RMCS':
             job_desc = 'Running GAMESS-UK with RMCS'
             
         elif submission_policy == 'Nordugrid':
             job_desc = 'Running GAMESS-UK on Nordugrid'
-            self.setup_nordugrid_job( job, punchfile=punchfile, editor=ed )
+            self.setup_nordugrid_job( job, punchfile=remote_punch, editor=ed )
                 
+        elif submission_policy == 'Growl':
+            job_desc = 'Running GAMESS-UK with Growl'
+            self.setup_growl_job( job )
+            
         job.add_step( RUN_APP,
                       job_desc,
                       stdin_file = stdin_file,
                       stdout_file = stdout_file,
-                      local_command = local_command)
+                      local_command = local_command,
+                      local_command_args = local_command_args)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=stdout_file)
-        job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=punchfile)
+        job.add_step(COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
         
@@ -614,7 +633,7 @@ class GAMESSUKCalc(QMCalc):
                 script = rc_vars['gamessuk_script']
             else:
                 print "No gamessuk_script set in rc file - checking in environment"
-                script = find_exe( ['rungamess'] )
+                script = find_exe( 'rungamess' )
                 if script:
                     print "Found rungamess script: %s" % script
 
@@ -684,7 +703,7 @@ class GAMESSUKCalc(QMCalc):
             # Now just trundle through the users' path looking for an executable
             print "No GAMESS_BIN environment variable set"
             print "Checking for gamess.exe binary in users path..."
-            gamessuk_exe = find_exe( ['gamess.exe'] )
+            gamessuk_exe = find_exe( 'gamess.exe' )
             if gamessuk_exe:
                 self.gamessuk_exe = gamessuk_exe
                 print "Using gamess-uk binary from users path: %s" % self.gamessuk_exe
@@ -720,7 +739,7 @@ class GAMESSUKCalc(QMCalc):
                     pass
 
                 # Now just trundle through the path
-                gamessuk_exe = find_exe( ['gamess'] )
+                gamessuk_exe = find_exe( 'gamess' )
                 if gamessuk_exe:
                     self.gamessuk_exe = gamessuk_exe
                     print "Using gamess-uk binary: %s" % self.gamessuk_exe
@@ -777,6 +796,23 @@ class GAMESSUKCalc(QMCalc):
                 
             job.job_parameters['environment']['ftn058'] = punchfile
 
+    def setup_growl_job(self,job):
+        """ Setup the job parameters to run a Growl job
+        """
+        #if punchfile:
+        #    job.job_parameters['environment']['ftn058'] = punchfile
+
+        # Make sure we run with the correct executable and with MPI if > 1 proc
+        if job.job_parameters['count'] > 1:
+            if not job.job_parameters['jobtype']:
+                job.job_parameters['jobtype'] = 'mpi'
+            if not job.job_parameters['executable']:
+                job.job_parameters['executable'] = 'gamess-uk'
+        else:
+            if not job.job_parameters['executable']:
+                job.job_parameters['executable'] = 'gamess'
+            
+
     def get_theory(self):
         """Convenience function for ChemShell interface"""
         postscf_method = self.get_parameter("postscf_method")
@@ -812,7 +848,7 @@ class GAMESSUKCalc(QMCalc):
            this as the return value of the function
         """
 
-        rungamess_cmdline = ' '
+        rungamess_cmdline = []
         
         # Punch file - if not using rungamess, need to ensure that the punch file is named
         # after the job
@@ -836,7 +872,8 @@ class GAMESSUKCalc(QMCalc):
                 ed2_path = dir+os.sep+stem+'.ed2'
                 
             if self.rungamess:
-                rungamess_cmdline += ' -k ed2='+ed2_path
+                #rungamess_cmdline += ' -k ed2='+ed2_path
+                rungamess_cmdline += ['-k', 'ed2='+ed2_path]
             else:
                 os.putenv('ed2',ed2_path)
 
@@ -850,7 +887,8 @@ class GAMESSUKCalc(QMCalc):
                 ed3_path = dir+os.sep+stem+'.ed3'
                 
             if self.rungamess:
-                rungamess_cmdline += ' -k ed3='+ed3_path
+                #rungamess_cmdline += ' -k ed3='+ed3_path
+                rungamess_cmdline += ['-k','ed3='+ed3_path]
             else:
                 os.putenv('ed3',ed3_path)
                 
@@ -864,7 +902,8 @@ class GAMESSUKCalc(QMCalc):
                 ed7_path = dir+os.sep+stem+'.ed7'
                 
             if self.rungamess:
-                rungamess_cmdline += ' -k ed7='+ed7_path
+                #rungamess_cmdline += ' -k ed7='+ed7_path
+                rungamess_cmdline += ['-k','ed7='+ed7_path]
             else:
                 os.putenv('ed7',ed7_path)
 
@@ -883,7 +922,8 @@ class GAMESSUKCalc(QMCalc):
                         ed14_path = dir+os.sep+stem+'.ed14'
 
                     if self.rungamess:
-                        rungamess_cmd_line += ' -k ed14='+ed14_path
+                        #rungamess_cmd_line += ' -k ed14='+ed14_path
+                        rungamess_cmd_line += ['-k','ed14='+ed14_path]
                     else:
                         os.putenv('ed14',ed14_path)
 
@@ -1817,7 +1857,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optcoord_opts = [ "Z-Matrix","Cartesian" ]
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
-        self.submission_policies = [ "localhost","RMCS", "Nordugrid"]
+        self.submission_policies = [ "localhost","RMCS", "Nordugrid", "Growl"]
 
         self.jobSubmitEd = None
         
@@ -2152,7 +2192,7 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         if policy == 'localhost':
             self.submission_config_button.forget()
-        elif policy == 'RMCS' or policy == 'Nordugrid':
+        else:
             self.submission_config_button.pack(side='left')
 
     def configure_jobSubmitEd(self):
@@ -2185,6 +2225,9 @@ class GAMESSUKCalcEd(QMCalcEd):
             self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die,  calc=self.calc)
         elif editor == 'Nordugrid':
             self.jobSubmitEd = NordugridEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc)
+        elif editor == 'Growl':
+            self.jobSubmitEd = GrowlEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc,
+                                           debug=1)
         else:
             print "Error: get_jobSubmitEd - unrecognised job editor: %s" % editor
             return None
