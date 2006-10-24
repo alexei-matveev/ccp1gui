@@ -49,9 +49,10 @@ import sys
 import os
 import re
 import time
+import shutil
+import socket
 from viewer.paths import backup_dir
 from viewer.rc_vars import rc_vars
-import shutil
 
 # These are placeholders for modules that will be loaded as required
 SOAPpy = None
@@ -127,18 +128,21 @@ class Job:
     """Base class for jobs
 
     handles construction of the job as a list of steps
+
     """
 
     def __init__(self,name=None,**kw):
 
         self.steps=[]
         self.msg=""
-        self.host = 'localhost'
+        self.host = socket.gethostname()
         if name:
             self.name =name
         else:
              self.name ='Job'
 
+        # This variable is displayed in the job editor and should be updated to show the status
+        # of the job.
         self.status = JOBSTATUS_IDLE
         self.active_step = None
         self.process = None
@@ -187,7 +191,6 @@ class Job:
                 print 'Executing step #',self.step_number,':',step.type, step.name
 
             try:
-
                 if step.type == ALLOCATE_SCRATCH:
                     code,message = self.allocate_scratch(step)
                 elif step.type == DELETE_FILE:
@@ -239,6 +242,7 @@ class Job:
                 return 1
 
             # Pass messages back for the user
+
             elif step.warn_on_error == 1 :
 
                 # code = 1 or code -1 and we are proceeding
@@ -1183,6 +1187,7 @@ class GridJob(Job):
     def __init__(self,**kw):
         Job.__init__(self)
 
+        self.host = None # Always set this to None here - only set to something when we have the host
         self.jobtype='Grid Job'
         self.jobID = None # holds the url of the job
         self.poll_interval = 30 # How often we should poll for the job status when running
@@ -1304,9 +1309,13 @@ class GrowlJob(GridJob):
     
     def get_host(self):
         """Return the name of the host that we are running on """
-        if len( self.job_parameters['machine_list'] ) != 1:
-            raise JobError, "GridJob need a single hostname to run job on!"
-        return self.job_parameters['machine_list'][0]
+
+        if not self.host:
+            if len( self.job_parameters['machine_list'] ) != 1:
+                raise JobError, "GridJob need a single hostname to run job on!"
+            self.host = self.job_parameters['machine_list'][0]
+
+        return self.host
 
     def get_remote_homedir(self):
         """Get the path to the home directory on the target machine """
@@ -1316,8 +1325,8 @@ class GrowlJob(GridJob):
 
         if not self.job_parameters['remote_home']:
             host = self.get_host()
-            #homedir = self.run_command( 'grid-pwd', args=host )
-            homedir = self.run_command( 'grid-pwd', args=[host] )
+            #homedir = self.run_command( 'grid-pwd', args=[host] )
+            homedir = self.grid_pwd( host )
             self.job_parameters['remote_home'] = homedir
         else:
             homedir = self.job_parameters['remote_home']
@@ -1360,10 +1369,9 @@ class GrowlJob(GridJob):
             print "get_remote_dir returning: %s" % remote_dir
         return remote_dir
 
-    def run_command( self, command, args=None ):
+
+    def _run_command( self, command, args=None ):
         """Use subprocess Spawn to run a command and get the output and error
-           These are then concatenated and passed to parse_output to check for
-           any errors and get the return value
         """
         if args:
             cmd_string= command + ' ' + ' '.join(args)
@@ -1371,7 +1379,7 @@ class GrowlJob(GridJob):
             cmd_string = command
             
         if self.debug:
-            print "GrowlJob run_command running: %s" % (cmd_string)
+            print "GrowlJob _run_command running: %s" % (cmd_string)
             
         p = subprocess.Spawn( command, args=args ,debug=1)
         p.run()
@@ -1380,23 +1388,27 @@ class GrowlJob(GridJob):
             raise JobError,"GrowlJob Error running command: %s!" % cmd_string
         
         output = p.get_output()
+        if type(output) == str:
+            # If it's multi-line we need to split it up
+            output = output.split('\n')
         error = p.get_error()
+        if type(error) == str:
+            # If it's multi-line we need to split it up
+            error = error.split('\n')
 
-        result = self.parse_output( command, output, error )
+        return output,error
 
-        return result
-
-    def parse_output( self, command, output,error ):
-        """ Parse the output from a command to determine if it worked and return whatever
-            the caller expects to get back - if we detect an error we raise a JobError so
-            that the caller does not need to worry about checking if a command worked
-            The idea is to keep all this stuff together so that if the output format changes,
-            we only have to change things here.
+    def check_common_errors(self,output,error,command=None):
+        """ Check the output and error streams for known common errors and raise
+            a JobError if we encounter one
         """
 
+        if not command:
+            command = "No command name specified"
+            
         # Concatenate output and error for the time being
         if output and error:
-            output = output + "\n" + error
+            output = output + error
         if not output:
             output = error
 
@@ -1412,77 +1424,118 @@ class GrowlJob(GridJob):
             }
 
         if self.debug:
-            print "parse_output command: %s" % command
-            print "parse_output output: %s" % output
-
-        if type(output) == str:
-            # If it's multi-line we need to split it up
-            output = output.split('\n')
+            print "check_common_errors command: %s" % command
+            print "check_common_errors output: %s" % output
 
         # Check for any common errors
         for line in output:
             for error,msg in common_errors.iteritems():
                 if error.match( line ):
                     raise JobError,msg
+        
 
-        # Decide how to parse the output of each command we support
-        if command == 'grid-cp':
-            # Nothing to be done for this one
-            return None
-        
-        if command == 'grid-rm':
-            # Nothing to be done for this one
-            return None
-        
-        elif command == 'grid-pwd':
-            dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
-            for line in output:
-                m = dir_re.match( line )
-                if m:
-                    return m.group(1)
-            if not m:
-                raise JobError,"GrowlJob parse_output: grid-pwd failed!\n%s" % output
-            
-        elif command == 'grid-which':
-            dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
-            for line in output:
-                m = dir_re.match( line )
-                if m:
-                    return m.group(1)
-            if not m:
-                # We can't find it so return None so we can try and work out the full path ourselves
-                return None
+    def grid_which(self,host,executable):
+        """Get the full path to the command on the remote machine"""
 
-        elif command == 'grid-get-jobmanager':
-            jman_re = re.compile("(^jobmanager-.*)") # group starts with / then anything that's not white space
-            for line in output:
-                m = jman_re.match( line )
-                if m:
-                    return m.group(1)
-            if not m:
-                raise JobError,"GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
-            
-        elif command == 'grid-submit' or command == 'globus-job-submit':
-            # Need to get the url
-            url_re = re.compile("(^https://.*)") # Group is the url string
-            for line in output:
-                m = url_re.match( line )
-                if m:
-                    return m.group(1)
-            if not m:
-                raise JobError,"GrowlJob parse_output: grid-submit could not find returned url!\n%s" % output
-            
-        elif command == 'grid-status':
-            stat_re = re.compile("(UNSUBMITTED|DONE|FAILED|ACTIVE|PENDING)") # Group is the any of the accepted stati
-            for line in output:
-                m = stat_re.match( line )
-                if m:
-                    return m.group(1)
-            # Only get here if we don't get a match
-            raise JobError,"GrowlJob grid-staus got unrecognised output!\n%s" % output
+        output,error = self._run_command( 'grid-which',args = [host,executable] )
+        self.check_common_errors( output, error, command='grid-which' )
+
+        m = None
+        dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
+        for line in output:
+            m = dir_re.match( line )
+            if m:
+                return m.group(1)
+        if not m:
+            # We can't find it so return None so we can try and work out the full path ourselves
+            return None
+
+    def grid_pwd(self,host):
+        """Return the home directory on the remote machine """
+
+        output,error = self._run_command( 'grid-pwd',args = [host] )
+
+        self.check_common_errors( output, error, command='grid-pwd' )
+
+        # Re to check for the string we are after
+        dir_re = re.compile("(^/\S*)") # group starts with / then anything that's not white space
+        match = None
+        for line in output:
+            match = dir_re.match( line )
+            if match:
+                if self.debug:
+                    print "grid_pwd returning: %s " % match.group(1)
+                return match.group(1)
+        if not match:
+            raise JobError,"GrowlJob parse_output: grid-pwd failed!\n%s" % output
         
-        else:
-            raise JobError,"GrowlJob parse_ouptut unrecognised command: %s" % command
+
+    def grid_cp(self,args):
+        """Copy file a remote file"""
+
+        output,error = self._run_command( 'grid-cp',args = args )
+        self.check_common_errors( output, error, command='grid-cp' )
+        # Need to add more specific error checking
+
+    def grid_rm(self,host,file):
+        """Remove a remote file"""
+
+        output,error = self._run_command( 'grid-rm',args = [host,file] )
+        self.check_common_errors( output, error, command='grid-rm' )
+        # Need to add more specific error checking
+
+    def grid_status(self,url):
+        """ Get the status of the  running job identified by the url supplied"""
+        
+        output,error = self._run_command( 'grid-status',args = [url] )
+        self.check_common_errors( output, error, command='grid-status' )
+
+        m = None
+        stat_re = re.compile("(UNSUBMITTED|DONE|FAILED|ACTIVE|PENDING)") # Group is the any of the accepted stati
+        for line in output:
+            m = stat_re.match( line )
+            if m:
+                return m.group(1)
+        # Only get here if we don't get a match
+        raise JobError,"GrowlJob grid-staus got unrecognised output!\n%s" % output
+
+    def grid_get_jobmanager(self,host):
+        """Remove a remote file"""
+
+        output,error = self._run_command( 'grid-get-jobmanager',args = [host] )
+        self.check_common_errors( output, error, command='grid-get-jobmanager' )
+        
+        m = None
+        # Need to add more specific error checking
+        jman_re = re.compile("(^jobmanager-.*)") # group starts with / then anything that's not white space
+        for line in output:
+            m = jman_re.match( line )
+            if m:
+                return m.group(1)
+        if not m:
+            raise JobError,"GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
+
+    def grid_submit(self,host,rsl_string,executable,jobmanager=None):
+        """
+        Use globus-job-submit to submit a job
+        """
+        if jobmanager:
+            host = host + "/" + jobmanager
+
+        args = [ host, '-x', rsl_string, executable ]
+        output,error = self._run_command( 'globus-job-submit',args = args )
+        self.check_common_errors( output, error, command='globus-job-submit' )
+
+        m = None
+        url_re = re.compile("(^https://.*)") # Group is the url string
+        for line in output:
+            m = url_re.match( line )
+            if m:
+                return m.group(1)
+        if not m:
+            raise JobError,"GrowlJob parse_output: grid-submit could not find returned url!\n%s" % output
+
+
 
 
     def copy_out_file(self,step,kill_on_error=1):
@@ -1505,7 +1558,7 @@ class GrowlJob(GridJob):
         if self.debug:
             print "GrowlJob copy_out_file running: %s" % 'grid-cp '+' '.join(args)
             
-        self.run_command( 'grid-cp', args=args )
+        self.grid_cp( args )
             
         return 0,"Copied file %s to %s" % (step.local_filename,host)
 
@@ -1536,10 +1589,11 @@ class GrowlJob(GridJob):
 
         if self.debug:
             print "GrowlJob copy_back_file running: %s" % 'grid-cp '+ ' '.join(args)
-        self.run_command( 'grid-cp', args=args )
+
+        self.grid_cp( args )
         
-        if local_filename != remote_filename:
-            os.rename(remote_filename,local_filename)
+        #if local_filename != remote_filename:
+        #    os.rename(remote_filename,local_filename)
             
         return 0,"Copied file %s from %s" % (step.local_filename,host)
 
@@ -1552,17 +1606,18 @@ class GrowlJob(GridJob):
         
         host = self.get_host()
         path = self.get_remote_dir() + step.remote_filename
-        ret = self.run_command('grid-rm',args=[host,path])
-
-        if ret:
-            code = -1
-            msg = "Delete of remote file: %s failed!" % step.remote_filename
-        else:
+        #ret = self.run_command('grid-rm',args=[host,path])
+        
+        code = -1
+        msg = "Delete of remote file: %s failed!" % step.remote_filename
+        try:
+            ret = self.grid_rm(host,path)
             code = 0
             msg = "Deleted remote file: %s" % step.remote_filename
+        except:
+            pass
             
         return code,msg
-    
 
     def run_app(self,step,kill_on_error=None,**kw):        
         """Submit the Growl Job using globus-job-submit
@@ -1572,30 +1627,8 @@ class GrowlJob(GridJob):
         """
 
         remote_dir = self.get_remote_dir()
-        cmdline = []
         host = self.get_host()
-        jobmanager = self.run_command('grid-get-jobmanager',args=[host])
-        #jobmanager = 'jobmanager-ll'
-        cmdline.append(host+'/'+jobmanager)
-
-        # Handle stdin,out& err with i,o, and e flags?
-        # Set these to None so that they don't end up in the RSL string we create
-#         if step.stdin_file:
-#             path = remote_dir+step.stdin_file
-#             self.job_parameters['stdin'] = None
-#             cmdline.append('-i')
-#             cmdline.append('%s' % path)
-#         if step.stdout_file:
-#             path = remote_dir+step.stdout_file 
-#             self.job_parameters['stdout'] = None
-#             cmdline.append('-o')
-#             cmdline.append('%s' % path)
-#         if step.stderr_file:
-#             path = remote_dir+step.stderr_file 
-#             self.job_parameters['stderr'] = None
-#             cmdline.append('-e')
-#             cmdline.append('%s' % path)
-
+        jobmanager = self.grid_get_jobmanager(host)
 
         # Set up any parameters so that we get a suitable rsl string when we call
         # CreateRSLString
@@ -1618,31 +1651,26 @@ class GrowlJob(GridJob):
             self.job_parameters['executable'] = None
             
         rsl_string = self.CreateRSLString()
-        cmdline.append('-x')
-        cmdline.append('%s' % rsl_string)
 
         # Get the full path to the executable on the machine
-        exe = self.run_command('grid-which',args=[host,executable])
+        exe = self.grid_which(host,executable)
         if not exe:
             # exe not in path, so we guess it's in the working directory we've been given
             exe = remote_dir + executable
         
-        cmdline.append( exe )
-
-        if self.debug:
-            print "GrowlJob run_app running command: %s " % ('globus-job-submit '+' '.join(cmdline))
-
         #raise JobError,"Noooooooo!!!!"
-        url = self.run_command( 'globus-job-submit', args = cmdline )
+        url = self.grid_submit( host, rsl_string, exe, jobmanager=jobmanager )
 
         # Loop to check status
         fin_stat = ['DONE', 'FAILED']
         running = 1
         while running:
-            ret = self.run_command( 'grid-status', args=[url] )
+            ret = self.grid_status( url )
             if ret in fin_stat:
                 break
             else:
+                print "Growl job setting status to ",ret
+                self.status = ret
                 time.sleep( self.poll_interval )
                 continue
         return 0,ret
@@ -1694,7 +1722,7 @@ class NordugridJob(GridJob):
         self.job_parameters['environment'] = {}
 
         xrsl_parameters = ['inputfiles','outputfiles','arguments','memory','disk','runTimeEnvironment',
-                           'opsys','architechture','environment']
+                           'opsys','architechture','environment','gmlog']
         self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
 
         # Update the defaults with anything that is in the rc_vars dict
@@ -1942,14 +1970,15 @@ class NordugridJob(GridJob):
                 raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
             self.Submit( xrsl, machines )
         
-
+        self.host = self.GetJobInfo().cluster
         running = 1
         message = 'None'
         result = 1
         while running:
             job_info = self.GetJobInfo()
+            self.host = job_info.cluster
             status = job_info.status
-            print "got status",status
+            self.status = status
             # See nordugrid source: nordugrid/arclib/mdsparser.cpp
             statuses = ( 'FINISHED','KILLED','FAILED','CANCELLING','CANCELLING' )
             if status in statuses:
@@ -2287,12 +2316,20 @@ if __name__ == "__main__":
         job.job_parameters['executable'] = "gamess-uk"
         job.job_parameters['environment']['ftn058'] = 'untitled.pun'
         #job.job_parameters['user_remote_dir'] = "jens"
-        job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='untitled.out',kill_on_error=0)
-        job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='ftn058',kill_on_error=0)
-        job.add_step(COPY_OUT_FILE,'Growl Copy Out File',local_filename='untitled.in')
+        #job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='untitled.out',kill_on_error=0)
+        #job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='ftn058',kill_on_error=0)
+        #job.add_step(COPY_OUT_FILE,'Growl Copy Out File',local_filename='untitled.in')
         #job.add_step(RUN_APP,'Run Growl Job',stdout_file='untitled.out',stderr_file='untitled.err')
-        job.add_step(RUN_APP,'Run Growl Job',stdin_file='untitled.in',stdout_file='untitled.out',stderr_file='untitled.err')
-        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.out')
-        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='ftn058')
-        job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.err')
-        job.run()
+        #job.add_step(RUN_APP,'Run Growl Job',stdin_file='untitled.in',stdout_file='untitled.out',stderr_file='untitled.err')
+        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.out')
+        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='ftn058')
+        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.err')
+        #job.run()
+        #job.grid_pwd( 'scarf.rl.ac.uk' )
+        path = job.grid_which( 'scarf.rl.ac.uk','hostname' )
+        print "path is ",path
+        jm = job.grid_get_jobmanager( 'scarf.rl.ac.uk')
+        print "jm is ",jm
+        url = job.grid_submit( 'scarf.rl.ac.uk','(stdout="out.txt")',path,jobmanager=jm)
+        print "url is ",url
+    
