@@ -158,8 +158,7 @@ class JobEditor(Pmw.MegaToplevel):
         such tasks as updating a molecule or diagnostic graph
         """
         items = []
-        items.append('Job# Host       Jobname  Status  Job Step')
-
+        items.append('%-7s : %-20s : %-8s : %-10s : %-s' % ('Job No.','Host','Jobname','Status','Job Step'))
         i = 0
         j = 1
         error_messages = []
@@ -172,7 +171,7 @@ class JobEditor(Pmw.MegaToplevel):
             else:
                 yyy = ''
 
-            txt = '%2d : %-10s %-8s %-10s %s' % (i+1,job.host,job.name,job.status,yyy)
+            txt = '%-7d : %-20s : %-8s : %-10s : %s' % (i+1,job.host,job.name,job.status,yyy)
             items.append(txt)
 
             if job.status == JOBSTATUS_FAILED:
@@ -200,7 +199,7 @@ class JobEditor(Pmw.MegaToplevel):
                         pass
                     job.tidy = None
 
-            if job.status == JOBSTATUS_WARNING:
+            elif job.status == JOBSTATUS_WARNING:
                 if job.msg and job.popup:
                     warning_messages.append(job.msg)
                     job.popup=0
@@ -210,17 +209,7 @@ class JobEditor(Pmw.MegaToplevel):
 ##                    info_messages.append(job.msg)
 ##                    job.popup=0
 
-            if job.status == JOBSTATUS_RUNNING:
-                try:
-                    # Run any monitor code
-                    if job.monitor:
-                        if job.debug:
-                            print 'Running job monitor'
-                        job.monitor()
-                except Exception, e:
-                    print 'update of monitor code failed',e
-
-            if job.status == JOBSTATUS_DONE:
+            elif job.status == JOBSTATUS_DONE:
                 if job.msg and job.popup:
                     info_messages.append(job.msg)
                     job.popup=0
@@ -238,6 +227,19 @@ class JobEditor(Pmw.MegaToplevel):
                         job.popup=0                        
                     job.tidy = None
 
+            else:
+            # Assume any other job status means that the job is still running
+            #if job.status == JOBSTATUS_RUNNING:
+                try:
+                    # Run any monitor code
+                    if job.monitor:
+                        if job.debug:
+                            print 'Running job monitor'
+                        job.monitor()
+                except Exception, e:
+                    print 'update of monitor code failed',e
+
+            # Increment the job counter
             i = i + 1
 
         if items != self.old_items:
