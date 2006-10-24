@@ -3,6 +3,7 @@ import Pmw
 import tkFileDialog
 import viewer.initialisetk
 import os,getpass
+import jobmanager.job
 
 if __name__ != "__main__":
     from viewer.rc_vars import rc_vars
@@ -75,9 +76,10 @@ class JobSubEditor(Pmw.MegaToplevel):
 
 
         self.debug = None
-        self.title = None
         self.onkill = None
         self.calc = None
+        self.jobtype = None
+        self.title = None
 
         # Check the keywords dictionary
         if kw.has_key('title'):
@@ -88,6 +90,11 @@ class JobSubEditor(Pmw.MegaToplevel):
             self.debug = 1
         if kw.has_key('calc'):
             self.calc = kw['calc']
+
+
+        # Initialise the job of the relevant type - this should perform all the checks
+        # required to see if we are able to run a job of this type
+        self.CheckJob()
 
         viewer.initialisetk.initialiseTk(root)
 
@@ -141,6 +148,13 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.chooseRSLWidget = None
         self.rslValueWidget = None
         self.rslActive = None # To indicate if the RSL widgets are being used
+
+
+    def CheckJob(self):
+        """ Run the init method of the job to see if it is viable
+            The init method should throw an expection if there is a problem
+        """
+        assert 1 == 2,"jobsubEditor CheckJob should be overloaded!"
         
     def GetInitialValues(self):
         """ Set self.values and self.selected_RSL to those specified in any calculation
@@ -152,31 +166,34 @@ class JobSubEditor(Pmw.MegaToplevel):
             if self.calc.has_parameter('job_parameters'):
                 jobdict = self.calc.get_parameter('job_parameters')
                 for key,value in jobdict.iteritems():
-                    if self.values.has_key( key ):
-                        self.values[key] = value
-                        if self.debug:
-                            print "GetInitialValues calc setting: %s : %s" % (key,value)
-                    if self.rslActive:
-                        if self.rslVariables.has_key( key ):
-                            if key == 'environment':
-                                self._AddDictAsPair( key, value)
-                            else:
-                                self.selected_RSL[key] = ('=',value) # Currently only assume = op
+                    if value:
+                        if self.values.has_key( key ):
+                            self.values[key] = value
+                            if self.debug:
+                                print "GetInitialValues calc setting: %s : %s" % (key,value)
+                        if self.rslActive:
+                            if self.rslVariables.has_key( key ):
+                                if key == 'environment':
+                                    self._AddDictAsPair( key, value)
+                                else:
+                                    self.selected_RSL[key] = ('=',value) # Currently only assume = op
 
         # Now update any variables that are set in the rc_vars
         global rc_vars
         for key,value in rc_vars.iteritems():
-            print "rc_vars: %s : %s" %(key,value)
-            if self.values.has_key( key ):
-                self.values[key] = value
-                if self.debug:
-                    print "GetInitialValues rc_vars setting: %s : %s" % (key,value)
-            if self.rslActive:
-                if self.rslVariables.has_key( key ):
-                    if key == 'environment':
-                        self._AddDictAsPair( key, value)
-                    else:
-                        self.selected_RSL[key] = ('=',value) # Currently only assume = op
+            if self.debug:
+                print "rc_vars: %s : %s" %(key,value)
+            if value:
+                if self.values.has_key( key ):
+                    self.values[key] = value
+                    if self.debug:
+                        print "GetInitialValues rc_vars setting: %s : %s" % (key,value)
+                if self.rslActive:
+                    if self.rslVariables.has_key( key ):
+                        if key == 'environment':
+                            self._AddDictAsPair( key, value)
+                        else:
+                            self.selected_RSL[key] = ('=',value) # Currently only assume = op
 
     def _AddDictAsPair(self,key,value):
         """ Take a dictionary we have been given and split it up into separate variables
@@ -625,16 +642,22 @@ class GrowlEditor(JobSubEditor):
 
     def __init__(self, root,**kw):
 
+        # Set up the defaults
+        self.jobtype = 'GROWL'
+        self.title = self.jobtype+ ' JobEditor'
+        
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,**kw)
-
-        # Set up the defaults
-        self.title = 'GROWL JobEditor'
 
         self.LayoutWidgets()
         self.GetInitialValues()
         self.UpdateWidgets()
 
+    def CheckJob(self):
+        """ Run the init method of the job to see if it is viable
+            The init method should throw an expection if there is a problem
+        """
+        job = jobmanager.job.GrowlJob()
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
@@ -675,16 +698,22 @@ class NordugridEditor(JobSubEditor):
 
     def __init__(self, root,**kw):
 
+        # Set up the defaults
+        self.jobtype = 'Nordugrid'
+        self.title = self.jobtype+ ' JobEditor'
+
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,**kw)
-
-        # Set up the defaults
-        self.title = 'Nordugrid JobEditor'
 
         self.LayoutWidgets()
         self.GetInitialValues()
         self.UpdateWidgets()
 
+    def CheckJob(self):
+        """ Run the init method of the job to see if it is viable
+            The init method should throw an expection if there is a problem
+        """
+        job = jobmanager.job.NordugridJob()
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
@@ -703,11 +732,13 @@ class RMCSEditor(JobSubEditor):
 
     def __init__(self, root,**kw):
 
+        # Set up the defaults
+        self.jobtype = 'RMCS'
+        self.title = self.jobtype+ ' JobEditor'
+        
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,**kw)
 
-        # Set up the defaults
-        self.title = 'RMCS JobEditor'
         
         self.values['srb_config_file'] = os.path.expanduser('~/srb.cfg')
         self.values['srb_input_dir'] = 'SET ME'
@@ -723,6 +754,11 @@ class RMCSEditor(JobSubEditor):
         self.GetInitialValues()
         self.UpdateWidgets()
 
+    def CheckJob(self):
+        """ Run the init method of the job to see if it is viable
+            The init method should throw an expection if there is a problem
+        """
+        job = jobmanager.job.RMCSJob()
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
