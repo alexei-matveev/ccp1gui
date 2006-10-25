@@ -878,7 +878,7 @@ class RMCSJob(Job):
         
         apply(Job.__init__, (self,), kw)
 
-        self.jobtype='RMCS Job'
+        self.jobtype='RMCS'
         self.jobID = None # used to query the job status
         self.poll_interval = 30 # how often to check the job state in the loop
         self.srbftp = None
@@ -1188,7 +1188,7 @@ class GridJob(Job):
         Job.__init__(self)
 
         self.host = None # Always set this to None here - only set to something when we have the host
-        self.jobtype='Grid Job'
+        self.jobtype='Grid'
         self.jobID = None # holds the url of the job
         self.poll_interval = 30 # How often we should poll for the job status when running
         self.gsissh_port = 2222
@@ -1284,6 +1284,7 @@ class GrowlJob(GridJob):
     def __init__(self,**kw):
         GridJob.__init__(self)
 
+        self.jobtype = 'GROWL'
         self.job_parameters['remote_home'] = None
         self.job_parameters['remote_dir'] = None
         self.job_parameters['user_remote_dir'] = None # directory specified by the user
@@ -1696,7 +1697,7 @@ class NordugridJob(GridJob):
             
         # Looks like we are good to go...
         
-        self.jobtype='Nordugrid Job'
+        self.jobtype='Nordugrid'
         
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
