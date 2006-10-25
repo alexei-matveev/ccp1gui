@@ -3,7 +3,6 @@ import Pmw
 import tkFileDialog
 import viewer.initialisetk
 import os,getpass
-import jobmanager.job
 
 if __name__ != "__main__":
     from viewer.rc_vars import rc_vars
@@ -77,7 +76,7 @@ class JobSubEditor(Pmw.MegaToplevel):
 
         self.debug = None
         self.onkill = None
-        self.calc = None
+        self.job = None
         self.jobtype = None
         self.title = None
 
@@ -88,13 +87,8 @@ class JobSubEditor(Pmw.MegaToplevel):
             self.onkill = kw['onkill']
         if kw.has_key('debug'):
             self.debug = 1
-        if kw.has_key('calc'):
-            self.calc = kw['calc']
-
-
-        # Initialise the job of the relevant type - this should perform all the checks
-        # required to see if we are able to run a job of this type
-        self.CheckJob()
+        if kw.has_key('job'):
+            self.job = kw['job']
 
         viewer.initialisetk.initialiseTk(root)
 
@@ -150,33 +144,33 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.rslActive = None # To indicate if the RSL widgets are being used
 
 
-    def CheckJob(self):
-        """ Run the init method of the job to see if it is viable
-            The init method should throw an expection if there is a problem
-        """
-        assert 1 == 2,"jobsubEditor CheckJob should be overloaded!"
-        
+    def GetJob(self):
+        """Return the job supplied to this editor"""
+        if self.job:
+            return self.job
+        else:
+            return None
+
     def GetInitialValues(self):
         """ Set self.values and self.selected_RSL to those specified in any calculation
             object we may have been passed and then overwrite any with those that are
             set in the rc_vars dictionary.
         """
 
-        if self.calc:
-            if self.calc.has_parameter('job_parameters'):
-                jobdict = self.calc.get_parameter('job_parameters')
-                for key,value in jobdict.iteritems():
-                    if value:
-                        if self.values.has_key( key ):
-                            self.values[key] = value
-                            if self.debug:
-                                print "GetInitialValues calc setting: %s : %s" % (key,value)
-                        if self.rslActive:
-                            if self.rslVariables.has_key( key ):
-                                if key == 'environment':
-                                    self._AddDictAsPair( key, value)
-                                else:
-                                    self.selected_RSL[key] = ('=',value) # Currently only assume = op
+        if self.job:
+            jobdict = self.job.job_parameters
+            for key,value in jobdict.iteritems():
+                if value:
+                    if self.values.has_key( key ):
+                        self.values[key] = value
+                        if self.debug:
+                            print "GetInitialValues job setting: %s : %s" % (key,value)
+                    if self.rslActive:
+                        if self.rslVariables.has_key( key ):
+                            if key == 'environment':
+                                self._AddDictAsPair( key, value)
+                            else:
+                                self.selected_RSL[key] = ('=',value) # Currently only assume = op
 
         # Now update any variables that are set in the rc_vars
         global rc_vars
@@ -603,14 +597,16 @@ class JobSubEditor(Pmw.MegaToplevel):
         if self.rslActive:
             self._SaveCurrentRSL()
 
-        if self.calc:
+        if self.job:
             jobdict = self.GetValueDict()
             for key,value in jobdict.iteritems():
                 if type(value) == str and len(value) == 0: # Need to convert empty strings to null
                     value = None
-                if self.debug:
-                    print "QuitAndSave setting: %s : %s" % (key,value)
-            self.calc.set_parameter('job_parameters', jobdict )
+
+                if key in self.job.job_parameters.keys():
+                    self.job.job_parameters[key] = value
+                    if self.debug:
+                        print "QuitAndSave setting: %s : %s" % (key,value)
 
         if default:
             global rc_vars
@@ -652,12 +648,6 @@ class GrowlEditor(JobSubEditor):
         self.LayoutWidgets()
         self.GetInitialValues()
         self.UpdateWidgets()
-
-    def CheckJob(self):
-        """ Run the init method of the job to see if it is viable
-            The init method should throw an expection if there is a problem
-        """
-        job = jobmanager.job.GrowlJob()
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
@@ -709,12 +699,6 @@ class NordugridEditor(JobSubEditor):
         self.GetInitialValues()
         self.UpdateWidgets()
 
-    def CheckJob(self):
-        """ Run the init method of the job to see if it is viable
-            The init method should throw an expection if there is a problem
-        """
-        job = jobmanager.job.NordugridJob()
-
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
 
@@ -753,12 +737,6 @@ class RMCSEditor(JobSubEditor):
         self.LayoutWidgets()
         self.GetInitialValues()
         self.UpdateWidgets()
-
-    def CheckJob(self):
-        """ Run the init method of the job to see if it is viable
-            The init method should throw an expection if there is a problem
-        """
-        job = jobmanager.job.RMCSJob()
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
@@ -896,10 +874,10 @@ if __name__ == "__main__":
             return {'memory' : '1234',
                     'environment' : {'ed3':'file.ed3','ed2':'file.ed2'},
                     'gridTime':'444'}
-    calc = Junk()
+    job = Junk()
     
     root=Tkinter.Tk()
-    ed = JobSubEditor( root, calc=calc )
+    ed = JobSubEditor( root, job=job )
     ed.GetInitialValues()
     ed.LayoutMachListWidget()
     ed.LayoutNprocWidget()

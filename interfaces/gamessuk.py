@@ -364,6 +364,35 @@ class GAMESSUKCalc(QMCalc):
         self.set_input("input_file",input)
         file.close()
 
+    def getjob(self,jobSubEd=None):
+        """Guess this should go in calc.py
+           If there is a jobSubEditor & it is the correct one for the displayed jobtype
+           use that as the job, otherwise create a new job
+        """
+
+        # The displayed submission type
+        submission_policy = self.get_parameter("submission")
+
+        if jobSubEd:
+            job = jobSubEd.GetJob()
+            if job:
+                if job.jobtype == submission_policy:
+                    # Editor matches displayed type and has a job so return it
+                    return job
+
+        # These will throw exceptions if they fail - we don't trap these here though
+        if submission_policy == LOCALHOST:
+            job = jobmanager.BackgroundJob()            
+        elif submission_policy == 'RMCS':
+            job = jobmanager.RMCSJob()
+        elif submission_policy == 'Nordugrid':
+            job = jobmanager.NordugridJob()
+            self.setup_nordugrid_job( job )
+        elif submission_policy == 'GROWL':
+            job = jobmanager.GrowlJob()
+            self.setup_growl_job( job )
+        return job
+
     def makejob(self,writeinput=1,graph=None):
         """Prepare the GAMESS-UK job:
         1) Generate the input-file
@@ -406,30 +435,13 @@ class GAMESSUKCalc(QMCalc):
 
         # Run job from the specified directory
         os.chdir(directory)
-        
-        submission_policy = self.get_parameter("submission")
-        
-        if submission_policy == LOCALHOST:
-            job = jobmanager.BackgroundJob()            
-        elif submission_policy == 'RMCS':
-            try:
-                job = jobmanager.RMCSJob()
-            except Exception,e:
-                ed.Error(e)
-                return
-        elif submission_policy == 'Nordugrid':
-            try:
-                job = jobmanager.NordugridJob()
-            except Exception,e:
-                ed.Error(e)
-                return
-        elif submission_policy == 'GROWL':
-            try:
-                job = jobmanager.GrowlJob()
-            except Exception,e:
-                ed.Error(e)
-                return
 
+        try:
+            job = self.getjob(jobSubEd=self.ed.jobSubEd)
+        except Exception,e:
+            ed.Error("Problem initialising job!\n%s" % e)
+            return None
+        
         # These steps carried out for all jobs
         job.name    = job_name
         stdin_file  = job_name+'.in'
@@ -440,11 +452,6 @@ class GAMESSUKCalc(QMCalc):
         else:
             local_punch = remote_punch  = job_name+'.pun'
 
-        # Update any parameters the user may have set with the jobsubeditor widget
-        if self.has_parameter('job_parameters'):
-            ndict = self.get_parameter('job_parameters')
-            job.update_job_parameters( ndict )
-
         job.add_step( DELETE_FILE,
                       'remove old output',
                       remote_filename=stdout_file,
@@ -454,13 +461,6 @@ class GAMESSUKCalc(QMCalc):
                       remote_filename=remote_punch,
                       kill_on_error=0)
 
-        #HACK for hpcx
-        if submission_policy == 'GROWL':
-            if job.job_parameters['machine_list'][0] == 'login.hpcx.ac.uk': 
-                fname = 'datain'
-                shutil.copyfile( stdin_file,fname)
-                stdin_file = fname
-        
         job.add_step( COPY_OUT_FILE,
                       'transfer input',
                       local_filename=stdin_file)
@@ -468,6 +468,7 @@ class GAMESSUKCalc(QMCalc):
         # Set up the run step depending on how we are submitting the job
         local_command = None
         local_command_args = None
+        
         if submission_policy == LOCALHOST:
             # Determine how we will be running GAMESS-UK
             runmethod = self.get_runmethod( ErrorWidget = ed.Error)
@@ -490,7 +491,7 @@ class GAMESSUKCalc(QMCalc):
             
         elif submission_policy == 'Nordugrid':
             job_desc = 'Running GAMESS-UK on Nordugrid'
-            self.setup_nordugrid_job( job, punchfile=remote_punch, editor=ed )
+            self.setup_nordugrid_job( job, punchfile=remote_punch)
                 
         elif submission_policy == 'GROWL':
             job_desc = 'Running GAMESS-UK with GROWL'
@@ -756,7 +757,7 @@ class GAMESSUKCalc(QMCalc):
                     print "Cannot find a gamess-uk binary"
                     return None
 
-    def setup_nordugrid_job(self,job, editor=None, punchfile=None):
+    def setup_nordugrid_job(self,job, punchfile=None):
         """ Setup a job to run on nordugrid - this checks count to see if we are running
             in serial or parallel. If in serial it copies the binary out, in parallel
             we set the runTimeEnvironment to look for GAMESS-UK
@@ -770,9 +771,8 @@ class GAMESSUKCalc(QMCalc):
                 # No executable set and no environment, so we need to copy out the executable
                 executable = self.get_gamessuk_exe()
                 if not executable:
-                    if editor:
-                        editor.Error( "Nordugrid Job cannot run as no ngrid excutable or runTimeEnvironment\n"+
-                                      "has been set and no suitable executable can be found!")
+                    raise AttributeError,"Nordugrid Job cannot run as no ngrid excutable or runTimeEnvironment\n\
+                                      has been set and no suitable executable can be found!"
                     return None
 
                 # NOTE on running this at first got the error message:
@@ -781,12 +781,7 @@ class GAMESSUKCalc(QMCalc):
                 exe_name = os.path.basename(executable)
                 exe_path = os.getcwd()+os.sep+exe_name
                 if not executable == exe_path: # If these the same shutil complains
-                    try:
-                        shutil.copyfile( executable, exe_path )
-                    except Exception,e:
-                        if editor:
-                            editor.Error("Error copying Nordugrid executable to working directory!\n- %s" % e )
-                            return
+                    shutil.copyfile( executable, exe_path )
                         
                 job.job_parameters['executable'] = exe_name
                 job.job_parameters['inputfiles'][exe_name] = None
@@ -1867,7 +1862,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optrfo_opts = ["on","off"]
         self.submission_policies = [ LOCALHOST,"RMCS", "Nordugrid", "GROWL"]
 
-        self.jobSubmitEd = None
+        self.jobSubEd = None
         
         #Create the tools used in the Molecule tab - spin & charge created in QM.
         self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
@@ -2203,53 +2198,45 @@ class GAMESSUKCalcEd(QMCalcEd):
         else:
             self.submission_config_button.pack(side='left')
 
-    def configure_jobSubmitEd(self):
+    def configure_jobSubEd(self):
         """Fire up the appropriate widget to configure the job depending on
            whether we are using RMCS, Growl, Nordugrid..."""
 
-        try:
-            jobSubmitEd = self.get_jobSubmitEd()
-        except Exception,e:
-            self.Error("Error initialising job submission editor!\n%s" % e)
-
-        jobSubmitEd.show()
-
-                
-    def get_jobSubmitEd(self):
-        """Return the appropriate jobSubmitEd widget or create one if it doens't exist
-           if the manager string is supplied we return the instance of that type of manager
-        """
-
-        # Get the appropriate string for the manager
+        # Determine which editor we are using
         editor = self.submission_tool.ReadWidget()
 
-        if self.jobSubmitEd:
-            #edtype = str(self.jobSubmitEd).split()[0]
-            edtype = self.jobSubmitEd.jobtype
-            #print "edtype is ",edtype
+        if self.jobSubEd:
+            edtype = self.jobSubEd.jobtype
             if edtype == editor:
-                return self.jobSubmitEd
+                self.jobSubEd.show()
+                return
             else:
-                # Should ask here first...
-                self.jobSubmitEd.destroy()
+                # Should we ask here first?
+                self.jobSubEd.destroy()
 
         # We either didn't have a job editor or we have destroyed the old one
-        #print "creating jobSubmitEd"
+        try:
+            job = self.calc.getjob()
+        except Exception,e:
+            self.Error("Error initialising job!\n%s" % e)
+            return None
+        
         if editor == 'RMCS':
-            self.jobSubmitEd = RMCSEditor(self.interior(),onkill=self.jobSubmitEd_die,  calc=self.calc)
+            self.jobSubEd = RMCSEditor(self.interior(),onkill=self.jobSubEd_die, job=job)
         elif editor == 'Nordugrid':
-            self.jobSubmitEd = NordugridEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc)
+            self.jobSubEd = NordugridEditor(self.interior(), onkill=self.jobSubEd_die, job=job)
         elif editor == 'GROWL':
-            self.jobSubmitEd = GrowlEditor(self.interior(), onkill=self.jobSubmitEd_die, calc=self.calc,
+            self.jobSubEd = GrowlEditor(self.interior(), onkill=self.jobSubEd_die, job=job ,
                                            debug=1)
         else:
-            raise AttributeError, "gamessuk calced - unrecognised job editor: %s" % editor
+            self.Error("gamessuk calced - unrecognised job editor: %s" % editor)
+            return None
 
-        return self.jobSubmitEd
+        self.jobSubEd.show()
 
-    def jobSubmitEd_die(self):
-        """Set the jobSubmitEditor variable to None"""
-        self.jobSubmitEd = None
+    def jobSubEd_die(self):
+        """Set the jobSubEditor variable to None"""
+        self.jobSubEd = None
             
     def __dftradialgridpoints(self,choice):
         """Select the number of gridpoints dependant on the radial grid selected
@@ -2772,7 +2759,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.submission_frame.pack()
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobSubmitEd)
+                                                       command=self.configure_jobSubEd)
         self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
 
         #Add Restart group
