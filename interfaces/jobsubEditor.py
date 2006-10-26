@@ -35,6 +35,15 @@ class EntryPair( Tkinter.Frame ):
         etype = type(entry)
         print "pair widget setting value etype:%s entry:%s" % (etype,entry)
         if etype == list:
+            if len(entry) != 2:
+                print "ERROR! JobSubEditor EntryPaire setvalue len(list) != 2!"
+                print "entry is: %s" % entry
+            # Need to set Nones to an empty string or else tk doesn't get enough
+            # arguments when it tries to display with widget
+            if entry[0] == None:
+                entry[0] = ''
+            if entry[1] == None:
+                entry[1] = ''
             v1 = self.entry1.setentry(entry[0])
             v2 = self.entry2.setentry(entry[1])
         elif etype == str or etype == float or etype == int :
@@ -77,6 +86,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.debug = None
         self.onkill = None
         self.job = None
+        self.calc = None
         self.jobtype = None
         self.title = None
 
@@ -89,6 +99,8 @@ class JobSubEditor(Pmw.MegaToplevel):
             self.debug = 1
         if kw.has_key('job'):
             self.job = kw['job']
+        if kw.has_key('calc'):
+            self.calc = kw['calc']
 
         viewer.initialisetk.initialiseTk(root)
 
@@ -149,6 +161,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         if self.job:
             return self.job
         else:
+            print "jobSubEd - no job to return!"
             return None
 
     def GetInitialValues(self):
@@ -477,15 +490,19 @@ class JobSubEditor(Pmw.MegaToplevel):
 
     def LayoutMachListWidget(self):
         """ Lay out the machine list widget"""
-        
+
         # Create the widgets to edit the list of machines
         self.values['machine_list'] = [] # set default value here
+        self.values['hosts'] = [] # set default value here
         machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
         machListFrame.pack(fill='both',expand=1)
         self.machList = Pmw.ScrolledListBox(
             machListFrame.interior(),
+            listbox_selectmode='extended',
             items=self.values['machine_list']
             )
+        self.getValue['hosts'] = lambda s=self: s.machList.getvalue()
+        self.setValue['hosts'] = self.machList.setvalue
         self.getValue['machine_list'] = lambda s=self: s.machList.get()
         self.setValue['machine_list'] = self.machList.setlist
         self.machList.pack(side='left')
@@ -607,6 +624,8 @@ class JobSubEditor(Pmw.MegaToplevel):
                     self.job.job_parameters[key] = value
                     if self.debug:
                         print "QuitAndSave setting: %s : %s" % (key,value)
+        if self.calc:
+            self.calc.set_parameter('current_job',self.job )
 
         if default:
             global rc_vars
