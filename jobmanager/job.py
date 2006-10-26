@@ -887,7 +887,7 @@ class RMCSJob(Job):
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
         self.job_parameters = {}
-        self.job_parameters['machine_list'] = None
+        self.job_parameters['hosts'] = None
         self.job_parameters['count'] = None
         self.job_parameters['inputfiles'] = []
         self.job_parameters['outputfiles'] = []
@@ -917,7 +917,9 @@ class RMCSJob(Job):
             return -1,"RMCS copy_out_file error accessing file: %s!" % step.local_filename
 
         #self.input_files.append(step.local_filename)
-        self.job_parameters['inputfiles'].append(step.local_filename)
+        if step.local_filename not in self.job_parameters['inputfiles']:
+            self.job_parameters['inputfiles'].append(step.local_filename)
+            
         try:
             srbftp_intfce = self._get_srbftp()
         except:
@@ -1034,6 +1036,9 @@ class RMCSJob(Job):
         if self.debug:
             print "submitting job:"
             print mcs_file
+            print
+            print "rmcs_user: %s" % self.job_parameters['rmcs_user']
+            print "rmcs_password: %s" % self.job_parameters['rmcs_password']
 
         #raise JobError,"Not on your nelly squire!"
         try:
@@ -1113,6 +1118,10 @@ class RMCSJob(Job):
                 msg = "Cannot run job as parameter: <%s> has not been set!" % key
                 raise JobError, msg
 
+        if len(self.job_parameters['hosts']) == 0:
+            raise JobError,"RMCS needs at least one host to run on!\nPlease select a host in the job submission editor."
+
+
     def _write_mcsfile(self,stdin=None,stdout=None):
         """ Return  string containing the mcsfile"""
         
@@ -1127,12 +1136,19 @@ class RMCSJob(Job):
             mcs_file+='Output               = %s\n' % stdout
             
         mcs_file+='notification         = NEVER\n'
-        mcs_file+='GlobusRSL            = (job_type=single)\n'
+
+        # Determine job type
+        if len(self.job_parameters['count']) > 1:
+            job_type = 'mpi'
+        else:
+            job_type = 'single'
+        mcs_file+='GlobusRSL            = (job_type=%s)\n' % job_type
+        
         mcs_file+='pathToExe            = %s\n' % self.job_parameters['srb_executable_dir']
         
         # Buld up the machine list
         s = 'preferredMachineList = '
-        for machine in self.job_parameters['machine_list']:
+        for machine in self.job_parameters['hosts']:
             s += ' %s ' % machine
         s += '\n'
         mcs_file+=s
@@ -1194,7 +1210,7 @@ class GridJob(Job):
         self.gsissh_port = 2222
         
         self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
-        self.job_parameters['machine_list'] = None
+        self.job_parameters['hosts'] = None
         self.job_parameters['count'] = '1'
         self.job_parameters['executable'] = None
         self.job_parameters['jobName'] = None
@@ -1277,7 +1293,7 @@ class GrowlJob(GridJob):
     """Class for running jobs with GROWL:
        http://www.growl.org.uk/
 
-       Check we have a host to run on (len machine_list)
+       Check we have a host to run on (len hosts)
        Get the path to the users home directory: grid-pwd
        
     """
@@ -1289,7 +1305,7 @@ class GrowlJob(GridJob):
         self.job_parameters['remote_dir'] = None
         self.job_parameters['user_remote_dir'] = None # directory specified by the user
         self.job_parameters['count'] = 1
-        self.job_parameters['machine_list'] = []
+        self.job_parameters['hosts'] = []
 
         # Make sure that the growl environment is set up:
         self.check_growl()
@@ -1311,11 +1327,10 @@ class GrowlJob(GridJob):
     def get_host(self):
         """Return the name of the host that we are running on """
 
-        if not self.host:
-            if len( self.job_parameters['machine_list'] ) != 1:
-                raise JobError, "GridJob need a single hostname to run job on!"
-            self.host = self.job_parameters['machine_list'][0]
-
+        if len( self.job_parameters['hosts'] ) != 1:
+            raise JobError, "GrowlJob needs a single hostname to run job on!"
+        
+        self.host = self.job_parameters['hosts'][0]
         return self.host
 
     def get_remote_homedir(self):
@@ -2261,7 +2276,7 @@ if __name__ == "__main__":
 
     if 0:
         print 'testing rmcs job'
-        rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
+        rc_vars[ 'hosts'] = ['lake.esc.cam.ac.uk']
         rc_vars[ 'count'] = '1'
         rc_vars['srb_config_file'] ='/home/jmht/srb.cfg'
         rc_vars['srb_executable'] = 'gamess'
@@ -2308,7 +2323,7 @@ if __name__ == "__main__":
         print 'testing GROWL job'
         
         job = GrowlJob()
-        job.job_parameters['machine_list'] = ['scarf.rl.ac.uk']
+        job.job_parameters['hosts'] = ['scarf.rl.ac.uk']
         job.job_parameters['count'] = 2
         job.job_parameters['jobtype'] = 'mpi'
         
