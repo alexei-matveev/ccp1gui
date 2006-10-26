@@ -1165,7 +1165,7 @@ class RMCSJob(Job):
         s += '\n'
         mcs_file+=s
         
-        mcs_file+='Srecursive           = true\n'
+        mcs_file+='Srecurse             = true\n'
         mcs_file+='Sdir                 = %s\n' % self.job_parameters['srb_output_dir']
 
         # Build up list of output files
