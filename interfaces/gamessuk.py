@@ -63,6 +63,7 @@ class GAMESSUKCalc(QMCalc):
 
         # Job parameters
         self.set_parameter('submission',LOCALHOST)
+        self.set_parameter('current_job',None)
         #
         # see the basismanager for the form of 
         # the basis structure
@@ -364,7 +365,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_input("input_file",input)
         file.close()
 
-    def getjob(self,jobSubEd=None):
+    def getjob(self):
         """Guess this should go in calc.py
            If there is a jobSubEditor & it is the correct one for the displayed jobtype
            use that as the job, otherwise create a new job
@@ -373,11 +374,11 @@ class GAMESSUKCalc(QMCalc):
         # The displayed submission type
         submission_policy = self.get_parameter("submission")
 
-        if jobSubEd:
-            job = jobSubEd.GetJob()
+        if self.has_parameter('current_job'):
+            job = self.get_parameter('current_job')
             if job:
+                # Editor matches displayed type and has a job so return it
                 if job.jobtype == submission_policy:
-                    # Editor matches displayed type and has a job so return it
                     return job
 
         # These will throw exceptions if they fail - we don't trap these here though
@@ -391,6 +392,8 @@ class GAMESSUKCalc(QMCalc):
         elif submission_policy == 'GROWL':
             job = jobmanager.GrowlJob()
             self.setup_growl_job( job )
+
+        self.set_parameter('current_job',job)
         return job
 
     def makejob(self,writeinput=1,graph=None):
@@ -437,7 +440,7 @@ class GAMESSUKCalc(QMCalc):
         os.chdir(directory)
 
         try:
-            job = self.getjob(jobSubEd=self.ed.jobSubEd)
+            job = self.getjob()
         except Exception,e:
             ed.Error("Problem initialising job!\n%s" % e)
             return None
@@ -446,6 +449,10 @@ class GAMESSUKCalc(QMCalc):
         job.name    = job_name
         stdin_file  = job_name+'.in'
         stdout_file = job_name+'.out'
+        
+        # The displayed submission type
+        submission_policy = self.get_parameter("submission")
+
         if submission_policy == 'GROWL':
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
@@ -508,7 +515,6 @@ class GAMESSUKCalc(QMCalc):
         job.add_step(COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
-        
         return job
 
     def endjob(self,graph):
@@ -792,10 +798,10 @@ class GAMESSUKCalc(QMCalc):
                     job.job_parameters['memory']='500' # Need as otherwise jobs die with Error 11
         else:
             # Running parallel GAMESS-UK so assume look for clusters with the correct environment
-            if not job.job_parameters['runTimeEnvironment']:
-                job.job_parameters['runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
-            if not job.job_parameters['executable']:
-                job.job_parameters['executable'] = "/usr/bin/time"
+            #if not job.job_parameters['runTimeEnvironment']:
+            job.job_parameters['runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
+            #if not job.job_parameters['executable']:
+            job.job_parameters['executable'] = "/usr/bin/time"
                 
             job.job_parameters['environment']['ftn058'] = punchfile
 
@@ -807,13 +813,13 @@ class GAMESSUKCalc(QMCalc):
 
         # Make sure we run with the correct executable and with MPI if > 1 proc
         if job.job_parameters['count'] > 1:
-            if not job.job_parameters['jobtype']:
-                job.job_parameters['jobtype'] = 'mpi'
-            if not job.job_parameters['executable']:
-                job.job_parameters['executable'] = 'gamess-uk'
+            #if not job.job_parameters['jobtype']:
+            job.job_parameters['jobtype'] = 'mpi'
+            #if not job.job_parameters['executable']:
+            job.job_parameters['executable'] = 'gamess-uk'
         else:
-            if not job.job_parameters['executable']:
-                job.job_parameters['executable'] = 'gamess'
+            #if not job.job_parameters['executable']:
+            job.job_parameters['executable'] = 'gamess'
             
 
     def get_theory(self):
@@ -2222,12 +2228,14 @@ class GAMESSUKCalcEd(QMCalcEd):
             return None
         
         if editor == 'RMCS':
-            self.jobSubEd = RMCSEditor(self.interior(),onkill=self.jobSubEd_die, job=job)
+            self.jobSubEd = RMCSEditor(self.interior(),onkill=self.jobSubEd_die,
+                                       job=job, calc=self.calc)
         elif editor == 'Nordugrid':
-            self.jobSubEd = NordugridEditor(self.interior(), onkill=self.jobSubEd_die, job=job)
+            self.jobSubEd = NordugridEditor(self.interior(), onkill=self.jobSubEd_die,
+                                            job=job, calc=self.calc)
         elif editor == 'GROWL':
-            self.jobSubEd = GrowlEditor(self.interior(), onkill=self.jobSubEd_die, job=job ,
-                                           debug=1)
+            self.jobSubEd = GrowlEditor(self.interior(), onkill=self.jobSubEd_die,
+                                        job=job, calc=self.calc, debug=1)
         else:
             self.Error("gamessuk calced - unrecognised job editor: %s" % editor)
             return None
