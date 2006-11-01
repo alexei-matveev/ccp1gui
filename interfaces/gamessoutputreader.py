@@ -829,6 +829,7 @@ class GamessOutputReader:
         n = len( mol.atom )
         maxroot = n*3
         line = self.fd.readline()
+
         #Create a zero normal mode
         for root in range(1,maxroot+1):       
             v = VibFreq(root)
@@ -984,13 +985,14 @@ class GamessOutputReader:
         self.transitionDipoles = []
         self.transitionStrengths = []
         self.transitionIntensities = []
-        natoms = len(self.molecules[-1].atom)
+        thisMol = self.molecules[-1]
+        natoms = len( thisMol.atom )
         ncoords = natoms*3
         nfreq = ncoords - 6    #there will be a problem here if we have a large linear molecule
         nf = 0
         freq_re = re.compile('^ *frequencies ----')
         freq_end =  re.compile('={50}')
-        
+
         while nf<nfreq:
             #print "line is ",line
             if freq_end.match( line):
@@ -998,6 +1000,7 @@ class GamessOutputReader:
                 print "End of frequencies section before all frequencies have been read!"
                 return
             elif freq_re.match( line ):
+                line = re.sub('[0-9]-[0-9]',_spliteformat,line)                
                 for f in line.split()[2:]:
                     try:
                         self.transitionFrequencies.append(float(f))
