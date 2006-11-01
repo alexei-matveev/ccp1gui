@@ -2167,7 +2167,6 @@ class TkMolView(Pmw.MegaToplevel):
                                   lambda r=s.master,g=s,func=s.vibration_set_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
 
-            print 'myclass',myclass
             if myclass == 'File' and obj.MoldenReadable() :
                 if self.wavefunction_visualiser:  
                     cascade.add_command(
@@ -3262,9 +3261,17 @@ class TkMolView(Pmw.MegaToplevel):
             self.connect_model(model)
             count = count + 1
 
+        # Create a VibFreqSet object to hold the vibrations
+        vs=VibFreqSet()
+        # Get reference mol from first vib
+        mol = r.normalModes[0].reference
+        vs.reference=mol
+        vs.title = "modes of " + mol.title
+        vs.name = "modes of " + mol.title
         for vib in r.normalModes:
-            self.append_data(vib)
             vib.name = self.make_unique_name(root,vib.title)
+            vs.vibs.append( vib )
+        self.append_data( vs )
 
         if len( r.molecules ) == 0:
             return None
