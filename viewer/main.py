@@ -2457,21 +2457,24 @@ class TkMolView(Pmw.MegaToplevel):
         self.__update_data_list()
         self.data_dialog.show()
 
-    def quick_mol_view(self,mols):
+    def quick_mol_view(self,mols,noshow=None):
         """create a default image of a molecule and include it
         in the tables (vis_dict, vis_list)
         Then attempt to fit everything on screen
+        jmht - added noshow flag to build but not show the molecule
+               this is needed where we read a long list of molecules
+               into the gui but don't want to render them initially
         """
-        flag=1
         for mol in mols:
             vis = self.molecule_visualiser(self.master,self,mol)
             t = id(mol)
             self.vis_dict[t] = [vis]
             self.vis_list.append(vis)
             self.__update_vis_list()
-            if flag:
+            if noshow:
+                vis._build(object=mol)
+            else:
                 vis.Show(update=0)
-#####                flag=0
         self.fit_to_window()
 
     def build_distance_dialog(self,include_xyz=0):
@@ -3245,7 +3248,8 @@ class TkMolView(Pmw.MegaToplevel):
             out of the reader and create a file to collect all the readers
             together.
         """
-        
+
+        maxmol = 10 # max number of molecules acceptable before we don't display them
         r = GamessOutputReader(file)
         count = 1
         for model in r.molecules:
@@ -3256,27 +3260,42 @@ class TkMolView(Pmw.MegaToplevel):
             if len(r.molecules) > 1:
                 model.title = model.title + ' # ' + str(count)
             model.name = self.make_unique_name(root)
-            self.quick_mol_view([model])
             self.append_data(model)
             self.connect_model(model)
             count = count + 1
+            
+        # If we have less than molecules, show them all - otherwise just show
+        # the first and last
+        if len(r.molecules) <= maxmol:
+            self.quick_mol_view(r.molecules)
+        else:
+            self.quick_mol_view(r.molecules, noshow=1)
+            # bit of a hack - just display the first and last molecules
+            first = id(r.molecules[0])
+            last = id(r.molecules[-1])
+            v =  self.vis_dict[first][0]
+            v.Show()
+            v =  self.vis_dict[last][0]
+            v.Show()
 
-        # Create a VibFreqSet object to hold the vibrations
-        vs=VibFreqSet()
-        # Get reference mol from first vib
-        mol = r.normalModes[0].reference
-        vs.reference=mol
-        vs.title = "modes of " + mol.title
-        vs.name = "modes of " + mol.title
-        for vib in r.normalModes:
-            vib.name = self.make_unique_name(root,vib.title)
-            vs.vibs.append( vib )
-        self.append_data( vs )
+        if len(r.normalModes) > 0:
+            # Create a VibFreqSet object to hold the vibrations
+            vs=VibFreqSet()
+            # Get reference mol from first vib
+            mol = r.normalModes[0].reference
+            vs.reference=mol
+            vs.title = "modes of " + mol.title
+            vs.name = "modes of " + mol.title
+            for vib in r.normalModes:
+                vib.name = self.make_unique_name(root,vib.title)
+                vs.vibs.append( vib )
+            self.append_data( vs )
 
         if len( r.molecules ) == 0:
             return None
         else:
-            return [ r.molecules ]
+            #return [ r.molecules ]
+            return r.molecules
 
     def rdgamin(self,filename,root):
         """ Read a GAMESS-UK input file. Currently this only reads in the
@@ -5094,17 +5113,17 @@ class TkMolView(Pmw.MegaToplevel):
         """Generate a fresh ani_list from the objects in the data_list
            that have representations.
         """
-        self.ani_list = [] 
+        self.ani_list = []
         if len( self.data_list ):
             for obj in self.data_list:
                 t = id(obj)
                 try:
                     visl = self.vis_dict[t]
                     for vis in visl:
-                        #if vis.IsShowing():
+                       #if vis.IsShowing():
                         self.ani_list.append( vis )
                 except KeyError:
-                    # No representation so just pass
+                   # No representation so just pass
                     pass
             
 
