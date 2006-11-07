@@ -149,15 +149,16 @@ class Selector( Pmw.MegaToplevel ):
         display_button.pack( side='left' )
 
         # The buttons to add, remove layers
-        scene_layer_frame = Tkinter.Frame( self.interior() )
-        scene_layer_frame.pack()
-        add_layer_button = Tkinter.Button( scene_layer_frame, text='Add Layer', command=self.__addlayerclicked )
-        self.balloon.bind( add_layer_button, 'Add a layer to the animation.' )
+        # Code needs to be written...
+#         scene_layer_frame = Tkinter.Frame( self.interior() )
+#         scene_layer_frame.pack()
+#         add_layer_button = Tkinter.Button( scene_layer_frame, text='Add Layer', command=self.__addlayerclicked )
+#         self.balloon.bind( add_layer_button, 'Add a layer to the animation.' )
         
-        remove_layer_button = Tkinter.Button( scene_layer_frame, text='Remove Layer', command=self.__removelayerclicked )
-        self.balloon.bind( remove_layer_button, 'Remove last layer from the animation.' )
-        add_layer_button.pack( side='left' )
-        remove_layer_button.pack( side='left' )
+#         remove_layer_button = Tkinter.Button( scene_layer_frame, text='Remove Layer', command=self.__removelayerclicked )
+#         self.balloon.bind( remove_layer_button, 'Remove last layer from the animation.' )
+#         add_layer_button.pack( side='left' )
+#         remove_layer_button.pack( side='left' )
 
         # The buttons to Refresh, and Quit
         bottom_frame = Tkinter.Frame( self.interior() )
