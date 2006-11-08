@@ -157,11 +157,7 @@ class SubProcess:
 
     def _spawn_child(self,**kw):
 
-        if sys.platform == 'mac':
-            print 'Dont know how to run on mac'
-            return -1
-
-        elif sys.platform[:3] == 'win':
+        if sys.platform[:3] == 'win':
             #def run(cmd, mSec=None, stdin=None, stdout=None, stderr=None, **kw):
             """
             Run cmd as a child process and return exit code.
@@ -182,6 +178,8 @@ class SubProcess:
                 print 'winprocess.Process',cmd,kw
             self.child = winprocess.Process(cmd, **kw)
         else:
+            # Unix code
+
             if self.debug:
                 print "spawn_child unix code"
 
@@ -285,16 +283,10 @@ class SubProcess:
 
     def _wait_child(self,timeout=-1):
 
-        print 'child wait start'
-
         if self.debug:
             print t.time(), 'child wait start'
 
-        if sys.platform == 'mac':
-            print 'Dont know how to do wait_child on mac'
-            return -1
-
-        elif sys.platform[:3] == 'win':
+        if sys.platform[:3] == 'win':
             mSec=timeout
             if self.child.wait(mSec) != win32event.WAIT_OBJECT_0:
                 if self.debug:
@@ -308,7 +300,7 @@ class SubProcess:
             return self.child.exitCode()
 
         else:
-
+            # UNIX/LINUX code
             if not self.pid:
                 # This never gets called?
                 print 'Child in Wait'
@@ -442,40 +434,37 @@ class ForegroundPipe(SubProcess):
 
     def run(self):
 
-        if sys.platform == 'mac':
-            print 'Dont know how to run on mac'
+        # Note from the documentation...
+        # These methods do not make it possible to retrieve
+        # the return code from the child processes
+
+        cmd = self.cmd_as_string()
+        (stdin,stdout,stderr) = os.popen3(cmd)
+        self.output = stdout.readlines()
+        self.error = stderr.readlines()
+        if self.debug:
+            print 'output', self.output
+            print 'error', self.error
+        status = stdout.close()
+        if self.debug:
+            print 'status on out', status 
+
+        status1 = stderr.close()
+        if self.debug:
+            print 'status on err', status1
+
+        status2 = stdin.close()
+        if self.debug:
+            print 'status on in', status2
+
+        print 'status,1,2',status,status1,status2
+
+        if len(self.error):
+            msg = 'Result on Stderr:'
+            for t in self.error:
+                msg = msg + t
+            self.msg = msg
             return -1
-        else:
-            # Windows and Unix
-            # Note from the documentation...
-            # These methods do not make it possible to retrieve
-            # the return code from the child processes
-
-            cmd = self.cmd_as_string()
-            (stdin,stdout,stderr) = os.popen3(cmd)
-            self.output = stdout.readlines()
-            self.error = stderr.readlines()
-            if self.debug:
-                print 'output', self.output
-                print 'error', self.error
-            status = stdout.close()
-            if self.debug:
-                print 'status on out', status 
-
-            status1 = stderr.close()
-            if self.debug:
-                print 'status on err', status1
-
-            status2 = stdin.close()
-            if self.debug:
-                print 'status on in', status2
-
-            if len(self.error):
-                msg = 'Result on Stderr:'
-                for t in self.error:
-                    msg = msg + t
-                self.msg = msg
-                return -1
 
         self.status = DONE_PIPE
         if not status:
@@ -491,7 +480,6 @@ class ForegroundPipe(SubProcess):
             return self.output
         else:
             return None
-
 
 class SlavePipe(SubProcess):
 
@@ -668,9 +656,7 @@ class Spawn(SubProcess):
     kill is available
     ToDo: introduce internal status to trap wait/kill
     """
-    #def __init__(self,cmd,**kw):
     def __init__(self,cmd,args=None,**kw):
-        #apply(SubProcess.__init__, (self,cmd,args,) , kw)        
         SubProcess.__init__(self,cmd,args=args,**kw)        
 
     def run(self,stdin=None,stdout=None,stderr=None):
@@ -705,7 +691,6 @@ class Spawn(SubProcess):
                 return -1
             
         elif self.status == SPAWNED:
-
             if self.debug:
                 print t.time(), 'class Spawn, method wait _wait_child'
 
@@ -713,6 +698,7 @@ class Spawn(SubProcess):
             if self.debug:
                 print 'wait code',code
             return code
+
         else:
             print 'Spawn in wait',self.status
             if self.debug:
@@ -721,7 +707,7 @@ class Spawn(SubProcess):
             if self.debug:
                 print 'return -2'
             return -2
-    #jmht
+
     def get_output(self):
         if self.status == EXITED:
             return self.output
@@ -901,10 +887,7 @@ class RemoteProcess(ForegroundPipe):
         """Run a command on a remote host"""
         apply(SubProcess.__init__, (self,None,) , kw)        
 
-        if sys.platform == 'mac':
-            print 'Dont know how to run on mac'
-            return -1
-        elif sys.platform[:3] == 'win':
+        if sys.platform[:3] == 'win':
             self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
             self.args = [host, cmd ]
             print 'remote command:',self.cmd_as_string()
@@ -912,249 +895,20 @@ class RemoteProcess(ForegroundPipe):
             self.cmd = 'ssh'
             self.args =  [host, cmd]
 
-if __name__ == "__main__":
+class SpawnRemoteCmd(Spawn):
 
-    print "IF CLAUSE"
-    if 0:
-        os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
-        os.environ['TCLLIBPATH']='/cygdrive/c/chemsh/tcl'
-        print 'Testing Spawn ChemShell'
-        jobname='small'
-        cmd = '"C:/chemsh/bin/chemshprog.exe" < small.chm'
-        print cmd
-        p = ForegroundPipe(cmd)
-        p.run()
+    def __init__(self,host,cmd,**kw):
+        """Run a command on a remote host using winprocess/fork locally"""
 
-    if 0:
-        print 'Testing Spawn'
-        jobname='small'
-        cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe"'
-        print cmd
-        p = Spawn(cmd)
-        i = open('small.in','r')
-        o = open('small.out','w')    
-        p.run(stdin=i,stdout=o)
-        o.close()
-        i.close()
-        code = p.wait()
-        print 'return code',code
-
-    if 0:
-        print 'Testing SlaveSpawn'
-        jobname='small'
-        cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe"'
-        print cmd
-        p = SlaveSpawn(cmd,debug=1)
-        i = open('small.in','r')
-        o = open('small.out','w')
-        e = open('small.err','w')
-        p.run(stdin=i)
-        code = p.wait()
-        o.close()
-        i.close()
-        e.close()
-        print 'return code',code
-
-    if 0:
-        print 'Testing ForegroundPipe'
-        jobname='small'
-        cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe" < '+jobname+'.in > ' + jobname+'.out'
-        print cmd
-        p = ForegroundPipe(cmd)
-        code = p.run()
-        print 'return code',code
-
-    if 0:
-        print 'Testing SlavePipe'
-        jobname='small'
-        cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe" < '+jobname+'.in > ' + jobname+'.out'
-        print cmd
-        p = SlavePipe(cmd,debug=1)
-        code = p.run()
-        print 'run return code',code
-        code = p.wait()
-        print 'wait return code',code
-
-    if 0:
-        jobname='small'
-        cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe" < '+jobname+'.in > ' + jobname+'.out'
-        print cmd
-        p = Spawn(cmd)
-        i = open('small.in','r')
-        o = open('small.out','w')    
-        p.run(stdin=i,stdout=o)
-        o.close()
-        code = p.wait()
-        print 'return code',code
-
-    if 0:
-        print 'Test Pipe for Remote Process'
-        host = 'hpcx'
-        cmd = 'pwd'
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + host + ' ' + cmd 
-        print 'remote command:',rcmd
-        #p = RemoteProcess('tcsg7','pwd')
-        #p = RemoteProcess('hpcx','pwd')
-        p = ForegroundPipe(rcmd)
-        code = p.run()
-
-    if 0:
-        print 'Test SlavePipe for Remote Process'
-        host = 'hpcx'
-        cmd = 'pwd'
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + host + ' ' + cmd 
-        if self.debug:
-            print 'remote command:',rcmd
-        p = SlavePipe(rcmd)
-        code = p.run()
-        if self.debug:
-            print 'run code',code
-        code = p.wait()
-        if self.debug:
-            print 'wait code',code
-
-    if 0:
-        print 'Test Spawn and kill for Remote Process'
-        host = 'hpcx'
-        cmd = 'sleep 4'
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + host + ' ' + cmd 
-        print 'remote command:',rcmd
-        p = Spawn(rcmd,debug=1)
-        code = p.run()
-        print 'run code',code
-
-        code = p.wait(timeout=3000)
-
-        print 'wait code',code
-
-        code = p.kill()
-        print 'kill code',code
-
-        code = p.wait(timeout=3000)
-        print 'wait code',code
-
-    if 0:
-        print 'Test Spawn for Remote Process'
-        host = 'hpcx'
-        cmd = 'sleep 4'
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + host + ' ' + cmd 
-        print 'remote command:',rcmd
-        p = Spawn(rcmd,debug=1)
-        code = p.run()
-        print 'run code',code
-
-        code = p.wait(timeout=3000)
-        print 'wait code',code
-
-        code = p.kill()
-        print 'kill code',code
-
-        code = p.wait(timeout=3000)
-        print 'wait code',code
-        code = p.wait(timeout=3000)
-        print 'wait code',code
-        code = p.wait(timeout=3000)
-        print 'wait code',code
+        Spawn.__init__(self,None,**kw)        
+        if sys.platform[:3] == 'win':
+            self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
+            self.args = [host, cmd ]
+            print 'remote command:',self.cmd_as_string()
+        else:
+            self.cmd = 'ssh'
+            self.args =  [host, cmd]
 
 
-    #p.spawn()
-    #p.threadedPipe()
-    #cmd = '"C:/Program Files/DeLano Scientific/PyMOL/modules/ccp1gui/exe/gamess.exe" < '+jobname+'.in'
-    #cmd = '"C:/Program Files/PuTTY/pscp.exe" small.in tcsg7:'
-    #cmd = '"C:/Program Files/PuTTY/pscp.exe" small.in psh@login.hpcx.ac.uk:'
-    #p = RemoteProcess('hpcx','export GAMESS_PROJECT=z001;/usr/local/packages/gamessuk/rungamess/rungamess -q small')
-    #p.spawn()
-    #code = p.wait()
-    #print 'return code',code
-    #if not code:
-    #    for t in p.get_output():
-    #        print t,
-    # The pipe  seems fine, except we have not managed to store the
-    # output anywhere
-    # p = RemoteProcess('hpcx','llq | grep psh')
-    #code = p.pipe()
+# test this using unit test framework (testsubprocess.py)
 
-    #i = open('test.in','r')
-    #p.threadedSpawn()
-    #print 'return code',code
-    #if not code:
-    #    for t in p.get_output():
-    #        print t,
-
-    if 0:
-        #p = SubProcess("notepad.exe")
-        jobname='test'
-
-        #cmd = 'notepady.exe'
-        p = SubProcess(cmd)
-        #p.threadedPipe()
-        i = open('test.in','r')
-        p.threadedSpawn(stdin=i)
-        time.sleep(3)
-        code = p.kill()
-
-    if 0:
-        i = open('test.in','r')
-        #o = open('test.out','w')
-        p.spawn(stdin=i,stdout=None)
-        i.close()
-        #p.wait(timeout=-1)
-        print 'kill returns code',code
-        #o.close()
-        #print 'p.output returns',p.get_output()
-        #code = p.wait()
-        #print 'p.wait returns',code
-        #print p.get_output()
-
-    if 0:
-        print 'Testing simple SlaveSpawn'
-        cmd = "echo a b c"
-        cmd = "rungamess test1"
-        print cmd
-        p = Spawn(cmd,debug=1)
-        i = None
-        o = open('small.out','w')
-        e = open('small.err','w')
-        print 'Executing run',os.getpid()
-        p.run(stdin=i)
-        time.sleep(1.5)
-        #p.kill()
-        code = p.wait()
-        #print 'return code',code
-        o.close()
-        #i.close()
-        e.close()
-
-
-# jmht
-    if 1:
-        print 'Testing simple Spawn'
-        cmd = "grid-pwd scarf.rl.ac.uk"
-        #cmd = "sleep 50"
-        #cmd = "sort -"
-        print cmd
-        p = Spawn(cmd,debug=1)
-        #p = Spawn(cmd)
-        #print 'Executing run',os.getpid()
-        #stdin = "./untitled.in"
-        #stdin = "./DFT.siosi3.347.in"
-        #stdout = "./untitled.out"
-        #stderr = "./untitled.err"
-        #i = open(stdin,'r')
-        #o = open(stdout,'w')
-        #e = open(stderr,'w')
-        p.run()
-        #p.run(stdin=i)
-        #p.run(stdin=i, stdout=o)
-        #p.run(stdin=i, stdout=o, stderr=e)
-        #import time
-        #time.sleep(2)
-        #print "calling kill from main"
-        #p.kill()
-        code = p.wait()
-        #print "kill returned"
-        print 'return code',code
-        print "output ",p.get_output()
-        #i.close()
-        #o.close()
-        #e.close()

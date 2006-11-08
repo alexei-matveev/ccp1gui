@@ -35,7 +35,7 @@ BackgroundJob
 ForegroundJob
    all operations use subprocess.ForegroundPipe
  
- RemoteForegroundJob
+RemoteForegroundJob
    subprocess.Spawn(plink/ssh)
    not yet implemented
 
@@ -100,7 +100,8 @@ class JobStep:
                  monitor_file=None,
                  warn_on_error=0,
                  kill_on_error=1,
-                 kill_cmd=None):
+                 kill_cmd=None,
+                 use_bash=0):
 
         # see list of valid types above
         self.type = type
@@ -120,8 +121,9 @@ class JobStep:
         self.stderr_file=stderr_file
         self.monitor_file=monitor_file
         self.kill_on_error=kill_on_error
-        self.warn_on_error = warn_on_error
-        self.kill_cmd = kill_cmd
+        self.warn_on_error=warn_on_error
+        self.kill_cmd=kill_cmd
+        self.use_bash=use_bash
 
 class Job:
 
@@ -362,7 +364,6 @@ class Job:
     def execute_shell(self,step):
         return -1,"execute shell unimplemented"
 
-
     def python_cmd(self,step):
         return step.proc()
 
@@ -410,20 +411,15 @@ class Job:
             print "job update_job_parameters: parameters are now:"
             print self.job_parameters
 
-
-class BackgroundJob(Job):
+class LocalJob(Job):
     """Sub class for a job running on the local resource
-
-    This version uses
-       - a control thread which then uses fork/spawn
-       - 2 communication queues to allow the main (calling)
-         thread to check job status (e.g. to update the view)
-         or to kill the job
+    run_app uses fork/winprocess via Spawn
+    everything else uses os.popen3 via ForegroundPipe
     """
 
     def __init__(self,**kw):
         apply(Job.__init__, (self,), kw)
-        self.jobtype='Local Background'
+        self.jobtype='Local'
 
     def allocate_scratch(self,step):
         pass
@@ -434,30 +430,30 @@ class BackgroundJob(Job):
             step.remote_filename = step.local_filename
 
         if step.local_filename != step.remote_filename:
-            #cmd = 'del ' + self.remote_filename
             cmd = 'del'
             args = [self.remote_filename]
             subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
-            #cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
             cmd = 'ren'
             args = [self.local_filename, step.remote_filename]
             subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
         return 0,None
 
     def run_app(self,step):
-        # Support for a generic application interface
-        if sys.platform == 'mac':
-            print 'Dont know how to run on mac'
-            return -1
-        elif sys.platform[:3] == 'win':
+        """execute command
+        """
+
+        if sys.platform[:3] == 'win':
+
+            if step.use_bash:
+                # We are running in a Cygwin shell rather than the standard
+                # windows process 
+                # THIS NEEDS TESTING
+                step.local_command_args = ['bash'] + step.local_command_args
 
             # Remove stdout
             if step.stdout_file:
                 f = os.popen('del '+step.stdout_file)
                 status2 = f.close()
-
-            #cmd = self.local_command + ' < ' + step.stdin_file + ' > ' + step.stdout_file
-            #cmd = step.local_command
 
             self.process = subprocess.Spawn(step.local_command,
                                             args=step.local_command_args,
@@ -468,12 +464,14 @@ class BackgroundJob(Job):
                 i = open(step.stdin_file,'r')
             else:
                 i = None
+
             if step.stdout_file:
                 o = open(step.stdout_file,'w')
             else:
                 o = None
 
             e=open('stderrfile','w')
+
             self.process.run(stdin=i,stdout=o,stderr=e)
             code = self.process.wait()
             self.process = None
@@ -498,18 +496,6 @@ class BackgroundJob(Job):
 
         else:
             # Unix code
-            # !! Paul Feb 2004 what happened to stdin, stdout
-            # may need to fix here and the bash version
-            # - hacked back April 05
-            
-            # jmht - this won't work with Spawn, as the command will be executed with
-            # < and > as arguments and won't be used to pipe stdin & stdout
-            #if step.stdin_file:
-            #    cmdtmp = cmdtmp + ' < ' + step.stdin_file
-            #if step.stdout_file:
-            #    cmdtmp = cmdtmp + ' > ' + step.stdout_file                
-                
-            #cmd = step.local_command
             self.process = subprocess.Spawn(step.local_command,
                                             args=step.local_command_args,
                                             debug=self.debug)
@@ -521,6 +507,7 @@ class BackgroundJob(Job):
                 stdin = open(step.stdin_file,'r')
             else:
                 stdin = None
+
             if step.stdout_file:
                 stdout = open(step.stdout_file,'w')
             else:
@@ -536,104 +523,6 @@ class BackgroundJob(Job):
                 for tt in self.process.error:
                     msg = msg + tt
                 raise JobError, "Unexpected Exit code=" + str(code) + " : " + msg
-
-        return 0,None
-
-
-    def run_app_bash(self,step):
-        #
-        # Support for a generic application interface
-        # This one spawns under control of the Cygwin bash shell
-        # this seems to help the system command issued from within ChemShell
-        # to work properly
-        #
-        print 'run_app_bash'
-        if sys.platform == 'mac':
-            print 'Dont know how to run on mac'
-            return -1
-        elif sys.platform[:3] == 'win':
-
-            # Remove stdout
-            if step.stdout_file:
-                f = os.popen('del '+step.stdout_file)
-                status2 = f.close()
-
-            # Use of input file for bash worked OK.. may be useful one day for
-            # case we need to pass multi-line commands to bash
-            # create as binary to avoid \r hassles
-            #file=open("bash.txt","wb")
-            # redirection works here but is not needed as stdin/out are handled by Spawn
-            #file.write(step.local_command+'\n')
-            #file.write(cmd)
-            #file.close()
-            #cmd="C:/cygwin/bin/bash.exe bash.txt"            
-
-            # various permutations tried...
-            #cmd = step.local_command + ' < ' + step.stdin_file + ' > ' + step.stdout_file + ' \n'
-            #cmd = step.local_command
-            #chemshell_exe='"C:/chemsh/bin/chemshprog.exe"'
-            #file.write('chemsh < new.chm > new.log\n')
-            #file.write('"C:/chemsh/bin/chemshprog.exe" < new.chm > new.out \n')
-            #cmd = step.local_command + ' < ' + step.stdin_file + ' > ' + step.stdout_file + ' \n'
-            #cmd='echo hello>junk.txt\n'
-
-            #This works OK as well
-            #cmd="C:/cygwin/bin/bash.exe "+step.local_command
-            # But NOTE trying to use input redirection (<) here fails
-            # in contrast to the foreground case where its OK
-
-            # This seems the simplest form of the command
-            #cmd="bash "+step.local_command
-            #print 'Spawn on ',cmd
-            #import os
-            #print 'PATH is',os.environ['PATH']
-
-            self.process = subprocess.Spawn(step.local_command,
-                                            args=step.local_command_args,
-                                            debug=self.debug)
-            if self.debug:
-                print "Background job: run_app_bash cmd: ",self.process.cmd_as_string()
-
-            if step.stdin_file:
-                i = open(step.stdin_file,'r')
-            else:
-                i = None
-            if step.stdout_file:
-                o = open(step.stdout_file,'w')
-            else:
-                o = None
-            e = open('stderrfile','w')
-            self.process.run(stdin=i,stdout=o,stderr=e)
-            code = self.process.wait()
-            print 'return code',code
-            self.process = None
-            if o:
-                o.close()
-            if i:
-                i.close()
-            if e:
-                e.close()
-            if code != 0: 
-                e = open('stderrfile')
-                txt = e.readlines()
-                e.close()
-                print 'err txt',txt
-                msg = "Unexpected Exit code=" + str(code) + '\n'
-                msg = msg + 'Stderr from process follows:\n'
-                for t in txt:
-                    msg = msg + t
-                raise JobError, msg
-
-        else:
-            # Unix code
-            #cmd = step.local_command
-            self.process = subprocess.Spawn(step.local_command,
-                                            args=step.local_command_args,
-                                            debug=self.debug)
-            self.process.run()
-            code = self.process.wait()
-            if code != 0: 
-                raise JobError, "Unexpected Exit code=" + str(code)
 
         return 0,None
 
@@ -682,16 +571,15 @@ class BackgroundJob(Job):
         else:
             return -1
     
-class ForegroundJob(Job):
+class LocalJobNoSpawn(Job):
     """Sub class for a job running on the current resource
-
     this is simply for testing, no threads or background spawn calls
     it uses the SubProcess.pipe to invoke the required calls
     """
 
     def __init__(self,**kw):
         apply(Job.__init__, (self,), kw)
-        self.jobtype='Local Background'
+        self.jobtype='Local Foreground'
         
     def allocate_scratch(self,step):
         return 0,None
@@ -717,6 +605,7 @@ class ForegroundJob(Job):
             args = [self.local_filename,step.remote_filename]
             subprocess.ForegroundPipe(cmd,arg=args,debug=self.debug).run()
         return 0,None
+
 
     def run_app(self,step):
         """
@@ -754,7 +643,6 @@ class ForegroundJob(Job):
         else:
             return 0, None
 
-
     def run_app_bash(self,step):
 
         cmd = step.local_command
@@ -788,75 +676,99 @@ class ForegroundJob(Job):
                 print 'running kill cmd'
                 self.active_step.kill_cmd()
 
-class RemoteForegroundJob(Job):
-    """Control of the job using rsh/plink"""
+class RemoteJob(Job):
+    """Base Class for jobs on remote systems accessible by ssh
+    access. This class implements scratch file management
+    and file transfer functions.
+    Also allows a job to run as a remote foreground process (ssh)
+    on the target system.
+    """
+    def __init__(self,host,remoteuser,**kw):
+        apply(Job.__init__, (self,), kw)
+        self.jobtype='Remote'
+        self.host=host
+        self.remoteuser=remoteuser
+
+    def run_app(self,step):
+        pass
+
+
+class RemoteBatchJob(RemoteJob):
+    """Instantiate the job using rsh/plink but in this case, the job
+    has will be started in a batch queue and the run() method will
+    exit only when the job has been run (or rejected) by the queue
+    manager.
+    Details of specific job managers are handled in the derived classes.
+    """
 
     def __init__(self,host,remoteuser, **kw):
         apply(Job.__init__, (self,), kw)
-        self.jobtype='Remote Foreground Job'
-        self.host=host
-        self.remoteuser=remoteuser
+        self.jobtype='BatchBase'
+        self.jobID = None # used to query the job status
+        self.poll_interval = 30 # how often to check the job state in the loop
 
-    def allocate_scratch(self,step):
-        return 0,None
-
-    def run_gamessuk(self,step):
-        cmd = "/usr/local/packages/gamessuk/rungamess/rungamess " + step.jobname
-        #rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
-        rcmd = 'C:/Program Files/PuTTY/plink.exe'
-        args = [self.host,cmd ]
-        p = subprocess.Spawn(rcmd,args=args,debug=1)
-        print 'remote command:',p.cmd_as_string()
-        code = p.run()
-        print 'run code',code
-        code = p.wait()
-        print 'wait code',code
+    def run_app(self,step):
+        print 'run_app method of RemoteBatchJob should be overloaded'
 
 
-    def clean_scratch(self,step):
-        return 0,None
-
-class LoadLevelerJob(Job):
+class LoadLevelerJob(RemoteBatchJob):
     """Class for a local loadleveler job"""
     def __init__(self,host,remoteuser,**kw):
-        apply(Job.__init__, (self,), kw)
+        RemoteBatchJob.__init__(self,**kw)
         self.jobtype='LoadLeveler'
-        self.host=host
-        self.remoteuser=remoteuser
+
         
     def allocate_scratch(self,step):
         return 0,None
 
-    def run_gamessuk(self,step):
+    def run_app(self,step):
 
-        if 0:
-            cmd = 'printenv'
-            rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' '+ cmd
-            p = subprocess.SlavePipe(rcmd,debug=1)
-            code = p.run()
-            print 'run code',code
-            code = p.wait()
-            print 'OUT',p.get_output()
-            return -1
+        # ? remote working directory
 
-        #cmd = "/usr/local/packages/gamessuk/rungamess/rungamess -p 4 -T 10 -q " + step.jobname
-        cmd = "/hpcx/home/z001/z001/psh/GAMESS-UK/rungamess/rungamess -p 4 -T 10 -q " + step.jobname
-        #rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + ' ' + cmd 
-        rcmd = 'C:/Program Files/PuTTY/plink.exe'
-        args = [self.host,cmd ]
-        p = subprocess.SlavePipe(rcmd,args=args,debug=0)
-        print 'remote command:',p.cmd_as_string()
-        code = p.run()
-        print 'run code',code
-        code = p.wait()
-        print 'OUT',p.get_output()
-        cmd = 'llq'
-        rcmd = '"C:/Program Files/PuTTY/plink.exe"' + ' ' + self.host + cmd
-        p = subprocess.SlavePipe(rcmd,debug=0)
-        code = p.run()
-        print 'run code',code
-        code = p.wait()
-        print 'OUT',p.get_output()
+        # Construct Loadleveler job file and
+        # copy it over to the target host
+
+        # Submit job 
+
+        #Monitor Job Information
+        running = 1
+        result = 1
+        while running:
+
+            # Use llstatus
+
+
+            #info = self.rmcs.getJobDetails(self.jobID)
+            # NB: info is a dictionary with the following structure:
+            # message          prog running on lake.esc.cam.ac.uk
+            # jobName          Jens Job
+            # jobState         RUNNING
+            # submitted        2006-09-05 14:45:08.868
+            # jobID
+
+            # Possible jobStates:
+            # SUBMIT-PENDING
+            # SUBMIT-FAILED
+            # QUEING
+            # RUNNING
+            # FINISHED
+            for key, val in info.items():
+                print "%s \t %s" % (key, val)
+                
+            if info['jobState'] == 'FINISHED':
+                msg = info['message']
+                result = 0
+                running = None
+                break
+            elif info['jobState'] == 'SUBMIT-FAILED':
+                msg = info['message']
+                result = -1
+                running = None
+                break
+            
+            time.sleep(self.poll_interval)
+
+        return result,msg
 
     def clean_scratch(self,step):
         return 0,None
@@ -2232,11 +2144,11 @@ if __name__ == "__main__":
         i=j
         time.sleep(3)
 
-    if 0:
+    if 1:
         print 'testing remote foreground job'
         job = LoadLevelerJob('hpcx','psh')
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small2.in')
-        job.add_step(RUN_GAMESSUK,'run gamess',jobname='small2')
+        job.add_step(RUN_APP,'run gamess',local_command='rungamess',local_command_args='small',jobname='small2')
         job.add_step(COPY_BACK_FILE,'fetch log',remote_filename='small2.out')
         job.add_step(COPY_BACK_FILE,'fetch punch',remote_filename='small2.pun')
         job.add_step(PYTHON_CMD,'cleanup',proc=testpy)
@@ -2319,7 +2231,7 @@ if __name__ == "__main__":
 #         job.clean()
         print 'end jens job'
 
-    if 1:
+    if 0:
         print 'testing GROWL job'
         
         job = GrowlJob()
