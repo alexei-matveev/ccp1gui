@@ -173,6 +173,8 @@ from interfaces.charmm import *
 from interfaces.gamessoutputreader import *
 from interfaces.cubereader import *
 from interfaces.filepunch import *
+#xml interface
+#from interfaces.filexml import *
 
 from viewer.selections2 import *
 
@@ -239,6 +241,8 @@ class TkMolView(Pmw.MegaToplevel):
         self.master.bind_all("<q>",
                        lambda e,s=self: s.rotate_about_bond())
 
+        self.xmlreader = None
+    
         # Variables required by the AM1 optimiser
         #self.am1 = None
         #self.calcMon = None
@@ -1436,6 +1440,7 @@ class TkMolView(Pmw.MegaToplevel):
             updated = None
             atoms = sel.get_by_mol(mol)
             for atom in atoms:
+
                 if atom.symbol[0].lower() == 'x':
                     # If it's an x atom, try and change the bond length
                     # This check will change if we implement an 'update'mode
@@ -3003,6 +3008,8 @@ class TkMolView(Pmw.MegaToplevel):
                        ('Molecules','.zmt'),
                        ('Molecules','.gjf'),
                        ('Molecules','.mol'),
+                       ('AgentX Ontology','.owl'),
+                       ('AgentX RDFMap','.rdf'),
                        ('XYZ','.xyz'),
                        ('PDB','.pdb'),
                        ('PDB','.PDB'),
@@ -3019,8 +3026,11 @@ class TkMolView(Pmw.MegaToplevel):
 
         if filename:
             err = self.load_from_file( filename )
-            if err:
-                self.error( "There was a problem reading in structures from the file %s" % filename )
+            if err == -1:
+                self.error( "There was a problem reading in structures from the file:\n%s\n\
+Please check the output on the terminal/log file for further information." % filename )
+                return
+            elif err == 2: # for reading xml ontologies or other files that don't return objects
                 return
             
             # add to any open dialogs
@@ -3071,10 +3081,17 @@ class TkMolView(Pmw.MegaToplevel):
                 form = 'PUN'
             if ext == 'zmt':
                 form = 'ZMT'
+            # AgentX
             if ext == 'cml':
-                form = 'CML'
+                #form = 'CML'
+                form = 'XML'
             if ext == 'xml':
-                form = 'CML'
+                #form = 'CML'
+                form = 'XML'
+            if ext == 'owl':
+                form = 'ONT'
+            if ext == 'rdf':
+                form = 'MAP'
             if ext == 'gjf':
                 form = 'GAU'
             if ext == 'cube':
@@ -3100,8 +3117,14 @@ class TkMolView(Pmw.MegaToplevel):
             objs = self.rdpun(filename,root)
         elif form == 'ZMT':
             objs = self.rdzmt(filename,root)
-        elif form == 'CML':
-            objs = self.rdcml(filename,root)
+        elif form == 'XML':
+            objs = self.rdxml(filename,root)
+        # ONT & MAP are different in that they don't return any objects
+        # so we return their exit codes directly
+        elif form == 'ONT':
+            return self.rdont(filename,root)
+        elif form == 'MAP':
+            return self.rdmap(filename,root)
         elif form == 'GAMIN':
             objs = self.rdgamin(filename,root)
         elif form == 'MOL':
@@ -3133,7 +3156,7 @@ class TkMolView(Pmw.MegaToplevel):
             fileh.close()
 
         if not objs:
-            return 1
+            return -1
         else:
             for o in objs:
                 print 'obj',o
@@ -3207,39 +3230,192 @@ class TkMolView(Pmw.MegaToplevel):
         self.append_data(model)
         return [model]
 
-    def rdcml(self,file,root):
-        import cml
+    def get_xmlreader(self):
+        """ Try and return an XML Reader - trap an import failure if agentX
+            ins't available.
+        """
+        if self.xmlreader:
+            return self.xmlreader
 
-        atomDict=cml.atomInfo(file)
-        model = Zmatrix()
-        model.title = root
-        model.name = self.make_unique_name(root)
+        print "no existing xmlreader-creating new"
+        try:
+            from interfaces.filexml import XMLReader
+            self.xmlreader = XMLReader()
+            return self.xmlreader
+        except ImportError:
+            self.error("Cannot import AgentX reader! Please install agentX and then restart the CCP1GUI.")
+            return None
 
-        for i in range(0,len(atomDict)):
+    def rdont(self,file,root):
+        """ Read in an agentX ontology """
 
-            try:
-                x = float(atomDict[i]['x3'])
-                y = float(atomDict[i]['y3'])
-                z = float(atomDict[i]['z3'])
-            except KeyError:
-                x = float(atomDict[i]['x2'])
-                y = float(atomDict[i]['y2'])
-                z = 0.0
+        global rc_vars
+
+        xd = self.get_xmlreader()
+        if not xd:
+            return -1
+        err = xd.read_ontology(file)
+        if err:
+            print "There was an error reading the ontology file!"
+            return -1
+        else:
+            print "Read ontology from: %s " % file
+            # set the rc_vars so that we don't have to read this in each time
+            rc_vars['AgentX_ontology'] = file
+            return 2
+        
+    def rdmap(self,file,root):
+        """ Read in an agentX mapping file """
+        
+        global rc_vars
+
+        xd = self.get_xmlreader()
+        if not xd:
+            return None
+        err = xd.read_mappings(file)
+        if err:
+            print "There was an error reading the Mapping file!"
+            return -1
+        else:
+            print "Read mapping from: %s " % file
+            # set the rc_vars so that we don't have to read this in each time
+            rc_vars['AgentX_mapping'] = file
+            return 2
+    
+    def rdxml(self,file,root):
+        """ Read in an xml output using agentX """
+
+        global rc_vars
+        
+        xd = self.get_xmlreader()
+        if not xd:
+            return None
+
+# Can't check if we don't have ontology/mapping files as AgentX can get it's mappings and
+# ontologies from the working directory or a URL can be embedded in the actual xml file,
+# so not having a mapping or ontology cannot be considered an error
+
+#         # If the reader does not already have on owl or map file, we check to see if there
+#         # is one in the rc_vars
+        if not xd.owl_file:
+            print "checking rc_vars for an ontology file..."
+            # See if we've ontology/mapping files in the rc_vars and load then if so
+            if rc_vars.has_key('AgentX_ontology'):
+                ofile = rc_vars['AgentX_ontology']
+                if ofile and os.access( ofile, os.R_OK):
+                    err = xd.read_ontology(ofile)
+                    if err == -1:
+                        print "Error reading in existing ontology from rc_vars: %s" % ofile
+                    else:
+                        print "Read in AgentX ontology file specified in rc_vars: %s" % ofile
+                        
+        if not xd.rdf_file:
+            print "checking rc_vars for a mapping file..."
+            if rc_vars.has_key('AgentX_mapping'):
+                ofile = rc_vars['AgentX_mapping']
+                if ofile and os.access( ofile, os.R_OK):
+                    err = xd.read_mappings(ofile)
+                    if err == -1:
+                        print "Error reading in AgentX mapping file specified in rc_vars: %s" % ofile
+                    else:
+                        print "Error eading AgentX mapping file from rc_vars: %s" % ofile
+
+        xd.read_data_file(file)
+        if(xd.xml_error):
+            print "Error while reading XML data file!"
+            return None
+        
+        xd.read_coordinates(root)
+        if(xd.xml_error):
+            print "Error while reading XML coordinates!"
+            return None
+        
+        xd.read_normal()
+        if(xd.xml_error):
+            print "Error while reading XML normal coordinates!"
+            return None
+        
+        if len( xd.objects ) <= 0:
+            print "AgentX reading did not generate any errors but no objects are present!"
+            print "Data file was: ",file
+            return None
+        
+        # Reading went o.k. so if there are any objects copy them so
+        # that we can destroy the xd reader object - otherwise it persists
+        # and keeps using the old data objects - currently there is no way
+        # to destory the data objects and keep the owl and map file references
+        objects = copy.deepcopy (xd.objects)
+        
+        # Destroy reader
+        xd.cleanup()
+        xd = None
+        self.xmlreader = None
+
+        for o in objects:
+
+            # take the last field of the class specification
+            t1 = string.split(str(o.__class__),'.')
+            myclass = t1[len(t1)-1]
+            o.name = self.make_unique_name(root,o.title)
+
+            if myclass == 'VibFreq' :
+                self.append_data(o)
+
+            elif myclass == 'Indexed' or myclass == 'Zmatrix':
+                # will need to organise together with other results
+                # assume overwrite for now
+
+                self.append_data(o)
+                self.quick_mol_view([o])
+
+                # Used by visualisers
+                #o.title = name
+                #o.list()
+
+            elif myclass == 'Brick':
+                self.append_data(o)
+
+            elif myclass == 'Field':
+                self.append_data(o)
+
+            if self.debug:
+                print 'data list', self.data_list
+
+        return objects
+
+#     def rdcml(self,file,root):
+#         import cml
+
+#         atomDict=cml.atomInfo(file)
+#         model = Zmatrix()
+#         model.title = root
+#         model.name = self.make_unique_name(root)
+
+#         for i in range(0,len(atomDict)):
+
+#             try:
+#                 x = float(atomDict[i]['x3'])
+#                 y = float(atomDict[i]['y3'])
+#                 z = float(atomDict[i]['z3'])
+#             except KeyError:
+#                 x = float(atomDict[i]['x2'])
+#                 y = float(atomDict[i]['y2'])
+#                 z = 0.0
                                    
-            a = ZAtom()
-            a.coord = [x,y,z]
-            trans = string.maketrans('a','a')
-            a.symbol = string.capitalize(atomDict[i]['elementType'])
-            #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
-            a.name = a.symbol 
+#             a = ZAtom()
+#             a.coord = [x,y,z]
+#             trans = string.maketrans('a','a')
+#             a.symbol = string.capitalize(atomDict[i]['elementType'])
+#             #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
+#             a.name = a.symbol 
 
-            model.atom.append(a)
-        self.quick_mol_view([model])
-        self.append_data(model)
+#             model.atom.append(a)
+#         self.quick_mol_view([model])
+#         self.append_data(model)
 
-        ###self.connect_model(model)
+#         ###self.connect_model(model)
 
-        return [model]
+#         return [model]
 
     def rdgamout(self,file,root):
         """ Read in the structures from a GAMESS-UK output file. This uses
@@ -6964,9 +7140,10 @@ if __name__ == "__main__":
 
     from vtkgraph import *
     root = Tkinter.Tk()
+    root.withdraw()
     vt = VtkGraph(root)
     for file in sys.argv[1:]:
         print 'loading',file
         vt.load_from_file(file)
-    root.withdraw()
+    #root.withdraw()
     vt.mainloop()
