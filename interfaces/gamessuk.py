@@ -383,7 +383,11 @@ class GAMESSUKCalc(QMCalc):
 
         # These will throw exceptions if they fail - we don't trap these here though
         if submission_policy == LOCALHOST:
-            job = jobmanager.BackgroundJob()            
+            job = jobmanager.LocalJob()            
+        if submission_policy == 'SSH':
+            host = 'login.hpcx.ac.uk'
+            user = 'psh'
+            job = jobmanager.RemoteJob(host,user)
         elif submission_policy == 'RMCS':
             job = jobmanager.RMCSJob()
         elif submission_policy == 'Nordugrid':
@@ -493,6 +497,11 @@ class GAMESSUKCalc(QMCalc):
                 job_desc = 'Invoking GAMESS-UK binary directly'
                 local_command = self.gamessuk_exe
             
+        elif submission_policy == 'SSH':
+            job_desc = 'Running GAMESS-UK interactively on remote host'
+            local_command = "rungamess"
+            local_command_args = rungamess_cmdline + [job_name]
+
         elif submission_policy == 'RMCS':
             job_desc = 'Running GAMESS-UK with RMCS'
             
@@ -1866,7 +1875,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optcoord_opts = [ "Z-Matrix","Cartesian" ]
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
-        self.submission_policies = [ LOCALHOST,"RMCS", "Nordugrid", "GROWL"]
+        self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "GROWL"]
 
         self.jobSubEd = None
         
