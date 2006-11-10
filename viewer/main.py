@@ -477,7 +477,7 @@ class TkMolView(Pmw.MegaToplevel):
             
         if not os.path.isfile( rcfile ):
             # No ccp1guirc file so we can return
-            print "No user preferences file: %s found" % rcfile
+            #print "No user preferences file: %s found" % rcfile
             return
         
         #print "Executing ccp1guirc file %s" % rcfile
