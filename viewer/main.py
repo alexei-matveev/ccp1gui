@@ -2122,7 +2122,7 @@ class TkMolView(Pmw.MegaToplevel):
                             cascade.add_command(
                                 label="Orbital Volume Visualisation View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.volume_orbital_visualiser,obj=obj: func(r,g,obj)))
+                                      lambda r=s.master,g=s,func=s.volume_orbital_visualiser,obj=obj: func(r,g,obj,open_widget=1)))
                             cascade.add_command(
                                 label="New Cut Slice View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
@@ -2132,14 +2132,14 @@ class TkMolView(Pmw.MegaToplevel):
                                 label="New Colour Surface View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                                       lambda r=s.master,g=s,func=s.colour_surface_visualiser,obj=obj : func(
-                                r,g,obj,colour_obj=None)))
+                                r,g,obj,colour_obj=None),open_widget=1))
 
                 if obj.dimensions() == 2:
                     if self.slice_visualiser:
                         cascade.add_command(
                             label="New 2D View",command=\
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.slice_visualiser,obj=obj: func(r,g,obj)))
+                                  lambda r=s.master,g=s,func=s.slice_visualiser,obj=obj: func(r,g,obj),open_widget=1))
 
                 print 'ndd',obj.ndd
                 if obj.ndd == 3:
@@ -2147,13 +2147,14 @@ class TkMolView(Pmw.MegaToplevel):
                         cascade.add_command(
                             label="Vector Visualisation View",command=\
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.vector_visualiser,obj=obj: func(r,g,obj)))
+                                  lambda r=s.master,g=s,func=s.vector_visualiser,obj=obj: func(r,g,obj),open_widget=1))
                 else:
                     if self.irregular_data_visualiser:
                         cascade.add_command(
                             label="New Grid View",command=\
                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.irregular_data_visualiser,obj=obj: func(r,g,obj)))
+                                      lambda r=s.master,g=s,func=s.irregular_data_visualiser,obj=obj: func(r,g,obj),
+                                                                      open_widget=1))
 
 
 
