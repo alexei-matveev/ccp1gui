@@ -20,8 +20,8 @@
 import exceptions
 import os
 import re
-import pickle
 import copy
+import cPickle
 
 import Pmw
 import Tkinter
@@ -38,6 +38,7 @@ from jobmanager import *
 from jobmanager.job import *
 
 from viewer.initialisetk import initialiseTk
+
 
 Create = 0
 Raise  = 1
@@ -148,14 +149,16 @@ class CalcEd(Pmw.MegaToplevel):
         # Create the elements of the editor widget
         #
         #self.balloon = Pmw.Balloon(self.interior())
-        
-        # Jens hack to get the main balloon passed through so that it can be controlled
-        # in the main window. No idea if this is sensible...
         if kw.has_key('balloon'):
             balloon = kw['balloon']
             self.balloon = balloon
         else:
             self.balloon = Pmw.Balloon(self.interior())
+            
+        if kw.has_key("filename"):
+            self.filename = kw["filename"]
+        else:
+            self.filename = "./"
 
         self.menu    = self.__CreateMenuBar(self.interior(),self.balloon)
 
@@ -173,11 +176,6 @@ class CalcEd(Pmw.MegaToplevel):
            text_width = 80)
         self.textview.configure(text_font = fixedFont)
         self.textview.withdraw()
-
-        if kw.has_key("filename"):
-            self.filename = kw["filename"]
-        else:
-            self.filename = "./"
 
         # Visualisation dictionary, provides mapping between
         # results of the calculation and their graphical
@@ -242,13 +240,8 @@ class CalcEd(Pmw.MegaToplevel):
         self.CreateNotebook()
 
         self.title_tool = TitleTool(self)
-        self.tools.append(self.title_tool)
-
         self.charge_tool = IntegerTool(self,'charge','Charge')
-        #self.tools.append(self.charge_tool)
-
         self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
-        #self.tools.append(self.spin_tool)
 
         # defer until 
         #print 'layout'
@@ -701,7 +694,7 @@ class CalcEd(Pmw.MegaToplevel):
 
         try:
             fobj = open('junk.pkl','w')
-            p = pickle.Pickler(fobj)
+            p = cPickle.Pickler(fobj)
             p.dump(obj)
             fobj.close()
             pkl='pickled ok'
@@ -742,13 +735,12 @@ class CalcEd(Pmw.MegaToplevel):
             # store the internal coordinates as part of the calculation object
             ###if self.calc.editing:
             ###    self.calc.set_input("mol_obj",self.zme.get_mol())
-
             calc = self.calc
             
             # Below used for debugging pickling errors
             #self.prdict(calc,'TOP',0)
             fobj = open(sfile,'w')
-            p = pickle.Pickler(fobj)
+            p = cPickle.Pickler(fobj)
             p.dump(self.calc)
             fobj.close()
 
@@ -775,7 +767,7 @@ class CalcEd(Pmw.MegaToplevel):
         if len(ofile):
             self.filename = ofile
             fobj = open(ofile,'r')
-            u = pickle.Unpickler(fobj)
+            u = cPickle.Unpickler(fobj)
             self.calc = u.load()
             fobj.close()
             
@@ -920,7 +912,7 @@ if __name__ == "__main__":
                     print '>>',zz
 
     fobj = open("tmp.x",'w')
-    p = pickle.Pickler(fobj)
+    p = cPickle.Pickler(fobj)
     p.dump(calc)
     fobj.close()
 
