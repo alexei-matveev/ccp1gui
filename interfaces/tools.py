@@ -147,6 +147,8 @@ class BooleanTool(Tool):
     """ Control of a boolean variable (stored as integer) using a Tkinter Checkbutton widget """
     def __init__(self,editor,parameter,label_text,command=None,**kw):
         apply(Tool.__init__, (self,editor), kw)
+
+        self.command = command
         value   = self.editor.calc.get_parameter(parameter)
 
         if self.debug:
@@ -170,7 +172,7 @@ class BooleanTool(Tool):
             #self.button.configure(command=lambda opt,s=self: s.ReadWidget())
             self.button.configure(command=lambda s=self: s.ReadWidget())
 
-        self.UpdateWidget()
+        #self.UpdateWidget()
         
     def ReadWidget(self):
         """The parameter is given an integer value"""
@@ -189,6 +191,8 @@ class BooleanTool(Tool):
             self.button.select()
         else:
             self.button.deselect()
+        if self.command:    
+            self.command()
 
     def SetParent(self,packparent):
         self.packparent = packparent
@@ -263,7 +267,7 @@ class TitleTool(Tool):
         self.editor.calc.set_title(title)
         return title
     
-    def RefreshWidget(self):
+    def UpdateWidget(self):
         title = self.editor.calc.get_title()
         self.widget.setentry(title)
 
@@ -609,7 +613,7 @@ class MenuAndBooleanTool(Tool):
         self.editor.calc.set_parameter(self.menu_parameter,value2)
 
     def UpdateWidget(self):
-        value = self.editor.calc.get_parameter(self.boolean_parameter)
+        value = self.editor.calc.get_parameter(self.bool_parameter)
         if not value:
             self.button.deselect()
         else:
@@ -641,6 +645,8 @@ class MenuCounterTool(Tool):
         self.items = items
         self.parameter2 = parameter2
         self.label_text2 = label_text2
+        self.command = command
+
 
         if mini and maxi:
             v = {'validator' : 'integer' , 'min' : mini , 'max' : maxi}
@@ -656,20 +662,23 @@ class MenuCounterTool(Tool):
                                         label_text = self.label_text1)
         self.widget.pack(side='left')
         
+        default1 = self.editor.calc.get_parameter( self.parameter1 )
         self.firstmenu = Pmw.OptionMenu(self.widget.interior(),
                                         items = self.items,
-                                        command = command
+                                        command = self.command,
+                                        initialitem=default1,
                                         )
         
         self.firstmenu.pack(side='left',padx=10)
 
+        default2 = self.editor.calc.get_parameter( self.parameter2 )
         self.menucounter = Pmw.Counter(self.widget.interior(),
                                       labelpos='w',
                                       label_text = self.label_text2,
                                       increment = 1,
                                       entryfield_entry_width = 20,
                                       entryfield_validate = v,
-                                      entryfield_value = self.editor.calc.get_parameter(self.parameter2)
+                                      entryfield_value = default2
                                       )
 
     def ShowCounter(self):
@@ -684,12 +693,13 @@ class MenuCounterTool(Tool):
         value2 = self.menucounter.getvalue()
         self.editor.calc.set_parameter(self.parameter2,value2)
 
-#Haven't been able to check the UpdateWidget method yet so carfeul if you use it!
     def UpdateWidget(self):
         value1 = self.editor.calc.get_parameter(self.parameter1)
         self.firstmenu.setvalue(value1)
         value2 = self.editor.calc.get_parameter(self.parameter2)
         self.menucounter.setvalue(value2)
+        if self.command:
+            self.command(value1)
         
 class MenuCounterMenuTool(Tool):
     """A menu that brings up an additional counter or menu tools if the selected menu item
@@ -709,6 +719,7 @@ class MenuCounterMenuTool(Tool):
         self.parameter3= parameter3
         self.label_text3=label_text3
         self.items3=items3
+        self.command = command
 
         if mini and maxi:
             v = {'validator' : 'integer' , 'min' : mini , 'max' : maxi}
@@ -723,10 +734,13 @@ class MenuCounterMenuTool(Tool):
                                         labelpos='w',
                                         label_text = self.label_text1)
         self.widget.pack(side='left')
-        
+
+        default1 = self.editor.calc.get_parameter( self.parameter1 )
         self.firstmenu = Pmw.OptionMenu(self.widget.interior(),
                                         items = self.items,
-                                        command = command)
+                                        command = command,
+                                        initialitem=default1
+                                        )
         
         self.firstmenu.pack(side='left',padx=10)
 
@@ -738,8 +752,11 @@ class MenuCounterMenuTool(Tool):
                                       entryfield_validate = v,
                                       entryfield_value = self.editor.calc.get_parameter(self.parameter2))
         
+        default3 = self.editor.calc.get_parameter( self.parameter3 )
         self.secondmenu = Pmw.OptionMenu(self.widget.interior(),
-                                        items = self.items3)
+                                         items = self.items3,
+                                         initialitem=default3
+                                         )
 
     def ShowCounter(self):
         self.menucounter.pack(side='left',padx=10)
@@ -761,6 +778,15 @@ class MenuCounterMenuTool(Tool):
         value3= self.secondmenu.getvalue()
         self.editor.calc.set_parameter(self.parameter3,value3)
 
+    def UpdateWidget(self):
+        value1 = self.editor.calc.get_parameter(self.parameter1)
+        self.firstmenu.setvalue(value1)
+        value2 = self.editor.calc.get_parameter(self.parameter2)
+        self.menucounter.setvalue(value2)
+        value3 = self.editor.calc.get_parameter(self.parameter3)
+        self.secondmenu.setvalue(value3)
+        if self.command:
+            self.command(value1)
 
 #The following tools still need work
 
@@ -793,7 +819,7 @@ class CommmentTool(Tool):
         comment = self.text.get('0.0',end)
         self.editor.calc.set_comment(comment)
         
-    def RefreshWidget(self):
+    def UpdateWidget(self):
         title = self.editor.calc.get_comment()
         end = str(self.lines)+"."+str(self.width)
         self.text.insert('0.0',end,comment)
@@ -824,7 +850,7 @@ class TextTool(Tool):
             txt = txt[:length-1]
         self.editor.calc.set_parameter(self.parameter,txt)
 
-    def RefreshWidget(self):
+    def UpdateWidget(self):
         self.widget.settext(self.editor.calc.get_parameter(self.parameter))
 
 class AtomSelectionTool(Tool):
