@@ -1851,8 +1851,8 @@ class GAMESSUKCalcEd(QMCalcEd):
         #self.dft_lebedevpoints =[6,14,26,38,50,74,86,110,146,170,194,230,266,
         #                         302,350,434,590,770,974,1202,1454,1730,2030,
         #                         2354,2702,3074,3470,3890,4334,4802,5294,5810]
-        self.dft_lebedevpoints =[6,14,26,38,50,74,86,110,146,170,194,230,266,
-                                 302,350,434,590,770,974,1202]
+        self.dft_lebedevpoints =['6','14','26','38','50','74','86','110','146','170','194','230','266',
+                                 '302','350','434','590','770','974','1202']
         self.dft_weights = ["Becke","MHL","SSF","MHL4SSF","MHL8SSF"]
         self.dft_jbas = ["A1DGAUSS","A2DGAUSS","DEMON","AHLRICHS"]
         
@@ -1953,7 +1953,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                                              'dft_radialgridpoints',
                                              'Number of points',
                                              command = self.__dftradialgridpoints
-                                             )
+                                              )
         self.radialgrid = self.dftradial_tool.firstmenu.getvalue()
         
         self.dftangular_tool = MenuCounterMenuTool(self,
@@ -2045,7 +2045,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.balloon.bind( self.ed3keep_tool.widget, 'Save the dump file - required to restart calculations' )
         self.ed3name_tool = BooleanTool (self, 'ed3_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed3'))
-        self.balloon.bind( self.ed3name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                
+        self.balloon.bind( self.ed3name_tool.widget, 'Toggle saving with the default name or a user-specified one' )
         self.ed3path_tool = FileTool(self,'ed3_path','',
                                      filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')])
         self.ed7keep_tool = BooleanTool(self, 'ed7_keep', 'keep',
@@ -2053,7 +2053,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.balloon.bind( self.ed7keep_tool.widget, 'Save the scratch file' )        
         self.ed7name_tool = BooleanTool (self, 'ed7_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed7'))
-        self.balloon.bind( self.ed7name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                        
+        self.balloon.bind( self.ed7name_tool.widget, 'Toggle saving with the default name or a user-specified one' )
         self.ed7path_tool = FileTool(self,'ed7_path','',
                                       filetypes=[('Tempfiles','*.ed7'), ('All files','*.*')])
         self.ed14keep_tool = BooleanTool(self, 'ed14_keep', 'specify',
@@ -2073,6 +2073,10 @@ class GAMESSUKCalcEd(QMCalcEd):
                      label = 'Results Summary')
         # flag to check if we already have a summary editor open
         self.summaryeditor=None
+
+        #jmht - initialise tools
+        for tool in self.tools:
+            tool.UpdateWidget()
 
 
     def __initialisetools(self):
