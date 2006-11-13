@@ -1411,7 +1411,7 @@ class DALTONCalcEd(QMCalcEd):
             return script
         else:
             print "No dalton_script set in rc file - checking in environment"
-            script = find_exe( ['dalton'] )
+            script = find_exe( 'dalton' )
             if script:
                 print "Found dalton script: %s" % script
                 return script
