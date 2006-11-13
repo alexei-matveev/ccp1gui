@@ -106,7 +106,7 @@ class FFTool(Tool):
             self.editor.calc.set_parameter('use_charmm',0)
             self.editor.calc.set_parameter("forcefield",choice)
 
-    def RefreshWidget(self):
+    def UpdateWidget(self):
         pass
 
 

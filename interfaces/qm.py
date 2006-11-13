@@ -62,7 +62,7 @@ class QMCalcEd(CalcEd):
         apply(CalcEd.Reload, (self,), kw)        
         try:
             self.basis_manager.new_molecule()
-            self.basis_tool.RefreshWidget()
+            self.basis_tool.UpdateWidget()
         except AttributeError:
             pass
 

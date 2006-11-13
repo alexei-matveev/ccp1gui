@@ -325,7 +325,7 @@ class BasisTool(Tool):
         if self.debug:
             print 'readwidget',bas,ecp
 
-    def RefreshWidget(self):
+    def UpdateWidget(self):
         """Update the contents of the widget based on changes
         normally would be to the value of the parameter?
         here it is changes to the molecule?
