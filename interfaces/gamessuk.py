@@ -121,7 +121,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter("dft_radialgrid","default")
         self.set_parameter("dft_angulargrid","default")
         self.set_parameter("dft_radialgridpoints","100")
-        self.set_parameter("dft_angulargridpoints","100")
+        self.set_parameter("dft_angulargridpoints","110")
         self.set_parameter("dft_jfit",0)
         self.set_parameter("dft_jbas","A1DGAUSS")
         self.set_parameter("dft_schwarz",6)
