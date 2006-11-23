@@ -818,7 +818,7 @@ class VibrationVisualiser(MoleculeVisualiser):
 
         if self.choose_mode:
             self.mode = self.w_mode.index(Pmw.SELECT)
-            print 'Mode',self.mode
+            #print 'Mode',self.mode
             #self.mode =  int(self.w_mode.get())
         self.frames =  int(self.w_frames.get())
         self.scale  =  float(self.w_scale.get())
@@ -1442,9 +1442,18 @@ class VectorVisualiser(Visualiser):
         apply(Visualiser.__init__, (self, root, graph, obj), kw)
         self.grid_editor=None
 
+        #jmht - hack
         self.cut_plane=Field(nd=2)
-        self.cut_plane.dim = [21,21]
-
+        #self.cut_plane.dim = [21,21]
+        # In increase the number of points
+        self.cut_plane.dim = [51,51]
+        # Shift the axis of the sampling grid to match the data
+        self.cut_plane.origin += obj.origin
+        # Set the x & y axes to be the same
+        self.cut_plane.axis[0] = obj.axis[0] 
+        #self.cut_plane.axis[1] = obj.axis[2]
+        self.cut_plane.axis[1] = obj.axis[1]
+        
         self.field = obj
         self.title = 'Vector View: ' + self.field.title
 
@@ -1742,7 +1751,7 @@ class VectorVisualiser(Visualiser):
             self.streamline_integration_step_length=float(self.w_streamline_integration_step_length.get())
             self.streamline_step_length=float(self.w_streamline_step_length.get())
 
-        print 'READW'
+        #print 'READW'
         self.cmap_obj, self.cmap_name, self.cmap_low, self.cmap_high = \
                         self.cmap_chooser.read_widgets()
 
