@@ -3367,6 +3367,8 @@ Please check the output on the terminal/log file for further information." % fil
                 # assume overwrite for now
 
                 self.append_data(o)
+                if len(o.atom) < 150:
+                    self.connect_model(o)
                 self.quick_mol_view([o])
 
                 # Used by visualisers
@@ -4583,16 +4585,12 @@ Please check the output on the terminal/log file for further information." % fil
         if self.debug_callbacks:
             print 'Callback key is ',callback_key
 
-        # Jens hack - have added the balloon keyword to get the main balloon passed through
-        # so that the control in the main window works in the calc editor - not sure
-        # if this is sensible though.
         ed = calc.edit(self.master,self,
                       vis=self.vis_dict[tt],
                       job_editor=self.job_editor,
                       reload_func= lambda s=self,t=str(id(obj)) : s.load_from_graph(t),
                       update_func= lambda o,s=self,t=str(id(obj)) : s.update_model(t,o),
                       on_exit=lambda s=self,k=callback_key,o=obj : s.delete_callback(o,k),
-#                      balloon=self.__balloon )
                       balloon=self.balloon )
         if ed:
             try:
@@ -4828,7 +4826,10 @@ Please check the output on the terminal/log file for further information." % fil
                 if not dum:
                     dum = "None"
             except:
-                dum = "???"
+                try:
+                    dum = o.title
+                except:
+                    dum = "???"
             o.name = self.make_unique_name(dum)
             self.append_data(o)
                     
