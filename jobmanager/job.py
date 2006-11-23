@@ -376,6 +376,23 @@ class Job:
     # ? other methods might include pause?
 
     def kill(self):
+        """ Kill the job if we are running. We either use the supplied kill command, or
+            our own if one wasn't supplied
+        """
+
+        if self.active_step and self.active_step.kill_cmd:
+                print 'running kill cmd for the current step'
+                self.status = JOBSTATUS_KILLPEND
+                self.active_step.kill_cmd()
+                self.status = JOBSTATUS_KILLED
+                
+        elif self.active_step and not self.active_step.kill_cmd:
+            print 'Running built-in kill for this step'
+            self.status = JOBSTATUS_KILLPEND
+            self.kill_cmd()
+            self.status = JOBSTATUS_KILLED
+            
+    def kill_cmd(self):
         """Attempt to kill the job (dummy)"""
         print 'Kill unimplemented for this job type'
             
@@ -553,15 +570,9 @@ class LocalJob(Job):
         # Null function here
         return 0,None
 
-    def kill(self):
+    def kill_cmd(self):
 
-        if self.active_step and self.active_step.kill_cmd:
-                print 'running kill cmd for the current step'
-                self.status = JOBSTATUS_KILLPEND
-                self.active_step.kill_cmd()
-                #    self.status = JOBSTATUS_KILLED
-
-        elif self.process:
+        if self.process:
             print 'attempting to kill process'
             self.status = JOBSTATUS_KILLPEND
             code = self.process.kill()
@@ -668,13 +679,6 @@ class LocalJobNoSpawn(Job):
     def clean_scratch(self,step):
         return 0,None
 
-    def kill(self):
-        """Attempt to kill the job (dummy)"""
-        if self.active_step:
-            if self.active_step.kill_cmd:
-                self.status = JOBSTATUS_KILLPEND
-                print 'running kill cmd'
-                self.active_step.kill_cmd()
 
 class RemoteJob(Job):
     """Base Class for jobs on remote systems accessible by ssh
@@ -875,7 +879,7 @@ class RMCSJob(Job):
         if local_filename != remote_filename:
             os.rename(remote_filename,local_filename)
             
-        return 0,"Retrived file %s from srb" % step.local_filename
+        return 0,"Retrived file %s from srb" % local_filename
 
     def _get_srbftp(self):
         """Return the srbftp object. If one doesn't exist create it"""
@@ -1003,6 +1007,7 @@ class RMCSJob(Job):
             # QUEING
             # RUNNING
             # FINISHED
+            # JOB-FAILED
             for key, val in info.items():
                 print "%s \t %s" % (key, val)
                 
@@ -1011,11 +1016,13 @@ class RMCSJob(Job):
                 result = 0
                 running = None
                 break
-            elif info['jobState'] == 'SUBMIT-FAILED':
+            elif info['jobState'] in ['SUBMIT-FAILED','JOB-FAILED'] :
                 msg = info['message']
                 result = -1
                 running = None
                 break
+            else:
+                self.status = info['jobState']
             
             time.sleep(self.poll_interval)
 
@@ -1036,7 +1043,7 @@ class RMCSJob(Job):
 
     def _write_mcsfile(self,stdin=None,stdout=None):
         """ Return  string containing the mcsfile"""
-        
+
         # Write out the MCS file
         mcs_file = ''
         mcs_file+='Executable           = %s\n' % self.job_parameters['srb_executable']
@@ -1091,21 +1098,11 @@ class RMCSJob(Job):
 
         return mcs_file
 
-    def kill(self):
+    def kill_cmd(self):
         """ Kill the job if we are running. We either use the supplied kill command, or
             our own if one wasn't supplied
         """
-
-        if self.active_step and self.active_step.kill_cmd:
-                print 'running kill cmd for the current step'
-                self.status = JOBSTATUS_KILLPEND
-                self.active_step.kill_cmd()
-                self.status = JOBSTATUS_KILLED
-        elif self.active_step and not self.active_step.kill_cmd:
-            print 'Running built-in kill for this step'
-            self.status = JOBSTATUS_KILLPEND
-            self.rmcs.cancelJob(self.jobID)
-            self.status = JOBSTATUS_KILLED
+        self.rmcs.cancelJob(self.jobID)
 
 
 class GridJob(Job):
@@ -1118,7 +1115,7 @@ class GridJob(Job):
         self.host = None # Always set this to None here - only set to something when we have the host
         self.jobtype='Grid'
         self.jobID = None # holds the url of the job
-        self.poll_interval = 30 # How often we should poll for the job status when running
+        self.poll_interval = 10 # How often we should poll for the job status when running
         self.gsissh_port = 2222
         
         self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
@@ -1200,6 +1197,8 @@ class GridJob(Job):
         if self.debug:
             print "CreateRsl xrsl_string is: ",xrsl_string
         return xrsl_string
+
+
 
 class GrowlJob(GridJob):
     """Class for running jobs with GROWL:
@@ -1412,6 +1411,18 @@ class GrowlJob(GridJob):
         self.check_common_errors( output, error, command='grid-rm' )
         # Need to add more specific error checking
 
+    def grid_kill(self,jobID=None):
+        """Kill a remote job"""
+
+        if not jobID:
+            jobID = self.jobID
+            if not jobID:
+                raise JobError,"grid-kill cannot find a valid job id!"
+
+        output,error = self._run_command( 'globus-job-cancel',args = ['-force',jobID] )
+        self.check_common_errors( output, error, command='grid-kill' )
+        # Need to add more specific error checking
+
     def grid_status(self,url):
         """ Get the status of the  running job identified by the url supplied"""
         
@@ -1587,23 +1598,27 @@ class GrowlJob(GridJob):
             exe = remote_dir + executable
         
         #raise JobError,"Noooooooo!!!!"
-        url = self.grid_submit( host, rsl_string, exe, jobmanager=jobmanager )
+        self.jobID = self.grid_submit( host, rsl_string, exe, jobmanager=jobmanager )
 
         # Loop to check status
         fin_stat = ['DONE', 'FAILED']
         running = 1
         while running:
-            ret = self.grid_status( url )
+            ret = self.grid_status( self.jobID )
             if ret in fin_stat:
                 break
             else:
-                print "Growl job setting status to ",ret
+                #print "Growl job setting status to ",ret
                 self.status = ret
                 time.sleep( self.poll_interval )
                 continue
         return 0,ret
 
-
+    def kill_cmd(self):
+        """ kill the job """
+        
+        self.grid_kill()
+        
 class NordugridJob(GridJob):
     """Class for running job's on the Nordugrid using ARCLIB:
        http://www.nordugrid.org
@@ -2075,33 +2090,21 @@ class NordugridJob(GridJob):
 
         return 0,"Retrived file %s from Nordugrid" % local_filename
 
-    def kill(self):
+    def kill_cmd(self):
         """ Kill the job if we are running. We either use the supplied kill command, or
             our own if one wasn't supplied
         """
 
-        if self.active_step and self.active_step.kill_cmd:
-                print 'running kill cmd for the current step'
-                self.status = JOBSTATUS_KILLPEND
-                self.active_step.kill_cmd()
-                self.status = JOBSTATUS_KILLED
-        elif self.active_step and not self.active_step.kill_cmd:
-            print 'Running built-in kill for this step'
-            self.status = JOBSTATUS_KILLPEND
-
-            if not self.jobID:
-                raise JobError,"kill Nordugrid Job - cannot find a jobID!"
-
-            try:
-                arclib.CancelJob( self.jobID )
+        if not self.jobID:
+            raise JobError,"kill Nordugrid Job - cannot find a jobID!"
+        try:
+            arclib.CancelJob( self.jobID )
 #            except arclib.ARCLibError,e:
 #                raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
-            except Exception,e:
-                raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
-            except:
-                raise JobError,"kill Nordugrid Job - error killing job!"
-            
-            self.status = JOBSTATUS_KILLED
+        except Exception,e:
+            raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
+        except:
+            raise JobError,"kill Nordugrid Job - error killing job!"
 
     def clean( self, jobid=None ):
         """Clean (remove all external files) for the job. By default clean the job
