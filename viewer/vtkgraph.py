@@ -1025,7 +1025,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     if draw:
                         np = np + 1
 
-                print 'points', np
+                #print 'points', np
                 p = vtkPoints()
 
                 zvals = vtkIntArray()
@@ -1197,10 +1197,10 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     act.GetProperty().SetColor(r,g,b)
                     self.sphere_actors.append(act)
 
-                print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
+                #print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
 
         if self.show_sticks:
-            print 'stick type', self.stick_type
+            #print 'stick type', self.stick_type
             if self.stick_type == 0:
                 # Cylinders
                 line_count = 0
@@ -2969,7 +2969,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             data_array.SetNumberOfValues(bigsize)
             for offset in range(bigsize):
                 data_array.SetValue(offset,self.cmap_obj.data[offset])
-            print 'set colour scalars'
+            #print 'set colour scalars'
             self.vtkgrid3d.GetPointData().SetScalars(data_array)
         else:
             self.vtkgrid3d.GetPointData().SetScalars(None)
