@@ -828,7 +828,8 @@ class PunchReader:
          if not self.fragment:
             raise AttributeError,"Error in read_normal: No molecular fragment to serve as a reference!"
             
-         vs.title = "vibrations of " + self.fragment.title
+         #vs.title = "vibrations of " + self.fragment.title
+         vs.title = "vibrations of " + self.name
          vs.reference = self.fragment
          self.vfs = vs
          self.objects.append(vs)
