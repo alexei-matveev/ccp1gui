@@ -19,13 +19,16 @@
 #
 import threading
 
+#from job import JobError
+
 class JobThread(threading.Thread):
     """A simple class to execute a job from."""
 
     def __init__(self,job):
         threading.Thread.__init__(self,None,None,"JobMan")
         self.job        = job
-        self.debug=0
+        self.debug      = 1
+        self.job.thread = self
     #
     # need to find out why thread errors are not
     # handled properly
@@ -35,12 +38,21 @@ class JobThread(threading.Thread):
     #
     def run(self):
         """Run the calculation in a separate thread"""
-        try:
-            if self.debug:
-                print 'JobThread: starting'
-            self.job.run()
-        except RuntimeError, e:
-            if self.debug:
-                print 'JobThread: exception caught'
+#         try:
+#             if self.debug:
+#                 print 'JobThread: starting'
+#             self.job.run()
+#         except RuntimeError, e:
+#             if self.debug:
+#                 print 'JobThread: exception caught'
+#         if self.debug:
+#             print 'JobThread: exiting'
+
+        if self.debug:
+            print 'JobThread: starting job ',self.job
+
+        # Don't trap exceptions here so they can be trapped by whatever started us
+        self.job.run()
+        
         if self.debug:
             print 'JobThread: exiting'
