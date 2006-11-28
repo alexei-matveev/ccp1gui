@@ -240,6 +240,7 @@ class TkMolView(Pmw.MegaToplevel):
         #jmht test code
         self.master.bind_all("<q>",
                        lambda e,s=self: s.rotate_about_bond())
+        #self.master.bind("<j>",lambda e,s=self: s.restore_saved_jobs())
 
         self.xmlreader = None
     
@@ -416,7 +417,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         self.job_manager = JobManager()
         self.job_editor = JobEditor(parent,self.job_manager)
-        self.job_editor.userdeletefunc(lambda s=self: s.job_editor.withdraw())
+        #self.job_editor.userdeletefunc(lambda s=self: s.job_editor.withdraw())
         self.job_editor.withdraw()
 
         # these are used for on-the-fly minimisations
@@ -646,6 +647,74 @@ class TkMolView(Pmw.MegaToplevel):
             print "Can't write rc_file %s " % rc_filename
             print "Error is:"
             print e
+
+    def restore_saved_jobs(self,directory=None):
+        """
+        See if there are any pickled jobs in this directory
+        if there are
+        - unpickle them
+        - if the job has a calc
+        * add the requisite endjob function to the job steps as it will have been deleted
+        * instantiate a calculation editor passing it the main widget, the calculation, the job manager 
+        * restart the calculation with the start_job method of the calculation editor
+        - otherwise just start the job
+        """
+        
+        print "checking save jobs"
+        job_ext = '.job'
+        
+        if not directory:
+            directory = os.getcwd()
+        files = os.listdir( directory )
+
+        jobfile_list = []
+        for fname in files:
+            #print "checking fname ",fname
+            ext = os.path.splitext( fname )[1]
+            fpath = directory + os.sep + fname
+            if ext == job_ext:
+                print "got match for: %s" % fpath
+                jobfile_list.append ( fpath )
+                
+        if len( jobfile_list ):
+            if not self.query("There are saved jobs in this directory. Would you like to restore them?"):
+                return
+
+        # User wants to restore the jobs
+        for jfile in jobfile_list:
+            try:
+                fobj = open( jfile )
+                p = cPickle.Unpickler( fobj )
+                job = p.load()
+            except Exception,e:
+                self.error("Unpickle failed for jobfile %s\n%s" % (jfile,e))
+                continue
+
+            try:
+                calc = job.calc
+            except AttributeError:
+                calc = None
+
+            if calc:
+                print "Trying to start ",calc
+                # Hack to add the tidy function - should probably do some more clever
+                # checking here but for the time being assume that all jobs end with a tidy
+                # function that can't be pickle and has been removed when the job was saved
+                job.add_tidy( calc.endjob )
+                ed = self.edit_calc( calc )
+                # Currently we start the job automatically - might be better to let the
+                # user hit run?
+                ed.start_job( job )
+            else:
+                self.job_editor.start_job( job )
+                
+            # Restored job so remove the old file
+            try:
+                os.remove( jfile )
+            except IOError:
+                self.Error("Error removing job file: %s" % jfile )
+                
+        return
 
     def __createBalloon(self):
         # Create the balloon help manager for the frame.
@@ -2326,7 +2395,7 @@ class TkMolView(Pmw.MegaToplevel):
         except RuntimeError,e:
             print 'exception'
             self.error(str(e))
-        print 'job done'
+        #print 'job done'
 
     def DebugMenu(self):
         #mbutton = Menubutton(self.mBar, text='Debug', underline=0)
@@ -4604,6 +4673,9 @@ Please check the output on the terminal/log file for further information." % fil
                self.calced_dict[id(obj)] = [ed]
 
             self.editing_callbacks[id(obj)][callback_key] =  lambda editor=ed: editor.Reload()
+            
+        # jmht hack - return ed so that we can use this when restoring jobs
+        return ed
 
     def undo(self):
         print 'undo stack',len(self.undo_stack)
@@ -5547,7 +5619,6 @@ Please check the output on the terminal/log file for further information." % fil
         """Pmw silliness, need to get the result of a query. 
             Have to have a routine to store the result and remove the 
             window (sigh)."""
-        print '__QueryResult',result
         self.query_result = result
         self.query_dialog.deactivate()
 
