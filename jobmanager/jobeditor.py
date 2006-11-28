@@ -34,21 +34,21 @@ import jobmanager
 from jobmanager.subprocess import *
 from jobmanager.job import *
 from jobmanager.jobeditor import *
+from jobmanager.jobthread import *
+import cPickle # to pickle jobs
 #
 #
 # Job Editor class
 #
 class JobEditor(Pmw.MegaToplevel):
 
-    frameWidth       = 300
+    frameWidth       = 500
     frameHeight      = 100
     if sys.platform == 'mac':
         pass
     elif sys.platform[:3] == 'win':
         frameWidth       = 350
         frameHeight      = 150 
-    elif sys.platform[:5] == 'linux':
-        pass
     else:
         pass
 
@@ -62,6 +62,8 @@ class JobEditor(Pmw.MegaToplevel):
         self.sel_height = 20
 
         self.title('Job Manager')
+
+        self.debug = 1
 
         self.__build()
         self.report_func = report_func
@@ -80,20 +82,29 @@ class JobEditor(Pmw.MegaToplevel):
         self.info = Pmw.MessageDialog(self.root,
               title = "Info", iconpos='w', icon_bitmap='info',
               buttons = ("Dismiss",))
-
+        
         self.error.withdraw()
         self.info.withdraw()
         self.warning.withdraw()
 
         self.geometry('%dx%d' % (self.frameWidth, self.frameHeight) )
 
+        # Ensure that when the user kills us with the window manager we behave as expected
+        self.userdeletefunc( lambda s=self: s.ask_quit() )
+        self.usermodaldeletefunc( lambda s=self: s.ask_quit() )
+        
         #self.error.configure(message_text='test')
         #self.error.show()
+
+    def Error(self,message):
+        """Display the error dialog with message"""
+        self.error.configure(message_text = message)
+        self.error.show()
 
     def show(self, **kw):
         m = re.match('(\d+)x(\d+)\+(-?\d+)\+(-?\d+)',self.root.geometry())
         msx,msy,mpx,mpy = int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4))
-        print 'master geom',    msx,msy,mpx,mpy
+        #print 'master geom',    msx,msy,mpx,mpy
         #self.geometry('%dx%d+%d+%d' % (self.frameWidth, self.frameHeight, mpx+msx+8,mpy+msy+24))
         self.geometry('+%d+%d' % (mpx+msx+8,mpy+msy+24))
         apply(Pmw.MegaToplevel.show,(self,),kw)
@@ -130,7 +141,31 @@ class JobEditor(Pmw.MegaToplevel):
                                                Tkinter.Button,(self.line,),
                                                text="Kill",
                                                command=self.__kill_job)
-        self.kill.pack() 
+        self.kill.pack(side='left') 
+
+        self.suspendbutton =       self.createcomponent('suspendbutton', (), None,
+                                               Tkinter.Button,(self.line,),
+                                               text="Suspend",
+                                               command=self.suspend)
+        self.suspendbutton.pack(side='left')
+        
+        self.savebutton =       self.createcomponent('savebutton', (), None,
+                                               Tkinter.Button,(self.line,),
+                                               text="Save",
+                                               command=self.save)
+        self.savebutton.pack(side='left')
+        
+        self.startbutton =       self.createcomponent('startbutton', (), None,
+                                               Tkinter.Button,(self.line,),
+                                               text="Start",
+                                               command=self.start)
+        self.startbutton.pack(side='left') 
+        self.removebutton =       self.createcomponent('removebutton', (), None,
+                                               Tkinter.Button,(self.line,),
+                                               text="Remove",
+                                               command=self.remove)
+        self.removebutton.pack(side='left') 
+
         self.line.pack(side='bottom')
         self.sel.pack(fill='both',expand=1)
         self.frame.pack(fill='both',expand=1)
@@ -141,15 +176,39 @@ class JobEditor(Pmw.MegaToplevel):
         sels = self.sel.getcurselection()
 
     def __kill_job(self):
+        """ Kill the selected jobs"""
+        jobs = self.__get_sel_jobs()
+
+        if not jobs:
+            return
+        
+        for job in jobs:
+            try:
+                job.kill()
+                #self.manager.RemoveJob( job )
+            except Exception,e:
+                self.Error("Error killing job: %s\n%s" % (job.name,e) )
+                continue
+            
+    def __get_sel_jobs( self ):
+        """Return a list of the currently selected jobs """
+
+        jobs = []
         sels = self.sel.getcurselection()
         for sel in sels:
             words = string.split(sel)
-            print words
             try:
                 ix = int(words[0])
-                self.manager.active_jobs[ix-1].kill()
+                job = self.manager.registered_jobs[ix-1]
+                jobs.append( job )
             except ValueError:
                 pass
+            except IndexError:
+                pass
+        if len(jobs):
+            return jobs
+        else:
+            return None
 
     def check_jobs(self):
         """Load the selectionbox with the current status information
@@ -165,7 +224,8 @@ class JobEditor(Pmw.MegaToplevel):
         warning_messages = []
         info_messages = []
 
-        for job in self.manager.active_jobs:
+        # Now loop over registered jobs
+        for job in self.manager.registered_jobs:
             if job.active_step:
                 yyy = job.active_step.name
             else:
@@ -196,8 +256,13 @@ class JobEditor(Pmw.MegaToplevel):
                         #job.status = JOBSTATUS_FAILED
                         #job.msg = job.msg + (str(e))
                         # delete to stop execution again
+                        print "job tidy error"
+                        print e
                         pass
                     job.tidy = None
+
+                # done everything so remove from active jobs
+                #self.manager.RemoveJob(job)
 
             elif job.status == JOBSTATUS_WARNING:
                 if job.msg and job.popup:
@@ -226,6 +291,9 @@ class JobEditor(Pmw.MegaToplevel):
                         # delete to stop execution again
                         job.popup=0                        
                     job.tidy = None
+                    
+                # done everything so remove from registered jobs
+                #self.manager.RemoveJob(job)
 
             else:
             # Assume any other job status means that the job is still running
@@ -256,9 +324,10 @@ class JobEditor(Pmw.MegaToplevel):
         # root
         # (perhaps XP specific)
         for msg in error_messages:
-            self.error.configure(message_text = msg)
+            #self.error.configure(message_text = msg)
             #self.error.activate()
-            self.error.show()
+            #self.error.show()
+            self.Error( msg )
         for msg in warning_messages:
             self.warning.configure(message_text = msg)
             #self.warning.activate()
@@ -267,6 +336,194 @@ class JobEditor(Pmw.MegaToplevel):
             self.info.configure(message_text = msg)
             #self.info.activate()
             self.info.show()
+
+    def ask_quit(self):
+        """If there are active jobs, ask the user to kill/suspend them, otherwise, just quit.
+        """
+
+        jobs = self.manager.registered_jobs
+        if len( jobs) > 0:
+            for job in jobs:
+                if job.status not in [ JOBSTATUS_IDLE, JOBSTATUS_KILLED, JOBSTATUS_FAILED,
+                                       JOBSTATUS_STOPPED, JOBSTATUS_DONE, JOBSTATUS_SAVED ]:
+            
+                    print "got jobs"
+                    msg = "You still have jobs active! Please stop or kill the jobs with\n" +\
+                          "the jobmanager before exiting the CCP1GUI!"
+                    self.Error( msg )
+                    return 1
+        
+        self.quit()
+
+    def quit(self):
+        """ Withdram the job editor """
+        self.withdraw()
+
+    def start_job(self,job):
+        """Start a job running
+           MIght be issues with storing the thread in the job object?
+        """
+
+        if self.debug:
+            print "jobEditor start_job: ",job
+            print job.steps
+
+        # Display the job editor
+        self.show()
+            
+        if job.thread:
+            print "got a job thread ",job.thread
+            if job.thread.isAlive():
+                raise JobError,"This calculation is running already!"
+
+        JobThread(job).start()
+        
+        if job not in self.manager.registered_jobs:
+            self.manager.RegisterJob(job)
+
+    def suspend(self):
+        """
+        See if the job can be stopped and call it's stop method
+        """
+        jobs = self.__get_sel_jobs()
+        if not jobs:
+            return
+        for job in jobs:
+            try:
+                job.stop()
+            except JobError,e:
+                self.Error("Error stopping job: %s !\n%s" % (job.name,e) )
+                continue
+            if job.status != JOBSTATUS_STOPPED:
+                self.Error("Error stopping job: %s!" % job.name )
+                continue
+            # Clear out the thread - not sure if this the best place to do this.
+            job.thread = None
+            
+    def start(self):
+        """
+        Start the selected jobs
+        """
+        jobs = self.__get_sel_jobs()
+        if not jobs:
+            return
+        for job in jobs:
+            if job.status != JOBSTATUS_STOPPED:
+                self.Error("Can only Start a stopped job!")
+                return
+            print "jobmanager Starting job ",job.name
+            try:
+                self.start_job( job )
+            except Exception,e:
+                self.Error("Error Starting job: %s\n%s" % (job.name, e ))
+
+    def save(self):
+        """Save the selected jobs"""
+        jobs = self.__get_sel_jobs()
+        if not jobs:
+            return
+        for job in jobs:
+            if job.status != JOBSTATUS_STOPPED:
+                self.Error( "Can only save a stopped job!" )
+                continue
+            try:
+                self.pickle_job( job )
+                job.status = JOBSTATUS_SAVED
+            except Exception,e:
+                self.Error( "Error pickling job:%s\n%s" % (job.name,e) )
+                continue
+        
+
+    def remove(self):
+        """Remove the selected job from the job manager"""
+        jobs = self.__get_sel_jobs()
+        if not jobs:
+            return
+        
+        for job in jobs:
+            if job.status not in [JOBSTATUS_STOPPED, JOBSTATUS_IDLE, JOBSTATUS_KILLED,
+                                  JOBSTATUS_FAILED, JOBSTATUS_STOPPED, JOBSTATUS_DONE,
+                                  JOBSTATUS_SAVED]:
+                self.Error( "Error removing job: %s!\nCan only remove a completed job!" % job.name )
+                return
+
+            self.manager.RemoveJob(job)
+
+            
+    def prdict(self,obj,name,depth):
+        """Cycle through an object and try and pickle the various
+           objects - used for debugging pickling errors (see pickle_job)
+        """
+        try:
+            myclass = obj.__class__
+        except:
+            myclass = ""
+
+        try:
+            fobj = open('junk.pkl','w')
+            p = cPickle.Pickler(fobj)
+            p.dump(obj)
+            fobj.close()
+            pkl='pickled ok'
+        except:
+            pkl='NOT PICKLABLE'
+            
+
+        for i in range(depth):
+            print "   ",
+        print name, pkl, obj, myclass
+
+        try:
+            dicts = obj.__dict__.keys()
+        except AttributeError:
+            dicts = []
+
+        for y in dicts:
+            o = obj.__dict__[y]
+            self.prdict(o,y,depth+1)
+
+    def pickle_job(self,job):
+        """Pickle a stoppped Job"""
+        
+        if job.status != JOBSTATUS_STOPPED:
+            self.Error( "Can only pickle a stopped job!" % job.name )
+            return 1
+        
+        print "pickling job ",job.name
+        fileobj = self._get_jobfile(job)
+        p = cPickle.Pickler( fileobj )
+
+        # Dirty hack - nuke everything that won't pickle will have to
+        # deal with the mess when we unpickle the job.calculation
+        # see restore_saved_jobs in viewer/main.py
+        job.tidy = None # Looks like this won't pickle
+        if job.calc.job:
+            job.calc.job = None # this either
+        i=0
+        for step in job.steps:
+            if step.type == PYTHON_CMD: # or these...
+                print "Job step is a PYTHON_CMD and cannot be pickled!"
+                job.steps[i] = None
+            i+=1
+
+        # For debugging pickling errors
+        #self.prdict(job,'TOP',0)
+        # Job should now be in a position to pickle
+        p.dump( job )
+        print "dumped ",job
+        fileobj.close()
+
+    def _get_jobfile(self,job):
+        """
+        Create a unique filename for the job and then return the opened file
+        Might be best to work with jobID's 
+        """
+        filename = str(id(job))
+        # strip any minus sign
+        if filename[0] == '-':
+            filename = filename[1:]
+        filename+='.job'
+        return open( filename, 'w' )
 
 def testpy():
     print 'testpy'
@@ -279,7 +536,15 @@ def crappy():
     return 0,"crappy OK"
 
 def sleepy():
-    time.sleep(1)
+    done=None
+    i=0
+    while not done:
+        print "job sleeping"
+        time.sleep(5)
+        i+=1
+        if i == 10:
+            done = 1
+            
     return 1,"sleepy done"
 
 def testit():
@@ -310,11 +575,13 @@ def testit():
         job = jobmanager.BackgroundJob()
         manager.RegisterJob(job)
         job.add_step(PYTHON_CMD,'sleepy',proc=sleepy)
-        job.add_step(PYTHON_CMD,'crappy',proc=crappy)
-        job.run()
+        #job.add_step(PYTHON_CMD,'crappy',proc=crappy)
+        job_thread = JobThread(job)
+        job_thread.start()
         print 'XXX'
 
-    if 1:
+        
+    if 0:
         import getpass
         rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
         rc_vars[ 'nproc'] = '1'
@@ -341,6 +608,43 @@ def testit():
         except Exception,e:
             print 'exception'
             print str(e)
+
+    if 0:
+        job = jobmanager.GrowlJob()
+        #job.job_parameters['hosts'] = ['scarf.rl.ac.uk']
+        job.job_parameters['hosts'] = ['scarf.rl.ac.uk']
+        job.job_parameters['stdout'] = 'sleep.out'
+        job.job_parameters['executable'] = 'sleep.sh'
+        manager.RegisterJob(job)
+        job.add_step( RUN_APP,
+                      "Growl test")
+        job_thread = JobThread(job)
+        try:
+            job_thread.start()
+        except Exception,e:
+            print "Got Exception"
+            sys.exit(1)
+        print 'XXX'
+
+
+    if 0:
+        job = jobmanager.BackgroundJob()
+        manager.RegisterJob(job)
+        #job.add_step(PYTHON_CMD,'sleepy',proc=sleepy)
+        #job.add_step(PYTHON_CMD,'crappy',proc=crappy)
+        #job_thread = JobThread(job)
+        #job_thread.start()
+        #print 'XXX'
+
+    if 1:
+        job = jobmanager.DummyJob()
+        manager.RegisterJob(job)
+        job.add_step(RUN_APP,'dummy')
+        #job.add_step(PYTHON_CMD,'crappy',proc=crappy)
+        job_thread = JobThread(job)
+        job_thread.start()
+        print 'XXX'
+
 
 if __name__ == "__main__":
 
