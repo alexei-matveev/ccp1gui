@@ -353,41 +353,33 @@ class CalcEd(Pmw.MegaToplevel):
             print 'cant run slave calculation'
             return
 
-        self.ReadWidgets()
-
+        if self.job_thread == None:
+            pass
+        elif self.job_thread.isAlive():
+            self.Error( "This calculation is running already!" )
+            return
+            
         # build job
         # .. this includes making up the input deck and
         #    scheduling the job steps
         # the graph object is needed so that the job can include
         # the final load of results back into the GUI
+        self.ReadWidgets()
         job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
-        if job:
-            self.job_editor.manager.RegisterJob(job)
-            self.job_editor.show()
-        else:
+
+        if not job:
             self.Error("Problem preparing Job - not submitted")
             return
-
-        if self.job_thread == None:
-            pass
-        elif self.job_thread.isAlive():
-            self.Error("This calculation is running already!")
-            return
-
-        self.job_thread = JobThread(job)
-
+                
         try:
-            #self.CheckData()
-            self.job_thread.start()
-        except RuntimeError,e:
-            #self.message["title"] = "Error"
-            #self.message["message_text"] = str(e)
-            #self.message["iconpos"] = 'w'
-            #self.message["icon_bitmap"] = 'error'
-            #self.message["buttons"] = ("Dismiss")
-            print 'exception'
-            self.Error(str(e))
-        print 'job done'
+            self.start_job( job )
+        except Exception,e:
+            self.Error( "Error starting job: %s!\n%s" % (job.name,e) )
+
+    def start_job(self,job):
+        """Start a job running under control of the job manager"""
+        self.job_editor.start_job( job )
+        self.job_thread = job.thread
 
     def Reload(self):
         """Reload the model
