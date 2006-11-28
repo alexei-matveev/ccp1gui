@@ -80,13 +80,13 @@ class JobSubEditor(Pmw.MegaToplevel):
     frameHeight      = 200
 
 
-    def __init__(self, root,**kw):
+    def __init__(self, root,job,**kw):
 
 
         self.debug = None
         self.onkill = None
-        self.job = None
-        self.calc = None
+        self.job = job
+        #self.calc = None
         self.jobtype = None
         self.title = None
 
@@ -96,11 +96,9 @@ class JobSubEditor(Pmw.MegaToplevel):
         if kw.has_key('onkill'):
             self.onkill = kw['onkill']
         if kw.has_key('debug'):
-            self.debug = 1
-        if kw.has_key('job'):
-            self.job = kw['job']
-        if kw.has_key('calc'):
-            self.calc = kw['calc']
+            self.debug = kw['debug']
+        #if kw.has_key('calc'):
+        #    self.calc = kw['calc']
 
         viewer.initialisetk.initialiseTk(root)
 
@@ -624,8 +622,9 @@ class JobSubEditor(Pmw.MegaToplevel):
                     self.job.job_parameters[key] = value
                     if self.debug:
                         print "QuitAndSave setting: %s : %s" % (key,value)
-        if self.calc:
-            self.calc.set_parameter('current_job',self.job )
+
+        #if self.calc:
+        #    self.calc.job = self.job
 
         if default:
             global rc_vars
@@ -655,14 +654,14 @@ class GrowlEditor(JobSubEditor):
     """ A widget to edit Growl Jobs
     """
 
-    def __init__(self, root,**kw):
+    def __init__(self, root,job,**kw):
 
         # Set up the defaults
         self.jobtype = 'GROWL'
         self.title = self.jobtype+ ' JobEditor'
         
         # Initialse everything in the base class
-        JobSubEditor.__init__(self,root,**kw)
+        JobSubEditor.__init__(self,root,job,**kw)
 
         self.LayoutWidgets()
         self.GetInitialValues()
@@ -705,14 +704,14 @@ class NordugridEditor(JobSubEditor):
     """ A widget to edit Nordugrid Jobs
     """
 
-    def __init__(self, root,**kw):
+    def __init__(self, root,job,**kw):
 
         # Set up the defaults
         self.jobtype = 'Nordugrid'
         self.title = self.jobtype+ ' JobEditor'
 
         # Initialse everything in the base class
-        JobSubEditor.__init__(self,root,**kw)
+        JobSubEditor.__init__(self,root,job,**kw)
 
         self.LayoutWidgets()
         self.GetInitialValues()
@@ -733,14 +732,14 @@ class RMCSEditor(JobSubEditor):
     """ A widget to hold all the symmetry tools.
     """
 
-    def __init__(self, root,**kw):
+    def __init__(self, root,job,**kw):
 
         # Set up the defaults
         self.jobtype = 'RMCS'
         self.title = self.jobtype+ ' JobEditor'
         
         # Initialse everything in the base class
-        JobSubEditor.__init__(self,root,**kw)
+        JobSubEditor.__init__(self,root,job,**kw)
 
         
         self.values['srb_config_file'] = os.path.expanduser('~/srb.cfg')
@@ -896,7 +895,7 @@ if __name__ == "__main__":
     job = Junk()
     
     root=Tkinter.Tk()
-    ed = JobSubEditor( root, job=job )
+    ed = JobSubEditor( root, job )
     ed.GetInitialValues()
     ed.LayoutMachListWidget()
     ed.LayoutNprocWidget()
