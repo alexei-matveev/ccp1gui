@@ -77,10 +77,14 @@ JOBSTATUS_KILLED  = 'Killed'
 JOBSTATUS_FAILED  = 'Failed'
 JOBSTATUS_WARNING = 'Warning'
 #JOBSTATUS_OK      = 'OK'
+JOBSTATUS_STOPPED    = 'Stopped'
 JOBSTATUS_DONE    = 'Done'
+JOBSTATUS_SAVED   = 'Saved'
 
 JOBCMD_KILL ='Kill'
 JOBCMD_CANCEL ='Cancel'
+
+LOCALHOST = socket.gethostname()
 
 class JobStep:
     """A container class for an element of a job"""
@@ -106,7 +110,11 @@ class JobStep:
         # see list of valid types above
         self.type = type
         # just a descriptor for following progress
-        self.name = name
+        if name:
+            self.name = name
+        else:
+            self.name = 'Not named'
+            
         self.local_filename=local_filename
         self.remote_filename=remote_filename
         self.cmd=cmd
@@ -142,6 +150,8 @@ class Job:
             self.name =name
         else:
              self.name ='Job'
+             
+        self.jobtype = None
 
         # This variable is displayed in the job editor and should be updated to show the status
         # of the job.
@@ -150,6 +160,14 @@ class Job:
         self.process = None
         self.tidy = None
         self.monitor = None
+        self.job_parameters = {}
+        self.poll_interval = 5 # How often we should wait when checking the status of a
+                               # running job or when trying to kill a job
+        self.stopjob = None # Flag that is set to indicate if a running job should stop
+        self.restart = None # Flag that should be set by a job that is stopped during a run
+                            # so that the run method can react accordingly on a restart
+        self.thread = None
+        
         self.debug = 1
         
     def __repr__(self):
@@ -182,6 +200,12 @@ class Job:
         self.step_number = 0
         self.status = JOBSTATUS_RUNNING
         for step in self.steps:
+            
+            if self.stopjob:
+                print "Stopping job at step ",self.step_number
+                self.prepare_restart(in_step=None)
+                return None
+                
             count = count + 1
             # flag to ensure diagnostics only get popped up once
             # per job step
@@ -191,7 +215,6 @@ class Job:
             self.step_number = count
             if self.debug:
                 print 'Executing step #',self.step_number,':',step.type, step.name
-
             try:
                 if step.type == ALLOCATE_SCRATCH:
                     code,message = self.allocate_scratch(step)
@@ -214,9 +237,7 @@ class Job:
                     if self.debug:
                         print 'Python Step code=',code,message
                 else:
-                    self.msg="unknown step type" + step.type
-                    return -1
-                
+                    raise JobError, "Unknown job step type: %s" % step.type
             except Exception, e:
                 if self.debug:
                     print 'Fatal Exception in step: %s' % step.name
@@ -246,13 +267,9 @@ class Job:
             # Pass messages back for the user
 
             elif step.warn_on_error == 1 :
-
                 # code = 1 or code -1 and we are proceeding
-            
-
                 self.status = JOBSTATUS_WARNING
                 print 'Step Warning :',step.name, message
-
                 # ideally would wait here until the job editor
                 # has picked up the message
                 #print 'waiting'
@@ -260,7 +277,12 @@ class Job:
                 #    if not self.popup:
                 #        print 'breaking'
                 #        break
-
+                
+            # if step returns 2 job has been stopped in the middle of a step
+            elif code == 2:
+                print "Job stopped while running step: %s : %s" %(self.step_number,step.name)
+                self.prepare_restart(in_step=1)
+                return None
             else:
                 #self.status = JOBSTATUS_OK
                 if self.debug:
@@ -389,37 +411,31 @@ class Job:
         elif self.active_step and not self.active_step.kill_cmd:
             print 'Running built-in kill for this step'
             self.status = JOBSTATUS_KILLPEND
-            self.kill_cmd()
+            self._kill()
             self.status = JOBSTATUS_KILLED
             
-    def kill_cmd(self):
-        """Attempt to kill the job (dummy)"""
+    def _kill(self):
+        """Attempt to kill the job"""
         print 'Kill unimplemented for this job type'
+        raise AttributeError,"_kill unimplemented for jobtype %s" % self.jobtype
             
 
     def get_status(self):
         """Return the current status of the job"""
         return self.status
 
-    def get_rcvars(self):
-        """ Update any job parameters from the rc_vars.
-        """
-
-        global rc_vars
-        for key,value in self.job_parameters.iteritems():
-            if rc_vars.has_key(key):
-                self.job_parameters[key]= rc_vars[key]
-                
-        if self.debug:
-            print "job get_rcvars: parameters are now:"
-            print self.job_parameters
-
-    def update_job_parameters(self, job_dict):
-        """Update the job parameters from the supplied dictionary
+    def update_job_parameters(self, job_dict=None):
+        """Update the job parameters either from the rc_vars or from a
+           a dictionary if one is supplied
            Only updates for variables that already exist as keys in the
            job_parameters dictionary are permitted.
+
         """
 
+        if not job_dict:
+            global rc_vars
+            job_dict = rc_vars
+            
         for key,value in self.job_parameters.iteritems():
             if job_dict.has_key( key ):
                 self.job_parameters[key] = job_dict[key]
@@ -427,6 +443,60 @@ class Job:
         if self.debug:
             print "job update_job_parameters: parameters are now:"
             print self.job_parameters
+
+    def stop(self):
+        """
+        This is called from the job_manager thread (not the one the job is running in)
+        Set flag to indicate job should stop and wait 2 poll intervals for the job to
+        stop.
+        This can be used in 2 ways, to stop a job between steps or to stop a job when it
+        is actively running a step. To stop a job between steps, no changes need to be made
+        to the job - self.poll_interval is set to 5s in the main job class and if after waiting
+        for 2 of these intervals the job hasn't stopped it is considered unstoppable
+        For steps that can be stopped while they are running, some form of the below code needs
+        to be added to the method:
+        
+        if self.stopjob:
+                print "run_app_loop got stop "
+                self.status = JOBSTATUS_STOPPED
+                self.restart = 1
+                return 2, "Stopped Job"
+
+        The job.run method uses the return code of 2 to tell it that the job has stopped during a step
+        The run method can use the self.restart flag to make sure that any initialisation stuff is only
+        called when the step is initiated and not when it is restarted after a save
+        
+        """
+
+        # Don't think we need to wory about locks here as only this method ever sets this
+        self.stopjob = 1
+
+        # Wait for the job to stop
+        for i in range(2):
+            if self.status == JOBSTATUS_STOPPED:
+                break
+            time.sleep( self.poll_interval )
+
+        if not self.status == JOBSTATUS_STOPPED:
+            print "Job could not be stopped"
+            return 1
+        else:
+            print "Job Stopped successfully"
+            self.stopjob = None
+            self.thread = None
+            return None
+            
+
+    def prepare_restart(self,in_step=None):
+        """Delete all the steps that have already been carried out. If we were stopped
+        mid-step, keep the current step for a restart and set the restart flag"""
+
+        print "preparing_restart"
+        if in_step:
+            self.restart = 1
+            self.steps = self.steps[self.step_number-1:]
+        else:
+            self.steps = self.steps[self.step_number:]
 
 class LocalJob(Job):
     """Sub class for a job running on the local resource
@@ -436,7 +506,7 @@ class LocalJob(Job):
 
     def __init__(self,**kw):
         apply(Job.__init__, (self,), kw)
-        self.jobtype='Local'
+        self.jobtype=LOCALHOST
 
     def allocate_scratch(self,step):
         pass
@@ -570,7 +640,7 @@ class LocalJob(Job):
         # Null function here
         return 0,None
 
-    def kill_cmd(self):
+    def _kill(self):
 
         if self.process:
             print 'attempting to kill process'
@@ -802,7 +872,6 @@ class RMCSJob(Job):
         
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
-        self.job_parameters = {}
         self.job_parameters['hosts'] = None
         self.job_parameters['count'] = None
         self.job_parameters['inputfiles'] = []
@@ -817,7 +886,7 @@ class RMCSJob(Job):
         self.job_parameters['myproxy_user'] = None
         self.job_parameters['myproxy_password'] = None
 
-        self.get_rcvars()
+        #self.update_job_parameters()
             
         #self.input_files = []
         #self.output_files = []
@@ -906,88 +975,89 @@ class RMCSJob(Job):
             and the user can check what went wrong.
         """
 
-        #1 update any variables we may have been passed
-        # This may be redundant
-        try:
-            self.job_parameters['srb_input_dir'] = step.srb_input_dir
-        except:
-            pass
-        try:
-            self.job_parameters['srb_output_dir'] = step.srb_output_dir
-        except:
-            pass
-        try:
-            self.job_parameters['srb_executable']  = step.srb_executable
-        except:
-            pass
-        try:
-            self.job_parameters['srb_executable_dir'] = step.srb_executable_dir
-        except:
-            pass
-        try:
-            self.job_parameters['count'] = step.count
-        except:
-            pass
-        
-        # Make sure all the parameters have been set
-        self._check_parameters()
-
-        if step.stdin_file:
-            if step.stdin_file not in self.job_parameters['inputfiles']:
-                #self.input_files.append(step.stdin_file)
-                self.job_parameters['inputfiles'].append(step.stdin_file)
-        if step.stdout_file:
-            if step.stdout_file not in self.job_parameters['outputfiles']:
-                #self.output_files.append(step.stdout_file)
-                self.job_parameters['outputfiles'].append(step.stdout_file)
-        if step.stderr_file:
-            if step.stderr_file not in self.job_parameters['outputfiles']:
-                #self.output_files.append(step.stderr_file)
-                self.job_parameters['outputfiles'].append(step.stderr_file)
-
-        # Get the string with the mcs_file
-        mcs_file = self._write_mcsfile(stdin=step.stdin_file,
-                                       stdout=step.stdout_file)
-
-        if self.debug:
-            print "submitting job:"
-            print mcs_file
-            print
-            print "rmcs_user: %s" % self.job_parameters['rmcs_user']
-            print "rmcs_password: %s" % self.job_parameters['rmcs_password']
-
-        #raise JobError,"Not on your nelly squire!"
-        try:
-            self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
-                                   self.job_parameters['rmcs_password'])
-        except Exception,e:
-            msg =  "Exception while creating rmcs:\n%s" % e
-            raise JobError,msg
-
-        try:
-            self.jobID = self.rmcs.submitJob( mcs_file,
-                                              self.job_parameters['myproxy_user'],
-                                              self.job_parameters['myproxy_password'],
-                                              self.jobtype,
-                                              False)
-        except Exception,e:
-            msg = None
+        if not self.restart:
+            #1 update any variables we may have been passed
+            # This may be redundant
             try:
-                faultstring = e.faultstring
-            except AttributeError:
+                self.job_parameters['srb_input_dir'] = step.srb_input_dir
+            except:
                 pass
-            else:
-                if faultstring == 'Authentication Failed':
-                    msg =  "There was an Authentication Error on submitting your job!\n" +\
-                          "Please check that your password is correct for the user: %s" % self.job_parameters['rmcs_user']
-                else:
-                    msg = "There was an Error on submitting your job!\n" +\
-                          "The soap faultstring is: %s" %  faultstring
+            try:
+                self.job_parameters['srb_output_dir'] = step.srb_output_dir
+            except:
+                pass
+            try:
+                self.job_parameters['srb_executable']  = step.srb_executable
+            except:
+                pass
+            try:
+                self.job_parameters['srb_executable_dir'] = step.srb_executable_dir
+            except:
+                pass
+            try:
+                self.job_parameters['count'] = step.count
+            except:
+                pass
 
-            if not msg:
-                msg = "There was an error submitting your job! The error returned was:\n%s" % e
-            
-            raise JobError,msg
+            # Make sure all the parameters have been set
+            self._check_parameters()
+
+            if step.stdin_file:
+                if step.stdin_file not in self.job_parameters['inputfiles']:
+                    #self.input_files.append(step.stdin_file)
+                    self.job_parameters['inputfiles'].append(step.stdin_file)
+            if step.stdout_file:
+                if step.stdout_file not in self.job_parameters['outputfiles']:
+                    #self.output_files.append(step.stdout_file)
+                    self.job_parameters['outputfiles'].append(step.stdout_file)
+            if step.stderr_file:
+                if step.stderr_file not in self.job_parameters['outputfiles']:
+                    #self.output_files.append(step.stderr_file)
+                    self.job_parameters['outputfiles'].append(step.stderr_file)
+
+            # Get the string with the mcs_file
+            mcs_file = self._write_mcsfile(stdin=step.stdin_file,
+                                           stdout=step.stdout_file)
+
+            if self.debug:
+                print "submitting job:"
+                print mcs_file
+                print
+                print "rmcs_user: %s" % self.job_parameters['rmcs_user']
+                print "rmcs_password: %s" % self.job_parameters['rmcs_password']
+
+            #raise JobError,"Not on your nelly squire!"
+            try:
+                self.rmcs = rmcs.RMCS( self.job_parameters['rmcs_user'],
+                                       self.job_parameters['rmcs_password'])
+            except Exception,e:
+                msg =  "Exception while creating rmcs:\n%s" % e
+                raise JobError,msg
+
+            try:
+                self.jobID = self.rmcs.submitJob( mcs_file,
+                                                  self.job_parameters['myproxy_user'],
+                                                  self.job_parameters['myproxy_password'],
+                                                  self.jobtype,
+                                                  False)
+            except Exception,e:
+                msg = None
+                try:
+                    faultstring = e.faultstring
+                except AttributeError:
+                    pass
+                else:
+                    if faultstring == 'Authentication Failed':
+                        msg =  "There was an Authentication Error on submitting your job!\n" +\
+                              "Please check that your password is correct for the user: %s" % self.job_parameters['rmcs_user']
+                    else:
+                        msg = "There was an Error on submitting your job!\n" +\
+                              "The soap faultstring is: %s" %  faultstring
+
+                if not msg:
+                    msg = "There was an error submitting your job! The error returned was:\n%s" % e
+
+                raise JobError,msg
 
         #Monitor Job Information
         running = 1
@@ -1098,7 +1168,7 @@ class RMCSJob(Job):
 
         return mcs_file
 
-    def kill_cmd(self):
+    def _kill(self):
         """ Kill the job if we are running. We either use the supplied kill command, or
             our own if one wasn't supplied
         """
@@ -1239,7 +1309,7 @@ class GrowlJob(GridJob):
         """Return the name of the host that we are running on """
 
         if len( self.job_parameters['hosts'] ) != 1:
-            raise JobError, "GrowlJob needs a single hostname to run job on!"
+            raise JobError, "GrowlJob needs a single hostname to run job on!\nGot: %s" % self.job_parameters['hosts']
         
         self.host = self.job_parameters['hosts'][0]
         return self.host
@@ -1359,11 +1429,11 @@ class GrowlJob(GridJob):
             for error,msg in common_errors.iteritems():
                 if error.match( line ):
                     raise JobError,msg
-        
 
     def grid_which(self,host,executable):
         """Get the full path to the command on the remote machine"""
 
+        assert type(host) == str and type(executable) == str,"Growl grid_which: args must be strings!"
         output,error = self._run_command( 'grid-which',args = [host,executable] )
         self.check_common_errors( output, error, command='grid-which' )
 
@@ -1475,6 +1545,26 @@ class GrowlJob(GridJob):
             raise JobError,"GrowlJob parse_output: grid-submit could not find returned url!\n%s" % output
 
 
+    def job_cancel(self):
+        """Cancel the current job"""
+
+        if not self.jobID:
+            raise JobError,"Growl job_cancel - no jobID!"
+
+        args = ['-force',self.jobID]
+        output,error = self._run_command( 'globus-job-cancel',args = args )
+        self.check_common_errors( output, error, command='globus-job-cancel' )
+
+        m = None
+        url_re = re.compile("(Job canceled.)") # Group is the url string
+        for line in output:
+            m = url_re.match( line )
+            if m:
+                return m.group(1)
+        if not m:
+            #raise JobError,"GrowlJob cancel_job: error cancelling job!\n%s" % output
+            print "GrowlJob cancel_job: error cancelling job!\n%s" % output
+            return None
 
 
     def copy_out_file(self,step,kill_on_error=1):
@@ -1564,6 +1654,41 @@ class GrowlJob(GridJob):
            globus-job-submit <hostname>/<jobmanager> -x <xrsl_string> <executable_path>
         
         """
+        if not self.restart:
+            self.submit(step)
+
+        print "run_app Growl"
+
+        # Loop to check status
+        code = 0
+        fin_stat = ['DONE', 'FAILED']
+        running = 1
+        while running:
+            
+            if self.stopjob:
+                print "Growl run_app_loop got stop request"
+                self.status = JOBSTATUS_STOPPED
+                self.restart = 1
+                code = 2
+                ret = "Job stopped at user request"
+                break
+            
+            ret = self.grid_status( self.jobID )
+            if ret in fin_stat:
+                if ret == 'FAILED':
+                    code = -1
+                break
+            else:
+                print "Growl job setting status to ",ret
+                self.status = ret
+                time.sleep( self.poll_interval )
+                continue
+
+        return code,ret
+
+    
+    def submit(self,step):
+        """ Prepare the job and then submit it"""
 
         remote_dir = self.get_remote_dir()
         host = self.get_host()
@@ -1577,6 +1702,7 @@ class GrowlJob(GridJob):
             self.job_parameters['stdin'] = path
         if step.stdout_file:
             path = remote_dir+step.stdout_file 
+
             self.job_parameters['stdout'] = path
         if step.stderr_file:
             path = remote_dir+step.stderr_file 
@@ -1596,25 +1722,13 @@ class GrowlJob(GridJob):
         if not exe:
             # exe not in path, so we guess it's in the working directory we've been given
             exe = remote_dir + executable
-        
+
         #raise JobError,"Noooooooo!!!!"
         self.jobID = self.grid_submit( host, rsl_string, exe, jobmanager=jobmanager )
+        print "job submitted: %s" % self.jobID
+        return self.jobID
 
-        # Loop to check status
-        fin_stat = ['DONE', 'FAILED']
-        running = 1
-        while running:
-            ret = self.grid_status( self.jobID )
-            if ret in fin_stat:
-                break
-            else:
-                #print "Growl job setting status to ",ret
-                self.status = ret
-                time.sleep( self.poll_interval )
-                continue
-        return 0,ret
-
-    def kill_cmd(self):
+    def _kill(self):
         """ kill the job """
         
         self.grid_kill()
@@ -1626,20 +1740,17 @@ class NordugridJob(GridJob):
     def __init__(self,**kw):
         GridJob.__init__(self)
 
-        # Check the arclib module is available
-        global arclib
-        try:
-            import arclib
-        except ImportError:
-            raise JobError,"Nordugrid job cannot be created as the arclib module cannot be imported!\n \
-            Please make sure you have run the setp.sh script to set NORDUGRID_LOCATION, PYTHONPATH etc."
-
+        # Import the arclib modules
+        self.init_arclib()
+        
         # Now make sure that we have a valid proxy
         self.CheckProxy()
             
         # Looks like we are good to go...
-        
         self.jobtype='Nordugrid'
+        
+        # See nordugrid source: nordugrid/arclib/mdsparser.cpp
+        self.jobstat_finished = ( JOBSTATUS_KILLED, 'FINISHED','KILLED','FAILED','CANCELLING','CANCELLING' )
         
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
@@ -1669,7 +1780,7 @@ class NordugridJob(GridJob):
         self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
 
         # Update the defaults with anything that is in the rc_vars dict
-        self.get_rcvars()
+        #self.update_job_parameters()
 
         if self.name:
             self.job_parameters['jobName'] = self.name
@@ -1681,6 +1792,16 @@ class NordugridJob(GridJob):
             #arclib.SetNotifyLevel(arclib.VERBOSE)
             arclib.SetNotifyLevel(arclib.INFO)
             #print "Nordugrid job inited successfully"
+
+    def init_arclib(self):
+        """ Check the arclib module is available """
+        global arclib
+        try:
+            import arclib
+        except ImportError:
+            raise JobError,"Nordugrid job cannot be created as the arclib module cannot be imported!\n \
+            Please make sure you have run the setup.sh script to set NORDUGRID_LOCATION, PYTHONPATH etc."
+
 
 #     BELOW TWO METHODS ARE BROKEN with ARLIB < 0.5.56
 #     def CheckProxy(self):
@@ -1871,23 +1992,21 @@ class NordugridJob(GridJob):
            supplied with a jobid
         """
 
-        if jobid:
-            myjobid = jobid
-        else:
+        if not jobid:
             if not self.jobID:
                 raise JobError,"GetJobStatus Nordugrid - no valid jobID found!"
-            myjobid = self.jobID
+            jobid = self.jobID
 
         try:
-            jobinfo = arclib.GetJobInfo( myjobid )
+            jobinfo = arclib.GetJobInfo( jobid )
 #        except arclib.ARCLibError,e:
 #            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s"
         except Exception,e:
-            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s"
+            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s" % e
         except:
             raise JobError,"Nordugrid GetJobStaus error getting job info!"
 
-        return jobinfo
+        return jobinfo        
 
     def run_app(self,step,kill_on_error=None,**kw):
         """Setup the job, submit it, loop and query status
@@ -1895,36 +2014,44 @@ class NordugridJob(GridJob):
         """
 
         print "Nordugrid run_app"
-        if step.stdin_file:
-            self.job_parameters['stdin'] = step.stdin_file
-        if step.stdout_file:
-            self.job_parameters['stdout'] = step.stdout_file
-        if step.stderr_file:
-            self.job_parameters['stderr'] = step.stderr_file
-
-        xrsl = self.CreateRSL()
-
-        if 1:
-            self.SubmitInSeparateProcess( xrsl )
+        if self.restart:
+            self.init_arclib()
         else:
-            # Below requires the arclib threading stuff to have been sorted out
-            machines = self.GetTargets( xrsl )
-            if len(machines) == 0:
-                raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
-            self.Submit( xrsl, machines )
+            if step.stdin_file:
+                self.job_parameters['stdin'] = step.stdin_file
+            if step.stdout_file:
+                self.job_parameters['stdout'] = step.stdout_file
+            if step.stderr_file:
+                self.job_parameters['stderr'] = step.stderr_file
+                        
+            xrsl = self.CreateRSL()
+
+            if 1:
+                self.SubmitInSeparateProcess( xrsl )
+            else:
+                # Below requires the arclib threading stuff to have been sorted out
+                machines = self.GetTargets( xrsl )
+                if len(machines) == 0:
+                    raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
+                self.Submit( xrsl, machines )
         
         self.host = self.GetJobInfo().cluster
         running = 1
         message = 'None'
         result = 1
         while running:
+            
+            if self.stopjob:
+                print "Nordugrid job got stop request"
+                self.status = JOBSTATUS_STOPPED
+                self.restart = 1
+                return 2, "Stopped Job"
+            
             job_info = self.GetJobInfo()
             self.host = job_info.cluster
             status = job_info.status
             self.status = status
-            # See nordugrid source: nordugrid/arclib/mdsparser.cpp
-            statuses = ( 'FINISHED','KILLED','FAILED','CANCELLING','CANCELLING' )
-            if status in statuses:
+            if status in self.jobstat_finished:
                 running = None
                 if status == 'FINISHED':
                     running = None
@@ -2090,11 +2217,13 @@ class NordugridJob(GridJob):
 
         return 0,"Retrived file %s from Nordugrid" % local_filename
 
-    def kill_cmd(self):
+    def _kill(self):
         """ Kill the job if we are running. We either use the supplied kill command, or
             our own if one wasn't supplied
         """
 
+        print "Killing Nordugrid job "
+        self.status = JOBSTATUS_KILLPEND
         if not self.jobID:
             raise JobError,"kill Nordugrid Job - cannot find a jobID!"
         try:
@@ -2105,6 +2234,18 @@ class NordugridJob(GridJob):
             raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
         except:
             raise JobError,"kill Nordugrid Job - error killing job!"
+
+        # Need to wait for the job to die
+        for i in range(2):
+            status = self.GetJobInfo().status
+            if status in self.jobstat_finished:
+                self.status = JOBSTATUS_KILLED
+                return None
+            time.sleep( self.poll_interval )
+
+        # Only get here if the job couldnt' be stopped in 2 poll intervals
+        self.status = JOBSTATUS_FAILED
+        return 1
 
     def clean( self, jobid=None ):
         """Clean (remove all external files) for the job. By default clean the job
@@ -2141,6 +2282,77 @@ class JobError(RuntimeError):
     def __init__(self,args=None):
         self.args = args
 
+class DummyJob(Job):
+    """ Dummy job for testing"""
+
+    notes = """
+    Job in some form of loop while running
+    keeps checking a save variable to see whether should carry on (thread locking issues)
+    if save set (per job with button cf kill in job manager, or from trying to close jobmanager
+    with active jobs, then job breaks out of loop -> stop method for all can_stop job steps
+    then job save method - sorts out job stack so that can just call run to restart
+    job editor then pickles the job after the save call
+    on restart, just loop over any saved jobs adding them to the jobmanager and callling run
+
+    methods:
+    job -> stop (generic) : sets save variable
+       ---- step run method checks save variable, if so returns a specific code to the generic run
+       method that tells it to stop looping through the job steps
+       run method then calls prepare_save if successful
+    ## how to know when stop has been successful? - job must change status to stopped so editor can check?
+    job -> prepare_save (generic) : puts above on job stack
+    jobstep -> stop (specific) - must be part of the run method
+    jobstep -> restart (specific) : method to replace current one on job stack
+    jobeditor:
+       call stop on job
+       if returns o.k. pickle job
+    
+    """
+    def __init__(self,**kw):
+        print "initting dummy job"
+        Job.__init__(self)
+        self.jobtype='Dummmy'
+        
+    def delete_file(self,step,**kw):
+        print "Dummy job delete file"
+        return 0,'deleted file'
+    def copy_out_file(self,step,**kw):
+        print "Dummy job copy_out_file"
+        return 0,'copied out file'
+    def copy_back_file(self,step,**kw):
+        print "Dummy job copy_back_file"
+        return 0,'copied back file'
+    def run_app(self,step,**kw):
+        print "Dummy job run_app"
+
+        self.fname = 'dummy_job.file'
+
+        if not self.restart:
+            f = open( self.fname,'w')
+            f.write("dummy job\n")
+            f.close()
+
+        while os.access( self.fname, os.R_OK ):
+            print "Job running..."
+            if self.stopjob:
+                print "run_app_loop got stop "
+                self.status = JOBSTATUS_STOPPED
+                self.restart = 1
+                return 2, "Stopped Job"
+            else:
+                time.sleep( self.poll_interval )
+
+        print "Job finished"
+        return 0,'ran app'
+
+    def _kill(self):
+        self.status = JOBSTATUS_KILLPEND
+        try:
+            os.remove( self.fname )
+        except:
+            print "Error removing ",self.fname
+        self.status = JOBSTATUS_KILLED
+    
 if __name__ == "__main__":
 
     def testpy():
@@ -2225,7 +2437,7 @@ if __name__ == "__main__":
         job_parameters['stderr'] = 'hostname.err'
 
         job = NordugridJob()
-        job.update_job_parameters( job_parameters )
+        job.update_job_parameters( job_dict = job_parameters )
         job.add_step(RUN_APP,'run nordugrid')
         print job.CreateRSL()
 #         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
@@ -2263,4 +2475,4 @@ if __name__ == "__main__":
         print "jm is ",jm
         url = job.grid_submit( 'scarf.rl.ac.uk','(stdout="out.txt")',path,jobmanager=jm)
         print "url is ",url
-    
+
