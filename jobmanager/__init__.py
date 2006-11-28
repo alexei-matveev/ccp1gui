@@ -30,17 +30,23 @@ if sys.platform[:3] == 'win':
 
 # Constants
 #
-MODIFIED  = "Modified"
-SUBMITTED = "Submitted"
-RUNNING   = "Running"
-KILLED    = "Killed"
-DONE      = "Done"
+# jmht - don't think these are used anywhere?
+#MODIFIED  = "Modified"
+#SUBMITTED = "Submitted"
+#RUNNING   = "Running"
+#KILLED    = "Killed"
+#DONE      = "Done"
+#STOPPED   = "Stopped"
 
 
 class JobManager:
 
     def __init__(self):
-        self.active_jobs = []
+        self.registered_jobs = []
 
     def RegisterJob(self,job):
-        self.active_jobs.append(job)
+        if job not in self.registered_jobs:
+            self.registered_jobs.append(job)
+        
+    def RemoveJob(self,job):
+        self.registered_jobs.remove(job)
