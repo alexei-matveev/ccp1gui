@@ -1251,7 +1251,7 @@ class VolumeVisualiser(Visualiser,OutlineVisualiser):
                                 label_text = None,
                                 entryfield_value = self.tfv[i],
                                 entryfield_entry_width = 5,
-                                increment=0.1,
+                                increment=1.0,
                                 datatype = {'counter' : 'real' },
                                 entryfield_validate = { 'validator' : 'real' })
 
@@ -1267,7 +1267,7 @@ class VolumeVisualiser(Visualiser,OutlineVisualiser):
                                 label_text = None,
                                 entryfield_value = self.opacity[i],
                                 entryfield_entry_width = 5,
-                                increment=1.0,
+                                increment=0.1,
                                 datatype = {'counter' : 'real' },
                                 entryfield_validate = { 'validator' : 'real' })
 
