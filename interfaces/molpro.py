@@ -110,7 +110,7 @@ class MOLPROCalc(QMCalc):
         self.set_parameter("dft_radialgrid","default")
         self.set_parameter("dft_angulargrid","default")
         self.set_parameter("dft_radialgridpoints","100")
-        self.set_parameter("dft_angulargridpoints","100")
+        self.set_parameter("dft_angulargridpoints","110")
         self.set_parameter("dft_jfit",0)
         self.set_parameter("dft_jbas","A1DGAUSS")
         self.set_parameter("dft_schwarz",6)
@@ -389,35 +389,24 @@ class MOLPROCalc(QMCalc):
                          "Please make sure you have written an input file.")
                 return
                 
-##            input = self.get_input("input_file")
-##             for a in input:
-##                 file.write(a)
-##             file.close()
-
-        #Decide if we are keeping any files
-        #self.__keepfiles()
-
-        #
-        #  Need to decide what kind of job run
-        # 
-        hostname = self.get_parameter("hostname")
-        username = self.get_parameter("username")
-
-        if hostname == 'localhost':
-            #Run job in the specified directory
-            os.chdir(directory) 
-            #job = jobmanager.BackgroundJob()
-            job = jobmanager.ForegroundJob()
-
-        elif hostname == 'hpcx':
-            job = jobmanager.RemoteForegroundJob('hpcx',username)
-        elif hostname == 'tcsg7':
-            job = jobmanager.RemoteForegroundJob('tcsg7',username)
-        else:
-            print 'unsupported host'
+        #  Get/create job of type specified by the submission parameter
+        try:
+            job = self.getjob(create=1)
+        except Exception,e:
+            ed.Error("Problem initialising job!\n%s" % e)
             return None
-             
-        job.name = job_name
+
+        if not job:
+            ed.Error("molpro makejob no job returned!")
+            return None
+        
+        jobtype = job.jobtype
+        job.name = self.get_parameter( 'job_name' )
+
+        # Currently only local jobs supported for molpro
+        if jobtype != LOCALHOST:
+            ed.Error("molpro makejob - unsupported jobtype: %s" % jobtype)
+            return
 
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
@@ -435,7 +424,7 @@ class MOLPROCalc(QMCalc):
         stdout_file=None
         local_command_args = ['-X',job_name+'.com']
         
-        if sys.platform[:3] == 'win' and hostname == 'localhost':
+        if sys.platform[:3] == 'win' and jobtype == LOCALHOST:
             stdout_file=job_name+'.out'
 
         job.add_step(RUN_APP,
@@ -1827,8 +1816,8 @@ class MOLPROCalcEd(QMCalcEd):
         #self.dft_lebedevpoints =[6,14,26,38,50,74,86,110,146,170,194,230,266,
         #                         302,350,434,590,770,974,1202,1454,1730,2030,
         #                         2354,2702,3074,3470,3890,4334,4802,5294,5810]
-        self.dft_lebedevpoints =[6,14,26,38,50,74,86,110,146,170,194,230,266,
-                                 302,350,434,590,770,974,1202]
+        self.dft_lebedevpoints =['6','14','26','38','50','74','86','110','146','170',
+                                 '194','230','266','302','350','434','590','770','974','1202']
         self.dft_weights = ["Becke","MHL","SSF","MHL4SSF","MHL8SSF"]
         self.dft_jbas = ["A1DGAUSS","A2DGAUSS","DEMON","AHLRICHS"]
         
@@ -1996,12 +1985,12 @@ class MOLPROCalcEd(QMCalcEd):
         #Create the tools used for the Job tab
         self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
         self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' ) 
-        self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
-                                              self.hostnames, command=self.__sethost)
-        self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
-                                                self.submissionpolicies[self.hostname])
-        self.username_tool = TextFieldTool(self,'username','User Name')
+        #self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
+        #                                      self.hostnames, command=self.__sethost)
+        #self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
+        #self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+        #                                        self.submissionpolicies[self.hostname])
+        #self.username_tool = TextFieldTool(self,'username','User Name')
         self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
         self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
 
@@ -2703,9 +2692,9 @@ class MOLPROCalcEd(QMCalcEd):
         page.jobgroup.pack(side='top',expand='yes',fill='both')
 
         self.jobname_tool.widget.pack(in_=page.jobgroup.interior())
-        self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
-        self.submission_tool.widget.pack(in_=page.jobgroup.interior())
-        self.username_tool.widget.pack(in_=page.jobgroup.interior())
+        #self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
+        #self.submission_tool.widget.pack(in_=page.jobgroup.interior())
+        #self.username_tool.widget.pack(in_=page.jobgroup.interior())
         self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
 
         #Add Restart group

@@ -316,30 +316,36 @@ class DALTONCalc(QMCalc):
                 ed.Error( err_msg )
                 return None
 
-        #
-        #  Need to decide what kind of job run
-        # 
-        hostname = self.get_parameter("hostname")
-        workdir = self.get_parameter( 'workdir' )
-        #username = self.get_parameter("username")
+        #  Get/create job of type specified by the submission parameter
+        try:
+            job = self.getjob(create=1)
+        except Exception,e:
+            ed.Error("Problem initialising job!\n%s" % e)
+            return None
 
-        if hostname == 'localhost':
+        if not job:
+            ed.Error("dalton makejob no job returned!")
+            return None
+        
+        jobtype = job.jobtype
+        job.name = self.get_parameter( 'job_name' )
+        workdir = self.get_parameter( 'workdir' )
+
+        try:
+            os.chdir(workdir) #Run job in the specified directory
+        except Exception,e:
+            ed.Error("Cannot cd to working directory: %s\n%s" % (workdir,e))
+            return
+
+        if jobtype == LOCALHOST:
             # We purge Windows here and assume that all other platforms are o.k.
             if sys.platform[:3] == 'win':
                 ed.Error("Dalton on Windows?!? - I think not... :-)")
                 return None
-            else:
-                # Haven't implemented UNIX fork interface yet
-                os.chdir(workdir) #Run job in the specified directory
-                job = jobmanager.ForegroundJob()
         else:
-            print 'unsupported host'
-            return None
+            ed.Error("dalton makejob - unsupported jobtype: %s" % jobtype)
+            return
 
-        #mol_name = self.get_input("mol_name")
-        #directory = self.get_parameter("directory")
-        job_name = self.get_parameter( 'job_name' )
-        job.name = job_name
         dalfilename = self.get_parameter( 'dalfilename' )
         molfilename = self.get_parameter( 'molfilename' )
 
@@ -372,19 +378,11 @@ class DALTONCalc(QMCalc):
                      local_command_args=args,
                      stdout_file = "daltonstd.out" )
         
-        job.add_tidy( self.endjob2 )
+        job.add_tidy( self.endjob )
         
         return job
 
-    def endjob(self,graph):
-        """This is executed in the slave thread when the job completes
-        successfully.
-        There should be no output from slaves unless activated from
-        using the debug_slave flag.
-        """
-        return 0,""
-
-    def endjob2(self,code=0):
+    def endjob(self,code=0):
         """This function is executed in the main thread"""
 
         if self.debug:
@@ -420,7 +418,7 @@ class DALTONCalc(QMCalc):
             outputfile.close()
             self.set_output( "dalton_output", readout )
         except Exception,e:
-            raise Exception,"Error getting Dalton output in endjob2: %e" % e
+            raise Exception,"Error getting Dalton output in endjob: %e" % e
 
 
         # Merge the stdout and output to give a full output
