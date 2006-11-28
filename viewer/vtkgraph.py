@@ -196,6 +196,7 @@ class VtkGraph(TkMolView,Graph):
         sx = 450
         sy = 500
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
+        self.restore_saved_jobs()
         
         
     def fit_to_window(self):
@@ -210,7 +211,13 @@ class VtkGraph(TkMolView,Graph):
         except Error,e:
             print "Error writing ccp1guirc file!"
             print e
-            
+
+# Needs looking at...
+#         try:
+#             self.job_editor.ask_quit()
+#         except Exception,e:
+#             print "Error quitting jobeditor!\n%s" % e                
+          
         self.pane.destroy()
         self.pane2d.destroy()
         self.quit()
@@ -1989,9 +1996,15 @@ class VtkVolVis:
             if not field.axis_aligned():
                 print "Field has non-aligned axes"
 
-            xspacing = vx*xxx / (npts[0] - 1)
-            yspacing = vy*yyy / (npts[1] - 1)
-            zspacing = vz*zzz / (npts[2] - 1)
+            #xspacing = vx*xxx / (npts[0] - 1)
+            #yspacing = vy*yyy / (npts[1] - 1)
+            #zspacing = vz*zzz / (npts[2] - 1)
+            #xspacing = vx / (npts[0] - 1)
+            #yspacing = vy / (npts[1] - 1)
+            #zspacing = vz / (npts[2] - 1)
+            xspacing = vx.length() / (npts[0] - 1)
+            yspacing = vy.length() / (npts[1] - 1)
+            zspacing = vz.length() / (npts[2] - 1)
         else:
             xspacing = field.axis[0].length() / (npts[0] - 1)
             yspacing = field.axis[1].length() / (npts[1] - 1)
@@ -2005,7 +2018,7 @@ class VtkVolVis:
             data.SetOrigin(field.origin_corner[0],field.origin_corner[1],field.origin_corner[2])
         else:
             data.SetOrigin(field.origin[0],field.origin[1],field.origin[2])
-            
+
         data.SetSpacing(xspacing,yspacing,zspacing)
 
         bigsize = npts[0]*npts[1]*npts[2]
