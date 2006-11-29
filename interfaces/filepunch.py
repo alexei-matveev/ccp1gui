@@ -17,13 +17,11 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-#
 # Read a GAMESS-UK punchfile
 # Revised version based on a recursive parser
 # Revised again so as not to read in the whole file
 #    at once - this was because list.pop(0) turned 
 #    out to be too slow
-#
 #   
 from Numeric import *
 from objects.zme import *
@@ -32,6 +30,7 @@ from objects.zmatrix import *
 from objects.field import *
 from objects.matrix import *
 from objects.vibfreq import *
+from objects.list import *
 
 ###from tkmolview.vtkgraph import VtkColourMap
 
@@ -114,6 +113,10 @@ class PunchReader:
       self.readers['matrix'] = None
       self.readers['matrix_title'] = self.read_matrix_title
       self.readers['dense_real_matrix'] = self.read_dense_real_matrix
+
+      self.readers['potential_derived_charges'] = self.read_pdc
+      self.readers['mulliken_atomic_charges'] = self.read_mulliken
+      self.readers['lowdin_atomic_charges'] = self.read_lowdin
 
       self.subblocks = {}
 
@@ -1045,6 +1048,39 @@ class PunchReader:
       for i in range(0,self.records):
          r = f.readline()
          tt.data.append(float(r))
+
+   def read_pdc(self,f,obj):
+      print 'read_pdc',obj
+      tt = []
+      for i in range(0,self.records):
+         r = f.readline()
+         tt.append(float(r))
+      #obj.charge_sets.append(('PDC',tt))
+      l = List('PDC')
+      l.data = tt
+      self.objects.append(l)
+
+   def read_mulliken(self,f,obj):
+      print 'read_mulliken',obj
+      tt = []
+      for i in range(0,self.records):
+         r = f.readline()
+         tt.append(float(r))
+      l = List('Mulliken')
+      l.data = tt
+      self.objects.append(l)
+      
+   def read_lowdin(self,f,obj):
+      print 'read_lowdin',obj
+      tt = []
+      for i in range(0,self.records):
+         r = f.readline()
+         tt.append(float(r))
+      #obj.charge_sets.append(('Lowdin',tt))
+      l = List('Lowdin')
+      l.data = tt
+      self.objects.append(l)
+
 
    def tidy_frag(self,tt):
       """Complete processing of fragment  after reading, define atom numbers
