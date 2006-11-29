@@ -1,11 +1,13 @@
 #
-# unit tests for the job and process classes
+# unit tests for the subprocess classes
 #
 import subprocess
 import unittest
 
 # Specify 
 sshhost='login.hpcx.ac.uk'
+sshuser='psh'
+chkstr='l1f'
 
 class testSpawn(unittest.TestCase):
     """fork/pythonwin process management"""
@@ -65,21 +67,42 @@ class testSpawnRemoteProcess(unittest.TestCase):
         self.assertEqual([code1,code2,code3],[999,999,-2])
 
 
-class testRemoteProcess(unittest.TestCase):
+class testPipeRemoteCmd(unittest.TestCase):
     """ rsh/plink + host + simple command"""
-    def setUp(self):
-        self.proc = subprocess.RemoteProcess(sshhost,'hostname',debug=0)
     def testA(self):
         """check by issuing hostname over ssh"""
+        self.proc = subprocess.PipeRemoteCmd(sshhost,sshuser,'hostname',debug=0)
+        self.proc.run()
+        output=self.proc.get_output()
+        print output
+        self.assertNotEqual(output,None,"Command failed ro tun")
+        tester=output[0][:3]
+        self.assertEqual(tester,chkstr)
+
+    def testB(self):
+        """check by issuing hostname over ssh with output redirection """
+        self.proc = subprocess.PipeRemoteCmd(sshhost,sshuser,'hostname',debug=1)
+        self.proc.run(stdout_file='junk.txt')
+        output=self.proc.get_output()
+        self.assertNotEqual(output,None,"Command failed ro tun")
+        tester=output[0][:3]
+#        self.assertEqual(tester,chkstr)
+
+
+class testSpawnRemoteCmd(unittest.TestCase):
+    """ rsh/plink + host + simple command"""
+    def testA(self):
+        """check by issuing hostname over ssh"""
+        self.proc = subprocess.SpawnRemoteCmd(sshhost,sshuser,'hostname',debug=0)
         self.proc.run()
         output=self.proc.get_output()
         self.assertNotEqual(output,None,"Command failed ro tun")
         tester=output[0][:3]
-        self.assertEqual(tester,'l1f')
+        self.assertEqual(tester,chkstr)
 
 if __name__ == "__main__":
 
-    if 1:
+    if 0:
         # Run all tests automatically
         unittest.main()
     else:
@@ -88,10 +111,10 @@ if __name__ == "__main__":
         myTestSuite = unittest.TestSuite()
 
         #myTestSuite.addTest(testSpawn("testA"))
-        myTestSuite.addTest(testSpawnRemoteProcess("testA"))
-        myTestSuite.addTest(testSpawnRemoteProcess("testB"))
-        #myTestSuite.addTest(testSlaveSpawn("testA"))
-        #myTestSuite.addTest(testRemoteProcess("testA"))
+        #myTestSuite.addTest(testSpawnRemoteProcess("testA"))
+        #myTestSuite.addTest(testSpawnRemoteProcess("testB"))
+        myTestSuite.addTest(testPipeRemoteCmd("testA"))
+        myTestSuite.addTest(testPipeRemoteCmd("testB"))
 
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
