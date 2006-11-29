@@ -102,8 +102,7 @@ class Editor(Pmw.MegaToplevel):
                self.text.configure(text_state = 'normal')
 
    def Save(self):
-      """
-         Need to overwrite this method
+      """Need to overwrite this method
       """
       self.SaveAs()
       return
@@ -179,7 +178,10 @@ class InputEd(Editor):
        input = self.text.get()
        self.calc.set_input('input_file',input)
        
+       filename = None
        # Check if there is any command we should run on saving
+       # This should return the required file name
+
        if self.onsave:
           try:
              filename = self.onsave()
@@ -197,7 +199,6 @@ class InputEd(Editor):
        inputfile.write(input)
        inputfile.close()
        return
-
 
 
 if __name__ == "__main__":
