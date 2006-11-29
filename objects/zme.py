@@ -175,7 +175,7 @@ class ZME(Pmw.MegaToplevel):
       
         self.trash = []
         self.clipboard = []
-        self.debug = 0
+        self.debug = 1
         self.recalc = 1
         # create variables like t5
         self.var_name_scheme = 0
@@ -230,7 +230,16 @@ class ZME(Pmw.MegaToplevel):
         else:
             self._load_atom_sel()
 
+        if self.v_key:
+            self.model.v_key = 1
+            for v in self.model.variables:
+                try:
+                    txt = v.keys
+                except AttributeError:
+                    v.keys = ""
+
         self._load_var_sel()
+
 
         # initialise the selection and editor
         self.active_atom = 0
@@ -1502,6 +1511,14 @@ class ZME(Pmw.MegaToplevel):
         # to flag up any that are now invalid
         self._update()
 
+    def _update_gui(self):
+        """Just update the display without recomputing anything or
+        updating the viewer - called from Reload"""
+        t=self.recalc
+        self.recalc=0
+        self._update()
+        self.recalc=t
+    
     def _update(self,force=0,selection=None):
         """ Routine for changes involving multiple atoms
         At present all atoms are updated
@@ -2279,8 +2296,13 @@ class ZME(Pmw.MegaToplevel):
         self.last_var = -1
 
 ###        self._deselect_all_atoms()
+
+        # to flag up any that are now invalid
+        self._update_gui()
+
         self._load_atom_sel()
         self.update_selection_from_graph()
+
 
     def load_from_file(self):
         """ Load a zmatrix from a file"""
@@ -2337,7 +2359,7 @@ if __name__ == '__main__':
     #model.insert_atom(0,atom)
     root = Tk()
     #root.withdraw()
-    t = ZME(root,model=model,list_final_coords=1)
+    t = ZME(root,model=model,list_final_coords=1,v_key=1)
     #t.withdraw()
     #Button(command = lambda: t.show(), text = 'show').pack()
     root.mainloop()
