@@ -28,18 +28,22 @@ allocate_scratch, delete_file, execute_shell etc
 
 Subclasses for real jobs:
 
-BackgroundJob
+LocalJob(Job)
    based on subprocess.Spawn for the main step
-            subprocess.ForegroundPipe for file operations
+            subprocess.Pipe for file operations
+
+LocalJobNoSpawn(Job)
+   all operations use subprocess.Pipe
+   no way to kill this
  
-ForegroundJob
-   all operations use subprocess.ForegroundPipe
- 
-RemoteForegroundJob
+RemoteJob(Job)
    subprocess.Spawn(plink/ssh)
    not yet implemented
 
-LoadLevelerJob
+RemoteBatchJob(RemoteJob):
+   base class for handling remote queueing systems
+
+LoadLevelerJob(RemoteBatchJob)
    not yet implemented
 
 """
@@ -302,7 +306,7 @@ class Job:
             cmd = 'rm'
             args = [step.remote_filename]
 
-        pipe=subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
+        pipe=subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = pipe.run()
         if code:
             msg = pipe.msg
@@ -330,33 +334,29 @@ class Job:
         if not step.remote_filename:
             step.remote_filename = step.local_filename
 
-        if '\0' in data:
-            print file, "BinaryFile!"
-            #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + step.local_filename + ' ' + self.remoteuser + '@' + self.host + ':' + self.remote_filename
-            cmd = 'C:/Program Files/PuTTY/pscp.exe'
-            args = [step.local_filename,
-                    self.remoteuser,
-                    '@',
-                    self.host,
-                    ':',
-                    self.remote_filename]
+        if sys.platform[:3] == 'win':
+
+            if '\0' in data:
+                print file, "BinaryFile!"
+                cmd = 'C:/Program Files/PuTTY/pscp.exe'
+                args = [step.local_filename,
+                        self.remoteuser+'@'+self.host+':'+step.remote_filename]
+            else:
+                # translation between dos and windows formats if needed
+                newdata = re.sub("\r\n", "\n", data)
+                t = open('unx_'+step.local_filename,"wb")
+                t.write(newdata)
+                t.close()
+                cmd = 'C:/Program Files/PuTTY/pscp.exe'
+                args = ['unx_'+ step.local_filename,
+                        self.remoteuser+'@'+self.host+':'+step.remote_filename]
         else:
-            newdata = re.sub("\r\n", "\n", data)
-            t = open('unx_'+step.local_filename,"wb")
-            t.write(newdata)
-            t.close()
-            #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + 'unx_' + step.local_filename  + ' ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename
-            cmd = 'C:/Program Files/PuTTY/pscp.exe'
-            args = ['unx_',
-                    step.local_filename,
-                    self.remoteuser,
-                    '@',
-                    self.host,
-                    ':',
-                    step.remote_filename]
+                cmd = 'scp'
+                args = [step.local_filename,
+                        self.remoteuser+'@'+self.host+':'+step.remote_filename]
 
         print 'copy out cmd',[cmd] + args
-        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
+        p = subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
@@ -368,20 +368,19 @@ class Job:
         if not step.local_filename:
             step.local_filename = step.remote_filename
 
-        #cmd = '"C:/Program Files/PuTTY/pscp.exe" ' + self.remoteuser + '@' + self.host + ':' + step.remote_filename + ' ' + self.local_filename
-        cmd = 'C:/Program Files/PuTTY/pscp.exe'
-        args = [self.remoteuser,
-                '@',
-                self.host,
-                ':',
-                step.remote_filename,
-                self.local_filename]
-        print 'copy back cmd',[cmd] + args
-        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
+        if sys.platform[:3] == 'win':
+            cmd = 'C:/Program Files/PuTTY/pscp.exe'
+            args = [self.remoteuser+'@'+self.host+':'+step.remote_filename,
+                    step.local_filename]
+        else:
+            cmd = 'scp'
+            args = [self.remoteuser+'@'+self.host+':'+step.remote_filename,
+                    step.local_filename]
+
+        p = subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
-
 
     def execute_shell(self,step):
         return -1,"execute shell unimplemented"
@@ -418,7 +417,6 @@ class Job:
         """Attempt to kill the job"""
         print 'Kill unimplemented for this job type'
         raise AttributeError,"_kill unimplemented for jobtype %s" % self.jobtype
-            
 
     def get_status(self):
         """Return the current status of the job"""
@@ -501,7 +499,7 @@ class Job:
 class LocalJob(Job):
     """Sub class for a job running on the local resource
     run_app uses fork/winprocess via Spawn
-    everything else uses os.popen3 via ForegroundPipe
+    everything else uses os.popen3 via Pipe
     """
 
     def __init__(self,**kw):
@@ -516,13 +514,14 @@ class LocalJob(Job):
         if not step.remote_filename:
             step.remote_filename = step.local_filename
 
+        # PS: this is windows specific? unix ('mv') code missing
         if step.local_filename != step.remote_filename:
             cmd = 'del'
-            args = [self.remote_filename]
-            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+            args = [step.remote_filename]
+            subprocess.Pipe(cmd,args=args,debug=self.debug).run()
             cmd = 'ren'
-            args = [self.local_filename, step.remote_filename]
-            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+            args = [step.local_filename, step.remote_filename]
+            subprocess.Pipe(cmd,args=args,debug=self.debug).run()
         return 0,None
 
     def run_app(self,step):
@@ -534,8 +533,9 @@ class LocalJob(Job):
             if step.use_bash:
                 # We are running in a Cygwin shell rather than the standard
                 # windows process 
-                # THIS NEEDS TESTING
-                step.local_command_args = ['bash'] + step.local_command_args
+                # THIS DOESNT WORK .. nospawn variant
+                step.local_command_args = [step.local_command] + step.local_command_args
+                step.local_command = 'bash'
 
             # Remove stdout
             if step.stdout_file:
@@ -621,17 +621,15 @@ class LocalJob(Job):
 
         if step.local_filename != step.remote_filename:
             if sys.platform[:3] == 'win':
-                #cmd = 'ren ' + step.remote_filename + ' ' + step.local_filename
                 cmd = 'ren'
                 args = [step.remote_filename,step.local_filename]
-                code = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+                code = subprocess.Pipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
             else:
-                #cmd = 'mv ' + step.remote_filename + ' ' + step.local_filename
                 cmd = 'mv'
                 args = [step.remote_filename,step.local_filename]
-                code = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
+                code = subprocess.Pipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
         return 0,None
@@ -652,10 +650,10 @@ class LocalJob(Job):
         else:
             return -1
     
-class LocalJobNoSpawn(Job):
+class LocalJobNoSpawn(LocalJob):
     """Sub class for a job running on the current resource
     this is simply for testing, no threads or background spawn calls
-    it uses the SubProcess.pipe to invoke the required calls
+    it uses the subprocess.Pipe to invoke the required calls
     """
 
     def __init__(self,**kw):
@@ -665,89 +663,59 @@ class LocalJobNoSpawn(Job):
     def allocate_scratch(self,step):
         return 0,None
 
-    def copy_out_file(self,step):
-
-        """Transfer file from execution host
-
-        overloads the generic function as this is a local job type, we just
-        rename the file
-        """
-
-        if not step.remote_filename:
-            step.remote_filename = step.local_filename
-
-        if step.local_filename != step.remote_filename:
-            #cmd = 'del ' + self.remote_filename
-            cmd = 'del'
-            args = [self.remote_filename]
-            subprocess.ForegroundPipe(cmd,args=args,debug=self.debug).run()
-            #cmd = 'ren ' + self.local_filename + ' ' + step.remote_filename
-            cmd = 'ren'
-            args = [self.local_filename,step.remote_filename]
-            subprocess.ForegroundPipe(cmd,arg=args,debug=self.debug).run()
-        return 0,None
-
-
     def run_app(self,step):
-        """
-        """
 
-        cmd = step.local_command
-        args = step.local_command_args
-        #if step.stdin_file:
-        #    cmd = cmd + ' < '+ step.stdin_file
-        #if step.stdout_file:
-        #    cmd = cmd + ' > ' + step.stdout_file
-        if step.stdin_file:
-            args=[]
-            args.append('<')
-            args.append(step.stdin_file)
-        if step.stdout_file:
-            if not args:
-                args = []
-            args.append('>')
-            args.append(step.stdout_file)
+        if step.use_bash:
 
-        #print 'checking path'
-        #p = subprocess.ForegroundPipe("echo $PATH",debug=self.debug)
-        #code = p.run()        
+            cmd = step.local_command
+            for arg in step.local_command_args:
+                cmd = cmd + ' ' + arg
+            if step.stdin_file:
+                cmd = cmd + ' < '+ step.stdin_file
+            if step.stdout_file:
+                cmd = cmd + ' > ' + step.stdout_file
+            file=open("bash.txt","wb")
+            file.write(cmd)
+            file.close()
 
-        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
-        if self.debug:
-            print 'ForegroundJob: cmd=',p.cmd_as_string()
-        code = p.run()
-        if code:
-            print 'code from run_app',code
-            print 'step.error',p.error
-            print 'step.msg',p.msg
-            return code, p.msg
+            cmd="C:/cygwin/bin/bash.exe"
+            args= ['<','bash.txt']
+            p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+            code = p.run()
+
+            return code,None
+
         else:
-            return 0, None
 
-    def run_app_bash(self,step):
+            cmd = step.local_command
+            args = step.local_command_args
 
-        cmd = step.local_command
-        if step.stdin_file:
-            cmd = cmd + ' < '+ step.stdin_file
-        if step.stdout_file:
-            cmd = cmd + ' > ' + step.stdout_file
-        file=open("bash.txt","wb")
-        file.write(cmd)
-        file.close()
+            if step.stdin_file:
+                if not args:
+                    args=[]
+                args.append('<')
+                args.append(step.stdin_file)
+            if step.stdout_file:
+                if not args:
+                    args = []
+                args.append('>')
+                args.append(step.stdout_file)
 
-        #cmd="C:/cygwin/bin/bash.exe < bash.txt"
-        cmd="C:/cygwin/bin/bash.exe"
-        args= ['<','bash.txt']
-        p = subprocess.ForegroundPipe(cmd,args=args,debug=self.debug)
-        code = p.run()
+            #print 'checking path'
+            #p = subprocess.Pipe("echo $PATH",debug=self.debug)
+            #code = p.run()        
 
-        return code,None
-
-    def copy_back_file(self,step):
-        return 0,None
-
-    def clean_scratch(self,step):
-        return 0,None
+            p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+            if self.debug:
+                print 'ForegroundJob: cmd=',p.cmd_as_string()
+            code = p.run()
+            if code:
+                print 'code from run_app',code
+                print 'step.error',p.error
+                print 'step.msg',p.msg
+                return code, p.msg
+            else:
+                return 0, None
 
 
 class RemoteJob(Job):
@@ -764,8 +732,9 @@ class RemoteJob(Job):
         self.remoteuser=remoteuser
 
     def run_app(self,step):
-        pass
-
+        p = subprocess.PipeRemoteCmd(self.host,self.remoteuser,step.remote_command,step.remote_command_args)
+        code=p.run()
+        return code,None
 
 class RemoteBatchJob(RemoteJob):
     """Instantiate the job using rsh/plink but in this case, the job
@@ -791,7 +760,6 @@ class LoadLevelerJob(RemoteBatchJob):
         RemoteBatchJob.__init__(self,**kw)
         self.jobtype='LoadLeveler'
 
-        
     def allocate_scratch(self,step):
         return 0,None
 
@@ -1804,6 +1772,7 @@ class NordugridJob(GridJob):
 
 
 #     BELOW TWO METHODS ARE BROKEN with ARLIB < 0.5.56
+
 #     def CheckProxy(self):
 #         """ Check that the user has a valid proxy and throw an exception if not"""
 
