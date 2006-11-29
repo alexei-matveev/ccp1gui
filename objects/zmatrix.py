@@ -338,10 +338,10 @@ class Zmatrix(Indexed):
         # for editor
         self.errors = []
 
+        self.charge_sets=[]
         if title:
             self.title = title
         else:
-
             self.title = "Untitled molecule"
 
         if mol:
@@ -534,8 +534,6 @@ class Zmatrix(Indexed):
                     # At this stage the variables should already exist
                     # so this call should just look it up
                     # and there should be no leading sign flag
-                    # Extra variables are harmless but in future we should
-                    # check for them
                     v = self.find_var(fields[0])
                     if v:
                         v.value= float(fields[1])
@@ -544,6 +542,13 @@ class Zmatrix(Indexed):
                             v.value = v.value * fac
                         if mode == 'c':
                             v.constant = 1
+
+                        # Append any keys (e.g. type 3 for GAMESS-UK use)
+                        v.keys = ""
+                        for k in fields[2:]:
+                            v.keys = v.keys + " " + k
+                            self.v_key = 1 
+
                     else:
                         # for now we ignore stray vars
                         pass
@@ -2654,7 +2659,6 @@ class Zmatrix(Indexed):
         gamess-uk essentially produces a mirror image relative
         to the internal conventions
 
-
         .... question of what to with connectivity
 
         ... August 05 need to get a working solution for Erika Palin project
@@ -2674,7 +2678,6 @@ class Zmatrix(Indexed):
                 somez = 1
             if a.zorc == 'c':
                 somec = 1
-
 
         if somez and somec:
             ####raise ImportGeometryError, 
@@ -2727,7 +2730,7 @@ class Zmatrix(Indexed):
                 else:
                     if not update_constants:
                         if v:
-                            tester = abs(v,value - rnew)
+                            tester = abs(v.value - rnew)
                         else:
                             tester = abs(self.atom[1].r - rnew)
                             print 'atom 1 r diff=',tester
@@ -2755,7 +2758,7 @@ class Zmatrix(Indexed):
                 else:
                     if not update_constants:
                         if v:
-                            tester = abs(v,value - rnew)
+                            tester = abs(v.value - rnew)
                         else:
                             tester = abs(self.atom[2].r - rnew)
                         print 'atom 2 r diff=',tester
@@ -2774,7 +2777,7 @@ class Zmatrix(Indexed):
                 else:
                     if not update_constants:
                         if v:
-                            tester = abs(v,value - anew)
+                            tester = abs(v.value - anew)
                         else:
                             tester = abs(self.atom[2].theta - anew)
                         print 'atom 2 theta diff=',tester
@@ -2871,6 +2874,10 @@ class Zmatrix(Indexed):
                             a.phi = tnew
 
                 print 'done'
+
+            # Compute new coords
+            self.calculate_coordinates()
+
 
 
     def update_variable(self,var,val,torsion=0):
@@ -3802,7 +3809,14 @@ class Zmatrix(Indexed):
         symmol.symmetrize( symdet.tightCartesian, eigval )
         self.updateMolFromSym( symmol )
         #self.toStandardOrientation()
-        
+
+    def get_atom_charge(self,index,tag):
+        for (t,values) in self.charge_sets:
+            print 't,tag',t,tag
+            if t == tag:
+                return values[index]
+        return None
+
 
 class ZAtom(Atom):
     """Storage of internal and cartesian coordinates for a single atom
@@ -3842,6 +3856,7 @@ class ZAtom(Atom):
         self.seq_no = 999
         self.zorc = 'c'
         self.coord = [0.0,0.0,0.0]
+
 
     def __repr__(self):
         return 'zatom ' + str(self.get_index()) + ' '+self.name + str(self.coord)
