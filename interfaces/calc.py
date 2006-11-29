@@ -20,6 +20,8 @@
 import os
 import sys
 import getpass
+import socket
+import jobmanager
 
 from interfaces.calced import *
 from Scientific.Geometry.VectorModule import *
