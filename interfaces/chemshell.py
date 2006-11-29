@@ -172,20 +172,18 @@ class ChemShellCalc(Calc):
         hostname = self.get_parameter("hostname")
         username = self.get_parameter("username")
 
-        if hostname == 'localhost':
-            if sys.platform[:3] == 'win':
-                job = jobmanager.BackgroundJob()
-            else:
-                # Haven't implemented UNIX fork interface yet
-                job = jobmanager.ForegroundJob()
-        elif hostname == 'hpcx':
-            job = jobmanager.RemoteForegroundJob('hpcx',username)
-        elif hostname == 'tcsg7':
-            job = jobmanager.RemoteForegroundJob('tcsg7',username)
-        else:
-            print 'unsupported host'
-            return None
 
+        job = jobmanager.LocalJob()
+#            else:
+#                # Haven't implemented UNIX fork interface yet
+#                job = jobmanager.ForegroundJob()
+#        elif hostname == 'hpcx':
+#            job = jobmanager.RemoteForegroundJob('hpcx',username)
+#        elif hostname == 'tcsg7':
+#            job = jobmanager.RemoteForegroundJob('tcsg7',username)
+#        else:
+#            print 'unsupported host'
+#            return None
         job.name = job_name
 
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
@@ -238,7 +236,8 @@ class ChemShellCalc(Calc):
                 # when started without a parent bash shell it seems not too
                 # have not established why yet)
                 #
-                job.add_step(RUN_APP_BASH,'run ChemShell',
+                job.add_step(RUN_APP,'run ChemShell',
+                             use_bash=1,
                              local_command='chemsh',
                              local_command_args=[self.infile],
                              stdout_file=self.outfile)
