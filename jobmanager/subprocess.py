@@ -22,21 +22,15 @@ The idea here is to implement a variety of procedures for controlling
 subprocesses (typically system commands). All classes are subclassed
 from the SubProcess class.
 
-ForegroundPipe
+Pipe
+
    Unix/Windows pipe (invoking thread will wait)
    no control api possible, just wait for it
    follow-up code is generally just in-lined
    can simply use popen here?
 
-SlavePipe
-   Unix/Windows pipe but in a slave thread
-   - no control but at least the main program keeps running
-     (or at least one would expect so, this doesn't seem to
-     be run on windows)
-
-    NB does not support stdin= arg as used by Spawn
-
 Spawn
+
    fork or pythonwin process (no explicit threads)
    offers the chance to check its status, wait for it, kill it etc
    on unix, can use os.fork, os.waitpid(pid,nohang), os.kill
@@ -44,17 +38,9 @@ Spawn
      - not sure of there is any way to check the status of the
        process 
 
-SlaveSpawn
-   As spawn, but under a new thread
-   A new thread is spawned which then forks/spawns the new
-   process as for 2)
-    - the new thread can poll the subprocess and check output etc
-    - the new thread can check a queue to find out from the main
-      process if any action (e.g. kill) is requested
-    - the new thread can execute follow-up code 
-    - a timeout is possible
+PipeRemoteCmd(Pipe)
+SpawnRemoteCmd(Spawn)
 
-RemoteProcess(ForegroundPipe)
 """
     
 import os
@@ -415,21 +401,30 @@ class SubProcess:
     def cmd_as_string(self):
         """Return the command to be invoked, together with it's arguments as a single string
         """
-        cmd = self.cmd
+        print 'TEST CMD',self.cmd
+        if " " in self.cmd:
+            cmd = '"'+self.cmd+'"'
+        else:
+            cmd = self.cmd
+
         if self.args:
             for arg in self.args:
-                cmd += ' ' + arg
+                print 'arg', arg, " " in arg
+                if " " in arg:
+                    # need to quote args containing spaces
+                    cmd += ' "' + arg + '"'
+                else:
+                    cmd += ' ' + arg
         return cmd
 
-class ForegroundPipe(SubProcess):
+class Pipe(SubProcess):
     """Class to manage os.popen3
     So far we have not managed to detect errors using this approach
     (except that there is output on the stderr channel)
     april 2005... try making this fatal and see what happens
-
     """
 
-    def __init__(self,cmd,**kw):
+    def __init__(self,cmd,args=None,**kw):
         apply(SubProcess.__init__, (self,cmd,) , kw)        
 
     def run(self):
@@ -439,6 +434,7 @@ class ForegroundPipe(SubProcess):
         # the return code from the child processes
 
         cmd = self.cmd_as_string()
+        print 'DEBUG',cmd
         (stdin,stdout,stderr) = os.popen3(cmd)
         self.output = stdout.readlines()
         self.error = stderr.readlines()
@@ -481,173 +477,6 @@ class ForegroundPipe(SubProcess):
         else:
             return None
 
-class SlavePipe(SubProcess):
-
-    """Spawn a thread which then uses a pipe to run the commmand
-    This method runs the requested command in a subthread
-    the wait method can be used to check progress
-    however there is no kill available (no child pid)
-    ... maybe there is a way to destroy the thread together with the child??
-
-    for consistency with spawn it would be ideal if stdin,out,err could
-    be provided to route these streams, at the moment they are echoed and saved in.
-
-    """
-    def __init__(self,cmd,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)
-
-    def run(self):
-
-        # create a Lock
-        self.lock  = threading.RLock()
-
-        # Create the queues
-        self.queue = Queue.Queue()
-
-        self.status = SLAVE_PIPE
-        self.slavethread = SlaveThread(self.lock, self.queue, None, self.__slave_pipe_proc)
-
-        if self.debug:
-            print t.time(),'SlavePipe: slave thread starting'
-        self.slavethread.start()
-        if self.debug:
-            print t.time(),'SlavePipe thread started'
-
-    def wait(self,timeout=None):
-        """Wait..  """
-        count = 0
-        if timeout:
-            tester = timeout
-            incr = 1
-        else:
-            tester = 1
-            incr = 0
-
-        while count < tester:
-            if timeout:
-                count = count + incr
-
-            try:
-                tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        self.output.append(x)
-                        print  'stdout>',x,
-
-                elif tt == CHILD_STDERR:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        self.err.append(x)
-                        print  'stderr>',x,
-
-                elif tt == CHILD_EXITS:
-                    code = self.queue.get(0)
-                    if self.debug:
-                        print t.time(),'done'
-                    return code
-
-            except Queue.Empty:
-                if self.debug:
-                    print t.time(), 'queue from slave empty, sleep .1'
-                time.sleep(0.1)
-        print t.time(),'wait timed out'
-
-    def kill(self):
-        """(not implemented) """
-        if self.debug:
-            print t.time(), 'kill'
-        print 'kill not available for SlavePipe class'
-
-    def get_output(self):
-        """Retrieve any pending data on the pipe to the slave process """
-
-        while 1:
-            try:
-                tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        self.output.append(x)
-                        print  'stdout>',x,
-
-                elif tt == CHILD_STDERR:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        self.err.append(x)
-                        print  'stderr>',x,
-
-                elif tt == CHILD_EXITS:
-                    code = self.queue.get(0)
-                    if self.debug:
-                        print t.time(),'done'
-                    return code
-
-            except Queue.Empty:
-                break
-
-        return self.output
-
-    def __slave_pipe_proc(self,lock,queue,queue1):
-
-        """ this is the code executed in the slave thread when a
-        (foreground) pipe is required
-
-        will return stdout and stderr over the queue
-        queue1 is not used
-        """
-        cmd = self.cmd_as_string()
-        if self.debug:
-            print t.time(), 'invoke command',cmd
-
-        (stdin,stdout,stderr) = os.popen3(cmd)
-
-        if self.debug:
-            print t.time(),'command exits'
-
-        while 1:
-            if self.debug:
-                print t.time(),'read out'
-            txt =  stdout.readlines()
-            if txt:
-                if self.debug:
-                    print t.time(),'read out returns', txt[0],' etc'
-                queue.put(CHILD_STDOUT)
-                queue.put(txt)
-            else:
-                if self.debug:
-                    print 'out is none'
-
-            txt2 =  stderr.readlines()
-            if txt2:
-                if self.debug:
-                    print t.time(),'read err returns', txt2[0],' etc'
-                queue.put(CHILD_STDERR)
-                queue.put(txt2)
-            else:
-                if self.debug:
-                    print 'err is none'                
-
-            if not txt or not txt2:
-                break
-
-        status = stdout.close()
-        if self.debug:
-            print 'stdout close status',status
-
-        status = stdin.close()
-        if self.debug:
-            print 'stdin close status',status
-
-        status = stderr.close()
-        if self.debug:
-            print 'stderr  close status',status
-        if self.debug:
-            print t.time(),'put to close:', CHILD_EXITS
-
-        queue.put(CHILD_EXITS)
-        code = 0
-        queue.put(code)
 
 class Spawn(SubProcess):
     """Interface to pythonwin Process() or fork on UNIX
@@ -720,186 +549,48 @@ class Spawn(SubProcess):
         else:
             return None
 
-class SlaveSpawn(SubProcess):
-    """Use a pythonwin process or fork with controlling thread
+class PipeRemoteCmd(Pipe):
+    """Run a command on a remote host using a pipe locally    """    
+    #
+    #  PS: handing around username needed for unix but
+    #      it is not used when using Putty
+    #
+    def __init__(self,host,user,cmd,**kw):
+        Pipe.__init__(self,cmd,**kw)
+        self.host=host
+        self.user=user
 
-    2 queues connect launching thread to control thread
+    def run(self,stdin_file=None,stdout_file=None,**kw):
 
-    issues ...
-    spawn will need its streams, part
-    """
+        print self.cmd, self.args
 
-    def __init__(self,cmd,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)        
+        # combine command and arguments as presented
+        # hopefully no spaces as this will be a unix command
+        cmd = self.cmd_as_string()
 
-    def run(self,stdin=None,stdout=None,stderr=None):
-
-        self.stdin=stdin
-        self.stdout=stdout
-        self.stderr=stderr
-
-        # create a Lock
-        self.lock  = threading.RLock()
-
-        # Create the queues
-        self.queue = Queue.Queue()
-        self.queue1 = Queue.Queue()
-
-        self.status = SLAVE_SPAWN
-        self.slavethread = SlaveThread(self.lock, self.queue ,self.queue1,self.__slave_spawn_proc)
-
-        if self.debug:
-            print t.time(),'threadedSpawn: slave thread starting'
-        self.slavethread.start()
-        if self.debug:
-            print t.time(),'threadedSpawn returns'
-
-    def kill(self):
-        """pass kill signal to controlling thread """
-        if self.debug:
-            print t.time(), 'queue.put ',KILL_CHILD
-        self.queue1.put(KILL_CHILD)
-
-    def __slave_spawn_proc(self,loc,queue,queue1):
-        """ this is the code executed in the slave thread
-        when a (background) spawn/fork is required
-        will return stdout and stderr over the queue
-        """
-
-        if self.debug:
-            print t.time(), 'slave spawning', self.cmd_as_string()
-
-        self._spawn_child()
-
-        while 1:
-            if self.debug:
-                print t.time(),'check loop'
-            # check status of child
-            # this should return immediately
-            code = self._wait_child(timeout=0)
-            if self.debug:
-                print t.time(),'check code',code
-
-            if code != 999:
-                # child has exited pass back return code
-                queue.put(CHILD_EXITS)
-                queue.put(code)
-                # Attempt to execute any termination code
-                if self.on_end:
-                    self.on_end()
-                break
-
-            # check for intervention
-            try:
-                if self.debug:
-                    print t.time(), 'slave get'
-                tt = queue1.get(0)
-                if self.debug:
-                    print t.time(), 'slave gets message for child', tt
-                if tt == KILL_CHILD:
-                    code = self._kill_child()
-                    break
-            except Queue.Empty:
-                if self.debug:
-                    print t.time(), 'no child message sleeping'
-
-            time.sleep(0.1)
-
-        queue.put(CHILD_EXITS)
-        queue.put(code)
-
-        #
-        # Currently these are not set up 
-        #   here (cf the popen3 based one)
-        #
-        #status = stdout.close()
-        #status = stdin.close()
-        #status = stderr.close()
-
-    def wait(self,timeout=None):
-        """wait for process to finish """
-        if self.debug:
-            print t.time(), 'wait'
-
-        count = 0
-        if timeout:
-            tester = timeout
-            incr = 1
-        else:
-            tester = 1
-            incr = 0
-
-        while count < tester:
-            if timeout:
-                count = count + incr
-
-            try:
-                tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        print  'stdout>',x,
-
-                elif tt == CHILD_STDERR:
-                    tt2 = self.queue.get(0)
-                    for x in tt2:
-                        print  'stderr>',x,
-
-                elif tt == CHILD_EXITS:
-                    code = self.queue.get(0)
-                    if self.debug:
-                        print t.time(),'done'
-                    return code
-
-            except Queue.Empty:
-                if self.debug:
-                    print t.time(), 'queue from slave empty, sleep .1'
-                time.sleep(0.1)
-
-        print t.time(),'wait timed out'
-
-
-class SlaveThread(threading.Thread):
-    """The slave thread runs separate thread
-    For control it has 
-    - a lock (not used at the moment)
-    - a queue object to communicate with the GUI thread
-    - a procedure to run
-    """
-
-    def __init__(self,lock,queue,queue1,proc):
-        threading.Thread.__init__(self,None,None,"JobMan")
-        self.lock       = lock
-        self.queue      = queue
-        self.queue1     = queue1
-        self.proc       = proc
-
-    def run(self):
-        """ call the specified procedure"""
-        try:
-            code = self.proc(self.lock,self.queue,self.queue1)
-        except RuntimeError, e:
-            self.queue.put(RUNTIME_ERROR)
-
-class RemoteProcess(ForegroundPipe):
-
-    def __init__(self,host,cmd,**kw):
-        """Run a command on a remote host"""
-        apply(SubProcess.__init__, (self,None,) , kw)        
-
+        # Add redirection
+        if stdin_file:
+            cmd = cmd + ' <'+stdin_file
+        if stdout_file:
+            cmd = cmd + ' >'+stdout_file
+            
         if sys.platform[:3] == 'win':
+
             self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
-            self.args = [host, cmd ]
+            # just two args, the host and everything else, which should get quoted
+            # because it has embedded spaces
+            self.args = [self.host, cmd ] 
             print 'remote command:',self.cmd_as_string()
         else:
             self.cmd = 'ssh'
-            self.args =  [host, cmd]
+            self.args =  [self.user+'@'+self.host, cmd] + args
+
+        Pipe.run(self,**kw)        
+
 
 class SpawnRemoteCmd(Spawn):
-
-    def __init__(self,host,cmd,**kw):
-        """Run a command on a remote host using winprocess/fork locally"""
-
+    """Run a command on a remote host using winprocess/fork locally"""
+    def __init__(self,host,user,cmd,**kw):
         Spawn.__init__(self,None,**kw)        
         if sys.platform[:3] == 'win':
             self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
@@ -907,8 +598,7 @@ class SpawnRemoteCmd(Spawn):
             print 'remote command:',self.cmd_as_string()
         else:
             self.cmd = 'ssh'
-            self.args =  [host, cmd]
-
+            self.args =  [user+'@'+host, cmd]
 
 # test this using unit test framework (testsubprocess.py)
 
