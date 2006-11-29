@@ -369,7 +369,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.mol_cylinder_specular_power = 10
 
         self.debug = 0
-        self.debug_callbacks = 0
+        self.debug_callbacks = 1
         self.debug_selection = 0
         self.enable_undo = 1
         
@@ -4698,11 +4698,13 @@ Please check the output on the terminal/log file for further information." % fil
 
         #print 'on edit',len(i.bond),len(i.atom[0].coord)
 
-        e = ZME(self.master,reload_func= lambda s=self,t=str(id(i)) : s.load_from_graph(t),
+        e = ZME(self.master,
+                reload_func= lambda s=self,t=str(id(i)) : s.load_from_graph(t),
                 update_func= lambda o,s=self,t=str(id(i)) : s.update_model(t,o),
                 export_selection_func = lambda mol,atoms,s=self :  s.select_from_zme(mol,atoms),
                 import_selection_func = lambda mol,s=self :  s.provide_selection_to_zme(mol),
-                on_exit=lambda s=self,k=callback_key,o=i : s.delete_callback(o,k))
+                on_exit=lambda s=self,k=callback_key,o=i : s.delete_callback(o,k),
+                v_key=1)
 
         self.editing_callbacks[id(i)][callback_key] =  lambda editor=e: editor.Reload()
         self.zme_dict[id(i)] = e
@@ -4875,6 +4877,7 @@ Please check the output on the terminal/log file for further information." % fil
             return
         elif tobj == obj:
             # found it
+            print '   Running update_from_object'
             self.update_from_object(obj)
         else:
             print '   Replacing object contents'
