@@ -1,4 +1,4 @@
-
+#
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
 #   (C) 2002-2005 CCLRC Daresbury Laboratory
@@ -41,6 +41,7 @@ from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
 from interfaces.jobsubEditor import RMCSEditor,NordugridEditor,GrowlEditor
 from objects.file import *
+from objects.list import *
 #
 from viewer.rc_vars import rc_vars
 from viewer.paths import find_exe
@@ -152,8 +153,15 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter("ana_potential",0)
         self.set_parameter("ana_diffden",0)
 
+        # potential derived charge fitting
+        self.set_parameter("ana_pdc",0)
+        self.set_parameter("surf_dens_1",0.001)
+        self.set_parameter("surf_dens_2",0.0005)
+        self.set_parameter("surf_grid_scale",2.0)
+        self.set_parameter("pdc_charge_constraint",0.0)
+
         self.set_parameter('direct_scf',0);
-        self.set_parameter('symmetry',1)
+        self.set_parameter('symmetry',0)
         self.set_parameter('adaption',0)
         self.set_parameter('use_ri',0)
         self.set_parameter('accuracy','medium')
@@ -162,6 +170,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter('opt_jorgensen',0)
         self.set_parameter('opt_hess_update','default')
         self.set_parameter('opt_powell',0)
+        self.set_parameter('pre_ts_hess',0)
         self.set_parameter('opt_min_hess',0)
         self.set_parameter('opt_max_hess',0)
         self.set_parameter('opt_rfo',0)
@@ -593,6 +602,7 @@ class GAMESSUKCalc(QMCalc):
             if ed.update_func:
                 o = self.get_input("mol_obj")
                 #name = self.get_input("mol_name")
+                print 'calling update_func from gamess'
                 ed.update_func(o)
         # jmht - is this a hack?
         self.job = None
@@ -946,10 +956,169 @@ class GAMESSUKCalc(QMCalc):
         else:
             return None
 
+
+    def _prscf(self,file,scf_method,postscf_method,scftype,dft):
+
+        if postscf_method == "MP2":
+            file.write('scftype mp2\n')
+        elif postscf_method == "MP3":
+            file.write('scftype mp3\n')
+        elif postscf_method == "Direct MP2":
+            file.write('scftype direct mp2\n')
+        # Restricted
+        elif (scf_method == "RHF" or scf_method == "DFT"):
+            file.write('scftype rhf\n')
+        elif (scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+            file.write('scftype direct rhf\n')
+        #Unrestricted
+        elif (scf_method == "UHF" or scf_method == "UDFT"):
+            file.write('scftype uhf\n')
+        elif (scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
+            file.write('scftype direct uhf\n')
+        else:
+            file.write('scftype rhf\n')
+
+        #This is where all the DFT directives go
+#        if scf_method == "DFT" or scf_method == "UDFT" or scf_method == "Direct DFT" or scf_method == "Direct UDFT"
+        if dft:
+            functional = self.get_parameter("dft_functional")
+            accuracy   = self.get_parameter("dft_grid")
+            weights    = self.get_parameter("dft_weights")
+            
+            #Map what's written in the menus to GAMESS-UK directives
+            dft_dictionary={"Euler-MacLaurin": "euler",
+                            "Mura-Knowles" : "log",
+                            "Lebedev-Laikov": "lebedev",
+                            "Gauss-Legendre" : "gausslegendre",
+                            "Lebedev-Laikov": "lebedev",
+                            "Gauss-Legendre" : "gausslegendre"}
+            
+            radialgrid = self.get_parameter("dft_radialgrid")
+            angulargrid = self.get_parameter("dft_angulargrid")
+            jfit = self.get_parameter("dft_jfit")
+             
+            file.write('dft '+str(functional)+'\n')
+            file.write('dft quadrature '+str(accuracy)+'\n')
+            if weights != "default":
+                file.write('dft weights '+str(weights)+'\n')
+
+            #if radial & angular grids not default specify type and no. points
+            if radialgrid != "default":
+                file.write('dft '+dft_dictionary[radialgrid]+
+                           ' '+str(self.get_parameter("dft_radialgridpoints"))+'\n')
+            if angulargrid != "default":
+                file.write('dft '+dft_dictionary[angulargrid]+
+                           ' '+str(self.get_parameter("dft_angulargridpoints"))+'\n')
+
+            #if coulomb fitting  add aux basis and scwarz cutoff
+            if jfit:
+                file.write('dft jfit memory \n') #memory is default as GAMESS will
+                                                 #recalualte the integrals anyway
+                                                 #if they don't fit in memory.
+                file.write('dft schwartz '+str(self.get_parameter("dft_schwarz"))+'\n')
+                file.write('dft jbas '+str(self.get_parameter("dft_jbas"))+'\n')
+
+        #SCF convergence options
+#         if (scf_method == "RHF" or scf_method == "DFT" or 
+#             scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+        if (scftype == "rhf"):
+            file.write('level '+
+                       str(self.get_parameter("scf_level_init"))+' '+
+                       str(self.get_parameter("scf_level_it"))+' '+
+                       str(self.get_parameter("scf_level_final"))+'\n')
+            
+#         elif (scf_method == "UHF" or scf_method == "UDFT" or
+#               scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
+        elif (scftype == "uhf"):
+            file.write('level '+
+                       str(self.get_parameter("scf_level_init"))+' '+
+                       str(self.get_parameter("scf_level_init"))+' '+
+                       str(self.get_parameter("scf_level_it"))+' '+
+                       str(self.get_parameter("scf_level_final"))+' '+
+                       str(self.get_parameter("scf_level_final"))+'\n')
+            
+        file.write('maxcyc '+str(self.get_parameter("scf_maxcyc"))+'\n')
+        file.write('thresh '+str(self.get_parameter("scf_threshold"))+'\n')
+
+    def _prguess(self,file,scf_method,guess_method):
+
+        if guess_method == "Compute":
+            file.write('vectors '+str(self.get_parameter("guess_comp"))+'\n')
+        elif guess_method == "Dumpfile":
+            if (scf_method == "RHF" or scf_method == "DFT" or 
+                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+                file.write('vectors '+str(self.get_parameter("guess_sect1"))+'\n')
+            else:
+                file.write('vectors '+str(self.get_parameter("guess_sect1"))+' '+
+                           str(self.get_parameter("guess_sect2"))+'\n')
+                
+        elif guess_method == "GETQ":
+            guess_lfn = 'ed14' #just use ed14 for now
+            guess_blk1 = self.get_parameter("getq_block1")
+            guess_blk2 = self.get_parameter("getq_block2")
+            guess_sect1 = self.get_parameter("getq_sect1")
+            guess_sect2 = self.get_parameter("getq_sect2")
+            if (scf_method == "RHF" or scf_method == "DFT" or 
+                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+'\n')
+            else:
+                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+' '+
+                           str(guess_lfn)+' '+str(guess_blk2)+' '+str(guess_sect2)+'\n')
+        
+
+    def _write_grid(self,file,grid):
+        scale = 1.0 / 0.529177
+
+        if len(grid.dim) == 3:
+            file.write('type 3d\n')
+            file.write('points %d %d %d\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
+            file.write('size %f %f %f\n' % (scale*grid.axis[0].length(),
+                                            scale*grid.axis[1].length(),
+                                            scale*grid.axis[2].length()))
+            file.write('orig %f %f %f\n' % (scale*grid.origin[0],
+                                            scale*grid.origin[1],
+                                            scale*grid.origin[2]))
+            v = grid.axis[0]
+            file.write('x %f %f %f\n' % (scale*v[0],
+                                         scale*v[1],
+                                         scale*v[2]))
+            v = grid.axis[1]
+            file.write('y %f %f %f\n'% (scale*v[0],
+                                        scale*v[1],
+                                        scale*v[2]))
+        elif len(grid.dim) == 2:
+            file.write('type 2d\n')
+            file.write('points %d %d\n' % (grid.dim[0],grid.dim[1]))
+            file.write('size %f %f \n' %  (scale*grid.axis[0].length(),
+                                           scale*grid.axis[1].length()))
+            file.write('orig %f %f %f\n' % (scale*grid.origin[0],
+                                            scale*grid.origin[1],
+                                            scale*grid.origin[2]))
+            v = grid.axis[0]
+            file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
+            v = grid.axis[1]
+            file.write('y %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
+        else:
+            file.write('type 1d\n')
+            file.write('points %d\n' % (grid.dim[0],))
+            file.write('size %f \n' % (scale*grid.axis[0].length()))
+            file.write('size %f %f %f\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
+            file.write('orig %f %f %f\n' % (scale*grid.origin[0],
+                                            scale*grid.origin[1],
+                                            scale*grid.origin[2]))
+            v = grid.axis[0]
+            file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
+
+
     def __WriteInput(self,mol,filename):
         
         #Get an editor object so we can pop up tk error widgets
         ed = self.get_editor()
+
+        # This makes sure that the requested guess options are
+        # given for the first runtype requested, after that
+        # we assume we can re-use them
+        guess_entered=0
 
         #Check the spin of the molecule is o.k. before we do owt else.
         if self.CheckSpin(show=1):
@@ -985,10 +1154,6 @@ class GAMESSUKCalc(QMCalc):
 
         file.write('title\n')
         file.write(self.get_title()+'\n')
-        if task == MENU_OPT:
-            file.write('punch coor conn title opti\n')
-        else:
-            file.write('punch coor conn title\n')
 
         if not self.get_parameter('symmetry'):
             file.write('nosym\n')
@@ -1103,6 +1268,13 @@ class GAMESSUKCalc(QMCalc):
         if classii != "":
             file.write(classii)
             return 0
+        if self.get_parameter('find_ts') and self.get_parameter('pre_ts_hess'):
+            file.write('runtype hessian\n')
+            #  SCFTYPE directive to match main run
+            self._prscf(file,scf_method,postscf_method,scftype,dft)
+            self._prguess(file,scf_method,guess_method)
+            guess_entered=1
+            file.write('enter\n')
 
         #
         #  RUNTYPE directives
@@ -1122,7 +1294,10 @@ class GAMESSUKCalc(QMCalc):
             if self.get_parameter('optimiser') == 'Z-Matrix':
                 if self.get_parameter('opt_jorgensen'):
                     if self.get_parameter('find_ts'):
-                        file.write('runtype saddle jorgensen\n')
+                        if self.get_parameter('pre_ts_hess'):
+                            file.write('runtype saddle jorgensen fcm\n')
+                        else:
+                            file.write('runtype saddle jorgensen\n')
                         powell = self.get_parameter('opt_powell')
                         if powell:
                             file.write('powell\n')
@@ -1142,99 +1317,28 @@ class GAMESSUKCalc(QMCalc):
                     rfo = self.get_parameter('opt_rfo')
                     if rfo:
                         file.write('rfo '+str(self.get_parameter('opt_rfomode'))+'\n')
-                        
                     
                 else: # we're not using jorgensen
                     if self.get_parameter('find_ts'):
-                        file.write('runtype saddle\n')
+                        if self.get_parameter('pre_ts_hess'):
+                            file.write('runtype saddle fcm\n')
+                        else:
+                            file.write('runtype saddle\n')
                     else:
                         file.write('runtype optim\n')
             else:
                 file.write('runtype optx\n')
 
-        #
-        #  SCFTYPE directive
-        #
-        if postscf_method == "MP2":
-            file.write('scftype mp2\n')
-        elif postscf_method == "MP3":
-            file.write('scftype mp3\n')
-        elif postscf_method == "Direct MP2":
-            file.write('scftype direct mp2\n')
-        # Restricted
-        elif (scf_method == "RHF" or scf_method == "DFT"):
-            file.write('scftype rhf\n')
-        elif (scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-            file.write('scftype direct rhf\n')
-        #Unrestricted
-        elif (scf_method == "UHF" or scf_method == "UDFT"):
-            file.write('scftype uhf\n')
-        elif (scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
-            file.write('scftype direct uhf\n')
+        # Punch settings for this run type
+        if task == MENU_OPT:
+            file.write('punch coor conn title opti mull lowd\n')
         else:
-            file.write('scftype rhf\n')
+            file.write('punch coor conn title mull lowd\n')
 
-        #This is where all the DFT directives go
-#        if scf_method == "DFT" or scf_method == "UDFT" or scf_method == "Direct DFT" or scf_method == "Direct UDFT"
-        if dft:
-            functional = self.get_parameter("dft_functional")
-            accuracy   = self.get_parameter("dft_grid")
-            weights    = self.get_parameter("dft_weights")
-            
-            #Map what's written in the menus to GAMESS-UK directives
-            dft_dictionary={"Euler-MacLaurin": "euler",
-                            "Mura-Knowles" : "log",
-                            "Lebedev-Laikov": "lebedev",
-                            "Gauss-Legendre" : "gausslegendre",
-                            "Lebedev-Laikov": "lebedev",
-                            "Gauss-Legendre" : "gausslegendre"}
-            
-            radialgrid = self.get_parameter("dft_radialgrid")
-            angulargrid = self.get_parameter("dft_angulargrid")
-            jfit = self.get_parameter("dft_jfit")
-             
-            file.write('dft '+str(functional)+'\n')
-            file.write('dft quadrature '+str(accuracy)+'\n')
-            if weights != "default":
-                file.write('dft weights '+str(weights)+'\n')
-
-            #if radial & angular grids not default specify type and no. points
-            if radialgrid != "default":
-                file.write('dft '+dft_dictionary[radialgrid]+
-                           ' '+str(self.get_parameter("dft_radialgridpoints"))+'\n')
-            if angulargrid != "default":
-                file.write('dft '+dft_dictionary[angulargrid]+
-                           ' '+str(self.get_parameter("dft_angulargridpoints"))+'\n')
-
-            #if coulomb fitting  add aux basis and scwarz cutoff
-            if jfit:
-                file.write('dft jfit memory \n') #memory is default as GAMESS will
-                                                 #recalualte the integrals anyway
-                                                 #if they don't fit in memory.
-                file.write('dft schwartz '+str(self.get_parameter("dft_schwarz"))+'\n')
-                file.write('dft jbas '+str(self.get_parameter("dft_jbas"))+'\n')
-
-        #SCF convergence options
-#         if (scf_method == "RHF" or scf_method == "DFT" or 
-#             scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-        if (scftype == "rhf"):
-            file.write('level '+
-                       str(self.get_parameter("scf_level_init"))+' '+
-                       str(self.get_parameter("scf_level_it"))+' '+
-                       str(self.get_parameter("scf_level_final"))+'\n')
-            
-#         elif (scf_method == "UHF" or scf_method == "UDFT" or
-#               scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
-        elif (scftype == "uhf"):
-            file.write('level '+
-                       str(self.get_parameter("scf_level_init"))+' '+
-                       str(self.get_parameter("scf_level_init"))+' '+
-                       str(self.get_parameter("scf_level_it"))+' '+
-                       str(self.get_parameter("scf_level_final"))+' '+
-                       str(self.get_parameter("scf_level_final"))+'\n')
-            
-        file.write('maxcyc '+str(self.get_parameter("scf_maxcyc"))+'\n')
-        file.write('thresh '+str(self.get_parameter("scf_threshold"))+'\n')
+        #
+        #  Add SCFTYPE directive for this runtype
+        #
+        self._prscf(file,scf_method,postscf_method,scftype,dft)
 
         if task == MENU_OPT:
             #If optimising with jorgensen algorithm, minmax not applicable
@@ -1255,30 +1359,6 @@ class GAMESSUKCalc(QMCalc):
                 file.write('<specify your reference configuration here>\n')
                 file.write('end\n')
 
-        if guess_method == "Compute":
-            file.write('vectors '+str(self.get_parameter("guess_comp"))+'\n')
-        elif guess_method == "Dumpfile":
-            if (scf_method == "RHF" or scf_method == "DFT" or 
-                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-                file.write('vectors '+str(self.get_parameter("guess_sect1"))+'\n')
-            else:
-                file.write('vectors '+str(self.get_parameter("guess_sect1"))+' '+
-                           str(self.get_parameter("guess_sect2"))+'\n')
-                
-        elif guess_method == "GETQ":
-            guess_lfn = 'ed14' #just use ed14 for now
-            guess_blk1 = self.get_parameter("getq_block1")
-            guess_blk2 = self.get_parameter("getq_block2")
-            guess_sect1 = self.get_parameter("getq_sect1")
-            guess_sect2 = self.get_parameter("getq_sect2")
-            if (scf_method == "RHF" or scf_method == "DFT" or 
-                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+'\n')
-            else:
-                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+' '+
-                           str(guess_lfn)+' '+str(guess_blk2)+' '+str(guess_sect2)+'\n')
-                
-
         if task == MENU_ENER:
             if postscf_method == 'MRDCI':
                 file.write('mrdci direct\n')
@@ -1286,6 +1366,9 @@ class GAMESSUKCalc(QMCalc):
                 file.write('ccsd\n')
             elif postscf_method == 'CCSD(T)':
                 file.write('ccsd(t)\n')
+
+        if not guess_entered:
+            self._prguess(file,scf_method,guess_method)
 
         if self.get_parameter('ed3_keep'):
             if (scf_method == "RHF" or scf_method == "DFT" or 
@@ -1506,8 +1589,6 @@ class GAMESSUKCalc(QMCalc):
                 punch = beta_punch                
 
             # Punchfile output
-            #file.write('nosym\n')
-            #file.write('adapt off\n')
             for sect in punch:
                 file.write('punch eform grid ' + str(sect)+'\n')
 
@@ -1521,46 +1602,7 @@ class GAMESSUKCalc(QMCalc):
                 # each time
                 self.fit_grid_to_mol(grid,mol)
 
-            scale = 1.0 / 0.529177
-            if len(grid.dim) == 3:
-                file.write('type 3d\n')
-                file.write('points %d %d %d\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
-                file.write('size %f %f %f\n' % (scale*grid.axis[0].length(),
-                                                scale*grid.axis[1].length(),
-                                                scale*grid.axis[2].length()))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],
-                                             scale*v[1],
-                                             scale*v[2]))
-                v = grid.axis[1]
-                file.write('y %f %f %f\n'% (scale*v[0],
-                                            scale*v[1],
-                                            scale*v[2]))
-            elif len(grid.dim) == 2:
-                file.write('type 2d\n')
-                file.write('points %d %d\n' % (grid.dim[0],grid.dim[1]))
-                file.write('size %f %f \n' %  (scale*grid.axis[0].length(),
-                                               scale*grid.axis[1].length()))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
-                v = grid.axis[1]
-                file.write('y %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
-            else:
-                file.write('type 1d\n')
-                file.write('points %d\n' % (grid.dim[0],))
-                file.write('size %f \n' % (scale*grid.axis[0].length()))
-                file.write('size %f %f %f\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
+            self._write_grid(file,grid)
 
             for prop in props:
                 # Load beta component of property for linear combinations (UHF only)
@@ -1608,6 +1650,53 @@ class GAMESSUKCalc(QMCalc):
             else:
                 file.write('vectors 3\n')
                 file.write('enter 3\n')
+
+        #
+        # Potential Derived Charges
+        #
+        # RHF only for the moment
+        #
+
+        if self.get_parameter("ana_pdc"):
+
+            file.write('runtype analysis\n')
+
+            isec = self.get_next_section()
+            punch = [ isec + 12, isec + 15]
+            for sect in punch:
+                file.write('punch eform grid ' + str(sect)+'\n')
+
+            file.write('graphics\n')
+            file.write('gdef\n')
+
+            grid = self.get_parameter('grid')
+
+            if not self.field_sized:
+                # use automatic size unless explicitly edited
+                # but dont set flag to ensure resizing will happen
+                # each time
+                self.fit_grid_to_mol(grid,mol,border=3.0)
+
+            self._write_grid(file,grid)
+
+            file.write('section %s\n' % (isec,))
+            file.write('calc\n')
+            file.write('type dens\n')
+            file.write('section %s\n' % (isec+1,))
+            file.write('surface pote %s %f %f\n' % (isec+10,
+                                                    self.get_parameter('surf_dens_1'),
+                                                    self.get_parameter('surf_dens_2')))
+            file.write('vectors 1\n')
+            file.write('enter 1\n')
+
+            file.write('runtype analysis\n')
+            file.write('punch pdc\n')
+
+            file.write('potf %d %d char %f\n' % (isec + 12, isec + 15, self.get_parameter('pdc_charge_constraint')))
+
+            file.write('vectors 1\n')
+            file.write('enter 1\n')
+
         #
         # Frequencies
         #
@@ -1762,9 +1851,21 @@ class GAMESSUKCalc(QMCalc):
                 #PS keep all elements of old structure
                 #
                 oldo = self.get_input("mol_obj")
-                copycontents(oldo,o)
+                # Try and import geom while maintaining the input z-matrix
+                # 
+                print 'NEW GEOMETRY'
+                o.connect()
+                print o.bonds_and_angles()
+                try:
+                    oldo.import_geometry(o,update_constants=0)
+                except ImportGeometryError:
+                    print ' Warning: could not retain old zmatrix, importing as cartesians'
+                    copycontents(oldo,o)                    
 
-                #o.list()
+                print 'UPDATED GEOMETRY'
+                oldo.zlist()
+                print oldo.bonds_and_angles()
+
                 #tt = self.get_input("mol_obj")
                 #tt.list()
 
@@ -1778,6 +1879,11 @@ class GAMESSUKCalc(QMCalc):
 
             elif myclass == 'Field':
                 self.results.append(o)
+
+            # list class is just used for charge data at present
+            elif myclass == 'List':
+                mol_obj  = self.get_input("mol_obj")
+                mol_obj.charge_sets.append((o.type,o.data))
 
         return structure_loaded
 
@@ -1983,6 +2089,12 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.chargeden_tool = BooleanTool(self, 'ana_chargeden', 'Charge Density')
         self.balloon.bind ( self.chargeden_tool.widget, 'Calculate the charge density and import the results back for display' )
         self.diffden_tool = BooleanTool(self, 'ana_diffden', 'Difference Density')
+        self.pdc_tool = BooleanTool(self, 'ana_pdc', 'Potential Derived Charges',self.__pdc)
+
+        self.pdc_surf_dens_1_tool = FloatTool(self,'surf_dens_1','First Density isovalue',0.0)
+        self.pdc_surf_dens_2_tool = FloatTool(self,'surf_dens_2','Second Density isovalue',0.0)
+        self.pdc_charge_constraint_tool = FloatTool(self,'pdc_charge_constraint','Total Charge Constraint')
+
         self.potential_tool = BooleanTool(self, 'ana_potential', 'Potential')
         self.balloon.bind ( self.potential_tool.widget, 'Calculate the electrostatic potential and import the results back for display' )                
         self.chargedengrad_tool = BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
@@ -2007,6 +2119,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optjorg_tool = BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
                                         self.__optjorgensen)
         self.optpowell_tool = BooleanTool(self,'opt_powell','Use Powell Hessian update')
+        self.hessian_option_tool = BooleanTool(self,'pre_ts_hess','Precompute Analytical Hessian')
         self.optbfgs_tool = SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
                                              self.optbfgs_opts)
         self.optminhess_tool = FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
@@ -2349,7 +2462,8 @@ class GAMESSUKCalcEd(QMCalcEd):
                 self.__selectcoords('Z-Matrix')
             if (self.calc.get_parameter('opt_jorgensen')):
                 self.__optjorgensen()
-                
+            else:
+                self.__optmiller()                
             self.calc.set_parameter('opt_conv_thsld',0.001)
             self.optxtol_tool.UpdateWidget()
             self.calc.set_parameter('opt_value',0.3)
@@ -2358,6 +2472,9 @@ class GAMESSUKCalcEd(QMCalcEd):
         if self.calc.get_parameter('find_ts')== 0: #update coord and jorg tools accordingly
             self.__selectcoords(self.calc.get_parameter('optimiser'))
             self.__optjorgensen()
+
+    def __optmiller(self):
+        self.hessian_option_tool.Pack()
 
     def __optjorgensen(self):
         """If we are undertaking a geometry optimisation using the Jorgensen/Simmons algorithm
@@ -2375,6 +2492,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optminhess_tool.Forget()
         self.optmaxhess_tool.Forget()
         self.optrfo_tool.Forget()
+        self.hessian_option_tool.Forget()
 
         if self.calc.get_parameter('opt_jorgensen'):
             if self.calc.get_parameter('optimiser') == 'Cartesian':
@@ -2385,6 +2503,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                 
             if  self.calc.get_parameter('find_ts'):
                 self.optpowell_tool.Pack()
+                self.hessian_option_tool.Pack()
             else:
                 self.optbfgs_tool.Pack()
                 
@@ -2501,6 +2620,19 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         self.calc.set_parameter('ed0_path',ed0_path)
             
+    def __pdc(self):
+
+        self.pdc_tool.ReadWidget()
+
+        if self.calc.get_parameter('ana_pdc'):
+            self.pdc_surf_dens_1_tool.Pack()
+            self.pdc_surf_dens_2_tool.Pack()
+            self.pdc_charge_constraint_tool.Pack()
+        else:
+            self.pdc_surf_dens_1_tool.Forget()
+            self.pdc_surf_dens_2_tool.Forget()
+            self.pdc_charge_constraint_tool.Forget()
+
     def summarise_results(self):
         """ Use John Kendrick's output reader to scan a gamessuk
             output file and summarise the results.
@@ -2676,10 +2808,15 @@ class GAMESSUKCalcEd(QMCalcEd):
         viewer.help.sethelp(tab,'Properties Tab')
         
         page.grgroup = Pmw.Group(page,tag_text="Graphical options")
-
         page.grgroup.pack(expand='yes',fill='x')
 
-        page.mogroup = Pmw.Group(page.grgroup.interior(),tag_text="Orbital Plots")
+        f = Frame(page.grgroup.interior())
+        f.pack(expand='yes',fill='x',side='left')
+
+        f1 = Frame(f)
+        f1.pack(fill='x',side='top')
+
+        page.mogroup = Pmw.Group(f1,tag_text="Orbital Plots")
         page.mogroup.pack(expand='yes',fill='x',side='right')
         self.homolumo_tool.widget.pack(in_=page.mogroup.interior())
         self.homolumo1_tool.widget.pack(in_=page.mogroup.interior())
@@ -2688,17 +2825,32 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.homolumo4_tool.widget.pack(in_=page.mogroup.interior())
         self.homolumo5_tool.widget.pack(in_=page.mogroup.interior())
 
-        f = Frame(page.grgroup.interior())
-        f.pack(expand='yes',fill='x',side='left')
-        page.group2 = Pmw.Group(f,tag_text="Density and Potential")
-        page.group2.pack(expand='yes',fill='x',side='top')
+        page.group2 = Pmw.Group(f1,tag_text="Density and Potential")
+        page.group2.pack(expand='yes',fill='x',side='right')
         self.chargeden_tool.widget.pack(in_=page.group2.interior())
         self.diffden_tool.widget.pack(in_=page.group2.interior())
         self.potential_tool.widget.pack(in_=page.group2.interior())
         self.chargedengrad_tool.widget.pack(in_=page.group2.interior())
         self.spinden_tool.widget.pack(in_=page.group2.interior())
 
-        page.editgrid_button = Tkinter.Button(f,command=self.edit_grid)
+        # a bit of padding
+        Frame(page.group2.interior(),height=22,width=1).pack()
+
+        page.pdcgroup = Pmw.Group(page,tag_text="Potential Derived Charges")
+        page.pdcgroup.pack(expand='yes',fill='x')
+        self.pdc_tool.widget.pack(in_=page.pdcgroup.interior())
+
+        self.pdc_surf_dens_1_tool.SetParent(page.pdcgroup.interior())
+        self.pdc_surf_dens_2_tool.SetParent(page.pdcgroup.interior())
+        self.pdc_charge_constraint_tool.SetParent(page.pdcgroup.interior())
+
+        Pmw.alignlabels([self.pdc_surf_dens_1_tool.widget,
+                         self.pdc_surf_dens_2_tool.widget,
+                         self.pdc_charge_constraint_tool.widget])
+
+        f2 = Frame(f)
+        f2.pack(fill='x',side='top')
+        page.editgrid_button = Tkinter.Button(f2,command=self.edit_grid)
         page.editgrid_button.config(text="Edit Grid")
         page.editgrid_button.pack(side='bottom',padx=10,pady=20)
 
@@ -2720,7 +2872,6 @@ class GAMESSUKCalcEd(QMCalcEd):
                          self.chargedengrad_tool.widget,
                          self.spinden_tool.widget,
                          page.editgrid_button])
-
 
         #Add Optimisation tab
         page = self.notebook.add('Optimisation',tab_text='Optimisation')
@@ -2759,6 +2910,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optminhess_tool.SetParent(page.jorggroup.interior())
         self.optmaxhess_tool.SetParent(page.jorggroup.interior())
         self.optrfo_tool.SetParent(page.jorggroup.interior())
+        self.hessian_option_tool.SetParent(page.rungroup.interior())
         Pmw.alignlabels([self.optjorg_tool.widget, self.optpowell_tool.widget,
                          self.optbfgs_tool.widget, self.optminhess_tool.widget,
                          self.optmaxhess_tool.widget, self.optrfo_tool.widget])
