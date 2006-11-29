@@ -632,7 +632,9 @@ class MoleculeVisualiser(Visualiser):
                 labelpos = 'w',
                 label_text = 'Label With ',
                 menubutton_textvariable = self.label_with_var,
-                items = ['name','symbol','charge','atom no.','name(no.)'],
+                items = ['name','symbol','charge','atom no.','name(no.)',
+                         'mulliken charge','lowdin charge','potential derived charge'
+                         ],
                 initialitem='name',
                 menubutton_width = 10)
             self.w_label_with.pack(side='left')
