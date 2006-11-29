@@ -736,6 +736,34 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 txt = a.symbol
                             elif self.label_with == 'name':
                                 txt = a.name
+
+                            elif self.label_with == 'mulliken charge':
+                                val = self.molecule.get_atom_charge(a.get_index(),'Mulliken')
+                                if val:
+                                    txt = "%f" % (val,)
+                                    while txt[-1:] == '0':
+                                        txt = txt[:-1]
+                                else:
+                                    txt = '---'
+
+                            elif self.label_with == 'lowdin charge':
+                                val = self.molecule.get_atom_charge(a.get_index(),'Lowdin')
+                                if val:
+                                    txt = "%f" % (val,)
+                                    while txt[-1:] == '0':
+                                        txt = txt[:-1]
+                                else:
+                                    txt = '---'
+
+                            elif self.label_with == 'potential derived charge':
+                                val = self.molecule.get_atom_charge(a.get_index(),'PDC')
+                                if val:
+                                    txt = "%f" % (val,)
+                                    while txt[-1:] == '0':
+                                        txt = txt[:-1]
+                                else:
+                                    txt = '---'
+
                             elif self.label_with == 'charge':
                                 txt = "%f" % (a.partial_charge,)
                                 while txt[-1:] == '0':
