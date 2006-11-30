@@ -3088,6 +3088,7 @@ class TkMolView(Pmw.MegaToplevel):
                        ('DL_POLY CONFIG','CONFIG'),
                        ('DL_POLY HISTORY','HISTORY'),
                        ('Zmatrix','.zmt'),
+                       ('Spartan Input','.spinput'),
                        ('GAMESS-UK Input','.in'),
                        ('Other Output','.out'),
                        ('Gaussian Output','.gjf'),
@@ -3162,6 +3163,8 @@ Please check the output on the terminal/log file for further information." % fil
                 form = 'ONT'
             if ext == 'rdf':
                 form = 'MAP'
+            if ext == 'spinput':
+                form = 'SPARTAN'
             if ext == 'gjf':
                 form = 'GAU'
             if ext == 'cube':
@@ -3211,6 +3214,8 @@ Please check the output on the terminal/log file for further information." % fil
             objs = self.rdhist(filename)
         elif form == 'CUBE':
             objs = self.rdcube(filename)
+        elif form == 'SPARTAN':
+            objs = self.rdsptn(filename)
         elif form == 'OUT':
             objs = self.rdout(filename,root)
         else:
@@ -4203,6 +4208,129 @@ Please check the output on the terminal/log file for further information." % fil
         self.quick_mol_view([model])
         self.append_data(field)
         return [model,field]
+
+    def rdsptn(self,filename):
+        """ V. basic reader for spartan input files written only having seen 2 files
+            Assumes that the format of the files is:
+            4 (for us) uniteresting lines
+            sequence of lines each of which is charge, x, y, z terminated by a line
+            with ENDCAR
+            There may then be an optional block starting with the line "ATOMLABELS"
+            that contains a list of the names for the previously read in atoms with one
+            label per atom
+        """
+        if self.debug:
+            print "Reading Spartan input file: %s" % filename
+
+        try:
+            f = open(filename,'r')
+        except Exception,e:
+            print "rdsptn: error opening file: %s!\n%s" % (filename,e)
+            return None
+
+        #Skip first 4 lines
+        for i in range(4):
+            line = f.readline()
+
+        # Read in initial coordinates
+        natom = 0
+        atoms_read = [] # list - each item is list [ tag, charge, x, y, z ]
+        while 1:
+            line = f.readline()
+            if not len(line):
+                # EOF
+                print "rdsptn: EOF before ENDCART label!"
+                break
+            
+            line = line.strip()
+
+            if len(line) >= 7 and line[0:7] == 'ENDCART':
+                print "rdsptn: got end coords"
+                # End of coordinates
+                break
+
+            fields = line.split()
+            # Each line should be charge, x, y, z
+            if len(fields) >= 4:
+                try:
+                    atoms_read.append( [ None,
+                                       int(fields[0]),
+                                       float(fields[1]),
+                                       float(fields[2]),
+                                       float(fields[3]) ])
+                except Exception,e:
+                    print "rdsptn: error reading coords!\nLine was: %s\nError:%s" % (line,e)
+                    break
+                natom+=1 # incrememt atom counter
+            else:
+                print "rdsptn: invalid coord line?: %s" % line
+
+
+        # Now check for labels
+        labels = None
+        while 1:
+            line = f.readline()
+            if not len(line):
+                # EOF
+                print "rdsptn: EOF before got labels"
+                break
+            
+            line = line.strip()
+
+            if len(line) >= 10 and line[0:10] == 'ATOMLABELS':
+                print "rdsptn: got atomlabels"
+                labels = 1
+                # found labelsblock
+                break
+
+        # Loop over labels
+        if labels:
+            print "rdsptn: reading labels ",natom
+            for i in range( natom ):
+                line = f.readline()
+                if not len(line):
+                    # EOF
+                    print "rdsptn: EOF before all atom labels read in"
+                    break
+            
+                line = line.strip()
+
+                if len(line) >= 13 and line[0:13] == 'ENDATOMLABELS':
+                    print "rdsptn: got end labels early!"
+                    # End of coordinates
+                    break
+
+                line = line.strip('"') # Remove quotes around label
+                atoms_read[i][0] = line
+
+        # Now loop over the read in atoms and create the atom objects
+        mol = Zmatrix()
+        fname = os.path.basename(filename)
+        name = os.path.splitext( fname )[0]
+        mol.title = name
+        mol.name = self.make_unique_name( name )
+
+        for a in atoms_read:
+            atom = ZAtom()
+            charge = a[1]
+            if a[0]:
+                # Read in label
+                tag = a[0]
+            else:
+                # Determine label from charge
+                tag = z_to_el[charge]
+
+            atom.name = tag
+            atom.symbol = z_to_el[charge]
+            atom.formal_charge = charge
+            atom.coord = [a[2],a[3],a[4] ]
+            mol.atom.append( atom )
+
+        # Got a molecule so prepare it and return it
+        self.connect_model(mol)
+        self.append_data(mol)
+        self.quick_mol_view([mol])
+        return [mol]
 
     def rdpun(self,file,root):
 
