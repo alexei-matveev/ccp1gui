@@ -4228,8 +4228,8 @@ Please check the output on the terminal/log file for further information." % fil
             print "rdsptn: error opening file: %s!\n%s" % (filename,e)
             return None
 
-        #Read 1st 4 lines
-        for i in range(4):
+        #Read 1st 3 lines
+        for i in range(3):
             line = f.readline()
 
         # Check if this is the charge/spin line 
