@@ -4212,7 +4212,7 @@ Please check the output on the terminal/log file for further information." % fil
     def rdsptn(self,filename):
         """ V. basic reader for spartan input files written only having seen 2 files
             Assumes that the format of the files is:
-            4 (for us) uniteresting lines
+            3 or 4 (for us) uniteresting lines followed by a line with the charge & spin then a
             sequence of lines each of which is charge, x, y, z terminated by a line
             with ENDCAR
             There may then be an optional block starting with the line "ATOMLABELS"
@@ -4228,11 +4228,17 @@ Please check the output on the terminal/log file for further information." % fil
             print "rdsptn: error opening file: %s!\n%s" % (filename,e)
             return None
 
-        #Skip first 4 lines
+        #Read 1st 4 lines
         for i in range(4):
             line = f.readline()
 
-        # Read in initial coordinates
+        # Check if this is the charge/spin line 
+        fields = line.split()
+        if len(fields) != 2:
+            # line is not charge/spin so skip to next
+            line = f.readline()
+
+        # read in initial coordinates
         natom = 0
         atoms_read = [] # list - each item is list [ tag, charge, x, y, z ]
         while 1:
