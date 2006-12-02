@@ -60,6 +60,12 @@ NO_CHECK=1
 ORDER_CHECK=1
 OK_CHECK=2
 
+orig = [0.0, 0.0, 0.0]
+xvec = [1.0, 0.0, 0.0]
+zvec = [0.0, 0.0, 1.0]
+
+fp0 = None
+
 #
 # define some exceptions
 #
@@ -289,7 +295,11 @@ class Indexed:
                     txt = txt + '%d ' % (b.get_index() + 1) 
             except AttributeError:
                 pass
-            print a.get_index()+1, a.seqno+1, a.symbol, a.name,  a.coord, txt
+
+            print a.get_index()+1, a.seqno+1, a.symbol, a.name, 
+            for coor in a.coord:
+                print "%10.5f" % (coor,),
+            print txt
 
         if len(self.shell):
             print 'Shells:'
@@ -1321,199 +1331,215 @@ class Zmatrix(Indexed):
             if a.z_var != None:
                 a.coord[2] = a.z_sign * a.z_var.value
 
-    def calculate_coordinates(self):
-        """Compute cartesian coordinates for all atoms"""
+    def calculate_one_coordinate(self,i):
+        """Compute cartesian coordinates for a single atom """
+        global fp0
+        if not fp0:
+            # these are for generating coords for fragments (in isolation)
+            # taken from methane oriented so that missing group
+            # is in the +z direction
+            fp0 = ZAtom()
+            fp0.coord = orig
+            fp1 = ZAtom()
+            fp1.coord = [0.943,  0.00, -0.342]
+            fp2 = ZAtom()
+            fp2.coord = [-0.47, -0.81, -0.342]
 
-        self.errors = []
+        a = self.atom[i]
+        ok = 1
 
-        xvec = [1.0, 0.0, 0.0]
-        zvec = [0.0, 0.0, 1.0]
-        orig = [0.0, 0.0, 0.0]
+        if self.debug:
+            print 'calc coord for ',self.output_atom_full(a)
 
-        # these are for generating coords for fragments
-        # taken from methane oriented so that missing group
-        # is in the +z direction
+        # fill in name field
+        # a.name = a.symbol + string.zfill(i,2)
+        if a.zorc == 'z':
+            i1 = a.i1
+            i1i = -999
+            if i1 and i1.ok:
+                i1i=i1.get_index()
+            else:
+                try:
+                    i1i = a.i1x
+                    if i1i == -1:
+                        i1 = fp0
+                    elif i1i == -2:
+                        i1 = fp1
+                    elif i1i == -3:
+                        i1 = fp2
+                except AttributeError:
+                    pass
 
-        fp0   = ZAtom()
-        fp0.coord = orig
-        fp1   = ZAtom()
-        fp1.coord = [0.943,  0.00, -0.342]
-        fp2   = ZAtom()
-        fp2.coord = [-0.47, -0.81, -0.342]
+            i2 = a.i2
+            i2i = -999
+            if i2 and i2.ok:
+                i2i=i2.get_index()
+            else:
+                try:
+                    i2i = a.i2x
+                    if i2i == -1:
+                        i2 = fp0
+                    elif i2i == -2:
+                        i2 = fp1
+                    elif i2i == -3:
+                        i2 = fp2
+                except AttributeError:
+                    pass
 
-        self.reindex()
-        
-        self.load_coordinate_variables();
+            i3 = a.i3
+            i3i = -999
+            if i3 and i3.ok:
+                i3i=i3.get_index()
+            else:
+                try:
+                    i3i = a.i3x
+                    if i3i == -1:
+                        i3 = fp0
+                    elif i3i == -2:
+                        i3 = fp1
+                    elif i3i == -3:
+                        i3 = fp2
+                except AttributeError:
+                    pass
 
-        for i in range(len(self.atom)):
-            #print i
-            a = self.atom[i]
-            ok = 1
+            if i == 0 and not self.is_frag:
+                p1 = [ 0.0, 0.0, 0.0]
+                p2 = [ 0.0, 0.0, 1.0]
+                p3 = [ 1.0, 1.0, 1.0]
+                r = 0.0
+                theta = 0.0
+                phi = 0.0
 
-            # fill in name field
-            # a.name = a.symbol + string.zfill(i,2)
+            elif i == 1 and not self.is_frag:
+                if i1i > 0:
+                    self.logerr('bad i1 atom index for atom 2: %d' % (i1i+1))
+                    ok = 0 
+                    a.ok = 0
 
-            if a.zorc == 'z':
+                if(ok):
+                    #.....assumption that i1 is set is not generally safe
+                    p1 = i1.coord
+                    p2 = cpv.add(i1.coord,zvec)
+                    # arbritary vector 
+                    p3 = cpv.add(i1.coord,xvec)
 
-                i1 = a.i1
-                i1i = -999
-                if i1 and i1.ok:
-                    i1i=i1.get_index()
-                else:
-                    try:
-                        i1i = a.i1x
-                        if i1i == -1:
-                            i1 = fp0
-                        elif i1i == -2:
-                            i1 = fp1
-                        elif i1i == -3:
-                            i1 = fp2
-                    except AttributeError:
-                        pass
-
-                i2 = a.i2
-                i2i = -999
-                if i2 and i2.ok:
-                    i2i=i2.get_index()
-                else:
-                    try:
-                        i2i = a.i2x
-                        if i2i == -1:
-                            i2 = fp0
-                        elif i2i == -2:
-                            i2 = fp1
-                        elif i2i == -3:
-                            i2 = fp2
-                    except AttributeError:
-                        pass
-
-                i3 = a.i3
-                i3i = -999
-                if i3 and i3.ok:
-                    i3i=i3.get_index()
-                else:
-                    try:
-                        i3i = a.i3x
-                        if i3i == -1:
-                            i3 = fp0
-                        elif i3i == -2:
-                            i3 = fp1
-                        elif i3i == -3:
-                            i3 = fp2
-                    except AttributeError:
-                        pass
-
-                if i == 0 and not self.is_frag:
-                    p1 = [ 0.0, 0.0, 0.0]
-                    p2 = [ 0.0, 0.0, 1.0]
-                    p3 = [ 1.0, 1.0, 1.0]
-                    r = 0.0
-                    theta = 0.0
+                    if a.r_var == None:
+                        r = a.r
+                    else:
+                        r = a.r_sign * a.r_var.value
+                    theta =  0.0
                     phi = 0.0
 
-                elif i == 1 and not self.is_frag:
-                    if i1i > 0:
-                        self.logerr('bad i1 atom index for atom 2: %d' % (i1i+1))
-                        ok = 0 
-                        a.ok = 0
+            elif i == 2 and not self.is_frag:
 
-                    if(ok):
-                        #.....assumption that i1 is set is not generally safe
-                        p1 = i1.coord
-                        p2 = cpv.add(i1.coord,zvec)
-                        # arbritary vector 
-                        p3 = cpv.add(i1.coord,xvec)
-
-                        if a.r_var == None:
-                            r = a.r
-                        else:
-                            r = a.r_sign * a.r_var.value
-                        theta =  0.0
-                        phi = 0.0
-
-                elif i == 2 and not self.is_frag:
-
-                    if i1i == 0 and i2i == 1:
-                        pass
-                    elif i1i == 1 and i2i == 0:
-                        pass
-                    else:
-                        if i1i > 1 or i1i == -999 or i2i > 1 or i2i == -999:
-                            self.logerr('bad atom indices for atom 3: %d %d' % (i1i+1,i2i+1))
-                            ok = 0
-                            a.ok = 0
-
-                    if(ok):
-                        p1 = i1.coord
-                        p2 = i2.coord
-                        p3 = cpv.add(i1.coord,xvec)
-                        if a.r_var == None:
-                            r = a.r
-                        else:
-                            r = a.r_sign * a.r_var.value
-                        if a.theta_var == None:
-                            theta = a.theta 
-                        else:
-                            theta = a.theta_sign * a.theta_var.value
-                        phi = 0.0
-
+                if i1i == 0 and i2i == 1:
+                    pass
+                elif i1i == 1 and i2i == 0:
+                    pass
                 else:
-
-                    if i1i != -999 and i2i != -999 and i3i != -999 and \
-                       i1i < i and i2i < i and i3i < i and \
-                       i1i != i2i and i2i != i3i and i1i != i3i:
-
-
-                        p1 = i1.coord
-                        p2 = i2.coord
-                        p3 = i3.coord
-                        if a.r_var == None:
-                            r = a.r
-                        else:
-                            r = a.r_sign * a.r_var.value
-                        if a.theta_var == None:
-                            theta = a.theta 
-                        else:
-                            theta = a.theta_sign * a.theta_var.value
-                        if a.phi_var == None:
-                            phi = a.phi 
-                        else:
-                            phi = a.phi_sign * a.phi_var.value
-
-                    else:
-                        print 'bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1)
-                        self.logerr('bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1))
+                    if i1i > 1 or i1i == -999 or i2i > 1 or i2i == -999:
+                        self.logerr('bad atom indices for atom 3: %d %d' % (i1i+1,i2i+1))
                         ok = 0
                         a.ok = 0
 
                 if(ok):
-                    # add exception handling here later
-                    ##print r, type(r), phi, type(phi), dtorad, type(dtorad), theta, type(theta)
+                    p1 = i1.coord
+                    p2 = i2.coord
+                    p3 = cpv.add(i1.coord,xvec)
+                    if a.r_var == None:
+                        r = a.r
+                    else:
+                        r = a.r_sign * a.r_var.value
+                    if a.theta_var == None:
+                        theta = a.theta 
+                    else:
+                        theta = a.theta_sign * a.theta_var.value
+                    phi = 0.0
 
-                    a.coord = self.__ziccd(p3,p2,p1,r,theta*dtorad,phi*dtorad)
+            else:
 
-                    if self.debug:
-                        print '================',r,theta,phi
-                        print p3
-                        print p2
-                        print p1
-                        print a.coord
-                    a.ok = 1
+                if i1i != -999 and i2i != -999 and i3i != -999 and \
+                   i1i < i and i2i < i and i3i < i and \
+                   i1i != i2i and i2i != i3i and i1i != i3i:
+
+                    p1 = i1.coord
+                    p2 = i2.coord
+                    p3 = i3.coord
+                    if a.r_var == None:
+                        r = a.r
+                    else:
+                        r = a.r_sign * a.r_var.value
+                    if a.theta_var == None:
+                        theta = a.theta 
+                    else:
+                        theta = a.theta_sign * a.theta_var.value
+                    if a.phi_var == None:
+                        phi = a.phi 
+                    else:
+                        phi = a.phi_sign * a.phi_var.value
+
                 else:
-                    ##print 'skip calc for',i+1
+                    print 'bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1)
+                    self.logerr('bad atom indices for atom %d: %d %d %d' % (i+1,i1i+1,i2i+1,i3i+1))
+                    ok = 0
                     a.ok = 0
 
+
+            # Check for numerical problems with the dihedral
+            if i > 2:
+                if theta < SMALL:
+                    print 'Small theta, torsion undefined'
+                elif cpv.get_angle_formed_by(p3,p2,p1) < SMALL:
+                    print 'WARNING: Small jkl angle, torsion undefined'
+                elif abs(math.pi - cpv.get_angle_formed_by(p3,p2,p1)) < SMALL:
+                    print 'WARNING: 180 jkl angle, torsion undefined'
+
+            if(ok):
+                # add exception handling here later
+                if self.debug > 1:
+                    print 'ziccd arg types',type(r),type(phi),type(dtorad),type(theta)
+
+                a.coord = self.__ziccd(p3,p2,p1,r,theta*dtorad,phi*dtorad)
+
+                if self.debug > 1:
+                    print '================',r,theta,phi
+                    print p3
+                    print p2
+                    print p1
+                if self.debug:
+                    print 'new coords for atom',i,
+                    for coor in a.coord:
+                        print "%10.5f" % (coor,),
+                    print
+                a.ok = 1
+            else:
+                print 'skip calc for',i+1
+                a.ok = 0
+
+        return not ok
+
+    def calculate_coordinates(self):
+        """Compute cartesian coordinates for all atoms"""
+
+        self.errors = []
+        self.reindex()
+        self.load_coordinate_variables()
+
+        # Loop over atoms computing cartesians
+        ok = 1
+        for i in range(len(self.atom)):
+            ok = ok and not self.calculate_one_coordinate(i)
+
         if self.debug:
-            print 'calculate_coordinates done, errors:'
-            print self.errors
-
-        if self.debug > 2:
-            self.list()
-            for a in self.atom:
-                print a.ok
-
-
-
+            if len(self.errors):
+                print 'calculate_coordinates done, errors:',errors
+            else:
+                print 'calculate_coordinates done with no errors'
+            if not ok:
+                print 'problems with atoms:',
+                for a in self.atom:
+                    if not a.ok: print a.get_index()
+                print
 
     def __ziccd(self,a,b,c,r,theta,phi):
         """compute coordinates of atom x from a,b,c
@@ -2641,7 +2667,7 @@ class Zmatrix(Indexed):
         else:
             v.value = value
 
-    def import_geometry(self,newgeom,update_constants=1):
+    def import_geometry_orig(self,newgeom,update_constants=1):
 
         """Import a geometry while trying to retain as much as possible of
         the object contents.
@@ -2751,7 +2777,7 @@ class Zmatrix(Indexed):
                 i1 = self.atom[2].i1.get_index()
                 i2 = self.atom[2].i2.get_index()
                 rnew = self.get_distance(newgeom.atom[2], newgeom.atom[i1])
-                anew = self.get_angle(newgeom.atom[2], newgeom.atom[i1],newgeom.atom[i2])
+                anew = self.get_angle(newgeom.atom[2], newgeom.atom[i1], newgeom.atom[i2])
                 v = self.atom[2].r_var
                 if v and not v.constant:
                     self.update_variable(v,rnew)
@@ -2791,8 +2817,6 @@ class Zmatrix(Indexed):
                             self.atom[2].theta = anew
 
             for a in self.atom[3:]:
-
-                print 'loop'
 
                 i = a.get_index()
                 i1 = a.i1.get_index()
@@ -2854,7 +2878,8 @@ class Zmatrix(Indexed):
                     self.update_variable(v,tnew,torsion=1)
                 else:
                     tnew = self._adjust_dihedral(tnew, a.phi)
-                    print 'using adjusted dihedral',tnew
+                    if self.debug:
+                        print 'using adjusted dihedral',tnew
                     if not update_constants:
                         if v:
                             tester = abs(v,value - tnew)
@@ -2878,24 +2903,240 @@ class Zmatrix(Indexed):
             # Compute new coords
             self.calculate_coordinates()
 
+    def import_geometry(self,newgeom,update_constants=1):
 
+        """Import a geometry while trying to retain as much as possible of
+        the object contents.
+        """
+
+        # first check for the simple cases
+        somez = 0
+        somec = 0
+        for a in self.atom:
+            if a.zorc == 'z':
+                somez = 1
+            if a.zorc == 'c':
+                somec = 1
+
+        if somez and somec:
+            ####raise ImportGeometryError, 
+            print "cant re-import mixed coordinate systems yet"
+            print " --------------->> importing as cartesian"
+            somez=0
+            for a in self.atom:
+                if a.zorc == 'z':
+                    a.zorc= 'c'
+                    
+        if somec and not somez:
+
+            # pure cartesian import
+            # there could potentially be a re-ordering transformation
+            # here, but no way to perform it yet
+
+            if len(self.atom) != len(newgeom.atom):
+                print 'number of atoms has changed'
+                raise ImportGeometryError
+
+            for i in range(len(self.atom)):
+                self.atom[i].coord = copy.deepcopy(newgeom.atom[i].coord)
+
+        elif somec == 0:
+
+            # pure Z-matrix import
+
+            if self.debug:
+                print 'import pure z-matrix format'
+
+            self.imported_vars = {}
+
+            # phi convention
+            self.phi_convention = 1
+
+            # Make a temporary copy of the starting point
+            # This will hold the new cartesians and internals
+            # computed from them
+
+            # It also contains dummy coordinates reconstituted from
+            # the internals (ie dummy coordinates in the incoming frame)
+            # however workz will not be a valid z-matrix - it will not
+            # in general obey z-matrix conventions
+
+            # there should be a clever way to compute dummy coordinates for one of the
+            # first 3 atoms (ie not z-matrix conventions) but we do not have that yet
+            
+            workz = copy.copy(self)
+
+            # Load up new cartesians where we can
+            i2 = 0
+            for i1 in range(len(workz.atom)):
+
+                if self.debug:
+                    print
+                    print 'import cart loop i1',i1,'workz name',workz.atom[i1].name[0]
+
+                if string.upper(workz.atom[i1].name[0]) == 'X' and \
+                       string.upper(newgeom.atom[i2].name[0]) != 'X':
+                    # We have a dummy but the incoming geometry is missing it
+                    # We can try and compute its coordinates using the internals
+                    # we currently have
+                    #   this assumes they were constants, also for the first few atoms
+                    #   things may break down because of zmatrix convention and
+                    #   orientation differences
+                    workz.calculate_one_coordinate(i1)
+
+                else:
+                    # Take over the new coordinates into the temporary structure
+                    workz.atom[i1].coord = newgeom.atom[i2].coord
+                    workz.atom[i1].ok = 1
+                    i2 = i2 + 1
+
+                    # now attempt to find internal coordinates for workz
+                    workz.update_internals_from_cartesians(i1,update_constants=update_constants)
+
+                    # finally update of our own internals and variables
+
+                    a = self.atom[i1]
+                    w = workz.atom[i1]
+                    if i1 > 1:
+                        v = a.r_var
+                        if not update_constants and (not v or v.constant):
+                            pass # constant value cannot be updated
+                        elif v:
+                            v.value = w.r_var.value
+                        else:
+                            a.r = w.r
+
+                    if i1 > 2:
+                        v = a.theta_var
+                        if not update_constants and (not v or v.constant):
+                            pass # constant value cannot be updated
+                        elif v:
+                            v.value = w.theta_var.value
+                        else:
+                            a.theta = w.theta
+
+                    if i1 > 3:
+                        v = a.phi_var
+                        if not update_constants and (not v or v.constant):
+                            pass # constant value cannot be updated
+                        elif v:
+                            v.value = w.phi_var.value
+                        else:
+                            a.phi = w.phi
+
+            # Compute new coords, this may involve a change back
+            # to the z-matrix orientation
+            self.calculate_coordinates()
+
+    def update_internals_from_cartesians(self,index,update_constants=0):
+
+        a = self.atom[index]
+        if self.debug:
+            print 'update_internals_from_cartesians: Current atom ',index,' coords',
+            for coor in a.coord:
+                print "%10.5f" % (coor,),
+            print
+
+        if index > 0:
+            i1 = a.i1.get_index()
+            rnew = self.get_distance(a,self.atom[i1])
+            if self.debug:
+                print 'new r (',index+1,i1+1,') = ',rnew
+            v = a.r_var
+            if v and not v.constant:
+                self.update_variable(v,rnew)
+            else:
+                if not update_constants:
+                    if v:
+                        tester = abs(v.value - rnew)
+                    else:
+                        tester = abs(a.r - rnew)
+                        print '    atom ',index+1,' r diff=',tester
+                        if  tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError, "constant value changed"
+                else:
+                    if v:
+                        self.update_variable(v,rnew)
+                    else:
+                        a.r = rnew
+
+        if index > 1:
+            i2 = a.i2.get_index()
+            anew = self.get_angle(a, self.atom[i1], self.atom[i2])
+
+            if self.debug:
+                print 'new theta (',index+1,i1+1,i2+1,') = ',anew
+
+            v = a.theta_var
+            if v and not v.constant:
+                self.update_variable(v,anew)
+            else:
+                if not update_constants:
+                    if v:
+                        tester = abs(v.value - anew)
+                    else:
+                        tester = abs(a.theta - anew)
+                    print '   atom ',index,'theta diff=',tester
+                    if tester > SMALL:
+                        print 'could not import, constant parameter has changed'
+                        raise ImportGeometryError
+                else:
+                    if v:
+                        self.update_variable(v,anew)
+                    else:
+                        a.theta = anew
+
+        if index > 2:
+            i3 = a.i3.get_index()
+
+            tnew = self.get_dihedral(a, self.atom[i1],self.atom[i2],self.atom[i3])
+            if self.debug:
+                print 'new phi (',index+1,i1+1,i2+1,i3+1,') =',tnew
+
+            v = a.phi_var
+            if v and not v.constant:
+                self.update_variable(v,tnew,torsion=1)
+            else:
+                tnew = self._adjust_dihedral(tnew, a.phi)
+                print '    using adjusted dihedral',tnew
+                if not update_constants:
+                    if v:
+                        tester = abs(v,value - tnew)
+                    else:
+                        tester = abs(a.phi - tnew)
+
+                    print a.get_index(),'phi',a.phi,tnew
+                    tester = abs(a.phi - tnew)
+                    print '    atom '+str(index)+' phi diff=',tester
+                    if tester > SMALL:
+                        print 'could not import, constant parameter has changed'
+                        raise ImportGeometryError
+                else:
+                    if v:
+                        self.update_variable(v,tnew)
+                    else:
+                        a.phi = tnew
 
     def update_variable(self,var,val,torsion=0):
 
         # need to code up the sign
-        print 'update v',var.name, val 
-        if self.imported_vars.has_key(var.name):
+        if self.debug:
+            print 'update v',var.name, val 
 
+        if self.imported_vars.has_key(var.name):
             # could average here
             oldval = self.imported_vars[var.name][0]
             if torsion:
                 val = self._adjust_dihedral(val,oldval)
-                print 'using adjusted dihedral1',val
+                if self.debug:
+                    print 'using adjusted dihedral1',val
+
             self.imported_vars[var.name].append(val)
 
             tester = abs(val-oldval)
 
-            if self.debug or 1:
+            if self.debug:
                 print 'var val check var=',var.name,' diff=',tester
             if tester > SMALL:
                 print 'could not import, mismatched variable values'
@@ -2914,24 +3155,27 @@ class Zmatrix(Indexed):
 
     def _adjust_dihedral(self, val, oldval):
 
-        print '_adjust_dihedral',val,oldval
+        if self.debug:
+            print '_adjust_dihedral',val,oldval
         # apply any adjustment of measuring convention
         val = val*self.phi_convention
         # apply rotational periodicity
         more = 1
         while more:
             tester = oldval - val
-            print 'tester',tester
+            if self.debug:
+                print 'tester',tester
             if tester < -180:
-                print 'shift -360'
+                if self.debug:
+                    print 'shift -360'
                 val = val - 360
             elif tester > 180:
-                print 'shift +360'
+                if self.debug:
+                    print 'shift +360'
                 val = val + 360
             else:
                 more = 0
         return val
-
 
     def autoz(self,testang=45):
 
@@ -3773,12 +4017,9 @@ class Zmatrix(Indexed):
                 index = atom.get_index()
                 atom.coord = atomlist[ index ][1]
                 atom.zorc = 'c'
-            
-
 
     def getSymmetry( self , thresh = None ):
         """ Return a string with the symmetry of the molecule. """
-        
 
         if not len( self.atom ) > 1:
             print "Error in getSymmetry! Molecule has no atoms"
@@ -4104,9 +4345,8 @@ if __name__ == "__main__":
     from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
 
-    model=Zmatrix(file=gui_path+"/examples/import1.zmt")
-
-    model.list()
+    #model=Zmatrix(file=gui_path+"/examples/import1.zmt")
+    #model.list()
 
     if 0 :
         # check autoz function
@@ -4130,17 +4370,49 @@ if __name__ == "__main__":
         model.import_geometry(model2)
         model.list()
         
-    if 1:
-        # import cartesians ->  zmat with variable
-        model=Zmatrix(file=gui_path+"/examples/import2.zmt")
-        model.zlist()
-
-        #fp = open("tmp.c","w")
-        #for txt in model.output_coords_block():
-        #    fp.write(txt+'\n')
-        #fp.close()
+    if 0:
+        # import cartesians ->  zmat without variables
         p = PunchReader()
-        p.scan(gui_path+"/examples/import.pun")
-        model2 = p.objects[0]
-        model.import_geometry(model2)
+        p.scan(gui_path+"/examples/methane.pun")
+        model = p.objects[0]
+        model2 = Zmatrix(file=gui_path+"/examples/methane.zmt")
+        print 'INITIAL CART MODEL'
         model.zlist()
+        print 'INITIAL Z MODEL'
+        model2.zlist()
+        print 'IMPORT'
+        model2.import_geometry(model)
+        print 'AFTER IMPORT'
+        model2.zlist()
+
+    if 0:
+        # import cartesians ->  zmat with variables
+        p = PunchReader()
+        p.scan(gui_path+"/examples/methane.pun")
+        model = p.objects[0]
+        model2 = Zmatrix(file=gui_path+"/examples/methane1.zmt")
+        print 'INITIAL CART MODEL'
+        model.zlist()
+        print 'INITIAL Z MODEL'
+        model2.zlist()
+        print 'IMPORT'
+        model2.import_geometry(model)
+        print 'AFTER IMPORT'
+        model2.zlist()
+
+    if 1:
+        # import cartesians ->  zmat with a dummy
+        # this generates warnings and the wrong answer with the current code
+        # because it has a dummy at atom 2
+        p = PunchReader()
+        p.scan(gui_path+"/examples/methane.pun")
+        model = p.objects[0]
+        model2 = Zmatrix(file=gui_path+"/examples/methane2.zmt")
+        print 'INITIAL CART MODEL'
+        model.zlist()
+        print 'INITIAL Z MODEL'
+        model2.zlist()
+        print 'IMPORT'
+        model2.import_geometry(model)
+        print 'AFTER IMPORT'
+        model2.zlist()
