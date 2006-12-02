@@ -1475,7 +1475,7 @@ class DALTONCalcEd(QMCalcEd):
             from jobmanager import subprocess
             dalton_script = self.calc.get_parameter( 'dalton_script' )
             cmd = dalton_script + " -h"
-            p = subprocess.ForegroundPipe(cmd)
+            p = subprocess.Pipe(cmd)
             code = p.run()
 
             gotscratch = None
