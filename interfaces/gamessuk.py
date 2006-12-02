@@ -672,18 +672,21 @@ class GAMESSUKCalc(QMCalc):
                 # We've found a script so check it's o.k. to use it
                 # Check if rungamess -V works - this prints out the environment variables
                 from jobmanager import subprocess
-                cmd = script + " -V"
-                p = subprocess.ForegroundPipe(cmd)
+                #cmd = script + " -V"
+                p = subprocess.Pipe(script,args=['-V'])
                 code = p.run()
                 dict = {}
+                print 'code',code,'p.error',p.error
                 if p.error:
                     print "Error trying to check for rungamess!"
                     self.rungamess = None
                 else:
+                    print p.output
                     for l in p.output:
                         w = l.split()
                         if len(w) == 2:
                             dict[w[0]]=w[1]
+                    print dict
                     try:
                         test = dict['GAMESS_LIB']
                         self.rungamess = script
@@ -1248,12 +1251,22 @@ class GAMESSUKCalc(QMCalc):
                                str(a.coord[2]) + ' ' +
                                str(a.get_number()) + ' ' +
                                a.name + '\n')
-                else:
+                elif a.partial_charge != -9999:
                     file.write(str(a.coord[0]) + ' ' +
                                str(a.coord[1]) + ' ' +
                                str(a.coord[2]) + ' ' +
                                str(a.partial_charge) + ' ' +
                                a.name + '\n')
+                elif string.upper(a.name[0]) == 'X':
+                    # skip dummies
+                    pass
+                else:
+                    file.write(str(a.coord[0]) + ' ' +
+                               str(a.coord[1]) + ' ' +
+                               str(a.coord[2]) + ' ' +
+                               str(0) + ' ' +
+                               a.name + '\n')
+            
 
         file.write('end\n')
         #
@@ -2608,7 +2621,7 @@ class GAMESSUKCalcEd(QMCalcEd):
             try:
                 from jobmanager import subprocess
                 cmd="rungamess -V"
-                p = subprocess.ForegroundPipe(cmd)
+                p = subprocess.Pipe(cmd)
                 code = p.run()
                 dict = {}
                 for l in p.output:
@@ -3104,7 +3117,8 @@ if __name__ == "__main__":
 
     #button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
     #button.pack()
-    if 1:
+
+    if 0:
         from viewer.rc_vars import rc_vars
         rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
         rc_vars[ 'nproc'] = '1'
@@ -3118,11 +3132,13 @@ if __name__ == "__main__":
         rc_vars['myproxy_user'] = 'jmht'
         rc_vars['myproxy_password'] = 'pythonGr1d'
         rc_vars['gamessuk_exe'] = '/home/jmht/GAMESS-UK/GAMESS-UK-7.0/bin/gamess'
-        
+
+    if 1:
         calc.set_input('mol_obj',model)
         jm = JobManager()
         je = JobEditor(root,jm)
         calc2 = copy.deepcopy(calc)
         vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
         #vt.Run()
+
     root.mainloop()
