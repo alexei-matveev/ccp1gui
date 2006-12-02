@@ -425,7 +425,7 @@ class Pipe(SubProcess):
     """
 
     def __init__(self,cmd,args=None,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)        
+        SubProcess.__init__(self,cmd,args=args,**kw)        
 
     def run(self):
 
