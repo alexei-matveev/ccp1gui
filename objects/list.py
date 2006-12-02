@@ -8,6 +8,6 @@ class List:
         return self.title
 
     def __str__(self):
-        return "List object + " + self.data
+        return "List object + " + str(self.data)
 
     
