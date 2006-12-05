@@ -1165,7 +1165,7 @@ class GridJob(Job):
         self.job_parameters['stdin'] = None
         self.job_parameters['stdout'] = None
         self.job_parameters['stderr'] = None
-        self.job_parameters['remote_home'] = None
+        self.job_parameters['directory'] = None
         self.job_parameters['environment'] = {}
 
         # This is a list of all parameters that are usable in the CreateRSLString method
@@ -1174,6 +1174,7 @@ class GridJob(Job):
         self.xrsl_parameters = ['arguments',
                                 'count',
                                 'cpuTime',
+                                 'directory',
                                  'executable',
                                  'environment',
                                  'jobName',
@@ -1251,8 +1252,9 @@ class GrowlJob(GridJob):
 
         self.jobtype = 'GROWL'
         self.job_parameters['remote_home'] = None
-        self.job_parameters['remote_dir'] = None
         self.job_parameters['user_remote_dir'] = None # directory specified by the user
+        self.job_parameters['directory'] = None # The full path to the working directory on the
+                                                # remote machine (derived from user_remote_dir)
         self.job_parameters['count'] = 1
         self.job_parameters['hosts'] = []
 
@@ -1308,27 +1310,27 @@ class GrowlJob(GridJob):
           
         """
 
-        if not self.job_parameters['remote_dir']:
+        if not self.job_parameters['directory']:
             # Need to work out the path
             homedir = self.get_remote_homedir()
             if not self.job_parameters['user_remote_dir']:
                 # Working in home directory
                 remote_dir =  homedir+"/"
-                self.job_parameters['remote_dir'] = remote_dir
+                self.job_parameters['directory'] = remote_dir
             else:
                 # User has specified a working directory
                 remote_dir = self.job_parameters['user_remote_dir']
                 if remote_dir[-1] != "/": # Ensure there is a trailing slash
                     remote_dir += "/"
                 if remote_dir[0] == "/": # Absolute path
-                    self.job_parameters['remote_dir'] = remote_dir
+                    self.job_parameters['directory'] = remote_dir
                 else: # Relative path
                     if remote_dir[0] == "~":
                         remote_dir = remote_dir[1:]
                     remote_dir = homedir+"/"+remote_dir
-                    self.job_parameters['remote_dir'] = remote_dir
+                    self.job_parameters['directory'] = remote_dir
         else:
-            remote_dir = self.job_parameters['remote_dir']
+            remote_dir = self.job_parameters['directory']
 
         if self.debug:
             print "get_remote_dir returning: %s" % remote_dir
@@ -1346,7 +1348,7 @@ class GrowlJob(GridJob):
         if self.debug:
             print "GrowlJob _run_command running: %s" % (cmd_string)
             
-        p = subprocess.Spawn( command, args=args ,debug=1)
+        p = subprocess.Spawn( command, args=args ,debug=None)
         p.run()
         ret = p.wait()
         if ret < 0:
@@ -1477,7 +1479,9 @@ class GrowlJob(GridJob):
         raise JobError,"GrowlJob grid-staus got unrecognised output!\n%s" % output
 
     def grid_get_jobmanager(self,host):
-        """Remove a remote file"""
+        """See if we can determine the job manager on the remote machine
+           If we can't we just return None
+        """
 
         output,error = self._run_command( 'grid-get-jobmanager',args = [host] )
         self.check_common_errors( output, error, command='grid-get-jobmanager' )
@@ -1490,7 +1494,9 @@ class GrowlJob(GridJob):
             if m:
                 return m.group(1)
         if not m:
-            raise JobError,"GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
+            #raise JobError,"GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
+            print "GrowlJob parse_output: grid-get-jobmanager could not find jobmanger!\n%s" % output
+            return None
 
     def grid_submit(self,host,rsl_string,executable,jobmanager=None):
         """
@@ -1660,7 +1666,9 @@ class GrowlJob(GridJob):
 
         remote_dir = self.get_remote_dir()
         host = self.get_host()
-        jobmanager = self.grid_get_jobmanager(host)
+        # Probably best to run with the default jobmanager
+        # jobmanager = self.grid_get_jobmanager(host)
+        jobmanager = None
 
         # Set up any parameters so that we get a suitable rsl string when we call
         # CreateRSLString
