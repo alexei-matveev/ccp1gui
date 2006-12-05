@@ -436,10 +436,12 @@ class GAMESSUKCalc(QMCalc):
         
         # Name the punch file
         if jobtype == 'GROWL':
+            # For growl cannot currenlt specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
         else:
             local_punch = remote_punch  = job_name+'.pun'
+
 
         job.add_step( DELETE_FILE,
                       'remove old output',
@@ -830,7 +832,7 @@ class GAMESSUKCalc(QMCalc):
         #    job.job_parameters['environment']['ftn058'] = punchfile
 
         # Make sure we run with the correct executable and with MPI if > 1 proc
-        if job.job_parameters['count'] > 1:
+        if int(job.job_parameters['count']) > 1:
             #if not job.job_parameters['jobtype']:
             job.job_parameters['jobtype'] = 'mpi'
             #if not job.job_parameters['executable']:
@@ -838,6 +840,7 @@ class GAMESSUKCalc(QMCalc):
         else:
             #if not job.job_parameters['executable']:
             job.job_parameters['executable'] = 'gamess'
+            job.job_parameters['jobtype'] = 'single'
             
 
     def get_theory(self):
