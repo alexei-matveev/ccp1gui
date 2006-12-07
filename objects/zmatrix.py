@@ -57,8 +57,8 @@ trans = string.maketrans('a','a')
 SMALL = 1.0e-4
 
 NO_CHECK=1
-ORDER_CHECK=1
-OK_CHECK=2
+ORDER_CHECK=2
+OK_CHECK=3
 
 orig = [0.0, 0.0, 0.0]
 xvec = [1.0, 0.0, 0.0]
@@ -214,8 +214,14 @@ class Atom:
         """Rotate the atom around center"""
         angle = angle *dtorad
         R = cpv.rotation_matrix(angle,axis)
+        print 'R=',R
+        print 'centre=',center
         rt = cpv.sub(self.coord,center)
+        print 'initial coords',self.coord
+        print 'rt',rt
+        print 'trans rt',cpv.transform(R,rt)
         self.coord = cpv.add(cpv.transform(R,rt),center)
+        print 'rotated atom coords',self.coord
 
 class Bond:
     def __init__(self):
@@ -333,12 +339,12 @@ class VariableError(exceptions.Exception):
 
 class Zmatrix(Indexed):
 
-    def __init__(self, mol=None,file=None,list=None,title=None):
+    def __init__(self, mol=None,file=None,list=None,title=None,debug=0):
         apply(Indexed.__init__, (self,))
 
         self.v_key = 0
-        self.debug = 0
-        self.debug_frag = 1
+        self.debug = debug
+        self.debug_frag = debug
         self.is_frag = 0
         self.variables = []
         self.cell = []
@@ -1333,7 +1339,7 @@ class Zmatrix(Indexed):
 
     def calculate_one_coordinate(self,i):
         """Compute cartesian coordinates for a single atom """
-        global fp0
+        global fp0, fp1, fp2
         if not fp0:
             # these are for generating coords for fragments (in isolation)
             # taken from methane oriented so that missing group
@@ -2355,6 +2361,9 @@ class Zmatrix(Indexed):
         """
         i3 = None
         bestang = testang
+
+        print 'i3 CHECK is',check
+
         if self.debug:
             print '   _find_i3',target.get_index(),'i1',i1atom.get_index(),'i2',i2atom.get_index(),
             if improper:
@@ -2365,6 +2374,7 @@ class Zmatrix(Indexed):
             list = i1atom.conn
         else:
             list = i2atom.conn
+
         for test in list:
             if self.debug:
                 print '     checking',test.get_index(),
@@ -2469,11 +2479,28 @@ class Zmatrix(Indexed):
         i2_tmp = atom.i2
         i3_tmp = atom.i3
 
+        if self.debug:
+            print 'Adding fragment',fragment, 'to atom',atom.get_index()
+            self.zlist()
+
+        print 'Connections',atom.conn
         if not i1_tmp:
             i1_tmp = atom.conn[0]
 
+            print 'first atom i1=',i1_tmp
+
+        print 'I2 LOOP'
         if not i2_tmp:
             i2_tmp = self._find_i2(atom,i1_tmp,check=NO_CHECK,check_i3=0)
+
+            print 'first atom i2=',i2_tmp
+
+        print 'I3 LOOP'
+        if not i3_tmp:
+            i3_tmp = self._find_i3(atom,i1_tmp,i2_tmp,check=NO_CHECK)
+
+            print 'first atom i3=',i2_tmp
+
 
         iref[-1] = i1_tmp
         iref[-2] = i2_tmp
@@ -2918,16 +2945,12 @@ class Zmatrix(Indexed):
             if a.zorc == 'c':
                 somec = 1
 
-        if somez and somec:
-            ####raise ImportGeometryError, 
-            print "cant re-import mixed coordinate systems yet"
-            print " --------------->> importing as cartesian"
-            somez=0
-            for a in self.atom:
-                if a.zorc == 'z':
-                    a.zorc= 'c'
-                    
-        if somec and not somez:
+        if somez == 0 and len(self.variables) == 0:
+
+            # pure cartesian import with no variables, allow everything to change
+            update_constants=1
+
+        if 0:
 
             # pure cartesian import
             # there could potentially be a re-ordering transformation
@@ -2940,9 +2963,11 @@ class Zmatrix(Indexed):
             for i in range(len(self.atom)):
                 self.atom[i].coord = copy.deepcopy(newgeom.atom[i].coord)
 
-        elif somec == 0:
+###        elif somec == 0:
 
-            # pure Z-matrix import
+        else:
+
+            # Z-matrix import including some cartesians
 
             if self.debug:
                 print 'import pure z-matrix format'
@@ -2990,39 +3015,85 @@ class Zmatrix(Indexed):
                     workz.atom[i1].ok = 1
                     i2 = i2 + 1
 
-                    # now attempt to find internal coordinates for workz
-                    workz.update_internals_from_cartesians(i1,update_constants=update_constants)
-
-                    # finally update of our own internals and variables
-
                     a = self.atom[i1]
                     w = workz.atom[i1]
-                    if i1 > 1:
-                        v = a.r_var
-                        if not update_constants and (not v or v.constant):
-                            pass # constant value cannot be updated
-                        elif v:
-                            v.value = w.r_var.value
-                        else:
-                            a.r = w.r
 
-                    if i1 > 2:
-                        v = a.theta_var
-                        if not update_constants and (not v or v.constant):
-                            pass # constant value cannot be updated
-                        elif v:
-                            v.value = w.theta_var.value
-                        else:
-                            a.theta = w.theta
+                    if a.zorc == 'z':
+                        # now attempt to find internal coordinates for workz and check whether
+                        # constants are being violated
+                        workz.update_internals_from_cartesians(i1,update_constants=update_constants)
+                    else:
+                        # move cartesians as input into variables if present, and check for
+                        # violations
 
-                    if i1 > 3:
-                        v = a.phi_var
-                        if not update_constants and (not v or v.constant):
-                            pass # constant value cannot be updated
-                        elif v:
-                            v.value = w.phi_var.value
-                        else:
-                            a.phi = w.phi
+                        workz.update_cartesians_from_cartesians(i1,a,update_constants=update_constants)
+
+
+            for i1 in range(len(workz.atom)):
+
+                if self.debug:
+                    print
+                    print 'update self loop',i1,'workz name',workz.atom[i1].name[0]
+                    
+                    # finally update of our own internals and variables
+
+                    if a.zorc == 'z':
+
+                        if i1 > 1:
+                            v = a.r_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+                            elif v:
+                                v.value = w.r_var.value
+                            else:
+                                a.r = w.r
+
+                        if i1 > 2:
+                            v = a.theta_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+                            elif v:
+                                v.value = w.theta_var.value
+                            else:
+                                a.theta = w.theta
+
+                        if i1 > 3:
+                            v = a.phi_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+                            elif v:
+                                v.value = w.phi_var.value
+                            else:
+                                a.phi = w.phi
+                    else:
+
+                        if 1:
+                            v = a.x_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+                            elif v:
+                                v.value = w.x_var.value
+                            else:
+                                a.coord[0] = w.coord[0]
+
+                            v = a.y_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+
+                            elif v:
+                                v.value = w.y_var.value
+                            else:
+                                a.coord[1] = w.coord[1]
+
+                            v = a.z_var
+                            if not update_constants and (not v or v.constant):
+                                pass # constant value cannot be updated
+
+                            elif v:
+                                v.value = w.z_var.value
+                            else:
+                                a.coord[0] = w.coord[0]
+
 
             # Compute new coords, this may involve a change back
             # to the z-matrix orientation
@@ -3117,6 +3188,88 @@ class Zmatrix(Indexed):
                         self.update_variable(v,tnew)
                     else:
                         a.phi = tnew
+
+
+    def update_cartesians_from_cartesians(self,index,aref,update_constants=0):
+        """ From the name you might expect this code does very little,
+        however there is a job to do when a new set of cartesians is
+        generated; any variable definitions need to be check and an exception
+        thrown if constant values have changed.
+        
+        """
+
+        a = self.atom[index]
+        if self.debug:
+            print 'update_cartesians_from_cartesians: Current atom ',index,' coords',
+            for coor in a.coord:
+                print "%10.5f" % (coor,),
+            print
+
+        if 1:
+            xnew = a.coord[0]
+            v = a.x_var
+            if v and not v.constant:
+                self.update_variable(v,xnew)
+            else:
+                if not update_constants:
+                    if v:
+                        tester = abs(v.value - xnew)
+                    else:
+                        tester = abs(aref.coord[0] - xnew)
+                        print '    atom ',index+1,' x diff=',tester
+                        if  tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError, "constant value changed"
+                else:
+                    if v:
+                        self.update_variable(v,xnew)
+                    else:
+                        # All done
+                        pass
+
+        if 1:
+            ynew = a.coord[1]
+            v = a.y_var
+            if v and not v.constant:
+                self.update_variable(v,ynew)
+            else:
+                if not update_constants:
+                    if v:
+                        tester = abs(v.value - ynew)
+                    else:
+                        tester = abs(aref.coord[1] - ynew)
+                        print '    atom ',index+1,' y diff=',tester
+                        if  tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError, "constant value changed"
+                else:
+                    if v:
+                        self.update_variable(v,ynew)
+                    else:
+                        # All done
+                        pass
+
+        if 1:
+            znew = a.coord[2]
+            v = a.z_var
+            if v and not v.constant:
+                self.update_variable(v,znew)
+            else:
+                if not update_constants:
+                    if v:
+                        tester = abs(v.value - znew)
+                    else:
+                        tester = abs(aref.coord[2] - znew)
+                        print '    atom ',index+1,' z diff=',tester
+                        if tester > SMALL:
+                            print 'could not import, constant parameter has changed'
+                            raise ImportGeometryError, "constant value changed"
+                else:
+                    if v:
+                        self.update_variable(v,znew)
+                    else:
+                        # All done
+                        pass
 
     def update_variable(self,var,val,torsion=0):
 
@@ -3716,8 +3869,8 @@ class Zmatrix(Indexed):
     def update_bond_distances( self, atom, newElement):
         """ Scale the bond for atom so that the bond distance between it
             and the atom it is connected to (root) is set to be that as defined
-            in the table of bond distances in perioidic. Currently this is only supposed
-            to be used for x-atoms.
+            in the table of bond distances in periodic. Currently this is only 
+            supposed to be used for x-atoms.
             If we have changed any atoms, we return a function that can be used by undo
             to undo this change, otherwise we return None
         """
@@ -3884,7 +4037,7 @@ class Zmatrix(Indexed):
 
         # Failed to rotate using a zmatrix, so use Cartesians
         # Again - need to think what happens to mixed definitions here
-        if debug: print "Rotating fragment using Cartesians by angle %s" % angle
+        if debug: print "XRotating fragment using Cartesians by angle %s" % angle
         axis = cpv.sub( atom1.coord, atom2.coord )
         print "center is ",center
         for atom in smallest:
@@ -4109,9 +4262,6 @@ class ZAtom(Atom):
         
     def set_name(self,name):
         self.name = name
-
-
-
 
 class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information
@@ -4340,6 +4490,18 @@ f.add('H', 3, 2,-1,1.0,120.0, 90.0)
 f.add('H', 3, 2,-1,1.0,120.0,270.0)
 fragment_lib['eta Ethylene'] = f
 
+
+init_x="""
+        coordinates angstrom
+     C        0.000000        0.000000        0.000000  
+    x1        0.000000        0.000000        1.000000  
+    x2        0.943223        0.000000       -0.332161  
+    x3       -0.471611       -0.816855       -0.332161  
+    x4       -0.471611        0.816855       -0.332161
+"""
+
+
+
 if __name__ == "__main__":
 
     from interfaces.filepunch import PunchReader
@@ -4347,72 +4509,10 @@ if __name__ == "__main__":
 
     #model=Zmatrix(file=gui_path+"/examples/import1.zmt")
     #model.list()
-
-    if 0 :
-        # check autoz function
-        p = PunchReader()
-        p.scan("/home/psh/work/Erika/zmatrix/paul.pun")
-        model = p.objects[0]
-        model.list()
-        print model.is_fully_connected()
-        model.autoz()
-        model.zlist()
-
-    if 0:
-        # check import function for pure cartestian system
-        p = PunchReader()
-        p.scan("../examples/metallo.c")
-        model = p.objects[0]
-        p.objects = []
-        p.scan("../examples/metallo.c")
-        model2 = p.objects[0]
-        model.list()
-        model.import_geometry(model2)
-        model.list()
-        
-    if 0:
-        # import cartesians ->  zmat without variables
-        p = PunchReader()
-        p.scan(gui_path+"/examples/methane.pun")
-        model = p.objects[0]
-        model2 = Zmatrix(file=gui_path+"/examples/methane.zmt")
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
-        model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
-
-    if 0:
-        # import cartesians ->  zmat with variables
-        p = PunchReader()
-        p.scan(gui_path+"/examples/methane.pun")
-        model = p.objects[0]
-        model2 = Zmatrix(file=gui_path+"/examples/methane1.zmt")
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
-        model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
-
+    
     if 1:
-        # import cartesians ->  zmat with a dummy
-        # this generates warnings and the wrong answer with the current code
-        # because it has a dummy at atom 2
-        p = PunchReader()
-        p.scan(gui_path+"/examples/methane.pun")
-        model = p.objects[0]
-        model2 = Zmatrix(file=gui_path+"/examples/methane2.zmt")
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
-        model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
+        # test fragment addition
+        model2 = Zmatrix(list=init_x.split('\n'),debug=1)
+        model2.connect()
+        model2.add_fragment(model2.atom[1],'Me')
+        
