@@ -354,6 +354,11 @@ class Zmatrix(Indexed):
         # for editor
         self.errors = []
 
+        #
+        # phi convention
+        #
+        self.phi_convention = 1
+
         self.charge_sets=[]
         if title:
             self.title = title
@@ -2761,11 +2766,6 @@ class Zmatrix(Indexed):
             print 'import pure z-matrix format'
             self.imported_vars = {}
 
-            #
-            # phi convention
-            #
-            self.phi_convention = 1
-
             # first atom do nothing
             # could check if it is at the origin, as would define a translation
             # to apply to other atoms
@@ -4001,48 +4001,65 @@ class Zmatrix(Indexed):
             center = atom2
             root = atom1
 
-        # See if there is a zmatrix definition for the dihedral angle we want to
-        # rotate about
-        if center.zorc == 'z' and root.zorc == 'z':
-            dihedral=None
-            for clink in center.conn:
-                if clink.zorc == 'z' and clink.i1 == center and clink.i3 in root.conn:
-                    dihedral = clink
-
-            if not dihedral:
-                for clink in root.conn:
-                    if clink.zorc == 'z' and clink.i1 == root and clink.i3 in center.conn:
+        if 0:
+            # See if there is a zmatrix definition for the dihedral angle we want to
+            # rotate about
+            if center.zorc == 'z' and root.zorc == 'z':
+                dihedral=None
+                for clink in center.conn:
+                    if clink.zorc == 'z' and clink.i1 == center and clink.i3 in root.conn:
                         dihedral = clink
-            if dihedral:
-                if debug:
-                    print "Got dihedral definition for atom %s" % dihedral
-                    print "def is: i1:%s i2:%s i3:%s" % (dihedral.i1,dihedral.i2,dihedral.i3)
 
-            # Now check if all atoms is the fragement we are going to rotate have a zmatrix
-            # definition so that we ensure that we rotate the lot if we rotate using a z-matrix
-            zmat = 1
-            for atom in smallest:
-                if atom.zorc == 'c':
-                    zmat = None
+                if not dihedral:
+                    for clink in root.conn:
+                        if clink.zorc == 'z' and clink.i1 == root and clink.i3 in center.conn:
+                            dihedral = clink
+                if dihedral:
+                    if debug:
+                        print "Got dihedral definition for atom %s" % dihedral
+                        print "def is: i1:%s i2:%s i3:%s" % (dihedral.i1,dihedral.i2,dihedral.i3)
 
-            if zmat:
-                print "Rotating fragment using a zmatrix by angle %s"
-                # Change the dihedral definition
-                if dihedral.phi_var:
-                    dihedral.phi_var.value += (angle * dihedral.phi_sign)
-                else:
-                    dihedral.phi += angle
-                self.calculate_coordinates()
-                return
+                # Now check if all atoms is the fragement we are going to rotate have a zmatrix
+                # definition so that we ensure that we rotate the lot if we rotate using a z-matrix
+                zmat = 1
+                for atom in smallest:
+                    if atom.zorc == 'c':
+                        zmat = None
+
+                if zmat:
+                    print "Rotating fragment using a zmatrix by angle %s"
+                    # Change the dihedral definition
+                    if dihedral.phi_var:
+                        dihedral.phi_var.value += (angle * dihedral.phi_sign)
+                    else:
+                        dihedral.phi += angle
+                    self.calculate_coordinates()
+                    return
 
         # Failed to rotate using a zmatrix, so use Cartesians
         # Again - need to think what happens to mixed definitions here
         if debug: print "XRotating fragment using Cartesians by angle %s" % angle
         axis = cpv.sub( atom1.coord, atom2.coord )
         print "center is ",center
+
+        for atom in self.atom:
+            atom.flag = 0
         for atom in smallest:
             print "rotating atom ",atom
             atom.rotate( angle, axis, center=center.coord )
+            atom.flag=1
+
+        print 'updating internals'
+        # Still a problem here in that shared variables could
+        # might need to be "unshared"
+
+        self.imported_vars = {}
+        for atom in self.atom:
+            if atom.flag:
+                i1 = atom.get_index()
+                self.update_internals_from_cartesians(i1,update_constants=1)
+
+        self.calculate_coordinates()
 
     def translate(self, dr):
         """Translate all atoms by a vector dr"""
