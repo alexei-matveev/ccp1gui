@@ -54,7 +54,7 @@ class GAMESSUKCalc(QMCalc):
     """GAMESS-UK specifics."""
     def __init__(self, **kw):
 
-        apply(QMCalc.__init__,(self,),kw)
+        QMCalc.__init__(self,**kw)
 
         
         self.debug = 1
@@ -1839,10 +1839,11 @@ class GAMESSUKCalc(QMCalc):
             p.title = self.get_input("mol_name")
 
         self.results = []
-
+        mols = []
         # construct the results list for visualisation
 
         structure_loaded=0
+        warn=0
         for o in p.objects:
 
             # take the last field of the class specification
@@ -1859,36 +1860,8 @@ class GAMESSUKCalc(QMCalc):
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
                 # will need to organise together with other results
-                # assume overwrite for now
-                ###name = self.get_input("mol_name")
-                ###print 'set_input executed',o
-                ###self.set_input("mol_obj",o)
-                #
-                #PS keep all elements of old structure
-                #
-                oldo = self.get_input("mol_obj")
-                # Try and import geom while maintaining the input z-matrix
-                # 
-                print 'NEW GEOMETRY'
-                o.connect()
-                print o.bonds_and_angles()
-                try:
-                    oldo.import_geometry(o,update_constants=0)
-                except ImportGeometryError:
-                    print ' Warning: could not retain old zmatrix, importing as cartesians'
-                    copycontents(oldo,o)                    
-
-                print 'UPDATED GEOMETRY'
-                oldo.zlist()
-                print oldo.bonds_and_angles()
-
-                #tt = self.get_input("mol_obj")
-                #tt.list()
-
-                structure_loaded=1
-                # Used by visualisers
-                #o.title = name
-                #o.list()
+                # assume overwrite using last structure for now
+                mols.append(o)
 
             elif myclass == 'Brick':
                 self.results.append(o)
@@ -1901,6 +1874,34 @@ class GAMESSUKCalc(QMCalc):
                 mol_obj  = self.get_input("mol_obj")
                 mol_obj.charge_sets.append((o.type,o.data))
 
+        if len(mols):
+
+            for o in mols[:-1]:
+                self.results.append(o)
+
+            # Take the last structure and over-write the current structure
+            # with it
+            # use import to try and keep all elements of old structure
+            #
+            o = mols[-1]
+            oldo = self.get_input("mol_obj")
+            print 'NEW GEOMETRY'
+            o.connect()
+            print o.bonds_and_angles()
+            try:
+                oldo.import_geometry(o,update_constants=0)
+            except ImportGeometryError:
+                warn=1
+                copycontents(oldo,o)                    
+            print 'UPDATED GEOMETRY'
+            oldo.zlist()
+            print oldo.bonds_and_angles()
+            if warn:
+                print ' Warning: could not retain old zmatrix, so imported as cartesians'
+
+            structure_loaded=1
+
+
         return structure_loaded
 
 
@@ -1909,7 +1910,7 @@ homolumoa = 0
 class GAMESSUKCalcEd(QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         # Associate helpfile with widget
         viewer.help.sethelp(self,'MoleculeTab')
