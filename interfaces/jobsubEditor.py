@@ -87,12 +87,14 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.onkill = None
         self.job = job
         #self.calc = None
-        self.jobtype = None
-        self.title = None
+        title = None
 
         # Check the keywords dictionary
         if kw.has_key('title'):
-            self.title = kw['title']
+            title = kw['title']
+        else:
+            title = self.jobtype+ ' JobEditor'
+            
         if kw.has_key('onkill'):
             self.onkill = kw['onkill']
         if kw.has_key('debug'):
@@ -103,7 +105,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         viewer.initialisetk.initialiseTk(root)
 
         # Initialise base class (after defining options).
-        Pmw.MegaToplevel.__init__( self, root, title=self.title )
+        Pmw.MegaToplevel.__init__( self, root, title=title )
         
         # Ensure that when the user kills us with the window manager we behave as expected
         self.userdeletefunc( lambda s=self: s.Quit() )
@@ -486,54 +488,6 @@ class JobSubEditor(Pmw.MegaToplevel):
             #self.values['rsl_environment'] = envdict
             self.values['environment'] = envdict
 
-    def LayoutMachListWidget(self):
-        """ Lay out the machine list widget"""
-
-        # Create the widgets to edit the list of machines
-        self.values['machine_list'] = [] # set default value here
-        self.values['hosts'] = [] # set default value here
-        machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
-        machListFrame.pack(fill='both',expand=1)
-        self.machList = Pmw.ScrolledListBox(
-            machListFrame.interior(),
-            listbox_selectmode='extended',
-            items=self.values['machine_list']
-            )
-        self.getValue['hosts'] = lambda s=self: s.machList.getvalue()
-        self.setValue['hosts'] = self.machList.setvalue
-        self.getValue['machine_list'] = lambda s=self: s.machList.get()
-        self.setValue['machine_list'] = self.machList.setlist
-        self.machList.pack(side='left')
-        buttonFrame=Tkinter.Frame( machListFrame.interior() )
-        buttonFrame.pack(side='left')
-        addMachButton = Tkinter.Button( buttonFrame,
-                                        text = 'Add',
-                                        command = self.AddMachine)
-        addMachButton.pack(side='left')
-        #self.balloon.bind( addMachButton, 'Add a machine to the list. )
-        delMachButton = Tkinter.Button( buttonFrame,
-                                        text = 'Del',
-                                        command = self.DelMachine)
-        delMachButton.pack(side='left')
-        self.machEntry = Tkinter.Entry( machListFrame.interior(),
-                                        width=20)
-        self.machEntry.pack(side='left')
-
-
-    def LayoutNprocWidget(self):
-        """ Layout the widget to set the number of processors"""
-        self.values['count'] = 1 # set default value here
-        self.nProc = Pmw.Counter( self.interior(),
-                                  labelpos = 'w',
-                                  label_text = 'Number of Processors:',
-                                  entryfield_entry_width = 4,
-                                  entryfield_validate = {'validator' : 'integer' ,
-                                              'min' : 1 },
-                                  increment = 1
-                                  )
-        self.getValue['count'] = lambda s=self: s.nProc.getvalue()
-        self.setValue['count'] = self.nProc.setentry
-        self.nProc.pack(side='top')
 
     def AddMachine(self):
         """ Add a machine to the list and update the list widget"""
@@ -648,6 +602,100 @@ class JobSubEditor(Pmw.MegaToplevel):
        else:
            return 'JobSubmissionEditor'
 
+###################################################################################################
+###################################################################################################
+
+    def LayoutMachListWidget(self):
+        """ Lay out the machine list widget"""
+
+        # Create the widgets to edit the list of machines
+        self.values['machine_list'] = [] # set default value here
+        self.values['hosts'] = [] # set default value here
+        machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
+        machListFrame.pack(fill='both',expand=1)
+        self.machList = Pmw.ScrolledListBox(
+            machListFrame.interior(),
+            listbox_selectmode='extended',
+            items=self.values['machine_list']
+            )
+        self.getValue['hosts'] = lambda s=self: s.machList.getvalue()
+        self.setValue['hosts'] = self.machList.setvalue
+        self.getValue['machine_list'] = lambda s=self: s.machList.get()
+        self.setValue['machine_list'] = self.machList.setlist
+        self.machList.pack(side='left')
+        buttonFrame=Tkinter.Frame( machListFrame.interior() )
+        buttonFrame.pack(side='left')
+        addMachButton = Tkinter.Button( buttonFrame,
+                                        text = 'Add',
+                                        command = self.AddMachine)
+        addMachButton.pack(side='left')
+        #self.balloon.bind( addMachButton, 'Add a machine to the list. )
+        delMachButton = Tkinter.Button( buttonFrame,
+                                        text = 'Del',
+                                        command = self.DelMachine)
+        delMachButton.pack(side='left')
+        self.machEntry = Tkinter.Entry( machListFrame.interior(),
+                                        width=20)
+        self.machEntry.pack(side='left')
+
+
+    def LayoutNprocWidget(self):
+        """ Layout the widget to set the number of processors"""
+        self.values['count'] = 1 # set default value here
+        self.nProc = Pmw.Counter( self.interior(),
+                                  labelpos = 'w',
+                                  label_text = 'Number of Processors:',
+                                  entryfield_entry_width = 4,
+                                  entryfield_validate = {'validator' : 'integer' ,
+                                              'min' : 1 },
+                                  increment = 1
+                                  )
+        self.getValue['count'] = lambda s=self: s.nProc.getvalue()
+        self.setValue['count'] = self.nProc.setentry
+        self.nProc.pack(side='top')
+
+    def LayoutExecutableWidget(self):
+        """ Lay out the widget to select the executable"""
+        print "Laid out executable"
+        self.executableWidget = Pmw.EntryField( self.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'Executable Name:',
+                                            validate = None
+                                            )
+        self.executableWidget.pack(side='top')
+        self.values['executable'] = None
+        self.getValue['executable'] = lambda s=self: s.executableWidget.getvalue()
+        self.setValue['executable'] = self.executableWidget.setentry
+
+        
+    def LayoutDirectoryWidget(self):
+        """ Lay out the widget to select the directory on the remote machine"""
+        print "Laid out directory"
+        self.remoteDirWidget = Pmw.EntryField( self.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'Remote Directory:',
+                                            entry_width = '30',
+                                            validate = None
+                                            )
+        self.remoteDirWidget.pack(side='top')
+        self.values['user_remote_dir'] = None
+        self.getValue['user_remote_dir'] = lambda s=self: s.remoteDirWidget.getvalue()
+        self.setValue['user_remote_dir'] = self.remoteDirWidget.setentry
+       
+    def LayoutJobmanagerWidget(self):
+        """ Lay out the widget to select the directory on the remote machine"""
+        print "Laid out jobmanager"
+        self.jobmanagerWidget = Pmw.EntryField( self.interior(),
+                                            labelpos = 'w',
+                                            label_text = 'Globus Jobmanager:',
+                                            entry_width = '30',
+                                            validate = None
+                                            )
+        self.jobmanagerWidget.pack(side='top')
+        self.values['jobmanager'] = None
+        self.getValue['jobmanager'] = lambda s=self: s.jobmanagerWidget.getvalue()
+        self.setValue['jobmanager'] = self.jobmanagerWidget.setentry
+
 
 class GrowlEditor(JobSubEditor):
 
@@ -658,7 +706,6 @@ class GrowlEditor(JobSubEditor):
 
         # Set up the defaults
         self.jobtype = 'GROWL'
-        self.title = self.jobtype+ ' JobEditor'
         
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,job,**kw)
@@ -673,31 +720,12 @@ class GrowlEditor(JobSubEditor):
         # These are found in the base class JobSubEditor (see jobsubEditor.py)
         self.LayoutMachListWidget()
         self.LayoutNprocWidget()
-        self.LayoutExeDirWidget()
+        self.LayoutExecutableWidget()
+        self.LayoutDirectoryWidget()
+        self.LayoutJobmanagerWidget()
         self.LayoutQuitButtons()
 
-    def LayoutExeDirWidget(self):
-        """ Lay out the executable and working directory"""
-        self.executableWidget = Pmw.EntryField( self.interior(),
-                                            labelpos = 'w',
-                                            label_text = 'Executable Name:',
-                                            validate = None
-                                            )
-        self.executableWidget.pack(side='top')
-        self.values['executable'] = None
-        self.getValue['executable'] = lambda s=self: s.executableWidget.getvalue()
-        self.setValue['executable'] = self.executableWidget.setentry
-        self.remoteDirWidget = Pmw.EntryField( self.interior(),
-                                            labelpos = 'w',
-                                            label_text = 'Remote Directory:',
-                                            entry_width = '30',
-                                            validate = None
-                                            )
-        self.remoteDirWidget.pack(side='top')
-        self.values['user_remote_dir'] = None
-        self.getValue['user_remote_dir'] = lambda s=self: s.remoteDirWidget.getvalue()
-        self.setValue['user_remote_dir'] = self.remoteDirWidget.setentry
-        Pmw.alignlabels( [self.executableWidget, self.remoteDirWidget] )
+        #Pmw.alignlabels( [self.executableWidget, self.remoteDirWidget] )
 
 class NordugridEditor(JobSubEditor):
 
@@ -708,7 +736,8 @@ class NordugridEditor(JobSubEditor):
 
         # Set up the defaults
         self.jobtype = 'Nordugrid'
-        self.title = self.jobtype+ ' JobEditor'
+        if not kw.has_key('title'):
+            kw['title'] = self.jobtype+ ' JobEditor'
 
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,job,**kw)
@@ -736,7 +765,7 @@ class RMCSEditor(JobSubEditor):
 
         # Set up the defaults
         self.jobtype = 'RMCS'
-        self.title = self.jobtype+ ' JobEditor'
+        title = self.jobtype+ ' JobEditor'
         
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,job,**kw)
