@@ -185,6 +185,12 @@ class Job:
         if self.debug:
             print 'adding job step: %s : %s' % (name,kw)
         self.steps.append(JobStep(type,name,**kw))
+        
+    def  clear_steps(self):
+        """Remove any old job steps"""
+        if self.debug:
+            print 'Clearing out old job steps'
+        self.steps = []
 
     def add_tidy(self,func):
         """Add a tidy function, python code run from the main GUI thread"""
@@ -1255,6 +1261,8 @@ class GrowlJob(GridJob):
         self.job_parameters['user_remote_dir'] = None # directory specified by the user
         self.job_parameters['directory'] = None # The full path to the working directory on the
                                                 # remote machine (derived from user_remote_dir)
+                                                
+        self.job_parameters['jobmanager'] = None
         self.job_parameters['count'] = 1
         self.job_parameters['hosts'] = []
 
@@ -1506,6 +1514,8 @@ class GrowlJob(GridJob):
             host = host + "/" + jobmanager
 
         args = [ host, '-x', rsl_string, executable ]
+        #print "running: globus-job-submit %s" % args
+        #raise JobError,"Submit? I think not"
         output,error = self._run_command( 'globus-job-submit',args = args )
         self.check_common_errors( output, error, command='globus-job-submit' )
 
@@ -1665,14 +1675,9 @@ class GrowlJob(GridJob):
         """ Prepare the job and then submit it"""
 
         remote_dir = self.get_remote_dir()
-        host = self.get_host()
-        # Probably best to run with the default jobmanager
-        # jobmanager = self.grid_get_jobmanager(host)
-        jobmanager = None
 
         # Set up any parameters so that we get a suitable rsl string when we call
-        # CreateRSLString
-        
+        # CreateRSLString        
         if step.stdin_file:
             path = remote_dir+step.stdin_file
             self.job_parameters['stdin'] = path
@@ -1690,7 +1695,8 @@ class GrowlJob(GridJob):
             executable = self.job_parameters['executable']
             # Need to null this so it doesn't end up in the rsl_string
             self.job_parameters['executable'] = None
-            
+
+        host = self.get_host()
         rsl_string = self.CreateRSLString()
 
         # Get the full path to the executable on the machine
@@ -1699,8 +1705,15 @@ class GrowlJob(GridJob):
             # exe not in path, so we guess it's in the working directory we've been given
             exe = remote_dir + executable
 
+        # Probably best to run with the default jobmanager
+        # jobmanager = self.grid_get_jobmanager(host)
+        if self.job_parameters['jobmanager']:
+            jm = self.job_parameters['jobmanager']
+        else:
+            jm = None
+        
         #raise JobError,"Noooooooo!!!!"
-        self.jobID = self.grid_submit( host, rsl_string, exe, jobmanager=jobmanager )
+        self.jobID = self.grid_submit( host, rsl_string, exe, jobmanager=jm )
         print "job submitted: %s" % self.jobID
         return self.jobID
 
