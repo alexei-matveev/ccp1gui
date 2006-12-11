@@ -172,7 +172,7 @@ class Job:
                             # so that the run method can react accordingly on a restart
         self.thread = None
         
-        self.debug = 1
+        self.debug = None
         
     def __repr__(self):
         txt = self.jobtype + ':'
@@ -1271,6 +1271,7 @@ class GrowlJob(GridJob):
         
         # Now make sure that we have a valid proxy
         self.CheckProxy()
+        self.debug=1
 
 
     def check_growl(self):
@@ -1348,6 +1349,8 @@ class GrowlJob(GridJob):
     def _run_command( self, command, args=None ):
         """Use subprocess Spawn to run a command and get the output and error
         """
+
+        assert type(command) == str,"GrowlJob,_run_command command must be a string: %s" % command
         if args:
             cmd_string= command + ' ' + ' '.join(args)
         else:
@@ -1670,6 +1673,32 @@ class GrowlJob(GridJob):
 
         return code,ret
 
+
+    def get_executable(self):
+        """Return the correct executable name on the remote machine if we can work it out
+           or None if we can't find it.
+        """
+
+        if not self.job_parameters['executable']:
+            return None
+        else:
+            executable = self.job_parameters['executable']
+
+        print "executable ",executable
+        # If the exectuable begins with a slash assume it's an absolute path and return it
+        if executable[0] == os.sep:
+            print "full path"
+            return executable
+
+        # See if the executable is in the path
+        host = self.get_host()
+        path = self.grid_which(host,executable)
+        if not path:
+            # exe not in path, so we guess it's in the working directory we've been given
+            remote_dir = self.get_remote_dir()
+            return remote_dir + executable
+        else:
+            return path
     
     def submit(self,step):
         """ Prepare the job and then submit it"""
@@ -1689,21 +1718,15 @@ class GrowlJob(GridJob):
             path = remote_dir+step.stderr_file 
             self.job_parameters['stderr'] = path
 
-        if not self.job_parameters['executable']:
+        executable = self.get_executable()
+        if not executable:
             raise JobError,"GrowlJob run_app needs an executable to run!"
         else:
-            executable = self.job_parameters['executable']
-            # Need to null this so it doesn't end up in the rsl_string
+            # Hack - need to null this so it doesn't end up in the rsl_string
             self.job_parameters['executable'] = None
 
         host = self.get_host()
         rsl_string = self.CreateRSLString()
-
-        # Get the full path to the executable on the machine
-        exe = self.grid_which(host,executable)
-        if not exe:
-            # exe not in path, so we guess it's in the working directory we've been given
-            exe = remote_dir + executable
 
         # Probably best to run with the default jobmanager
         # jobmanager = self.grid_get_jobmanager(host)
@@ -1713,7 +1736,7 @@ class GrowlJob(GridJob):
             jm = None
         
         #raise JobError,"Noooooooo!!!!"
-        self.jobID = self.grid_submit( host, rsl_string, exe, jobmanager=jm )
+        self.jobID = self.grid_submit( host, rsl_string, executable, jobmanager=jm )
         print "job submitted: %s" % self.jobID
         return self.jobID
 
