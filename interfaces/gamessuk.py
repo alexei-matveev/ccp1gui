@@ -442,7 +442,7 @@ class GAMESSUKCalc(QMCalc):
         else:
             local_punch = remote_punch  = job_name+'.pun'
 
-
+        job.clear_steps()
         job.add_step( DELETE_FILE,
                       'remove old output',
                       remote_filename=stdout_file,
@@ -606,6 +606,7 @@ class GAMESSUKCalc(QMCalc):
                 #name = self.get_input("mol_name")
                 print 'calling update_func from gamess'
                 ed.update_func(o)
+                
         # jmht - is this a hack?
         self.job = None
 
@@ -2376,7 +2377,9 @@ class GAMESSUKCalcEd(QMCalcEd):
         elif jobtype == 'Nordugrid':
             self.jobSubEd = NordugridEditor(self.interior(), job, onkill=self.jobSubEd_die)
         elif jobtype == 'GROWL':
-            self.jobSubEd = GrowlEditor(self.interior(), job, onkill=self.jobSubEd_die,
+            self.jobSubEd = GrowlEditor(self.interior(), job,
+                                        onkill=self.jobSubEd_die,
+                                        title='GAMESS-UK Growl Job Submission Editor',
                                         debug=None)
         else:
             self.Error("gamessuk calced - unrecognised job editor: %s" % jobtype)
