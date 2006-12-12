@@ -410,8 +410,17 @@ class Zmatrix(Indexed):
 
     def copy(self):
         self.update_bonds()
+
+        if self.__dict__.has_key('tidy'):
+            t=self.tidy
+            self.tidy=None
+        else:
+            t=None
         new = copy.deepcopy(self)
         new.update_conn()
+        if t:
+            self.tidy=t
+            new.tidy=t
         return new
     
     def load_from_file(self,file):
@@ -736,8 +745,6 @@ class Zmatrix(Indexed):
                     txt = self.__output_var(a)
                     out.append(txt)
         return out
-
-
 
     def __output_var(self,v):
         """output variable name and value (could be __str method of variable) """
@@ -4280,6 +4287,13 @@ class ZAtom(Atom):
     def set_name(self,name):
         self.name = name
 
+class ZmatrixSequence(Zmatrix):
+    def __init__(self,**kw):
+        Zmatrix.__init__(self,**kw)
+        self.frames=[]
+        self.title="Sequence of Structures"
+        self.current_frame=0
+
 class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information
     """
@@ -4524,10 +4538,12 @@ if __name__ == "__main__":
     from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
 
-    #model=Zmatrix(file=gui_path+"/examples/import1.zmt")
-    #model.list()
+    model=Zmatrix(file=gui_path+"/examples/feco5.zmt")
+    model.list()
+
+
     
-    if 1:
+    if 0:
         # test fragment addition
         model2 = Zmatrix(list=init_x.split('\n'),debug=1)
         model2.connect()
