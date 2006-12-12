@@ -31,6 +31,7 @@ import math
 import copy
 import viewer.help
 import string
+import time
 
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
@@ -448,7 +449,7 @@ class MoleculeVisualiser(Visualiser):
         else:
             self.title='View Changer for All Molecules'
 
-        print 'Mol Title',self.title
+        #print 'Mol Title',self.title
 
     def make_dialog(self):
 
@@ -886,62 +887,95 @@ class VibrationSetVisualiser(VibrationVisualiser):
         VibrationVisualiser.make_dialog(self, **kw)
 
 
+
+STRUCTURE_SEQ = 1
 class TrajectoryVisualiser(MoleculeVisualiser):
     """To update a single image with a sequence of sets coordinates
     without loading all the structures as molecule objects
     """
     def __init__(self, root, graph, obj, **kw):
-        self.frame = 0
+        # the visualisation will start with a copy of the first frame
+        self.traj_type = STRUCTURE_SEQ
+        self.sequence = obj
         self.molecule = obj
-        
+        self.sequence.current_frame = 0
+
+        #copy.deepcopy(obj.frames[0])
+        self.nframes = len(obj.frames)
+        #VtkMoleculeVisualiser is run next from vtkgraph
+
+        print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
+        for f in self.sequence.frames:
+            f.zlist()
+
     def make_dialog(self, **kw):
+
+        self.title='Trajectory Viewer'
+
         MoleculeVisualiser.make_dialog(self, **kw)
+
+
 
         self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Play Trajectory")
 
-        bar = Tkinter.Frame(self.ani_frame.interior(),relief=Tkinter.SUNKEN, borderwidth=2)
-        bar.pack(side='bottom', fill=Tkinter.X)
+        f = Tkinter.Frame(self.ani_frame.interior(),relief=Tkinter.SUNKEN, borderwidth=2)
+        f.pack(side='bottom', fill=Tkinter.X)
+
+        bar = Tkinter.Frame(f,relief=Tkinter.SUNKEN, borderwidth=2)
+        bar.pack(side='left', fill=Tkinter.X)
 
         #b=Tkinter.Button(bar, text='Reset', command=self.reset)
         #b.pack(side='left')
-        b=Tkinter.Button(bar, text='|<', command=self.rew)
+        b=Tkinter.Button(bar, text='  |<  ', command=self.rew)
         b.pack(side='left')
-        b=Tkinter.Button(bar, text='<', command=self.bak)
+        b=Tkinter.Button(bar, text='   <  ', command=self.bak)
         b.pack(side='left')
-        b=Tkinter.Button(bar, text='Stop', command=self.stop)
+        b=Tkinter.Button(bar, text=' Stop ', command=self.stop)
         b.pack(side='left')
-        b=Tkinter.Button(bar, text='Play', command=self.play)
+        b=Tkinter.Button(bar, text=' Play ', command=self.play)
         b.pack(side='left')
-        b=Tkinter.Button(bar, text='>', command=self.fwd)
+        b=Tkinter.Button(bar, text='  >   ', command=self.fwd)
         b.pack(side='left')
-        b=Tkinter.Button(bar, text='>|', command=self.end)
+        b=Tkinter.Button(bar, text='  >|  ', command=self.end)
         b.pack(side='left')
 
-        self.ani_frame.pack()
+        f.pack()
+        bar2 = Tkinter.Frame(f, borderwidth=1)
+        bar2.pack(side='left', fill=Tkinter.X)
 
-            
+        self.frame_label=Tkinter.Label(bar2)
+        self.frame_label.configure(text="Frame %d of %d" % (self.sequence.current_frame+1,self.nframes))
+        self.frame_label.pack(side='left')
+
+        self.ani_frame.pack(side='top',fill='x')
+
     def rew(self):
         """ Go to the first frame of the trajectory and display the image
         """
-        self.frame_no = 0
+        self.sequence.current_frame = 0
         self.show_frame()
         
     def end(self):
         """ Go to the last frame of the animation and display the image.
         """
-        self.frame_no = self.nframes
+        self.sequence.current_frame = self.nframes - 1
         self.show_frame()
 
     def bak(self):
         """ Step back a single frame in the animation
         """
-        self.frame_no -= 1
+        self.sequence.current_frame -= 1
+        if self.sequence.current_frame == -1:
+            self.sequence.current_frame = 0
         self.show_frame()
 
     def fwd(self):
         """ Step forward a single frame in the animation
         """
-        self.frame_no += 1
+        self.sequence.current_frame += 1
+        if self.sequence.current_frame >= self.nframes:
+            print 'END OF SEQUENCE'
+            self.sequence.current_frame = self.nframes - 1
         self.show_frame()
     
     def stop(self):
@@ -950,45 +984,66 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         self.ani_stop = 1
 
     def play(self):
-        """ Play through the sequence of images from self.frame_no to the end
+        """ Play through the sequence of images from self.sequence.current_frame to the end
         """
         # Need to initialise frame_no if the animation toolbar was
         # open when objects were read in
 
+        # Rewind if at end
+        if self.sequence.current_frame >= self.nframes - 1:
+            self.sequence.current_frame = 0
+
         self.ani_stop = 0
+        self.ani_stop = 0
+
         while 1:
-            print 'Trajectory Frame:',self.frame_no
+            print 'Trajectory Frame:',self.sequence.current_frame
             #self.interior().update()
             if self.ani_stop:
                 return
-            self.frame_no += 1
             self.show_frame()
-            time.sleep(0.2)
+
+            self.sequence.current_frame += 1
+            if self.ani_stop:
+                return
+            time.sleep(0.3)
+            if self.ani_stop:
+                return
+
+            # the end?
+            if self.sequence.current_frame == self.nframes:
+                return
 
     def show_frame(self):
-        """Update the working molecule with 
+        """Update the working molecule with a set of coordinates and display
         """
         # check if the user has changed the parameters
         self.read_widgets()
 
         if self.traj_type == STRUCTURE_SEQ:
 
+            print 'SHOWING FRAME #',self.sequence.current_frame
+            frame = self.sequence.frames[self.sequence.current_frame]
             for i in range(len(self.molecule.atom)):
-                frame = self.frames[self.frame_no]
-                atom = frame.coords[i]
-                a.coord[0] = atom[0]
-                a.coord[1] = atom[1]
-                a.coord[2] = atom[2]
+                a = self.molecule.atom[i]
+                atom = frame.atom[i]
+                a.coord[0] = atom.coord[0]
+                a.coord[1] = atom.coord[1]
+                a.coord[2] = atom.coord[2]
 
         elif self.traj_type == MMTK:
             print "MMTK trajectory"
 
+        self.molecule.list()
         # remake images
         self._delete()
         self._build()
         self._show()
+        self.frame_label.configure(text="Frame %d of %d" % (self.sequence.current_frame+1,self.nframes))
+        self.dialog.update()
         # update image
         self.graph.update()
+
         # schedule next frame
         #self.dialog.after(self.frame_delay, self.nextframe)
 
@@ -2348,10 +2403,9 @@ if __name__ == "__main__":
     root.withdraw()
     vt = VtkGraph(root)
     p = PunchReader()
-    p.scan("c:\ccp1gui\ccp1gui\untitled.pun")
+    p.scan("c:\ccp1gui\seq4.pun")
     print p.objects
-    mol = p.objects[0]
-    obj1 = p.objects[1]
+    obj = p.objects[0]
 
 #    obj = p.objects[2]
 #    for o in p.objects:
@@ -2362,7 +2416,8 @@ if __name__ == "__main__":
     #vis = VtkVectorVisualiser(root,vt,obj)
     #vis2 = VtkMoldenWfnVisualiser(root,vt,"/home/psh/molden4.4_hvd/ex1/cyclopropaan.out")
     #vis = VtkTrajectoryVisualiser(root,vt,mol)
-    vis = VtkVibrationSetVisualiser(root,vt,obj1)
+    #vis = VtkVibrationSetVisualiser(root,vt,obj1)
+    vis = VtkTrajectoryVisualiser(root,vt,obj)
     print 'build'
     vis.Build()
     #vis2.Build()
