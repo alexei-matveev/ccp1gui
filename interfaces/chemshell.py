@@ -101,6 +101,9 @@ class ChemShellCalc(Calc):
         self.set_parameter('traj_freq',10)
         self.set_parameter('store_traj',0)
 
+
+        self.set_parameter('hostname','localhost')
+
     def get_editor_class(self):
         return ChemShellCalcEd
 

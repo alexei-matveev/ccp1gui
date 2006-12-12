@@ -578,7 +578,9 @@ class GAMESSUKCalc(QMCalc):
         if code:
             return
         
-        if self.__ReadPunch(directory+'/'+job_name+'.pun') != 1:
+        code = self.__ReadPunch(directory+'/'+job_name+'.pun')
+
+        if code < 0:
             raise JobError, "No molecular structure in Punchfile - check output"
 
         # problem here as that as we are running in a slave thread
@@ -595,12 +597,16 @@ class GAMESSUKCalc(QMCalc):
             if ed.graph:
                 ed.graph.import_objects(self.results)
                 txt = "Objects loaded from punchfile:"
-                txt = txt  + "Structure update" + '\n'
+                if code > 1:
+                    txt = txt  + "Structure update" + '\n'
+                else:
+                    txt = txt  + '\n'
+                
                 for r in self.results:
                     txt = txt + r.title + '\n'
                 ed.Info(txt)
             # Update 
-            if ed.update_func:
+            if ed.update_func and code > 0:
                 o = self.get_input("mol_obj")
                 #name = self.get_input("mol_name")
                 print 'calling update_func from gamess'
@@ -1843,13 +1849,15 @@ class GAMESSUKCalc(QMCalc):
         mols = []
         # construct the results list for visualisation
 
-        structure_loaded=0
+        structure_loaded=-1
         warn=0
         for o in p.objects:
 
             # take the last field of the class specification
             t1 = string.split(str(o.__class__),'.')
             myclass = t1[len(t1)-1]
+
+            print 'LOADING up',myclass
 
             if myclass == 'VibFreq' :
                 # create a vibration visualiser
@@ -1864,47 +1872,69 @@ class GAMESSUKCalc(QMCalc):
                 # assume overwrite using last structure for now
                 mols.append(o)
 
+            elif myclass == 'ZmatrixSequence':
+                o.connect()
+                self.results.append(o)
+
             elif myclass == 'Brick':
                 self.results.append(o)
 
             elif myclass == 'Field':
                 self.results.append(o)
 
-            # list class is just used for charge data at present
+            # list class is just used for atomic charge data at present
             elif myclass == 'List':
                 mol_obj  = self.get_input("mol_obj")
                 mol_obj.charge_sets.append((o.type,o.data))
 
         if len(mols):
 
-            for o in mols[:-1]:
-                self.results.append(o)
-
+            #
             # Take the last structure and over-write the current structure
             # with it
-            # use import to try and keep all elements of old structure
-            #
-            o = mols[-1]
+            # use import_geometry to try and keep all elements of old structure
+            # including internal coordinates
+
+            # Dont try and update structure sequences here, instead
+            # we return all structures for use
+            
             oldo = self.get_input("mol_obj")
-            print 'NEW GEOMETRY'
-            o.connect()
-            print o.bonds_and_angles()
-            try:
-                oldo.import_geometry(o,update_constants=0)
-            except ImportGeometryError:
-                warn=1
-                copycontents(oldo,o)                    
-            print 'UPDATED GEOMETRY'
-            oldo.zlist()
-            print oldo.bonds_and_angles()
-            if warn:
-                print ' Warning: could not retain old zmatrix, so imported as cartesians'
+            t2 = string.split(str(oldo.__class__),'.')
+            myclass2 = t2[len(t2)-1]
+            if myclass2 == 'Zmatrix':
 
-            structure_loaded=1
+                for o in mols[:-1]:
+                    self.results.append(o)
+                o = mols[-1]
 
+
+                if self.debug:
+                    print 'NEW GEOMETRY'
+                    o.connect()
+                    print o.bonds_and_angles()
+                try:
+                    oldo.import_geometry(o,update_constants=0)
+                except ImportGeometryError:
+                    warn=1
+                    copycontents(oldo,o)
+
+                if self.debug:
+                    print 'UPDATED GEOMETRY'
+                    oldo.zlist()
+                    print oldo.bonds_and_angles()
+
+                if warn:
+                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
+
+                structure_loaded=1
+
+            else:
+                self.results = self.results + mols
+                # This should allow the code to continue but warn that
+                # a new structure has been imported
+                structure_loaded=0
 
         return structure_loaded
-
 
 homolumoa = 0
 

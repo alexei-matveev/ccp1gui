@@ -199,9 +199,10 @@ class PunchReader:
          if self.readers[self.name]:
             if self.debug:
                print 'calling known reader for ', self.name
-            try:
-               self.readers[self.name](f,object)
-            except Exception,e:
+            #try:
+            self.readers[self.name](f,object)
+            #except Exception,e:
+            if 0:
                print 'Problem reading ',self.name
                print "Error was: %s" % e
 
@@ -234,14 +235,12 @@ class PunchReader:
       elif self.name == 'fragment.sequence':
          if self.debug:
             print 'New frag (seq)'
-         if object:
-            tt = object
-         else:
-            #tt = Indexed()
-            # We use the zmatrix derived-class here, so we can use zmatrix tools
-            # to edit it 
-            tt = Zmatrix()
-            tt.title='seq 0'
+         
+         tt = ZmatrixSequence()
+         #tt2 = Zmatrix()
+         #tt2.title='seq 0 frame 0'
+         #tt.frames.append(tt2)
+
          # This is a hack so the VibFreq instances have a reference structure
          #self.fragment = tt
          ####tt.tidy = self.tidy_seq
@@ -388,8 +387,9 @@ class PunchReader:
       return 0
    
    def read_coordinates(self,f,tt):
+
       if not tt:
-         print '... skipped - coordinates without fragment block'
+         print '... skipped - coordinates without parent fragment or fragment.sequence block'
          self.skip_block(f)
          return
 
@@ -415,6 +415,14 @@ class PunchReader:
          p.index = cnt
          cnt = cnt + 1
          tt.add_atom(p)
+
+      # for structure sequences, this is also the first frame
+      t1 = string.split(str(tt.__class__),'.')
+      myclass = t1[len(t1)-1]
+      clone = tt.copy()
+      if myclass == 'ZmatrixSequence':
+         tt.frames.append(clone)
+
 
    def read_shells(self,f,tt):
       if not tt:
@@ -454,7 +462,7 @@ class PunchReader:
    def read_update_coordinates(self,f,oldtt):
 
       if not oldtt:
-         print '.. skipped - update_coordinates without fragment block'
+         print '.. skipped - update_coordinates without fragment.sequence block'
          self.skip_block(f)
          return
       
@@ -466,7 +474,7 @@ class PunchReader:
       except AttributeError:
          tt.title = 'Frame ' + str(frame_count)         
 
-      self.objects.append(tt)
+      oldtt.frames.append(tt)
 
       cnt = 0
       fac = 0.529177
@@ -1172,7 +1180,9 @@ class PunchReader:
 if __name__ == "__main__":
 
    p = PunchReader()
-   p.scan("test.pun")
+   p.scan("../viewer/seq.pun")
+
+   sys.exit(0)
    m = p.objects[0]
    #m.reindex()
    m.list()
