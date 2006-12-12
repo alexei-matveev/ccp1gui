@@ -82,6 +82,7 @@ class VtkGraph(TkMolView,Graph):
 
         # Define viewer capabilities and visualiser classes
         self.molecule_visualiser =  VtkMoleculeVisualiser
+        self.trajectory_visualiser =  VtkTrajectoryVisualiser
         self.orbital_visualiser =  VtkOrbitalVisualiser
         self.density_visualiser =  VtkDensityVisualiser
         self.volume_density_visualiser =  VtkVolumeDensityVisualiser
@@ -3363,6 +3364,7 @@ class VtkTrajectoryVisualiser(TrajectoryVisualiser,VtkMoleculeVisualiser):
     def __init__(self, root, graph, obj, **kw):
         TrajectoryVisualiser.__init__(self,root,graph,obj, **kw)
         VtkMoleculeVisualiser.__init__(self,root,graph,self.molecule, **kw)
+        self.title = 'trajectory view'
 
 class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
 

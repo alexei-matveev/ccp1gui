@@ -369,7 +369,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.mol_cylinder_specular_power = 10
 
         self.debug = 0
-        self.debug_callbacks = 1
+        self.debug_callbacks = 0
         self.debug_selection = 0
         self.enable_undo = 1
         
@@ -1168,6 +1168,17 @@ class TkMolView(Pmw.MegaToplevel):
             t1 = string.split(str(o.__class__),'.')
             myclass = t1[len(t1)-1]
             if myclass == 'Indexed' or myclass == 'Zmatrix':
+            ####or myclass =='ZmatrixSequence':
+                mols.append(o)
+        return mols
+
+    def loaded_seqs(self):
+        """Return a list of all molecule sequences currently loaded"""
+        mols = []
+        for o in self.data_list:
+            t1 = string.split(str(o.__class__),'.')
+            myclass = t1[len(t1)-1]
+            if myclass =='ZmatrixSequence':
                 mols.append(o)
         return mols
 
@@ -1196,9 +1207,14 @@ class TkMolView(Pmw.MegaToplevel):
         self.add_field_cmd(menu,fields,"Edit Grid",self.edit_grid)
         self.add_mol_cmd(menu,mols,"Connect",self.connect_model,all=1)
         self.add_mol_cmd(menu,mols,"Extend",self.extend_model,all=1)
+        menu.add_separator()
+
+        seqs = self.loaded_seqs()
+        self.add_mol_seq_cmd(menu,seqs,"Extract Frame from Sequence",self.extract_frame,all=1)
 
         menu.add_separator()
         self.add_mol_cmd(menu,self.data_list,"Delete",self.delete_obj,all=1)
+
         menu.add_separator()
 
         # Simple molecular editing functions
@@ -1341,6 +1357,17 @@ class TkMolView(Pmw.MegaToplevel):
         else:
             self.error('Unimplemented Edit: '+operation+' '+argument)
 
+    def extract_frame(self,seq):
+        """Load a single frame from a sequence (eg a trajectory)
+        """
+        ex = Zmatrix()
+        for x in seq.__dict__:
+            if x not in ['frames','nframes','title','name','tidy']:
+                ex.__dict__[x] = copy.deepcopy(seq.__dict__[x])
+        ex.title = 'Frame '+str(seq.current_frame+1)+' of '+ seq.title
+        ex.name = self.make_unique_name('Frame_'+str(seq.current_frame+1))
+        self.append_data(ex);
+        self.quick_mol_view([ex])
 
     def delete_atom(self):
         sel = self.sel()
@@ -2171,6 +2198,14 @@ class TkMolView(Pmw.MegaToplevel):
                            lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                               lambda r=s.master,g=s,func=s.molecule_visualiser,obj=obj: func(r,g,obj)))
 
+            if myclass == 'ZmatrixSequence':
+                if self.trajectory_visualiser:
+                    cascade.add_command(
+                        label="New Trajectory View",command=\
+                           lambda s=self,obj=obj: s.visualise(obj,visualiser=\
+                              lambda r=s.master,g=s,func=s.trajectory_visualiser,obj=obj: func(r,g,obj),
+                                                              open_widget=1))
+
             if myclass == 'Field' :
                 if obj.dimensions() == 3:
                     if 1:
@@ -2342,6 +2377,26 @@ class TkMolView(Pmw.MegaToplevel):
         self.add_mol_cmd(menu,mols,"ChemShell",self.chemshell_calced)
 
     def add_mol_cmd(self,menu,mols,txt,fnc,all=0):
+        if len(mols) == 0:
+            menu.add_command(label=txt, underline=0,state="disabled")
+        elif len(mols) == 1:
+            menu.add_command(label=txt, underline=0, 
+                                 command=lambda f=fnc,o=mols[0] : f(o))
+        else:
+            cascade = Menu(menu,tearoff=0)
+
+            if all:
+                cascade.add_command(label='All',
+                                    command= lambda f=fnc,o=None : f(o,all=1))
+                cascade.add_separator()
+
+            menu.add_cascade(label=txt, menu=cascade)
+
+            for obj in mols:
+                cascade.add_command(label=obj.name,
+                                    command= lambda f=fnc,o=obj : f(o))
+                
+    def add_mol_seq_cmd(self,menu,mols,txt,fnc,all=0):
         if len(mols) == 0:
             menu.add_command(label=txt, underline=0,state="disabled")
         elif len(mols) == 1:
@@ -2880,6 +2935,9 @@ class TkMolView(Pmw.MegaToplevel):
             vis = None
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 vis = self.molecule_visualiser(self.master,self,o)
+
+            elif myclass == 'ZmatrixSequence':
+                vis = self.trajectory_visualiser(self.master,self,o)
 
             elif myclass == 'VibFreq' :
                 # create a vibration visualiser
@@ -4372,15 +4430,18 @@ Please check the output on the terminal/log file for further information." % fil
                 self.append_data(o)
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
+
                 # will need to organise together with other results
                 # assume overwrite for now
 
                 self.append_data(o)
-
                 # Used by visualisers
                 #o.title = name
                 #o.list()
                 mols.append(o)
+
+            elif myclass == 'ZmatrixSequence':
+                self.append_data(o)
 
             elif myclass == 'Brick':
                 self.append_data(o)
@@ -4737,6 +4798,7 @@ Please check the output on the terminal/log file for further information." % fil
 
     def gamessuk_calced(self,obj=None):
         c = GAMESSUKCalc(mol=obj)
+        print 'calced mol is ',obj
         self.edit_calc(c)
 
     def molpro_calced(self,obj=None):
@@ -4788,8 +4850,13 @@ Please check the output on the terminal/log file for further information." % fil
         if self.debug_callbacks:
             print 'Callback key is ',callback_key
 
+        if self.vis_dict.has_key(tt):
+            vis=self.vis_dict[tt]
+        else:
+            vis=None
+
         ed = calc.edit(self.master,self,
-                      vis=self.vis_dict[tt],
+                      vis=vis,
                       job_editor=self.job_editor,
                       reload_func= lambda s=self,t=str(id(obj)) : s.load_from_graph(t),
                       update_func= lambda o,s=self,t=str(id(obj)) : s.update_model(t,o),
@@ -4980,6 +5047,7 @@ Please check the output on the terminal/log file for further information." % fil
             t1 = string.split(str(d.__class__),'.')
             myclass = t1[len(t1)-1]
             if myclass == 'Indexed' or myclass == 'Zmatrix':
+                ############or myclass == 'ZmatrixSequence':
                 #if name == d.name or name == str(id(d)):
                 #    return d
                 if name == str(id(d)):
@@ -4988,13 +5056,17 @@ Please check the output on the terminal/log file for further information." % fil
 
     def update_model(self,name,obj):
         """Update a structure in the viewer
+
+        name identifies the object which the viewer should
+        obj should be the incoming data to write into it.
+
         From October 03, name is replaced by the python object id
         However, the name mapping is retained for compatibility
         with pymol
         """
         tobj = None
         if self.debug:
-            print 'viewer: update_model',name
+            print 'viewer: update_model name=',name,' obj=',obj
 
         # Look for a structure with the matching name
         for d in self.data_list:
@@ -5007,8 +5079,13 @@ Please check the output on the terminal/log file for further information." % fil
                     tobj = d;
 
         if not tobj:
-            self.warn("internal error in update of " +  name)
+            # This should not now happen unless operations on sequences
+            # are re-enabled
+            self.warn("Structure imported " + obj.name + "\n This is not an update of an existing structure, Loading as new model ")
+            self.import_objects([obj])
+            #self.quick_mol_view([obj])
             return
+
         elif tobj == obj:
             # found it
             print '   Running update_from_object'
