@@ -264,6 +264,15 @@ of any program using or generating them. The parameters however will be
             if self.debug:
                 print "calc getjob already has job: %s : %s " % (self.job,jobtype)
             if self.job.jobtype == jobtype:
+                # Returning an old job:
+                # Sort of a hack - need to null out the home directory parameter if one
+                # exists as otherwise trying to run the same job on another machine causes
+                # the home directory for the previous machine to be lost (see GlobusJob get_homedir)
+                # same for self.host
+                if self.job.job_parameters:
+                    if self.job.job_parameters.has_key('remote_home'):
+                        self.job.job_parameters['remote_home'] = None
+                self.job.host = None
                 return self.job
 
         if not create:
@@ -293,8 +302,8 @@ of any program using or generating them. The parameters however will be
             job =  jobmanager.RMCSJob()
         elif jobtype == 'Nordugrid':
             job =  jobmanager.NordugridJob()
-        elif jobtype == 'GROWL':
-            job =  jobmanager.GrowlJob()
+        elif jobtype == 'Globus':
+            job =  jobmanager.GlobusJob()
         else:
             raise AttributeError,"create_job: unknown jobtype: %s" % jobtype
 
