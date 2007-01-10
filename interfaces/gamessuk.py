@@ -39,7 +39,7 @@ from filepunch import *
 from jobmanager import *
 from viewer.paths import root_path
 from interfaces.gamessoutputreader import GamessOutputReader
-from interfaces.jobsubEditor import RMCSEditor,NordugridEditor,GrowlEditor
+from interfaces.jobsubEditor import RMCSEditor,NordugridEditor,GlobusEditor
 from objects.file import *
 from objects.list import *
 #
@@ -423,6 +423,9 @@ class GAMESSUKCalc(QMCalc):
         if not job:
             ed.Error("gamess-uk makejob no job returned!")
             return None
+
+        print "gamessuk makejob job.paramters: "
+        print job.job_parameters
         
         # The  submission type
         #jobtype = self.get_parameter("submission")
@@ -434,8 +437,8 @@ class GAMESSUKCalc(QMCalc):
         stdout_file = job_name+'.out'
         
         # Name the punch file
-        if jobtype == 'GROWL':
-            # For growl cannot currenlt specify environment variables so punch file is default
+        if jobtype == 'Globus':
+            # For globus cannot currenlt specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
         else:
@@ -488,9 +491,9 @@ class GAMESSUKCalc(QMCalc):
             job_desc = 'Running GAMESS-UK on Nordugrid'
             self.setup_nordugrid_job( job, punchfile=remote_punch)
                 
-        elif jobtype == 'GROWL':
-            job_desc = 'Running GAMESS-UK with GROWL'
-            self.setup_growl_job( job )
+        elif jobtype == 'Globus':
+            job_desc = 'Running GAMESS-UK with Globus'
+            self.setup_globus_job( job )
 
         job.add_step( RUN_APP,
                       job_desc,
@@ -521,7 +524,7 @@ class GAMESSUKCalc(QMCalc):
             job.job_parameters['count'] = 4
             job.job_parameters['runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
             job.job_parameters['executable'] = "/usr/bin/time"
-        elif job.jobtype == 'GROWL':
+        elif job.jobtype == 'Globus':
             job.job_parameters['count'] = 4
             job.job_parameters['jobtype'] = 'mpi'
             job.job_parameters['executable'] = 'gamess-uk'
@@ -831,8 +834,8 @@ class GAMESSUKCalc(QMCalc):
                 
             job.job_parameters['environment']['ftn058'] = punchfile
 
-    def setup_growl_job(self,job):
-        """ Setup the job parameters to run a Growl job
+    def setup_globus_job(self,job):
+        """ Setup the job parameters to run a Globus job
         """
         #if punchfile:
         #    job.job_parameters['environment']['ftn058'] = punchfile
@@ -2025,7 +2028,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optcoord_opts = [ "Z-Matrix","Cartesian" ]
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
-        self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "GROWL"]
+        self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "Globus"]
 
         self.jobSubEd = None
         
@@ -2377,7 +2380,7 @@ class GAMESSUKCalcEd(QMCalcEd):
 
     def configure_jobSubEd(self):
         """Fire up the appropriate widget to configure the job depending on
-           whether we are using RMCS, Growl, Nordugrid..."""
+           whether we are using RMCS, Globus, Nordugrid..."""
 
         print "jobsubed configure ",self.calc.get_parameter("submission")
         # Get the job if the calculation has one or create a fresh one
@@ -2395,6 +2398,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         if self.jobSubEd:
             edtype = self.jobSubEd.jobtype
             if edtype == jobtype:
+                print "using old job editor"
                 self.jobSubEd.show()
                 return
             else:
@@ -2402,14 +2406,15 @@ class GAMESSUKCalcEd(QMCalcEd):
                 self.jobSubEd.destroy()
 
         # Creating a new editor
+        print "creating new editor"
         if jobtype == 'RMCS':
             self.jobSubEd = RMCSEditor(self.interior(),job, onkill=self.jobSubEd_die)
         elif jobtype == 'Nordugrid':
             self.jobSubEd = NordugridEditor(self.interior(), job, onkill=self.jobSubEd_die)
-        elif jobtype == 'GROWL':
-            self.jobSubEd = GrowlEditor(self.interior(), job,
+        elif jobtype == 'Globus':
+            self.jobSubEd = GlobusEditor(self.interior(), job,
                                         onkill=self.jobSubEd_die,
-                                        title='GAMESS-UK Growl Job Submission Editor',
+                                        title='GAMESS-UK Globus Job Submission Editor',
                                         debug=None)
         else:
             self.Error("gamessuk calced - unrecognised job editor: %s" % jobtype)
