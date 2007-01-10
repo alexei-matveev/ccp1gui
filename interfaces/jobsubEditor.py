@@ -594,6 +594,11 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.destroy()
         if self.onkill:
             self.onkill()
+
+        if self.debug:
+            if self.job:
+                print "jobsubed parameters"
+                print self.job.job_parameters
             
     def __str__(self):
        """The string to return when we are asked what we are"""
@@ -678,9 +683,9 @@ class JobSubEditor(Pmw.MegaToplevel):
                                             validate = None
                                             )
         self.remoteDirWidget.pack(side='top')
-        self.values['user_remote_dir'] = None
-        self.getValue['user_remote_dir'] = lambda s=self: s.remoteDirWidget.getvalue()
-        self.setValue['user_remote_dir'] = self.remoteDirWidget.setentry
+        self.values['directory'] = None
+        self.getValue['directory'] = lambda s=self: s.remoteDirWidget.getvalue()
+        self.setValue['directory'] = self.remoteDirWidget.setentry
        
     def LayoutJobmanagerWidget(self):
         """ Lay out the widget to select the directory on the remote machine"""
@@ -697,7 +702,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.setValue['jobmanager'] = self.jobmanagerWidget.setentry
 
 
-class GrowlEditor(JobSubEditor):
+class GlobusEditor(JobSubEditor):
 
     """ A widget to edit Growl Jobs
     """
@@ -705,7 +710,8 @@ class GrowlEditor(JobSubEditor):
     def __init__(self, root,job,**kw):
 
         # Set up the defaults
-        self.jobtype = 'GROWL'
+        self.jobtype = 'Globus'
+        self.debug=1
         
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,job,**kw)
@@ -725,7 +731,7 @@ class GrowlEditor(JobSubEditor):
         self.LayoutJobmanagerWidget()
         self.LayoutQuitButtons()
 
-        #Pmw.alignlabels( [self.executableWidget, self.remoteDirWidget] )
+        #Pmw.alignlabels( [self.executableWidget, self.directoryWidget] )
 
 class NordugridEditor(JobSubEditor):
 
