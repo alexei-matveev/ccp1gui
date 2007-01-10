@@ -12,7 +12,8 @@
 # TODO: documentation!
 
 import math
-import whrandom
+#import whrandom - deprecated
+import random
 import copy
 
 RSMALL4 = 0.0001
@@ -49,7 +50,8 @@ def distance(v1, v2):
 #------------------------------------------------------------------------------
 def random_sphere(v,dist):
    return add(v,scale(normalize([
-      whrandom.random()-0.5,whrandom.random()-0.5,whrandom.random()-0.5]),dist))
+#      whrandom.random()-0.5,whrandom.random()-0.5,whrandom.random()-0.5]),dist))
+      random.random()-0.5,random.random()-0.5,random.random()-0.5]),dist))
 
 #------------------------------------------------------------------------------
 def add(v1,v2):
