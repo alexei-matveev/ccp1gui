@@ -33,7 +33,7 @@ class EntryPair( Tkinter.Frame ):
     
     def setvalue(self, entry):
         etype = type(entry)
-        print "pair widget setting value etype:%s entry:%s" % (etype,entry)
+        #print "pair widget setting value etype:%s entry:%s" % (etype,entry)
         if etype == list:
             if len(entry) != 2:
                 print "ERROR! JobSubEditor EntryPaire setvalue len(list) != 2!"
@@ -78,6 +78,7 @@ class JobSubEditor(Pmw.MegaToplevel):
 
     frameWidth       = 300
     frameHeight      = 200
+    RSLNONE = 'None Selected'
 
 
     def __init__(self, root,job,**kw):
@@ -146,11 +147,11 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.rslVariables['architechture']=str
         self.rslVariables['runTimeEnvironment']=str
         self.rslVariables['opSys']=str
-        self.rslVariables['executable']=str
+#        self.rslVariables['executable']=str
         self.rslVariables['arguments']=str
         self.rslVariables['environment']='entrypair'
-        self.selected_RSL = {} # dict of name : ( op,value ) - value could be a list
-        self.currentRSL = 'NoneSelected' # Bit of a hack so we know the last selected RSL
+        self.currentRSL = self.RSLNONE # Bit of a hack so we know the last selected RSL
+        self.selected_RSL = { self.currentRSL : ('=',None) } # dict of name : ( op,value ) - value could be a list
         self.chooseRSLWidget = None
         self.rslValueWidget = None
         self.rslActive = None # To indicate if the RSL widgets are being used
@@ -229,6 +230,12 @@ class JobSubEditor(Pmw.MegaToplevel):
                 pass
             
         if self.rslActive:
+            
+            # This is a definite hack - need to sort out the logic of adding/removing variables
+            # and put it in one place
+            if len(self.selected_RSL) > 1 and self.RSLNONE in self.selected_RSL.keys():
+                del self.selected_RSL[self.RSLNONE]
+                
             selected = self.selected_RSL.keys()[0]
             self._UpdateRSLWidgets( selected )
             
@@ -244,7 +251,7 @@ class JobSubEditor(Pmw.MegaToplevel):
         self.selectedRSLWidget = Pmw.OptionMenu(
             RSLFrame.interior(),
             #items=self.selected_RSL.keys(),
-            items=['NoneSelected'],
+            items=[self.selected_RSL.keys()],
             command=self._ChangeSelectedRSL
             )
         self.selectedRSLWidget.pack(side='left')
@@ -363,8 +370,8 @@ class JobSubEditor(Pmw.MegaToplevel):
         else:
             self.selected_RSL[selected] = ( None, value )
 
-        if 'NoneSelected' in self.selected_RSL.keys():
-            del self.selected_RSL['NoneSelected']
+        if self.RSLNONE in self.selected_RSL.keys():
+            del self.selected_RSL[self.RSLNONE]
             
         self._UpdateRSLWidgets( selected )
         
@@ -383,9 +390,12 @@ class JobSubEditor(Pmw.MegaToplevel):
     def _SaveCurrentRSL(self, name=None):
         """ Save the current state of the RSL list"""
 
-        #print "SaveCurrentValues: ",name
+        #print "_SaveCurrentRSL: ",name
         #rsl_name = self.selectedRSLWidget.getvalue()
         rsl_name = self.currentRSL
+
+        if rsl_name == self.RSLNONE:
+            return None
             
         #rsl_op = self.RSLOpWidget.getvalue()
         rsl_op = '='
@@ -407,14 +417,14 @@ class JobSubEditor(Pmw.MegaToplevel):
     def _UpdateRSLWidgets( self, selected ):
         """ Display the correct widgts for the selected rsl """
 
-
         #print "UpdateRSLWidgets: ",selected
-        
+
         self.selectedRSLWidget.setitems( self.selected_RSL.keys() )
         self.selectedRSLWidget.setvalue(selected)
         self.currentRSL = selected
-        
-        if selected == 'NoneSelected':
+
+        # No widgets selected
+        if selected == self.RSLNONE:
             self.rslValueWidget.forget()
             return
 
@@ -458,12 +468,12 @@ class JobSubEditor(Pmw.MegaToplevel):
         
         to_delete = self.selectedRSLWidget.getvalue()
         if len( self.selected_RSL ) == 0:
-            selected = 'NoneSelected'
+            selected = self.RSLNONE
         elif len( self.selected_RSL ) == 1:
             #current = self.selected_RSL.keys()[0]
             #del self.selected_RSL[ current ]
             del self.selected_RSL[ to_delete ]
-            selected = 'NoneSelected'
+            selected = self.RSLNONE
         else:
             del self.selected_RSL[ to_delete ]
             selected = self.selected_RSL.keys()[0]
@@ -712,6 +722,8 @@ class GlobusEditor(JobSubEditor):
         # Set up the defaults
         self.jobtype = 'Globus'
         self.debug=1
+
+        self.rslActive = 1
         
         # Initialse everything in the base class
         JobSubEditor.__init__(self,root,job,**kw)
@@ -729,6 +741,7 @@ class GlobusEditor(JobSubEditor):
         self.LayoutExecutableWidget()
         self.LayoutDirectoryWidget()
         self.LayoutJobmanagerWidget()
+        self.LayoutRSLWidget()
         self.LayoutQuitButtons()
 
         #Pmw.alignlabels( [self.executableWidget, self.directoryWidget] )
@@ -919,24 +932,29 @@ if __name__ == "__main__":
     rc_vars['count'] = '4'
 
     class Junk:
+        def __init__(self):
+            self.job_parameters =  {}
+            #self.job_parameters =  {'memory' : '1234',
+            #                    'environment' :
+            #                    {'ed3':'file.ed3','ed2':'file.ed2'},
+            #                    'gridTime':'444'}
+        
         def has_parameter(self,par):
             return True
         def set_parameter(self,par,val):
             return True
         def get_parameter(self,par):
-            return {'memory' : '1234',
-                    'environment' : {'ed3':'file.ed3','ed2':'file.ed2'},
-                    'gridTime':'444'}
+            return self.job_parameters
     job = Junk()
     
     root=Tkinter.Tk()
-    ed = JobSubEditor( root, job )
-    ed.GetInitialValues()
-    ed.LayoutMachListWidget()
-    ed.LayoutNprocWidget()
-    ed.LayoutRSLWidget()
-    ed.LayoutQuitButtons()
-    ed.UpdateWidgets()
+    ed = GlobusEditor( root, job )
+    #ed.GetInitialValues()
+    #ed.LayoutMachListWidget()
+    #ed.LayoutNprocWidget()
+    #ed.LayoutRSLWidget()
+    #ed.LayoutQuitButtons()
+    #ed.UpdateWidgets()
     test = Tkinter.Button( ed.interior(),
                            text = 'Test',
                            command = ed.GetValueDict)

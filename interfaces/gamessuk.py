@@ -434,6 +434,7 @@ class GAMESSUKCalc(QMCalc):
         # These steps carried out for all jobs
         job.name    = job_name
         stdin_file  = job_name+'.in'
+        remote_stdin  = job_name+'.in'
         stdout_file = job_name+'.out'
         
         # Name the punch file
@@ -441,6 +442,7 @@ class GAMESSUKCalc(QMCalc):
             # For globus cannot currenlt specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
+            #remote_stdin = 'datain'
         else:
             local_punch = remote_punch  = job_name+'.pun'
 
@@ -456,7 +458,8 @@ class GAMESSUKCalc(QMCalc):
 
         job.add_step( COPY_OUT_FILE,
                       'transfer input',
-                      local_filename=stdin_file)
+                      local_filename=stdin_file,
+                      remote_filename=remote_stdin)
             
         # Set up the run step depending on how we are submitting the job
         local_command = None
@@ -494,6 +497,7 @@ class GAMESSUKCalc(QMCalc):
         elif jobtype == 'Globus':
             job_desc = 'Running GAMESS-UK with Globus'
             self.setup_globus_job( job )
+            #stdin_file = None
 
         job.add_step( RUN_APP,
                       job_desc,
