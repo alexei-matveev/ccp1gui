@@ -3006,6 +3006,11 @@ class Zmatrix(Indexed):
                     print
                     print 'import cart loop i1',i1,'workz name',workz.atom[i1].name[0]
 
+                #jmht - need to check that the names match up, otherwise we are foobar
+                if string.upper(workz.atom[i1].name) != string.upper(newgeom.atom[i1].name):
+                    print "Error importing geometry! Atom tags do not match up."
+                    raise ImportGeometryError,"Error importing geometry! Atom tags do not match up."
+
                 if string.upper(workz.atom[i1].name[0]) == 'X' and \
                        string.upper(newgeom.atom[i2].name[0]) != 'X':
                     # We have a dummy but the incoming geometry is missing it
@@ -4205,7 +4210,6 @@ class Zmatrix(Indexed):
         if thresh:
             symdet.thresh = thresh
 
-        symmol = self.createSymMol()
         self.toStandardOrientation()
         eigval = self.getMomentsOfInertia()
         symmol = self.createSymMol()
@@ -4538,14 +4542,27 @@ if __name__ == "__main__":
     from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
 
-    model=Zmatrix(file=gui_path+"/examples/feco5.zmt")
-    model.list()
-
-
+    if 0:
+        model=Zmatrix(file=gui_path+"/examples/feco5.zmt")
+        model.list()
     
     if 0:
         # test fragment addition
         model2 = Zmatrix(list=init_x.split('\n'),debug=1)
         model2.connect()
         model2.add_fragment(model2.atom[1],'Me')
+        
+    if 1:
+        # debug import geometry
+        model1=Zmatrix(file=gui_path+"/old.zmt",debug=0)
+        print "###### LIST1 #########"
+        model1.list()
+        
+        model2 = Zmatrix(file=gui_path+"/new.zmt",debug=0)
+        print "###### LIST2 #########"
+        model2.list()
+
+        model1.import_geometry(model2,update_constants=0)
+        print "###### LIST1 #########"
+        model1.list()
         
