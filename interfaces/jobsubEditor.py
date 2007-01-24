@@ -470,12 +470,12 @@ class JobSubEditor(Pmw.MegaToplevel):
         if len( self.selected_RSL ) == 0:
             selected = self.RSLNONE
         elif len( self.selected_RSL ) == 1:
-            #current = self.selected_RSL.keys()[0]
-            #del self.selected_RSL[ current ]
             del self.selected_RSL[ to_delete ]
+            self.values[ to_delete ] = None
             selected = self.RSLNONE
         else:
             del self.selected_RSL[ to_delete ]
+            self.values[ to_delete ] = None
             selected = self.selected_RSL.keys()[0]
             
         self._UpdateRSLWidgets( selected )
@@ -485,6 +485,7 @@ class JobSubEditor(Pmw.MegaToplevel):
 
         envdict = {}
         for key,vlist in self.selected_RSL.iteritems():
+            #print "key: %s value: %s" % ( key,vlist)
             value = vlist[1]
             tmp = key.rstrip('0123456789')
             if tmp == 'environment':
@@ -573,6 +574,7 @@ class JobSubEditor(Pmw.MegaToplevel):
            If default keyword is supplied update the rc_vars with the values we are saving
         """
 
+        #Make sure we get the latest rsl variable if that was the last thing to be updated
         if self.rslActive:
             self._SaveCurrentRSL()
 
