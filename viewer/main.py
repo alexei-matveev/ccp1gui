@@ -32,12 +32,6 @@ if __name__ == "__main__":
     # If that all works, set the PYTHONPATH variable to include the main GUI
     # directory so that we can find all of our modules
     
-    import sys
-
-    # Append the gui directory to the PYTHONPATH
-    from paths import gui_path
-    sys.path.append(gui_path)
-
     header="""
 ######################################################################
 #                                                                    #
@@ -137,6 +131,11 @@ http://public.kitware.com/VTK/get-software.php"""
     #print Pmw.__file__
     print
 
+    import sys
+    # Append the gui directory to the PYTHONPATH
+    from viewer.paths import gui_path
+    sys.path.append(gui_path)
+
 import sys,os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
@@ -182,9 +181,9 @@ import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
 
-from slavethread import *
+from viewer.slavethread import *
 from jobmanager.jobeditor import *
-from toolpanel import *
+from viewer.toolpanel import *
 
 import interfaces.am1calc, interfaces.calcmon
 from objects import symed, symdet
@@ -7425,7 +7424,7 @@ if __name__ == "__main__":
         print "You need to install Scientific Python"
         sys.exit(-1)
 
-    from vtkgraph import *
+    from viewer.vtkgraph import *
     root = Tkinter.Tk()
     root.withdraw()
     vt = VtkGraph(root)
