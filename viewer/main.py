@@ -133,7 +133,12 @@ http://public.kitware.com/VTK/get-software.php"""
 
     import sys
     # Append the gui directory to the PYTHONPATH
-    from viewer.paths import gui_path
+    # Need to trap the error here as whether this works depends on
+    # whether the gui has been installed into a python distribution
+    try:
+        from viewer.paths import gui_path
+    except ImportError:
+        from paths import gui_path
     sys.path.append(gui_path)
 
 import sys,os,stat
@@ -154,7 +159,7 @@ import viewer.help
 from viewer.debug import deb_setwidget,deb
 from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
-from viewer.paths import gui_path, python_path, user_path
+from viewer.paths import python_path, user_path
 from viewer.paths import paths
 
 from interfaces.calc import *
