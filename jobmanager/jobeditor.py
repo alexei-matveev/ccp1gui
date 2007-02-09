@@ -42,7 +42,7 @@ import cPickle # to pickle jobs
 #
 class JobEditor(Pmw.MegaToplevel):
 
-    frameWidth       = 500
+    frameWidth       = 600
     frameHeight      = 100
     if sys.platform == 'mac':
         pass
