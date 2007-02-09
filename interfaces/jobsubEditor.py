@@ -467,6 +467,10 @@ class JobSubEditor(Pmw.MegaToplevel):
         """Delete the currently selected RSL from the list"""
         
         to_delete = self.selectedRSLWidget.getvalue()
+
+        if to_delete == self.RSLNONE:
+            return
+        
         if len( self.selected_RSL ) == 0:
             selected = self.RSLNONE
         elif len( self.selected_RSL ) == 1:
