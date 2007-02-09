@@ -155,6 +155,13 @@ class InputEd(Editor):
        #Get the data
        if not self.data:
           self.data = self.calc.get_input('input_file')
+          if not self.data:
+             try:
+                self.data = self.calc.createInputFile()
+             except:
+                print "Error Editing input! - no inut data"
+                raise AttributeError,"No input file!"
+          
 
        # Use the job_name if one set, else the calc name
        try:

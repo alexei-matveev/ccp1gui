@@ -112,21 +112,9 @@ class DALTONCalc(QMCalc):
         # method vs scf_method - should be task?
         self.set_parameter("method","HF")
         self.set_parameter('direct',0);
-        #self.set_parameter("scf_method","RHF")
-        #self.set_parameter("scf_maxcyc",50)
         self.set_parameter("diis_maxcyc",60)
         self.set_parameter("scf_thresh",1.0E-6)
-        #self.set_parameter("scf_level_init",1.0)
-        #self.set_parameter("scf_level_it",10)
-        #self.set_parameter("scf_level_final",0.1)
-        #self.set_parameter("scf_bypass",0)
-        #self.set_parameter('direct_scf',0);
         self.set_parameter('symmetry',1)
-        #self.set_parameter('adaption',0)
-        #self.set_parameter('use_ri',0)
-        #self.set_parameter('accuracy','medium')
-        
-
 
         # DFT Parameters
         #self.set_parameter("dft_grid","NORMAL")
@@ -134,21 +122,6 @@ class DALTONCalc(QMCalc):
         self.set_parameter("dft_functional","BLYP")
         #self.set_parameter("dft_weights","MHL8SSF")
         self.set_parameter("dft_partitioning",None)
-        #self.set_parameter("dft_grid_atom",{}) #This isn't used anywhere yet
-        #self.set_parameter("dft_radialgrid","default")
-        #self.set_parameter("dft_angulargrid","default")
-        #self.set_parameter("dft_radialgridpoints","100")
-        #self.set_parameter("dft_angulargridpoints","100")
-        #self.set_parameter("dft_jfit",0)
-        #self.set_parameter("dft_jbas","A1DGAUSS")
-        #self.set_parameter("dft_schwarz",6)
-        
-        #self.set_parameter("postscf_method","None")
-        #self.set_parameter("predirectives","")
-        #self.set_parameter("basisdirectives","")
-        #self.set_parameter("classidirectives","")
-        #self.set_parameter("classiidirectives","")
-
 
         # Geometry optimisation parameters
         self.set_parameter( 'geomopt', 0 )
@@ -160,14 +133,6 @@ class DALTONCalc(QMCalc):
         self.set_parameter( 'opt_convstep', 1.0E-5 )
         self.set_parameter( 'preopt', 0 )
         self.set_parameter( 'preopt_basis', "STO-3G" )
-        
-        #self.set_parameter('opt_jorgensen',0)
-        #self.set_parameter('opt_hess_update','default')
-        #self.set_parameter('opt_powell',0)
-        #self.set_parameter('opt_min_hess',0)
-        #self.set_parameter('opt_max_hess',0)
-        #self.set_parameter('opt_rfo',0)
-        #self.set_parameter('opt_rfomode','on')
 
         field = Field()
         field.dim[0] = 11
@@ -271,7 +236,7 @@ class DALTONCalc(QMCalc):
         self.set_parameter( "molfile", molfile )
         self.set_parameter( "dalfile", dalfile )
 
-        return 0
+        return [ molfile, dalfile ]
 
 
     def makejob(self,writeinput=None,graph=None):

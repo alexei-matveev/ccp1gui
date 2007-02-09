@@ -139,7 +139,7 @@ class CalcEd(Pmw.MegaToplevel):
                                                title = "Query:",
                                                iconpos='w',
                                                icon_bitmap='question',
-                                               buttons = ("Yes","No"),
+                                               buttons = ("Yes","No","Cancel"),
                                                command = self.__QueryResult)
         self.query_dialog.withdraw()
         
@@ -328,9 +328,17 @@ class CalcEd(Pmw.MegaToplevel):
         self.withdraw()
 
     def WriteInput(self):
+        
         self.ReadWidgets()
-        self.calc.WriteInput()
+        try:
+            filename = self.calc.WriteInput()
+        except Exception,e:
+            self.Error("Error writing input file!\n%s" % e)
+            return None
 
+        self.Info("Wrote input file to disk:\n%s" % filename)
+        return
+    
     def ReadWidgets(self):
         for tool in self.tools:
             tool.ReadWidget()
@@ -549,11 +557,12 @@ class CalcEd(Pmw.MegaToplevel):
                       label='Write Inputfile',
                       command = lambda s=self: s.WriteInput() )
 
-        if self.master == None:
-            menu.addmenuitem('Calc', 'command',
-                             'Run input file',
-                             label='Run Inputfile',
-                             command = lambda s=self: s.Run(writeinput=0) )
+#jmht
+#        if self.master == None:
+#            menu.addmenuitem('Calc', 'command',
+#                             'Run input file',
+#                             label='Run Inputfile',
+#                             command = lambda s=self: s.Run(writeinput=0) )
 
         #menu.addmenuitem('Calc', 'command',
         #              'load Punchfile',
@@ -614,17 +623,22 @@ class CalcEd(Pmw.MegaToplevel):
         """Check if there is an input, if there is make sure we are
            not editing it before firing up an editor.
         """
-        input = self.calc.get_input('input_file')
-        if input == None:
-            self.Info("No input file available currently")
+        data = self.calc.get_input('input_file')
+        if not data:
+            try:
+                # Need to impelement the createInput methods in other calc editors...
+                data = self.calc.createInput()
+            except AttributeError:
+                self.Info("No input file available currently")
+                return None
+                
+        if self.inputeditor:
+            self.inputeditor.withdraw()
+            self.inputeditor.show()
+            return
         else:
-            if self.inputeditor:
-                self.inputeditor.withdraw()
-                self.inputeditor.show()
-                return
-            else:
-                self.inputeditor = InputEd(self.interior(),self.calc,self)
-                return 
+            self.inputeditor = InputEd(self.interior(),self.calc,self,data=data)
+            return 
        
 
     def ViewOutput(self):

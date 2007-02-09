@@ -253,16 +253,16 @@ class MOLPROCalc(QMCalc):
         m.define_keyword_basis('tzvp 6-311G*',['h','he','li','be','b','c','n','o','f','ne',
                                                'na','mg','al','si','p','s','cl','ar'],ecp=0)
 
-        m.define_keyword_basis('cc-pvdz',['h','he','li','be','b','c','n','o','f','ne',
+        m.define_keyword_basis('cc-pVDZ',['h','he','li','be','b','c','n','o','f','ne',
                                           'na','al','si','p','s','cl','ar',
                                           'ga','ge','as','se','br','kr'],ecp=0)
-        m.define_keyword_basis('cc-pvtz',['h','he','li','be','b','c','n','o','f','ne',
+        m.define_keyword_basis('cc-pVTZ',['h','he','li','be','b','c','n','o','f','ne',
                                           'na','al','si','p','s','cl','ar',
                                           'ga','ge','as','se','br','kr'],ecp=0)
-        m.define_keyword_basis('cc-pvqz',['h','he','li','be','b','c','n','o','f','ne',
+        m.define_keyword_basis('cc-pVQZ',['h','he','li','be','b','c','n','o','f','ne',
                                           'na','al','si','p','s','cl','ar',
                                           'ga','ge','as','se','br','kr'],ecp=0)
-        m.define_keyword_basis('cc-pv5z',['h','he','li','be','b','c','n','o','f','ne',
+        m.define_keyword_basis('cc-pV5Z',['h','he','li','be','b','c','n','o','f','ne',
                                           'na','al','si','p','s','cl','ar',
                                           'ga','ge','as','se','br','kr'],ecp=0)
 
@@ -347,10 +347,12 @@ class MOLPROCalc(QMCalc):
             return
 
         # load contents of input for viewing
-        file = open(directory+os.sep+job_name+'.com','r')
+        file = open(filename,'r')
         input = file.readlines()
         self.set_input("input_file",input)
         file.close()
+        
+        return filename
 
     def makejob(self,writeinput=1,graph=None):
         """Prepare the MOLPRO job:

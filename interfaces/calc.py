@@ -179,6 +179,10 @@ of any program using or generating them. The parameters however will be
         """To scan results from punchfile or similar (should be overloaded)"""
         assert 0!=0, "Calc.scan should have been overloaded."
 
+    def WriteInput(self,filename=None):
+        """Writes an output file to disk - should return path of the file as a string"""
+        assert 0!=0, "Calc.WriteInput overloaded."
+
     # title methods
 
     def set_title(self,title):
