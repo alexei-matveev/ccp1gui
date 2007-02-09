@@ -4296,7 +4296,20 @@ class ZmatrixSequence(Zmatrix):
         Zmatrix.__init__(self,**kw)
         self.frames=[]
         self.title="Sequence of Structures"
+        self.name="Unnamed"
         self.current_frame=0
+
+    def add_molecule(self,molecule):
+        """ Add a molecule to the sequence
+            This takes care of the fact that the ZMatrixSequence needs to have an atom list
+            that it updates with the coordinates of succesive molecules when it is being
+            visualised.
+        """
+
+        self.frames.append(molecule)
+
+        if len(self.atom) == 0:
+            self.atom = molecule.atom
 
 class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information

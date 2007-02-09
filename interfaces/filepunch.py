@@ -421,7 +421,8 @@ class PunchReader:
       myclass = t1[len(t1)-1]
       clone = tt.copy()
       if myclass == 'ZmatrixSequence':
-         tt.frames.append(clone)
+         #tt.frames.append(clone)
+         tt.add_molecule(clone)
 
 
    def read_shells(self,f,tt):

@@ -904,9 +904,11 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         self.nframes = len(obj.frames)
         #VtkMoleculeVisualiser is run next from vtkgraph
 
-        print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
-        for f in self.sequence.frames:
-            f.zlist()
+        debug=None
+        if debug:
+            print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
+            for f in self.sequence.frames:
+                f.zlist()
 
     def make_dialog(self, **kw):
 
@@ -1034,7 +1036,7 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         elif self.traj_type == MMTK:
             print "MMTK trajectory"
 
-        self.molecule.list()
+        #self.molecule.list()
         # remake images
         self._delete()
         self._build()

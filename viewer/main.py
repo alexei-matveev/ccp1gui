@@ -3233,8 +3233,11 @@ Please check the output on the terminal/log file for further information." % fil
                 form = 'CUBE'
             if ext == 'mol':
                 form = 'MOL'
+            # Smeagol Readers
             if ext == 'RHO':
                 form = 'SMG'
+            if ext == 'ANI':
+                form = 'XYZ_seq'
             if ext == 'vtk':
                 form = 'vtk'
             elif ext == 'sys':
@@ -3284,6 +3287,8 @@ Please check the output on the terminal/log file for further information." % fil
             fileh = open(filename,'r')
             if form == 'XYZ':
                 objs = self.rdxyz(fileh,root)
+            elif form == 'XYZ_seq':
+                objs = self.rdxyz(fileh,root,sequence=1)
             elif form == 'CRD':
                 objs = self.rdcrd(fileh,root)
             elif form == 'GAU':
@@ -3771,14 +3776,20 @@ Please check the output on the terminal/log file for further information." % fil
         return [ molecules ]
 
 
-    def rdxyz(self,file,root):
+    def rdxyz(self,file,root,sequence=None):
         """ Read in cartesian coordinates in XMOL .xyz file format.
             The xyz format can contain multiple frames so we need to
             check if we have come to the end of one frame and need to
             start another
+            The optional sequence flag indicates if we should create a
+            ZmatrixSequence of the molecules in the file
         """
 
-        models = []
+        if sequence:
+            ZmatSeq = ZmatrixSequence()
+        else:
+            models = []
+            
         finished = 0
         line = file.readline()
         while( not finished ): # loop to cycle over all the frames
@@ -3822,23 +3833,33 @@ Please check the output on the terminal/log file for further information." % fil
                     a.symbol = name_to_element( words[0] )
                     a.name = a.symbol + string.zfill(i+1,2)
                     model.atom.append(a)
-                    # atno = Element.sym2no[atsym]
                 except:
                     print "Error reading coordinates in rdxyz!"
                     print "Offending line is: %s" % line
                     break # jump out of for loop and start next cycle
 
-            self.connect_model(model)
-            self.quick_mol_view([model])
-            self.append_data(model)
-            models.append( model )
+            if sequence:
+                ZmatSeq.add_molecule(model)
+            else:
+                self.connect_model(model)
+                self.quick_mol_view([model])
+                self.append_data(model)
+                models.append( model )
+                
+            # Go back to top of while loop with next line
+            line = file.readline()
 
-            line = file.readline() # Go back to top of while loop with next line
-
-        if len( models ) == 0:
-            return None
+        if sequence:
+            ZmatSeq.connect()
+            # Name the sequence after the first molecule
+            ZmatSeq.name = ZmatSeq.frames[0].name
+            self.append_data(ZmatSeq)
+            return [ZmatSeq]
         else:
-            return [ models ]
+            if len( models ) == 0:
+                return None
+            else:
+                return models
 
     def rdgjf(self,file,root):
         """Load a zmatrix from a Gaussian input file
