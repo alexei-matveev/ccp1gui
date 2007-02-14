@@ -442,7 +442,7 @@ values selected in the editor (No)?" % inputfile )
         job_name = self.get_parameter("job_name")
         job.name    = job_name
         stdin_file  = inputfile
-        remote_stdin  = inputfile
+        remote_stdin  = os.path.basename( inputfile )
         stdout_file = job_name+'.out'
         
         # Name the punch file
