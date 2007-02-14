@@ -1481,14 +1481,17 @@ class GlobusJob(GridJob):
             return -1,"copy_out_file error accessing file: %s!" % step.local_filename
         
         host = self.get_host()
-        path = self.get_remote_dir()
+        remotepath = self.get_remote_dir()
+
+        # Need to get the filename as we may have been given a path
+        fname = os.path.basename( step.local_filename )
 
         # Format is similar to scp e.g. <local_file> <host>:<remote_path>
         args = [step.local_filename]
         if step.remote_filename:
-            args.append( "%s:%s" % (  host, path+step.remote_filename ) )
+            args.append( "%s:%s" % (  host, remotepath+step.remote_filename ) )
         else:
-            args.append( "%s:%s" % (  host, path+step.local_filename ) )
+            args.append( "%s:%s" % (  host, remotepath+fname ) )
 
         if self.debug:
             print "GlobusJob copy_out_file running: %s" % 'grid-cp '+' '.join(args)
@@ -1625,7 +1628,8 @@ class GlobusJob(GridJob):
         # Set up any parameters so that we get a suitable rsl string when we call
         # CreateRSLString        
         if step.stdin_file:
-            path = remote_dir+step.stdin_file
+            name = os.path.basename(step.stdin_file)
+            path = remote_dir+name
             self.job_parameters['stdin'] = path
         if step.stdout_file:
             path = remote_dir+step.stdout_file 
