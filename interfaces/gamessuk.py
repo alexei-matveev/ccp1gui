@@ -1045,105 +1045,13 @@ values selected in the editor (No)?" % inputfile )
         #input_list.append(self.get_parameter("classidirectives"))
 
         request_z = 0
-
         if self.get_parameter('task') == MENU_OPT and self.get_parameter('optimiser') == 'Z-Matrix':
             request_z = 1
-
-        write_x = 1
-
-        if request_z == 1:
-            # Try to load mixed coordinates from the Z-matrix editor
-            z = 0
-            for a in mol.atom:
-                if a.zorc == 'z':
-                    z = 1
-            if z:
-                # check if the first 3 atoms comply with the
-                # zmatrix conventions
-                if abs(mol.atom[0].coord[0]) > 0.0001 or \
-                   abs(mol.atom[0].coord[1]) > 0.0001 or \
-                   abs(mol.atom[0].coord[2]) > 0.0001 or \
-                   abs(mol.atom[1].coord[0]) > 0.0001 or \
-                   abs(mol.atom[1].coord[1]) > 0.0001 or \
-                   abs(mol.atom[2].coord[1]) > 0.0001 :
-                    mol.list()
-                    #jmht
-                    #ed.Error('Make sure the first 3 atoms obey the zmatrix conventions')
-                    #raise Exception, "Bad z-matrix"
-                    raise Exception,'Make sure the first 3 atoms obey the zmatrix conventions'
-
-                else:
-
-                    # check for variables
-                    counts = mol.counts()
-                    print 'counts',counts
-                    if counts[2] == 0:
-                        #jmht
-                        #ed.Error('Z-matrix has no variables')
-                        #raise Exception, "Bad z-matrix"
-                        raise Exception,'Z-matrix has no variables'
-
-                    # we can write out and use the internals
-                    write_x = 0
-                    input_list.append('zmatrix angstrom\n')
-
-                    txt = mol.output_zmat()
-                    #check first line to see if it specifies cartesians
-                    tlist = string.split(txt[0])
-                    first = tlist[0]
-                    if (first[0:4] == 'coor'):
-                        input_list.append('cartesian\n')
-                        
-                    # skip the zmatrix card as we replaced it
-                    txt.pop(0)
-#                    txt.remove(0)
-
-                    for field in txt:
-                        check = field.split()
-                        first = check[0]
-                        if (first[0:4] == 'coor'):
-                            input_list.append('cartesian\n')
-                        elif (first[0:4] == 'zmat'):
-                            input_list.append('internal\n')
-                        else:
-                            input_list.append(field + '\n')
-
-        if write_x:
-            # Geometry
-            input_list.append('geometry angstrom')
-            if self.get_parameter('task')==MENU_OPT and self.get_parameter('optimiser') == 'Z-Matrix':
-                # we need automatic z-matrix generation
-                input_list.append(' all')
-            input_list.append('\n')
-            for a in mol.atom:
-##                 t = string.lower(a.symbol)[:2]
-##                 if t[1:2] == string.upper(t[1:2]):
-##                     t = t[:1]
-
-                if a.get_number() > 0:
-                    input_list.append(str(a.coord[0]) + ' ' +
-                               str(a.coord[1]) + ' ' +
-                               str(a.coord[2]) + ' ' +
-                               str(a.get_number()) + ' ' +
-                               a.name + '\n')
-                elif a.partial_charge != -9999:
-                    input_list.append(str(a.coord[0]) + ' ' +
-                               str(a.coord[1]) + ' ' +
-                               str(a.coord[2]) + ' ' +
-                               str(a.partial_charge) + ' ' +
-                               a.name + '\n')
-                elif string.upper(a.name[0]) == 'X':
-                    # skip dummies
-                    pass
-                else:
-                    input_list.append(str(a.coord[0]) + ' ' +
-                               str(a.coord[1]) + ' ' +
-                               str(a.coord[2]) + ' ' +
-                               str(0) + ' ' +
-                               a.name + '\n')
             
-
-        input_list.append('end\n')
+        # Get the list with the molecule directives in it
+        geomtext = self.write_molecule( mol, request_z=request_z )
+        input_list = input_list + geomtext
+        
         #
         #  BASIS directive
         #
@@ -1620,6 +1528,99 @@ values selected in the editor (No)?" % inputfile )
     #End createInput
 
     # Following functions used in createInput
+    def write_molecule( self, molecule, request_z = None ):
+
+        text = []
+        write_x = 1
+
+        if request_z == 1:
+            # Try to load mixed coordinates from the Z-matrix editor
+            z = 0
+            for a in molecule.atom:
+                if a.zorc == 'z':
+                    z = 1
+            if z:
+                # check if the first 3 atoms comply with the
+                # zmatrix conventions
+                if abs(molecule.atom[0].coord[0]) > 0.0001 or \
+                   abs(molecule.atom[0].coord[1]) > 0.0001 or \
+                   abs(molecule.atom[0].coord[2]) > 0.0001 or \
+                   abs(molecule.atom[1].coord[0]) > 0.0001 or \
+                   abs(molecule.atom[1].coord[1]) > 0.0001 or \
+                   abs(molecule.atom[2].coord[1]) > 0.0001 :
+                    molecule.list()
+                    raise Exception,'Make sure the first 3 atoms obey the zmatrix conventions'
+
+                else:
+
+                    # check for variables
+                    counts = molecule.counts()
+                    print 'counts',counts
+                    if counts[2] == 0:
+                        raise Exception,'Z-matrix has no variables'
+
+                    # we can write out and use the internals
+                    write_x = 0
+                    text.append('zmatrix angstrom\n')
+
+                    txt = molecule.output_zmat()
+                    #check first line to see if it specifies cartesians
+                    tlist = string.split(txt[0])
+                    first = tlist[0]
+                    if (first[0:4] == 'coor'):
+                        text.append('cartesian\n')
+                        
+                    # skip the zmatrix card as we replaced it
+                    txt.pop(0)
+#                    txt.remove(0)
+
+                    for field in txt:
+                        check = field.split()
+                        first = check[0]
+                        if (first[0:4] == 'coor'):
+                            text.append('cartesian\n')
+                        elif (first[0:4] == 'zmat'):
+                            text.append('internal\n')
+                        else:
+                            text.append(field + '\n')
+
+        if write_x:
+            # Geometry
+            line = 'geometry angstrom'
+            if request_z:
+                # we need automatic z-matrix generation
+                line += ' all'
+            line+='\n'
+            text.append( line )
+            for a in molecule.atom:
+##                 t = string.lower(a.symbol)[:2]
+##                 if t[1:2] == string.upper(t[1:2]):
+##                     t = t[:1]
+                if a.get_number() > 0:
+                    text.append(str(a.coord[0]) + ' ' +
+                               str(a.coord[1]) + ' ' +
+                               str(a.coord[2]) + ' ' +
+                               str(a.get_number()) + ' ' +
+                               a.name + '\n')
+                elif a.partial_charge != -9999:
+                    text.append(str(a.coord[0]) + ' ' +
+                               str(a.coord[1]) + ' ' +
+                               str(a.coord[2]) + ' ' +
+                               str(a.partial_charge) + ' ' +
+                               a.name + '\n')
+                elif string.upper(a.name[0]) == 'X':
+                    # skip dummies
+                    pass
+                else:
+                    text.append(str(a.coord[0]) + ' ' +
+                               str(a.coord[1]) + ' ' +
+                               str(a.coord[2]) + ' ' +
+                               str(0) + ' ' +
+                               a.name + '\n')
+        text.append('end\n')
+        return text
+
+    
     def __prscf(self,input_list,scf_method,postscf_method,scftype,dft):
 
         if postscf_method == "MP2":
