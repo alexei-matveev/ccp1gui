@@ -108,7 +108,7 @@ class GamessOutputReader:
         self.DRF_totalArea = 0.0
         self.zmatrix = None # Flag to monitor if we are in cartesian or zmatrix mode
         self.zmatrix_auto = None
-        self.readvar = 0 # flag to monitor calls to _read_variables
+        self.readvar = None # flag to monitor calls to _read_variables
         self.molecules = []    # use to hold the list of coordinates as z-matrices
         self.manage  = {}      # Manage holds a tuple with a matching string, and function to handle
 
@@ -118,7 +118,8 @@ class GamessOutputReader:
 #       The three methods below are redundant now
 #        self.manage['nuclear_coords'] = ( re.compile('^ *nuclear coordinates') , self._read_nuclear_coordinates )
 #        self.manage['atomic_coords'] = ( re.compile('^ *\* *atom  *atomic  *coord') , self._read_molecular_geometry )
-#        self.manage['zmatrix'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix )
+        self.manage['input_zmatrix'] = ( re.compile(' >>>>> zmatrix',re.IGNORECASE) , self._read_input_zmatrix )
+#        self.manage['input_zmatrix2'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix2 )
         self.manage['variables'] = ( re.compile('^ *variable *value *hessian') , self._read_variables )
         self.manage['zmatrix_auto'] = ( re.compile('^ *automatic z-matrix generation') , self._read_zmatrix_auto )
 #jmht1 z-matrix (angstroms and degrees)
@@ -305,7 +306,7 @@ class GamessOutputReader:
         
         # Check if this is the first time here, as GAMESS-UK prints out the variables before
         # the first optimisation step
-        if self.readvar == 0:
+        if not self.readvar:
             self.readvar = 1
             return
         
@@ -343,8 +344,8 @@ class GamessOutputReader:
         new_model = copy.deepcopy( old_model )
 
         for var in new_model.variables:
-            if ( var.name in new_var_dict.keys() ):
-                var.value = new_var_dict[var.name]
+            if ( var.name.lower() in new_var_dict.keys() ):
+                var.value = new_var_dict[var.name.lower()]
             else:
                 print "Error - _read_variables can't find : ",var.name
                 pass
@@ -398,7 +399,29 @@ class GamessOutputReader:
 #         # end of while
 #     #end def
 
+
     def _read_input_zmatrix(self, line):
+        """ Read the zmatrix the user has input.
+            For the time being, we assume that this zmatrix is o.k. as GAMESS-UK has accepted it,
+            so we just parse it out and then use the load_from_list method of the zmatrix class to
+            create the molecule
+            We need to convert evrything to lower case as GUK prints variables as lower case
+        """
+        self.zmatrix = 1
+        zmat = []
+        zmat.append( line[7:].lower() ) # always strip the ' >>>>> ' off
+        inputre =  re.compile('^ >>>>> *end',re.IGNORECASE)
+        while not inputre.match( line ):
+            line = self.fd.readline()
+            zmat.append( line[7:].lower() )
+
+        model = Zmatrix( list = zmat )
+        self.molecules.append( model )
+        
+        
+        
+
+    def _read_input_zmatrix2(self, line):
         """ This reads the input z-matrix into a a text buffer and passed it to the
             load_from_file method of the z-matrix class.
             This is pretty messy and in retrospect, it is probably far easier just
@@ -436,7 +459,7 @@ class GamessOutputReader:
             try:
                 fields = string.split(line)
                 var_value = float( fields[1] )
-                varline = fields[0] + "   " + fields[1] 
+                varline = fields[0].lower() + "   " + fields[1] 
                 zmat_buffer.append( varline )
                 gotvar = 1
             except:
@@ -472,6 +495,7 @@ class GamessOutputReader:
         """
         if self.zmatrix:
             return
+        print "read_orient_geom"
 
         # The regexp that identifies lines with the coordinates on them
         # REM: \s=space, \d=digit
@@ -549,7 +573,8 @@ class GamessOutputReader:
             GAMESS-UK doesn't print out the variables that it uses and the we can't
             just update the variables as we do otherwise.
         """
-        self.zmatrix = self.zmatrix_auto = 1
+        self.zmatrix  = 1
+        self.zmatrix_auto = 1
         return
 
     def _read_zmatrix2(self, line):
