@@ -1811,10 +1811,10 @@ values selected in the editor (No)?" % inputfile )
                             for p in shell.expansion:
                                 print 'expansion',p,len(p)
                                 if len(p) == 2:
-                                    input_list.append( '%12.8f %8.4f\n' % (p[1],p[0]))
+                                    input_list.append( '%12.8f %8.4f\n' % (p[0],p[1]))
                                 elif len(p) == 3:
 
-                                    input_list.append( '%12.8f %8.4f %8.4f\n' % (p[1],p[0],p[2]))
+                                    input_list.append( '%12.8f %8.4f %8.4f\n' % (p[0],p[1],p[2]))
                                 else:
                                     print 'ELSE'
                 input_list.append('end\n')
