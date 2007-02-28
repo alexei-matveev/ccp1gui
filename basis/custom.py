@@ -23,6 +23,7 @@ import basis
 # Basis sets are keyed by element
 #
 bas={}
+ecp={}
 valid_element_list=[]
 
 def valid_elements():
@@ -30,7 +31,7 @@ def valid_elements():
 
 def get_ecp(element):
     try:
-        return bas[element]
+        return ecp[element]
     except KeyError:
         print 'No custom ECP for ',element
         return None
@@ -48,6 +49,7 @@ def store_basis(element,basis,ecp=None):
     In this case, element need not be a real element by can be
     any unique string.
     '''
+
     bas[element] = basis
     if ecp:
         ecp[element] = ecp
