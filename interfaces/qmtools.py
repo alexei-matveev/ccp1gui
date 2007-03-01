@@ -180,7 +180,8 @@ class BasisToolWidget(Pmw.MegaWidget):
         ''' Assign the chosen basis to the selected atoms
         how = 0 by type
         how = 1 by atom
-        ''' 
+        '''
+
         self.assigned_basis = self.choose_assigned_widget.getcurselection()
         print 'ass',self.assigned_basis
 
@@ -195,16 +196,16 @@ class BasisToolWidget(Pmw.MegaWidget):
             # list structure
 
             txt = self.custom_widget.get()
-            print 'raw', txt
+            #print 'raw', txt
             txt = string.strip(txt)
             txt  = string.split(txt,'\n')
-            print 'text', txt
+            #print 'text', txt
             lst = []
             for record in txt:
                 record = string.strip(record)
                 # Split according to whitespace or separators
                 words  = re.split(r'[\s,:;]+',record)
-                if len(words) == 0:
+                if len(words) == 0 or len(record) == 0:
                     # skip blank
                     pass
                 elif words[0][:1] == '#':
@@ -233,7 +234,7 @@ class BasisToolWidget(Pmw.MegaWidget):
                             current.append(words)
                         else:
                             # Need to replace with warning box
-                            print 'Unrecognised basis entry !!'
+                            print 'Unrecognised basis entry!!: %s' % record
                             return
 
             print 'final list', lst
