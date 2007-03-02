@@ -199,7 +199,6 @@ class VtkGraph(TkMolView,Graph):
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
         self.restore_saved_jobs()
         
-        
     def fit_to_window(self):
         self.pane.ResetToFit(0,0)
 
@@ -233,7 +232,7 @@ class VtkGraph(TkMolView,Graph):
         self.pane2d.Render(trace=0)
 
 
-    def save_image(self, file, format=None, quality=None  ):
+    def save_image(self, renderWindow, file, format=None, quality=None  ):
         """
            Save an image from the renderwindow to file.
            Specify format as png to write as png else it defaults
@@ -242,7 +241,8 @@ class VtkGraph(TkMolView,Graph):
         """
         self.master.update()
         w2i = vtkWindowToImageFilter()
-        w2i.SetInput(self.pane.GetRenderWindow())
+        #w2i.SetInput(self.pane.GetRenderWindow())
+        w2i.SetInput(renderWindow)
 
         if format == "png":
             writer = vtkPNGWriter()
@@ -263,14 +263,14 @@ class VtkGraph(TkMolView,Graph):
         writer.SetFileName(file)
         writer.Write()
 
-    def save_image2d(self,file):
-        self.master.update()
-        w2i = vtkWindowToImageFilter()
-        w2i.SetInput(self.pane2d.GetRenderWindow())
-        j = vtkJPEGWriter()
-        j.SetInput(w2i.GetOutput())
-        j.SetFileName(file)
-        j.Write()
+#    def save_image2d(self,file):
+#        self.master.update()
+#        w2i = vtkWindowToImageFilter()
+#        w2i.SetInput(self.pane2d.GetRenderWindow())
+#        j = vtkJPEGWriter()
+#        j.SetInput(w2i.GetOutput())
+#        j.SetFileName(file)
+#        j.Write()
 
     def sel_show(self,mol,atoms):
         if self.debug:
