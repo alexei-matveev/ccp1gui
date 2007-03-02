@@ -22,6 +22,7 @@ import sys
 import getpass
 import socket
 import jobmanager
+from viewer.paths import paths
 
 from interfaces.calced import *
 from Scientific.Geometry.VectorModule import *
@@ -102,7 +103,7 @@ of any program using or generating them. The parameters however will be
         # were inputs, now parameters
         #self.set_parameter("hostname", "localhost")
         self.set_parameter("submission", LOCALHOST)
-        self.set_parameter("directory", ".")
+        self.set_parameter("directory", paths['user'])
         self.set_parameter("username", user)
         self.set_parameter("task", "Energy")
         self.set_parameter("charge"  ,0)
@@ -347,6 +348,7 @@ of any program using or generating them. The parameters however will be
         """Specify a parameter."""
         #if self.jobstatus == SUBMITTED or self.jobstatus == RUNNING:
         #return
+
         if not self.parameter.has_key(name):
             self.jobstatus = MODIFIED
         elif not self.parameter[name] == reference:

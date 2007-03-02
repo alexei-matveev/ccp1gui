@@ -36,7 +36,7 @@ from tools import *
 from qmtools import *
 #from filepunch import *
 from jobmanager import *
-from viewer.paths import root_path,find_exe
+from viewer.paths import find_exe
 from viewer.rc_vars import rc_vars
 
 from objects.periodic import *

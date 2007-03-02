@@ -25,7 +25,6 @@ import os
 import string
 import sys
 import shutil
-import socket
 
 import Tkinter
 import Pmw
@@ -43,7 +42,7 @@ from objects.file import *
 from objects.list import *
 #
 from viewer.rc_vars import rc_vars
-from viewer.paths import find_exe,root_path
+from viewer.paths import find_exe
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -2278,9 +2277,9 @@ class GAMESSUKCalcEd(QMCalcEd):
         job_name = str(self.calc.get_name())
         self.calc.set_parameter('job_name',job_name)
         self.jobname_tool.UpdateWidget()
-        cwd = os.getcwd()
-        self.calc.set_parameter('directory',str(cwd))
-        self.workingdirectory_tool.UpdateWidget()
+        #cwd = os.getcwd()
+        #self.calc.set_parameter('directory',str(cwd))
+        #self.workingdirectory_tool.UpdateWidget()
         self.__getenvironment()
         self.ed0path_tool.UpdateWidget()
  

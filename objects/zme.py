@@ -45,7 +45,7 @@ from chempy.cpv import *
 from objects.zmatrix import *
 
 from viewer.initialisetk import initialiseTk
-from viewer.paths import gui_path
+from viewer.paths import paths
 import viewer.help
 trans = string.maketrans('a','a')
 
@@ -186,7 +186,8 @@ class ZME(Pmw.MegaToplevel):
         if kw.has_key("filename"):
             self.filename = kw["filename"]
         else:
-            self.filename = "./"
+            #self.filename = "./"
+            self.filename = paths['user']
 
         self.sel_height    = 15
         self.varsel_height = 8
@@ -483,7 +484,7 @@ class ZME(Pmw.MegaToplevel):
         dialog = self.help_dialog
         dialog.configure(text_state = 'normal')
         dialog.delete('1.0','end')
-        fp = open(gui_path+'/doc/ccp1gui.zme.txt')
+        fp = open(paths['gui']+'/doc/ccp1gui.zme.txt')
         txt = fp.readlines()
         fp.close()
         for l in txt:
@@ -2322,7 +2323,8 @@ class ZME(Pmw.MegaToplevel):
 
     def save_to_file(self):
        """ Save to file, GAMESS-UK zmatrix format"""
-       calcdir = re.sub(r"[^\/\\:]*$","",self.filename)
+       #calcdir = re.sub(r"[^\/\\:]*$","",self.filename)
+       calcdir = paths['user']
        name    = re.split(r"[\/\\:]",self.filename)
        name    = name[len(name)-1]
        if name == "":

@@ -136,10 +136,13 @@ http://public.kitware.com/VTK/get-software.php"""
     # Need to trap the error here as whether this works depends on
     # whether the gui has been installed into a python distribution
     try:
-        from viewer.paths import gui_path
+#        from viewer.paths import gui_path
+        from viewer.paths import paths
     except ImportError:
-        from paths import gui_path
-    sys.path.append(gui_path)
+        #from paths import gui_path
+        from paths import paths
+#    sys.path.append(gui_path)
+    sys.path.append(paths['gui'])
 
 import sys,os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
@@ -159,7 +162,7 @@ import viewer.help
 from viewer.debug import deb_setwidget,deb
 from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
-from viewer.paths import python_path, user_path
+#from viewer.paths import python_path, user_path
 from viewer.paths import paths
 
 from interfaces.calc import *
@@ -376,8 +379,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.debug_callbacks = 0
         self.debug_selection = 0
         self.enable_undo = 1
-        
-        self.user_directory = None
 
         # animation controls
         self.build_ani_toolbar()
@@ -985,8 +986,7 @@ class TkMolView(Pmw.MegaToplevel):
            slider to specify the quality of the jpeg.
         """
 
-        from viewer.paths import gui_path
-        self.movie_directory = gui_path
+        self.movie_directory = paths['gui']
         
         self.save_movie_dialog = Pmw.Dialog( self.master,
                                              buttons = ( 'Save', 'Close', 'Browse...' ),
@@ -1081,6 +1081,7 @@ class TkMolView(Pmw.MegaToplevel):
         # then hide the image
         image_file_list = []
         i = 0
+        renderWindow = self.pane.GetRenderWindow()
         for vis in self.ani_list:
             title = vis.title
             # Need to remove ":" from title & replace spaces with underscores
@@ -1092,9 +1093,9 @@ class TkMolView(Pmw.MegaToplevel):
             vis.Show()
             if format == "jpg":
                 quality = self.movie_jpeg_res_widget.get()
-                self.save_image(myfile, format=format, quality=quality )
+                self.save_image( renderWindow,myfile, format=format, quality=quality )
             elif format == "png":
-                self.save_image(myfile, format=format )
+                self.save_image( renderWindow,myfile, format=format )
             else:
                 print "Unrecognised image format in save_movie"
             vis.Hide()
@@ -1104,18 +1105,20 @@ class TkMolView(Pmw.MegaToplevel):
         
     def ask_save_image3d(self):
         #need code here to choose a sensible initial file
+        renderWindow = self.pane.GetRenderWindow()
         self.build_save_image_dialog()
-        self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
+#        self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
+        self.image_filename = self.save_image_dialog.go(paths['user'],"*.*","out.jpg")
         format = self.image_format.get()
         print 'filename',self.image_filename
         if format == "png":
-            self.save_image( self.image_filename, format = format )
+            self.save_image( renderWindow, self.image_filename, format = format )
         elif format == "jpg":
 #            quality = self.jpeg_res_widget.get()
             quality = 95
-            self.save_image( self.image_filename, format = format, quality=quality )
+            self.save_image( renderWindow, self.image_filename, format = format, quality=quality )
         else:
-            print "ERROR getting format in save_image3d"
+            print "ERROR getting format in ask_save_image3d"
         self.image_filename = None
 
     def save_image3d( self, result ):
@@ -1163,7 +1166,7 @@ class TkMolView(Pmw.MegaToplevel):
             initialfile = name,
             filetypes=[("JPEG","*.jpg")])
         if len(ofile):
-            self.save_image2d(ofile)
+            self.save_image2d(self.pane2d.GetRenderWindow(),ofile)
 
     def loaded_mols(self):
         """Return a list of all molecules currently loaded"""
@@ -3128,7 +3131,7 @@ class TkMolView(Pmw.MegaToplevel):
         """Ask for a file to load structure from"""
         filename = askopenfilename(
             defaultextension='',
-            initialdir=self.user_directory,
+            initialdir=paths['user'],
             filetypes=[('Molecules','.xyz'),
                        ('Molecules','.pdb'),
                        ('Molecules','.pun'),
@@ -3171,8 +3174,8 @@ Please check the output on the terminal/log file for further information." % fil
 
             # store the directory part for future file operations
             dirname = os.path.dirname(filename)
-            self.user_directory = dirname
-            print 'user directory is now',self.user_directory
+            paths['user'] = dirname
+            print 'user directory is now',paths['user']
 
 
     def load_from_file(self,filename=None):
@@ -4983,7 +4986,7 @@ Please check the output on the terminal/log file for further information." % fil
         #   initialdir = self.calcdir,
 
         ofile = tkFileDialog.askopenfilename(
-            initialdir=self.user_directory,
+            initialdir=paths['user'],
             filetypes=[("Calc File","*.clc"),] )
 
         if len(ofile):
@@ -5397,13 +5400,13 @@ Please check the output on the terminal/log file for further information." % fil
         data.append('Geometrical Info for %s\n' % model.title)
         for t in model.bonds_and_angles():
             data.append(t+"\n")
-        self.infoeditor = Editor(self.interior(),title="Geometry List",data=data,directory=self.user_directory)
+        self.infoeditor = Editor(self.interior(),title="Geometry List",data=data,directory=paths['user'])
 
     def ask_watch_file(self):
         """Ask for a file to monitor for appended data"""
         file=askopenfilename(
             defaultextension='',
-            initialdir=self.user_directory,
+            initialdir=paths['user'],
             filetypes=[('Molecules','.c'),
                        ('All', '*')])
         if not file:
