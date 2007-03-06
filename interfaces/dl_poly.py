@@ -29,6 +29,11 @@ from mm        import *
 from interfaces.mmtools   import *
 from interfaces.tools   import *
 from objects.periodic import z_to_el
+from objects.file import File
+
+
+class Dl_PolyHISTORYFile(File):
+    pass
 
 class DLPOLYCalc(MMCalc):
     """DLPOLY specifics."""
@@ -120,7 +125,7 @@ class Dl_PolyCONFIGReader:
         self.title = f.readline()
 
         tt = f.readline().split()
-        print 'Line 2 integers',tt[0],tt[1]
+        #print 'Line 2 integers',tt[0],tt[1]
 
         nskip = int(tt[0])
         icell = int(tt[1])
@@ -188,7 +193,6 @@ class Dl_PolyCONFIGReader:
         print 'returning', self.model
         return self.model
 
-
 class Dl_PolyHISTORYReader:
     """Reader for DL_POLY history files
     """
@@ -200,33 +204,62 @@ class Dl_PolyHISTORYReader:
         """ Parse HISTORY
         """
 
-        print file
         if self.debug:
-            print "> config reader scannig file"
-        f = open(file)
+            print "> history reader scanning file ",file
 
-        self.title = f.readline()
+        self.results = []
 
-        tt = f.readline().split()
-        ###print 'Line 3 integers',tt[0],tt[1],tt[2]
+        self.open(file)
+        while 1:
+            iret = self.scan1()
+            print 'ret=',iret
+            if iret == -1:
+                break
+            else:
+                self.results.append(self.lastframe)
 
-        atom_count = int(tt[2])
-        atom_no = atom_count
+        self.close()
+
+        print 'returning', self.results
+        return self.results
+
+    def open(self,file):
+        """ open file pointer to HISTORY file
+        """
+        self.fp = open(file)
+        self.frame_count = 0
+
+    def scan1(self):
+        """ Parse opened HISTORY file for the next frame
+        """
+
+        if self.debug:
+            print "> config reader scanning file for one configuration"
+
+        if self.frame_count == 0:
+            self.title = self.fp.readline()
+            tt = self.fp.readline().split()
+            if self.debug:
+                print 'Line 3 integers',tt[0],tt[1],tt[2]
+            self.atom_count = int(tt[2])
+
+        self.frame_count = self.frame_count + 1
+
+        atom_no = -1
 
         more=1
-        self.results = []
-        
         model = None
         while more:
-            line = f.readline()
+            line = self.fp.readline()
+
             #print 'line in loop',line
             #print line
             if line != "":
-
                 ###print 'CHECK',atom_no, atom_count
-                if atom_no == atom_count :
-                    print 'timestep line',line
-                    line = f.readline()
+                if atom_no == -1 :
+                    if self.debug:
+                        print 'timestep line',line
+                    line = self.fp.readline()
 
                 t = line.split()
                 atom_no = int(t[1])
@@ -234,12 +267,10 @@ class Dl_PolyHISTORYReader:
                 value = float(t[3])
 
                 if atom_no == 1 :
-                    if model:
-                        model.reindex()
                     model = Zmatrix()
                     model.title = self.title
                     model.name = model.title
-                    self.results.append(model)
+                    self.lastframe = model
 
                 p = ZAtom()
                 p.name = t[0]
@@ -257,7 +288,7 @@ class Dl_PolyHISTORYReader:
 
                 ##p.symbol = z_to_el[z_num]
                 #print p.symbol,z_num
-                line = f.readline()
+                line = self.fp.readline()
                 t = line.split()
                 p.coord[0] = float(t[0])
                 p.coord[1] = float(t[1])
@@ -265,22 +296,37 @@ class Dl_PolyHISTORYReader:
                 model.add_atom(p)
 
             else:
-                more=0
+                return -1
+                
+            #print 'atom_no atom_count',atom_no,self.atom_count
+            if atom_no == self.atom_count:
+                break;
         
-        f.close()
-        print 'reindex'
+        self.lastframe.reindex()
 
-        print 'returning', self.results
-        return self.results
+        return 0
+
+    def close(self):
+        """ close HISTORY file
+        """
+        self.fp.close()
 
 if __name__ == "__main__":
 
-
     reader = Dl_PolyHISTORYReader()
-    reader.scan("/c/qcg/psh/ParChemCourse/DL_POLY/NanoSwitch/PAUL/HISTORY")
-    reader.model.list()
-    sys.exit(0)
 
+    reader.scan("c:\\Documents and Settings\ps96\My Documents\Edinburgh MSc 2007\HISTORY.short")
+
+    #reader.open("c:\\Documents and Settings\ps96\My Documents\Edinburgh MSc 2007\HISTORY.short")
+    #for i in range(0,100):
+    #    if reader.scan1() == -1:
+    #        break
+    #print 'FRAMES:',reader.frame_count
+    #reader.close()
+
+    print reader.results
+
+    sys.exit(0)
 
     from gamessuk import *
     from objects.zmatrix import *
