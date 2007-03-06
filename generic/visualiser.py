@@ -41,6 +41,7 @@ from tkColorChooser import *
 from tkFileDialog import *
 from objects.field import Field
 from objects.grideditor import GridEditorWidget
+from interfaces.dl_poly import Dl_PolyHISTORYReader
 from viewer.debug import deb
 
 VDW_RADII = 10
@@ -887,21 +888,44 @@ class VibrationSetVisualiser(VibrationVisualiser):
         VibrationVisualiser.make_dialog(self, **kw)
 
 
-
 STRUCTURE_SEQ = 1
+DLPOLY_HISTORY = 2
+
 class TrajectoryVisualiser(MoleculeVisualiser):
     """To update a single image with a sequence of sets coordinates
     without loading all the structures as molecule objects
     """
-    def __init__(self, root, graph, obj, **kw):
+    def __init__(self, root, graph, obj, type='SEQ',**kw):
         # the visualisation will start with a copy of the first frame
-        self.traj_type = STRUCTURE_SEQ
-        self.sequence = obj
-        self.molecule = obj
-        self.sequence.current_frame = 0
+
+        self.type = type
+
+        if type == 'SEQ':
+            self.traj_type = STRUCTURE_SEQ
+            self.sequence = obj
+            self.molecule = obj
+            self.nframes = len(obj.frames)
+
+            print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
+            for f in self.sequence.frames:
+                f.zlist()
+
+        elif type == 'DLPOLYHISTORY':
+            self.traj_type = DLPOLY_HISTORY
+            self.sequence = None
+            self.traj_file = obj
+            # have to parse out the first frame
+            self.reader = Dl_PolyHISTORYReader()
+            self.reader.open(obj.filename)
+            self.reader.scan1()
+            #####self.reader.close()
+            self.molecule = self.reader.lastframe
+            self.molecule.connect()
+            self.nframes = 9999
+
+        self.current_frame = 0
 
         #copy.deepcopy(obj.frames[0])
-        self.nframes = len(obj.frames)
         #VtkMoleculeVisualiser is run next from vtkgraph
 
         debug=None
@@ -915,8 +939,6 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         self.title='Trajectory Viewer'
 
         MoleculeVisualiser.make_dialog(self, **kw)
-
-
 
         self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Play Trajectory")
 
@@ -946,7 +968,7 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         bar2.pack(side='left', fill=Tkinter.X)
 
         self.frame_label=Tkinter.Label(bar2)
-        self.frame_label.configure(text="Frame %d of %d" % (self.sequence.current_frame+1,self.nframes))
+        self.frame_label.configure(text="Frame %d of %d" % (self.current_frame+1,self.nframes))
         self.frame_label.pack(side='left')
 
         self.ani_frame.pack(side='top',fill='x')
@@ -954,58 +976,62 @@ class TrajectoryVisualiser(MoleculeVisualiser):
     def rew(self):
         """ Go to the first frame of the trajectory and display the image
         """
-        self.sequence.current_frame = 0
+        self.current_frame = 0
+        if self.traj_type == DLPOLY_HISTORY:
+            self.reader.close()
+            self.reader.open(self.traj_file.filename)
+
         self.show_frame()
         
     def end(self):
         """ Go to the last frame of the animation and display the image.
         """
-        self.sequence.current_frame = self.nframes - 1
+        self.current_frame = self.nframes - 1
         self.show_frame()
 
     def bak(self):
         """ Step back a single frame in the animation
         """
-        self.sequence.current_frame -= 1
-        if self.sequence.current_frame == -1:
-            self.sequence.current_frame = 0
+        self.current_frame -= 1
+        if self.current_frame == -1:
+            self.current_frame = 0
         self.show_frame()
 
     def fwd(self):
         """ Step forward a single frame in the animation
         """
-        self.sequence.current_frame += 1
-        if self.sequence.current_frame >= self.nframes:
+        self.current_frame += 1
+        if self.current_frame >= self.nframes:
             print 'END OF SEQUENCE'
-            self.sequence.current_frame = self.nframes - 1
+            self.current_frame = self.nframes - 1
         self.show_frame()
-    
+
     def stop(self):
         """ Stop the animation
         """
         self.ani_stop = 1
 
     def play(self):
-        """ Play through the sequence of images from self.sequence.current_frame to the end
+        """ Play through the sequence of images from self.current_frame to the end
         """
         # Need to initialise frame_no if the animation toolbar was
         # open when objects were read in
 
         # Rewind if at end
-        if self.sequence.current_frame >= self.nframes - 1:
-            self.sequence.current_frame = 0
+        if self.current_frame >= self.nframes - 1:
+            self.current_frame = 0
 
         self.ani_stop = 0
         self.ani_stop = 0
 
         while 1:
-            print 'Trajectory Frame:',self.sequence.current_frame
+            print 'Trajectory Frame:',self.current_frame
             #self.interior().update()
             if self.ani_stop:
                 return
             self.show_frame()
 
-            self.sequence.current_frame += 1
+            self.current_frame += 1
             if self.ani_stop:
                 return
             time.sleep(0.3)
@@ -1013,7 +1039,7 @@ class TrajectoryVisualiser(MoleculeVisualiser):
                 return
 
             # the end?
-            if self.sequence.current_frame == self.nframes:
+            if self.current_frame == self.nframes:
                 return
 
     def show_frame(self):
@@ -1024,14 +1050,34 @@ class TrajectoryVisualiser(MoleculeVisualiser):
 
         if self.traj_type == STRUCTURE_SEQ:
 
-            print 'SHOWING FRAME #',self.sequence.current_frame
-            frame = self.sequence.frames[self.sequence.current_frame]
+            print 'SHOWING FRAME #',self.current_frame
+            frame = self.sequence.frames[self.current_frame]
             for i in range(len(self.molecule.atom)):
                 a = self.molecule.atom[i]
                 atom = frame.atom[i]
                 a.coord[0] = atom.coord[0]
                 a.coord[1] = atom.coord[1]
                 a.coord[2] = atom.coord[2]
+
+        elif self.traj_type == DLPOLY_HISTORY:
+            
+            print 'SHOWING FRAME #',self.current_frame
+
+            iret = self.reader.scan1()
+
+            if iret == -1:
+                self.nframes = self.current_frame
+                self.ani_stop = 1
+
+            else:
+                frame = self.reader.lastframe
+
+                for i in range(len(self.molecule.atom)):
+                    a = self.molecule.atom[i]
+                    atom = frame.atom[i]
+                    a.coord[0] = atom.coord[0]
+                    a.coord[1] = atom.coord[1]
+                    a.coord[2] = atom.coord[2]
 
         elif self.traj_type == MMTK:
             print "MMTK trajectory"
@@ -1041,7 +1087,7 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         self._delete()
         self._build()
         self._show()
-        self.frame_label.configure(text="Frame %d of %d" % (self.sequence.current_frame+1,self.nframes))
+        self.frame_label.configure(text="Frame %d of %d" % (self.current_frame+1,self.nframes))
         self.dialog.update()
         # update image
         self.graph.update()
@@ -2404,11 +2450,10 @@ if __name__ == "__main__":
     root=Tk()
     root.withdraw()
     vt = VtkGraph(root)
-    p = PunchReader()
-    p.scan("c:\ccp1gui\seq4.pun")
-    print p.objects
-    obj = p.objects[0]
-
+    #p = PunchReader()
+    #p.scan("c:\ccp1gui\seq4.pun")
+    #print p.objects
+    #obj = p.objects[0]
 #    obj = p.objects[2]
 #    for o in p.objects:
 #        o.name = o.title
@@ -2419,7 +2464,9 @@ if __name__ == "__main__":
     #vis2 = VtkMoldenWfnVisualiser(root,vt,"/home/psh/molden4.4_hvd/ex1/cyclopropaan.out")
     #vis = VtkTrajectoryVisualiser(root,vt,mol)
     #vis = VtkVibrationSetVisualiser(root,vt,obj1)
-    vis = VtkTrajectoryVisualiser(root,vt,obj)
+
+    obj=Dl_PolyHISTORYFile("c:\\Documents and Settings\ps96\My Documents\Edinburgh MSc 2007\HISTORY.short")
+    vis = VtkTrajectoryVisualiser(root,vt,obj,type='DLPOLYHISTORY')
     print 'build'
     vis.Build()
     #vis2.Build()
