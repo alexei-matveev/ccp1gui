@@ -2198,6 +2198,8 @@ class TkMolView(Pmw.MegaToplevel):
             t1 = string.split(str(obj.__class__),'.')
             myclass = t1[len(t1)-1]
 
+            print 'MYCLASS',myclass
+
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if self.molecule_visualiser:
                     cascade.add_command(
@@ -2291,6 +2293,13 @@ class TkMolView(Pmw.MegaToplevel):
                                lambda s=self,obj=obj: s.visualise(obj,visualiser=\
                                   lambda r=s.master,g=s,func=s.wavefunction_visualiser,obj=obj: func(r,g,obj),
                                                                   open_widget=1))
+            if myclass == 'Dl_PolyHISTORYFile':
+                if self.trajectory_visualiser:
+                    cascade.add_command(
+                        label="New Trajectory View",command=\
+                        lambda s=self,obj=obj: s.visualise(obj,visualiser=\
+                               lambda r=s.master,g=s,func=s.trajectory_visualiser,obj=obj: func(r,g,obj,type='DLPOLYHISTORY'),
+                               open_widget=1))
 
 
     def add_vis_menu(self,menu,txt,fnc,objects):
@@ -3161,6 +3170,9 @@ class TkMolView(Pmw.MegaToplevel):
                        ('All', '*')])
 
         if filename:
+
+            print 'ATTEMPT LOAD',filename
+
             err = self.load_from_file( filename )
             if err == -1:
                 self.error( "There was a problem reading in structures from the file:\n%s\n\
@@ -3192,13 +3204,16 @@ Please check the output on the terminal/log file for further information." % fil
         
         form = 'PUN'
 
+        molecular_format = 1
+
         if len(words) == 1:
-            if filename == 'CONFIG':
+            if root == 'CONFIG':
                 form = 'dlpcfg'
                 print 'form=dlpcfg'
-            elif filename == 'HISTORY':
+            elif root == 'HISTORY':
                 form = 'dlphist'
                 print 'form=dlphist'
+                molecular_format = 0
         else:
             ext = words[-1]
             if ext == 'xyz':
@@ -3300,14 +3315,15 @@ Please check the output on the terminal/log file for further information." % fil
                 print 'No reader for format ',form
             fileh.close()
 
-        if not objs:
-            return -1
-        else:
-            for o in objs:
-                print 'obj',o
-                t = id(o)
-                self.file_dict[t] = file
-            return 0
+        if molecular_format:
+            if not objs:
+                return -1
+            else:
+                for o in objs:
+                    print 'obj',o
+                    t = id(o)
+                    self.file_dict[t] = file
+        return 0
                 
     def rdout(self,filename,root):
         """
@@ -4272,6 +4288,13 @@ Please check the output on the terminal/log file for further information." % fil
         return [reader.model]
 
     def rdhist(self,file):
+        print 'rdhist traj version'
+        # this should wrap the object such that it gets shown as a trajectory
+        obj = Dl_PolyHISTORYFile(file)
+        self.append_data(obj)
+        return [ ]
+
+    def rdhist_old(self,file):
         print 'rdhist'
         reader = Dl_PolyHISTORYReader()
         models = reader.scan(file)
@@ -4282,6 +4305,7 @@ Please check the output on the terminal/log file for further information." % fil
             self.append_data(model)
             self.quick_mol_view([model])
         return models
+
 
     def rdcube(self,file):
         print 'rdcube'
