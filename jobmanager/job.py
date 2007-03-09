@@ -521,7 +521,7 @@ class LocalJob(Job):
             step.remote_filename = step.local_filename
 
         # PS: this is windows specific? unix ('mv') code missing
-        if step.local_filename != step.remote_filename:
+        if os.path.abspath(step.local_filename) != os.path.abspath(step.remote_filename):
             cmd = 'del'
             args = [step.remote_filename]
             subprocess.Pipe(cmd,args=args,debug=self.debug).run()
@@ -1337,7 +1337,6 @@ class GlobusJob(GridJob):
         assert type(executable) == str,"Globus grid_which: args must be strings!"
         
         host = self.get_host()
-        
         args = [ '-p',self.gsissh_port ,host,'which',executable]
         output,error = self._run_command( 'gsissh',args = args )
 
@@ -1395,18 +1394,24 @@ class GlobusJob(GridJob):
     def grid_status(self,url):
         """ Get the status of the  running job identified by the url supplied"""
         
-        #output,error = self._run_command( 'grid-status',args = [url] )
         output,error = self._run_command( 'globus-job-status',args = [url] )
         self.check_common_errors( output, error, command='grid-status' )
 
         m = None
-        stat_re = re.compile("(UNSUBMITTED|DONE|FAILED|ACTIVE|PENDING)") # Group is the any of the accepted stati
+        # Group is the any of the accepted stati
+        stat_re = re.compile("(ACTIVE|DONE|ERROR|FAILED|PENDING|UNSUBMITTED)")
         for line in output:
             m = stat_re.match( line )
             if m:
-                return m.group(1)
+                # Check for errors as we need to throw an exception to propogate stdout &err
+                # up to the user
+                if m.group(1) == 'ERROR':
+                    raise JobError,output+error
+                else:
+                    return m.group(1)
+                
         # Only get here if we don't get a match
-        raise JobError,"GlobusJob grid-staus got unrecognised output!\n%s" % output
+        raise JobError,"GlobusJob grid-status got unrecognised output!\n%s" % output+error
 
 #     def grid_get_jobmanager(self,host):
 #         """See if we can determine the job manager on the remote machine
@@ -1584,7 +1589,7 @@ class GlobusJob(GridJob):
             
             ret = self.grid_status( self.jobID )
             if ret in fin_stat:
-                if ret == 'FAILED':
+                if ret == 'FAILED' or ret == 'ERROR':
                     code = -1
                 break
             else:

@@ -437,42 +437,23 @@ values selected in the editor (No)?" % inputfile )
         #jobtype = self.get_parameter("submission")
         jobtype = job.jobtype
 
-        # These steps carried out for all jobs
+        # Default values for all jobs - may be changed below
         job_name = self.get_parameter("job_name")
         job.name    = job_name
         stdin_file  = inputfile
         remote_stdin  = os.path.basename( inputfile )
         stdout_file = job_name+'.out'
-        
-        # Name the punch file
-        if jobtype == 'Globus':
-            # For globus cannot currenlt specify environment variables so punch file is default
-            remote_punch  = 'ftn058'
-            local_punch  = job_name+'.pun'
-            #remote_stdin = 'datain'
-        else:
-            local_punch = remote_punch  = job_name+'.pun'
-
-        job.clear_steps()
-        job.add_step( DELETE_FILE,
-                      'remove old output',
-                      remote_filename=stdout_file,
-                      kill_on_error=0)
-        job.add_step( DELETE_FILE,
-                      'remove old punch',
-                      remote_filename=remote_punch,
-                      kill_on_error=0)
-
-        job.add_step( COPY_OUT_FILE,
-                      'transfer input',
-                      local_filename=stdin_file,
-                      remote_filename=remote_stdin)
-            
-        # Set up the run step depending on how we are submitting the job
+        local_punch = remote_punch  = job_name+'.pun'
         local_command = None
         local_command_args = None
-        
+
+
+        # Block of code to tweak the job depending on how it is being run
         if jobtype == LOCALHOST:
+            
+            # stdin_file & remote_stdin must be the same or it gets deleted
+            remote_stdin  = stdin_file
+            
             # Determine how we will be running GAMESS-UK
             runmethod = self.get_runmethod( ErrorWidget = ed.Error)
             if not runmethod:
@@ -502,9 +483,31 @@ values selected in the editor (No)?" % inputfile )
             self.setup_nordugrid_job( job, punchfile=remote_punch)
                 
         elif jobtype == 'Globus':
+            # For globus cannot currently specify environment variables
+            # so punch file is default
+            remote_punch  = 'ftn058'
+            local_punch  = job_name+'.pun'
+            #remote_stdin = 'datain'
             job_desc = 'Running GAMESS-UK with Globus'
             self.setup_globus_job( job )
             #stdin_file = None
+
+
+        job.clear_steps()
+        job.add_step( DELETE_FILE,
+                      'remove old output',
+                      remote_filename=stdout_file,
+                      kill_on_error=0)
+        job.add_step( DELETE_FILE,
+                      'remove old punch',
+                      remote_filename=remote_punch,
+                      kill_on_error=0)
+
+        job.add_step( COPY_OUT_FILE,
+                      'transfer input',
+                      local_filename=stdin_file,
+                      remote_filename=remote_stdin)
+        
 
         job.add_step( RUN_APP,
                       job_desc,
