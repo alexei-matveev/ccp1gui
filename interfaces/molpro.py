@@ -393,7 +393,7 @@ class MOLPROCalc(QMCalc):
                 
         #  Get/create job of type specified by the submission parameter
         try:
-            job = self.getjob(create=1)
+            job = self.get_job(create=1)
         except Exception,e:
             ed.Error("Problem initialising job!\n%s" % e)
             return None

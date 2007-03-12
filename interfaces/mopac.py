@@ -106,7 +106,8 @@ class MopacCalc(QMCalc):
                 file.write(a)
             file.close()
 
-        hostname = self.get_parameter("hostname")
+#        hostname = self.get_parameter("hostname")
+        hostname = 'localhost'
         username = self.get_parameter("username")
 
         if hostname == 'localhost':
@@ -352,10 +353,10 @@ class MopacCalcEd(QMCalcEd):
                                              command = self.calc.CheckSpin)
 
         #Create the tools used for the Job tab
-        self.hostname_tool = SelectOptionTool(self,'hostname','Host name',self.hostnames,command=self.__sethost)
-        self.hostname = self.hostname_tool.widget.getvalue()# line to get the hostname for the below tool      
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
-                                                      self.submissionpolicies[self.hostname])
+#        self.hostname_tool = SelectOptionTool(self,'hostname','Host name',self.hostnames,command=self.__sethost)
+#        self.hostname = self.hostname_tool.widget.getvalue()# line to get the hostname for the below tool      
+#        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+#                                                      self.submissionpolicies['localhost'])
 
         self.username_tool = TextFieldTool(self,'username','User Name')
         self.workingdirectory_tool = TextFieldTool(self,'directory','Working Directory')
@@ -371,10 +372,10 @@ class MopacCalcEd(QMCalcEd):
         pass
 
 
-    def __sethost(self,host):
-        """Update the submission types for the particular host.
-        """
-        self.submission_tool.SetItems(self.submissionpolicies[host])
+#    def __sethost(self,host):
+#        """Update the submission types for the particular host.
+#        """
+#        self.submission_tool.SetItems(self.submissionpolicies[host])
 
     def LayoutToolsTk(self):
 
@@ -403,8 +404,8 @@ class MopacCalcEd(QMCalcEd):
         page.jobgroup = Pmw.Group(page,tag_text="Job Group")
         page.jobgroup.pack(side='top',expand='yes',fill='both')
 
-        self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
-        self.submission_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.submission_tool.widget.pack(in_=page.jobgroup.interior())
         self.username_tool.widget.pack(in_=page.jobgroup.interior())
         self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
 
