@@ -727,7 +727,7 @@ class TkMolView(Pmw.MegaToplevel):
         #self.__balloon = self.createcomponent('balloon', (), None,
         #                                      Pmw.Balloon, (self._hull,))
         self.balloon = self.createcomponent('balloon', (), None,
-                                              Pmw.Balloon, (self._hull,))
+                                              Pmw.Balloon, (self._hull,),initwait=2000)
 
     def update(self):
         """Update the screen """
