@@ -37,7 +37,6 @@ from qmtools import *
 from filepunch import *
 from jobmanager import *
 from interfaces.gamessoutputreader import GamessOutputReader
-from interfaces.jobsubEditor import RMCSEditor,NordugridEditor,GlobusEditor
 from objects.file import *
 from objects.list import *
 #
@@ -173,7 +172,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter('opt_max_hess',0)
         self.set_parameter('opt_rfo',0)
         self.set_parameter('opt_rfomode','on')
-
+        
         # Default parameters for the grid
         field = Field()
         field.dim[0] = 21
@@ -185,7 +184,6 @@ class GAMESSUKCalc(QMCalc):
         self.basis_manager = BasisManager()
 
         self.rungamess = None
-        self.gamessuk_exe = None
         
         #Set up the keyword basis sets for GAMESS-UK
         m = self.basis_manager
@@ -385,14 +383,14 @@ class GAMESSUKCalc(QMCalc):
         inputfile = self.getInputFilename()
         if writeinput:
             if os.access( inputfile, os.R_OK):
-                result = ed.Query("An inputfile for this calculation appears to exist already:\n%s\n\
-Would you like to use the existing input file (Yes) or write a new one with the\n\
-values selected in the editor (No)?" % inputfile )
+                result = ed.Query("An inputfile for this calculation appears to exist already:\n\n%s\n\n\
+Would you like to create a new input (Yes)\n\
+or use the existing file (No)?" % inputfile )
                 
                 if result == "Cancel":
                     print "Aborting calculation at user request"
                     return None
-                elif result == "No":
+                elif result == "Yes":
                     try:
                         self.WriteInput(filename=inputfile)
                     except Exception,e:
@@ -413,15 +411,11 @@ values selected in the editor (No)?" % inputfile )
                          "Please make sure you have written an input file.")
                 return
 
-        # Run job from the specified directory
-        directory = self.get_parameter("directory")
-        os.chdir(directory)
-                
         #
         #  Need to decide what kind of job run
         # 
         try:
-            job = self.getjob(create=1)
+            job = self.get_job(create=1)
         except Exception,e:
             ed.Error("Problem initialising job!\n%s" % e)
             return None
@@ -430,6 +424,10 @@ values selected in the editor (No)?" % inputfile )
             ed.Error("gamess-uk makejob no job returned!")
             return None
 
+        # Run job from the specified directory
+        directory = self.get_parameter("directory")
+        os.chdir(directory)
+                
         #print "gamessuk makejob job.paramters: "
         #print job.job_parameters
         
@@ -455,20 +453,19 @@ values selected in the editor (No)?" % inputfile )
             remote_stdin  = stdin_file
             
             # Determine how we will be running GAMESS-UK
-            runmethod = self.get_runmethod( ErrorWidget = ed.Error)
-            if not runmethod:
+            executable = self.get_executable( job=job, ErrorWidget = ed.Error)
+            if not executable:
                 return
             # See if we are keeping any files and set environment variables / get the rungamess string
             if self.rungamess:
                 rungamess_cmdline = self.keepfiles()
                 job_desc = 'Running GAMESS-UK with rungamess script'
-                #local_command = self.rungamess+" " + rungamess_cmdline + " " + job_name
-                local_command = self.rungamess
+                local_command = executable
                 local_command_args = rungamess_cmdline + [job_name]
             else:
                 self.keepfiles()
                 job_desc = 'Invoking GAMESS-UK binary directly'
-                local_command = self.gamessuk_exe
+                local_command = executable
             
         elif jobtype == 'SSH':
             job_desc = 'Running GAMESS-UK interactively on remote host'
@@ -483,8 +480,7 @@ values selected in the editor (No)?" % inputfile )
             self.setup_nordugrid_job( job, punchfile=remote_punch)
                 
         elif jobtype == 'Globus':
-            # For globus cannot currently specify environment variables
-            # so punch file is default
+            # For globus cannot currently specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
             #remote_stdin = 'datain'
@@ -526,12 +522,16 @@ values selected in the editor (No)?" % inputfile )
         job.calc = self
         return job
 
-    def set_job_calc_defaults(self,job):
+    def set_job_defaults(self,job):
         """Set any default parameters for calculations with this type of job
            This method should be overwritten (if need be) in any derived class.
         """
+        global rc_vars
 
-        if job.jobtype == 'RMCS':
+        # set the type parameter so that we can query this in the jobeditor
+        job.set_parameter('calctype','GAMESSUK')
+
+        if job.jobtype == LOCALHOST:
             pass
         elif job.jobtype == 'Nordugrid':
             # Assume running in parallel
@@ -631,17 +631,42 @@ values selected in the editor (No)?" % inputfile )
         # jmht - is this a hack?
         self.job = None
 
-    def get_runmethod(self, ErrorWidget=None):
-        """ See if we can use rungamess, otherwise we invoke the gamessuk binary directly.
+
+    def get_executable(self,job=None,ErrorWidget=None):
+        """ Try and find an executable/rungamess script. We check if the user has
+            selected an executable from the browser, if not we call various methods
+            to try and find something we can run.
+            self.rungamess should be set to 1 if we are using rungamess as this determines
+            how we create the job
         """
 
         global rc_vars, find_exe
         self.rungamess = None
 
+        if job:
+            if job.get_parameter( 'executable' ):
+                # work out if script or binary
+                # Doesn't seem to be an easy way to do this bar checking bytes or the
+                # like, so we'll just use the name
+                exe = job.get_parameter( 'executable' )
+                if len(exe):
+                    name = os.path.basename( exe )
+                    script_re = re.compile("rungamess.*")
+                    bin_re = re.compile("gamess.*")
+                    if script_re.match( name ):
+                        self.rungamess = exe
+                        print "get_executable using rungamess script from job: %s" % exe
+                        return exe
+                    elif bin_re.match( name ):
+                        print "get_executable using gamess binary from job: %s" % exe
+                        return exe
+                    else:
+                        print "get_executable could not find a suitable program: %s" % exe
+
         # Windows
         if sys.platform[:3] == 'win':
             # Use the binary directly under Windows
-            binary = self.get_gamessuk_exe()
+            binary = self.find_binary()
             if binary:
                 return binary
             else:
@@ -654,7 +679,7 @@ values selected in the editor (No)?" % inputfile )
                 return None
         else:
             # Unix / MacOSX code
-            rungamess =  self.get_rungamess()
+            rungamess =  self.find_rungamess()
             if rungamess:
                 return rungamess
             else:
@@ -670,8 +695,9 @@ values selected in the editor (No)?" % inputfile )
                               "the binary, or put the gamess binary in your path."
                         ErrorWidget(msg)
                     return None
+        
 
-    def get_rungamess(self):
+    def find_rungamess(self):
         """ Return the path to the rungamess script and set self.rungamess"""
         
         global rc_vars, find_exe
@@ -726,7 +752,7 @@ values selected in the editor (No)?" % inputfile )
                 return None
                     
 
-    def get_gamessuk_exe(self):
+    def find_binary(self):
         """ Return the path to the gamess-uk executable and set self.gamessuk_exe"""
         
         global rc_vars, find_exe
@@ -2061,8 +2087,6 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
         self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "Globus"]
-
-        self.jobSubEd = None
         
         #Create the tools used in the Molecule tab - spin & charge created in QM.
         self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
@@ -2214,11 +2238,12 @@ class GAMESSUKCalcEd(QMCalcEd):
         #Create the tools used for the Job tab
         self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
         self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' ) 
-        self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
-        self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
+        #self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
+        #self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
         self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
-                                                self.submission_policies,
-                                                self.change_submission_policy)
+                                                self.submission_policies)
+#                                                self.change_submission_policy)
+#        self.executable_tool = FileTool(self,'gamessuk_program','GAMESS-UK program', action='open', command=self.update_runmethod )
 
         #Create the tools used in the Restart Group
         self.ed0keep_tool = BooleanTool(self, 'ed0_keep', 'specify',
@@ -2266,7 +2291,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         # flag to check if we already have a summary editor open
         self.summaryeditor=None
 
-        #jmht - initialise tools
+        # initialise tools
         for tool in self.tools:
             tool.UpdateWidget()
 
@@ -2399,65 +2424,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                                  self.guessgetqblock2_tool.widget,
                                  self.guessgetqsection1_tool.widget,
                                  self.guessgetqsection2_tool.widget])
-                
 
-    def change_submission_policy(self,policy):
-        """Configure the frame depending on the policy chosen"""
-
-        self.submission_tool.ReadWidget()
-        if policy == LOCALHOST:
-            self.submission_config_button.forget()
-        else:
-            self.submission_config_button.pack(side='left')
-
-    def configure_jobSubEd(self):
-        """Fire up the appropriate widget to configure the job depending on
-           whether we are using RMCS, Globus, Nordugrid..."""
-
-        print "jobsubed configure ",self.calc.get_parameter("submission")
-        # Get the job if the calculation has one or create a fresh one
-        try:
-            job = self.calc.getjob(create=1)
-        except Exception,e:
-            self.Error("Job submission editor - error creating job!\n%s" % e )
-            return
-
-        # Determine which editor we are using
-        #jobtype = self.submission_tool.ReadWidget()
-        jobtype = job.jobtype
-        print "jobsub jobtype ",jobtype
-
-        if self.jobSubEd:
-            edtype = self.jobSubEd.jobtype
-            if edtype == jobtype:
-                print "using old job editor"
-                self.jobSubEd.show()
-                return
-            else:
-                # Should we ask here first?
-                self.jobSubEd.destroy()
-
-        # Creating a new editor
-        print "creating new editor"
-        if jobtype == 'RMCS':
-            self.jobSubEd = RMCSEditor(self.interior(),job, onkill=self.jobSubEd_die)
-        elif jobtype == 'Nordugrid':
-            self.jobSubEd = NordugridEditor(self.interior(), job, onkill=self.jobSubEd_die)
-        elif jobtype == 'Globus':
-            self.jobSubEd = GlobusEditor(self.interior(), job,
-                                        onkill=self.jobSubEd_die,
-                                        title='GAMESS-UK Globus Job Submission Editor',
-                                        debug=None)
-        else:
-            self.Error("gamessuk calced - unrecognised job editor: %s" % jobtype)
-            return None
-
-        self.jobSubEd.show()
-
-    def jobSubEd_die(self):
-        """Set the jobSubEditor variable to None"""
-        self.jobSubEd = None
-            
     def __dftradialgridpoints(self,choice):
         """Select the number of gridpoints dependant on the radial grid selected
         """
@@ -3013,13 +2980,16 @@ class GAMESSUKCalcEd(QMCalcEd):
         page.jobgroup.pack(side='top',expand='yes',fill='both')
 
         self.jobname_tool.widget.pack(in_=page.jobgroup.interior())
-        self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.submission_frame = Tkinter.Frame(page.jobgroup.interior(),relief=Tkinter.RAISED,borderwidth=2)
         self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
         self.submission_frame.pack()
+        self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobSubEd)
-        self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
+                                                       command=self.configure_jobEditor)
+        self.submission_config_button.pack(side='left')
+#        self.executable_tool.widget.pack(in_=self.submission_frame,side='top')
 
         #Add Restart group
         page.fpathgroup = Pmw.Group(page,tag_text="File Path Group")
