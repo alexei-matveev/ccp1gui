@@ -10,7 +10,6 @@ import viewer.initialisetk
 import os,getpass
 from viewer.paths import paths
 
-
 if __name__ != "__main__":
     from viewer.rc_vars import rc_vars
 
