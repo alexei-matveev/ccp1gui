@@ -30,6 +30,7 @@ import tkFileDialog
 from interfaces.calc import *
 from interfaces.tools import *
 from interfaces.inputeditor import *
+from interfaces.jobed import RMCSEditor,NordugridEditor,GlobusEditor,LocalJobEditor
 
 from objects.zme import *
 from objects.grideditor import *
@@ -120,6 +121,8 @@ class CalcEd(Pmw.MegaToplevel):
         self.pages = {}
 
         self.lock  = threading.RLock()
+
+        self.jobEditor = None
 
         # store the graph object 
         # - used to get/put structures, and also to process results
@@ -376,7 +379,7 @@ class CalcEd(Pmw.MegaToplevel):
         job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
 
         if not job:
-            self.Error("Problem preparing Job - not submitted")
+            self.Error("Run: problem preparing Job - not submitted")
             return
                 
         try:
@@ -844,6 +847,85 @@ class CalcEd(Pmw.MegaToplevel):
         self.calc.set_jobstatus(status)
         # Now handled by job manager
         # self.statusframe.l1.configure(text='Job '+status)
+
+    def chdir_cmd(self,event):
+        """
+        Command that is passed to the jobeditor and is invoked each time the directory
+        is changed with the change directory tool  
+        """
+
+        # This is a bit mucky because the FileTool can call this method
+        # either as one of the events that has been bound to the Tkinter.Entry
+        # field (in which case we get a Tkinter.Event) or when the 'Browse' tool
+        # was used (in which case we get a string).
+        etype = type(event)
+        if etype is InstanceType:
+            directory = event.widget.get()
+        else:
+            directory = event
+
+        #job = self.calc.get_job(create=None)
+        #if not job:
+        #    raise AttributeError,"gamessuk chdir_cmd no job to get directory from!"
+        #directory = job.get_parameter('directory')
+        #if not directory:
+        #    raise AttributeError,"gamessuk chdir_cmd no directory was set!"
+
+        self.calc.set_parameter('directory',directory)
+
+        print "chrdir_cmd set directory to ",directory
+
+    def configure_jobEditor(self):
+        """Fire up the appropriate widget to configure the job depending on
+           whether we are using RMCS, Globus, Nordugrid..."""
+
+        #print "jobsubed configure ",self.calc.get_parameter("submission")
+        # Get the job if the calculation has one or create a fresh one
+        try:
+            job = self.calc.get_job(create=1)
+        except Exception,e:
+            self.Error("Job submission editor - error creating job!\n%s" % e )
+            return
+
+        # Determine which editor we are using
+        #jobtype = self.submission_tool.ReadWidget()
+        jobtype = job.jobtype
+        #print "jobsub jobtype ",jobtype
+
+        if self.jobEditor:
+            edtype = self.jobEditor.jobtype
+            if edtype == jobtype:
+                print "using old job editor"
+                self.jobEditor.show()
+                return
+            else:
+                # Should we ask here first?
+                self.jobEditor.destroy()
+
+        # Creating a new editor
+        #print "creating new editor"
+        if jobtype == LOCALHOST:
+            self.jobEditor = LocalJobEditor(self.interior(),job, onkill=self.jobEditor_die,
+                                            dir_cmd=self.chdir_cmd)
+        elif jobtype == 'RMCS':
+            self.jobEditor = RMCSEditor(self.interior(),job, onkill=self.jobEditor_die)
+        elif jobtype == 'Nordugrid':
+            self.jobEditor = NordugridEditor(self.interior(), job, onkill=self.jobEditor_die)
+        elif jobtype == 'Globus':
+            self.jobEditor = GlobusEditor(self.interior(), job,
+                                        onkill=self.jobEditor_die,
+                                        title='GAMESS-UK Globus Job Submission Editor',
+                                        debug=None)
+        else:
+            self.Error("calced - unrecognised job editor: %s" % jobtype)
+            return None
+
+        self.jobEditor.show()
+
+    def jobEditor_die(self):
+        """Set the jobEditoritor variable to None"""
+        self.jobEditor = None
+
 
     #------------- messages -----------------------------
 
