@@ -251,7 +251,7 @@ class Job:
             except Exception, e:
                 if self.debug:
                     print 'Fatal Exception in step: %s' % step.name
-                    print 'Exception is: %s' % e
+                    print 'Exception is: %s' % str(e)
                 self.status = JOBSTATUS_FAILED
                 self.msg = str(e)
                 return 1
@@ -428,6 +428,19 @@ class Job:
         """Return the current status of the job"""
         return self.status
 
+    def get_parameter(self,parameter):
+        """Get the parameter specified and return None if it does't exist"""
+
+        if self.job_parameters.has_key(parameter):
+            return self.job_parameters[parameter]
+        else:
+            return None
+
+    def set_parameter(self,parameter,value):
+        """See if a job has a parameter - retrn the value if true or None if not"""
+
+        self.job_parameters[parameter] = value
+
     def update_job_parameters(self, job_dict=None):
         """Update the job parameters either from the rc_vars or from a
            a dictionary if one is supplied
@@ -511,6 +524,7 @@ class LocalJob(Job):
     def __init__(self,**kw):
         apply(Job.__init__, (self,), kw)
         self.jobtype=LOCALHOST
+        self.job_parameters['executable'] = None
 
     def allocate_scratch(self,step):
         pass
@@ -1747,6 +1761,553 @@ class GlobusJob(GridJob):
             for error,msg in common_errors.iteritems():
                 if error.match( line ):
                     raise JobError,msg
+
+class NordugridJob(GridJob):
+    """Class for running job's on the Nordugrid using ARCLIB:
+       http://www.nordugrid.org
+    """
+    def __init__(self,**kw):
+        GridJob.__init__(self)
+
+        # Import the arclib modules
+        self.init_arclib()
+        
+        # Now make sure that we have a valid proxy
+        self.CheckProxy()
+            
+        # Looks like we are good to go...
+        self.jobtype='Nordugrid'
+        
+        # See nordugrid source: nordugrid/arclib/mdsparser.cpp
+        self.jobstat_finished = ( JOBSTATUS_KILLED, 'FINISHED','KILLED','FAILED','CANCELLING','CANCELLING' )
+        
+        # Variables that we use to write out the MCS file
+        # Set to none so that we can check we have been passed them
+        self.job_parameters = {}
+        self.job_parameters['count'] = '1'
+        self.job_parameters['inputfiles'] = {}
+        self.job_parameters['outputfiles'] = {}
+        self.job_parameters['outputfiles']["\"/\""]=None # Means keep everything
+        self.job_parameters['executable'] = None
+        self.job_parameters['arguments'] = None
+        self.job_parameters['jobName'] = None
+        self.job_parameters['stdin'] = None
+        self.job_parameters['stdout'] = None
+        self.job_parameters['stderr'] = None
+        self.job_parameters['cpuTime'] = None
+        self.job_parameters['wallTime'] = None
+        self.job_parameters['memory'] = None
+        self.job_parameters['disk'] = None
+        self.job_parameters['runTimeEnvironment'] = None
+        self.job_parameters['opsys'] = None
+        self.job_parameters['gmlog'] = 'gmlog'
+        self.job_parameters['architechture'] = None
+        self.job_parameters['environment'] = {}
+
+        xrsl_parameters = ['inputfiles','outputfiles','arguments','memory','disk','runTimeEnvironment',
+                           'opsys','architechture','environment','gmlog']
+        self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
+
+        # Update the defaults with anything that is in the rc_vars dict
+        #self.update_job_parameters()
+
+        if self.name:
+            self.job_parameters['jobName'] = self.name
+        else:
+            self.name = "CCP1GUINordugridJob"
+            self.job_parameters['jobName'] = self.name
+
+        if self.debug:
+            #arclib.SetNotifyLevel(arclib.VERBOSE)
+            arclib.SetNotifyLevel(arclib.INFO)
+            #print "Nordugrid job inited successfully"
+
+    def init_arclib(self):
+        """ Check the arclib module is available """
+        global arclib
+        try:
+            import arclib
+        except ImportError:
+            raise JobError,"Nordugrid job cannot be created as the arclib module cannot be imported!\n \
+            Please make sure you have run the setup.sh script to set NORDUGRID_LOCATION, PYTHONPATH etc."
+
+
+#     BELOW TWO METHODS ARE BROKEN with ARLIB < 0.5.56
+
+#     def CheckProxy(self):
+#         """ Check that the user has a valid proxy and throw an exception if not"""
+
+#         cert = arclib.Certificate(arclib.PROXY)
+#         if cert.IsExpired():
+#             raise JobError, "Your proxy is not available! Please run grid-proxy-init to create\n \
+#             a proxy with a lifetime sufficient for your job."
+#             return 1
+#         else:
+#             return None
+
+#     def CreateRSL(self, rsl_dict=None):
+#         """ Create a suitable rsl to run the job from the job_parameters and
+#             the input and output files, executable, etc
+#             Currently we only do equals - other operators will hjave to follow later
+#         """
+
+#         # Create a blank xrsl
+#         xrsl = arclib.Xrsl(arclib.operator_and)
+        
+#         for key,value in self.job_parameters.iteritems():
+#             rsl_name = key.replace('ngrid_','')
+#             if value:
+#                 if type(value) == list:
+#                     pass
+#                 elif type(value) == dict:
+#                     # Dictionaries currently for input & outputfiles and environment variables
+#                     # can all be handled in the same way
+#                     if len(value) > 0:
+#                         #xrsl_str += '(%s=' % rsl_name
+#                         #for dkey,dvalue in value.iteritems():
+#                         #    if dvalue == None:
+#                         #        xrsl_str += '(\\"%s\\" \\"\\")' % dkey
+#                         #    else:
+#                         #        xrsl_str += '(\\"%s\\" \\"%s\\")' % ( dkey, dvalue )
+#                         #xrsl_str += ')'
+#                         pass
+#                 else:
+#                     try:
+#                         xrsl.AddRelation( arclib.XrslRelation( rsl_name, arclib.operator_eq, value ),True)
+#                     except Exception,e:
+#                         raise JobError,"CreateRsl encountered error with: %s = %s\nError was: %s" % (key,value,e)
+
+#         print "CreateRsl returning: ",xrsl
+#         return xrsl
+
+
+    def CreateRSL(self):
+        """ Create the RSL for the Nordugrid job (using the GridJob CreateRSLString method)
+        """
+
+        # Not used as we build up the xrsl using the relevant tools instead
+        xrsl_string = self.CreateRSLString()
+        xrsl_string = '&'+xrsl_string
+        
+        try:
+            xrsl = arclib.Xrsl( xrsl_string )
+            return xrsl
+        #except arclib.ARCLibError,e:
+        #    raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+        except Exception,e:
+            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!\n%s" % e
+        except:
+            raise JobError,"Nordugrid CreateRSL: supplied xrsl string was not valid!"
+
+    def GetTargets( self, xrsl ):
+        """ Return a list of suitable targets based on the supplied xrsl_string"""
+
+        if not xrsl:
+            raise JobError,"GetTargets needs an xrsl!"
+
+        try:
+            targets = arclib.PrepareJobSubmission( xrsl )
+#        except arclib.ARCLibError,e:
+#            raise JobError, "Nordugrid GetTargets hit problems preparing job submission!\n%s" % e
+        except Exception,e:
+            raise JobError, "Nordugrid GetTargets hit problems preparing job submission!\n%s" % e
+        except:
+            raise JobError, "Nordugrid GetTargets hit problems preparing job submission!"
+
+        if self.debug:
+            print "Nordugird GetTargets returning:"
+            print targets
+
+        return targets
+
+    def Submit( self, xrsl, targets ):
+        """Submit the job described by the xrsl to the list of machines in targets
+           and return the jobid that identifies this job.
+        """
+
+        try:
+            self.jobID = arclib.SubmitJob( xrsl, targets )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Job Submission of job: <%s> failed!\n%s" % (xrsl,e)
+        except Exception,e:
+            raise JobError,"arclib job submission of job: <%s> failed!\n%s" % e
+        except:
+            raise JobError,"arclib job submission failed!"
+
+        # Add job to ~/.ngjobs
+        #arclib.AddJobID( self.jobID, self.name )
+        if self.debug:
+            print "Submit submitted jobname %s as: %s" % (self.name, self.jobID )
+        return self.jobID
+
+    def SubmitInSeparateProcess(self,xrsl):
+        """
+          Due to a problem with the querying of targets and submission needs to be run as two
+          seperate processes as Python is not thread safe and the arclib library does not
+          explicitly release the Global Interpereter Lock (GIL) when it queries the network,
+          so the job thread will hang everything while it waits for the network call to return.
+       """
+
+        # Create a file we can used for dumping out the targets in one process and read
+        # them back in, in t'other
+        cwd = os.getcwd()
+        jobid_file = cwd + os.sep + '.arclibCurrentJobID'
+        if not os.access( cwd, os.W_OK ) or ( os.access(jobid_file,os.F_OK)
+                                              and not os.access(jobid_file,os.W_OK) ):
+            raise JobError,"Cannot create file %s in Nordugrid run_app!\n"+\
+                      "Please make sure that you have read/write permission for the directory:\n%s" \
+                      %(jobid_file,cwd)
+
+        if os.access(jobid_file,os.F_OK):
+            try:
+                os.remove( jobid_file )
+            except:
+                raise JobError,"Cannot delete file %s in Nordugrid GetTargets!\n" % jobid_file
+
+        pid = os.fork()
+        if not pid:
+            jobid = ''
+            # Child process - submits job and writes out the jobid
+            try:
+                machines = self.GetTargets( xrsl )
+                jobid = self.Submit( xrsl, machines )
+            except Exception,e:
+                print "Child encountered exception submitting job!"
+                print e
+            except:
+                print "Child encountered exception submitting job!"
+
+            f = open( jobid_file, 'w' )
+            f.write( jobid )
+            f.close()
+            os._exit(0)
+        else:
+            # Parent code
+            # loop and see if file has been created
+            while 1:
+                if os.access( jobid_file,os.R_OK ):
+                    time.sleep( 1 ) # Make sure that the child has a chance to write everything out
+                    break
+                time.sleep( 0.2)
+
+            try:
+                f = open( jobid_file, 'r' )
+                jobid = f.readline()
+                f.close()
+            except:
+                raise JobError,"Error loading in jobid from %s in Nordugrid GetTargets!" % jobid_file
+
+            # Probably uncessary...
+            if jobid.endswith('\n'):
+                jobid = jobid[:-1]
+
+            # v. Check that we've got something sensible
+            try:
+                self.GetJobInfo( jobid=jobid )
+            except:
+                print "Main read jobid and found it was not valid"
+                raise JobError,"There was a problem submitting the job!"
+
+            # Looks valid so remove the file and set self.jobID
+            try:
+                os.remove( jobid_file )
+            except:
+                pass
+            self.jobID = jobid
+            return
+        
+
+    def GetJobInfo(self,jobid=None):
+        """Get the job info for a job. Default is self.jobID unless we are
+           supplied with a jobid
+        """
+
+        if not jobid:
+            if not self.jobID:
+                raise JobError,"GetJobStatus Nordugrid - no valid jobID found!"
+            jobid = self.jobID
+
+        try:
+            jobinfo = arclib.GetJobInfo( jobid )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s"
+        except Exception,e:
+            raise JobError,"Nordugrid GetJobStaus error getting job info!\n%s" % e
+        except:
+            raise JobError,"Nordugrid GetJobStaus error getting job info!"
+
+        return jobinfo        
+
+    def run_app(self,step,kill_on_error=None,**kw):
+        """Setup the job, submit it, loop and query status
+           
+        """
+
+        print "Nordugrid run_app"
+        if self.restart:
+            self.init_arclib()
+        else:
+            if step.stdin_file:
+                self.job_parameters['stdin'] = step.stdin_file
+            if step.stdout_file:
+                self.job_parameters['stdout'] = step.stdout_file
+            if step.stderr_file:
+                self.job_parameters['stderr'] = step.stderr_file
+                        
+            xrsl = self.CreateRSL()
+
+            if 1:
+                self.SubmitInSeparateProcess( xrsl )
+            else:
+                # Below requires the arclib threading stuff to have been sorted out
+                machines = self.GetTargets( xrsl )
+                if len(machines) == 0:
+                    raise JobError,"No suitable machines could be found to submit to for the job:\n%s" % xrsl
+                self.Submit( xrsl, machines )
+        
+        self.host = self.GetJobInfo().cluster
+        running = 1
+        message = 'None'
+        result = 1
+        while running:
+            
+            if self.stopjob:
+                print "Nordugrid job got stop request"
+                self.status = JOBSTATUS_STOPPED
+                self.restart = 1
+                return 2, "Stopped Job"
+            
+            job_info = self.GetJobInfo()
+            self.host = job_info.cluster
+            status = job_info.status
+            self.status = status
+            if status in self.jobstat_finished:
+                running = None
+                if status == 'FINISHED':
+                    running = None
+                    result = 0
+                    message = "Job %s ran on cluster %s" % (job_info.job_name,
+                                                            job_info.cluster)
+                    break
+                    #return result,message
+                else:
+                    running = None
+                    result = -1
+                    message = "Job %s ran on cluster %s" % (job_info.job_name,
+                                                            job_info.cluster)
+                    break
+                    # Job failed in some way so bring back all the files for a postmortem
+                    #self.copy_back_rundir()
+                    #return result,message
+            else:
+                print "Nordugrid Job %s status is: %s" % (self.jobID,status)
+
+            time.sleep(self.poll_interval)
+
+
+        if result == -1:
+            # Job failed in some way so bring back all the files for a postmortem
+            directory = self.copy_back_rundir()
+            message = "Job failed! All files have been copied back to the directory:\n%s\nPlease check this directory to see what went wrong." % directory
+            
+        return result, message
+        
+
+    def copy_back_rundir(self,jobid=None):
+        """Copy back the directory with all the output files in it.
+           This often dies with: Leaked globus_ftp_control_t
+           This returns the name of the directory where all the files have been placed
+        """
+        if self.debug:
+            print "Nordugrid copy_bck_rundir:"
+            
+        if jobid:
+            myjobid = jobid
+        else:
+            if not self.jobID:
+                raise JobError,"copy_back_rundir Nordugrid - no valid jobID found!"
+            myjobid = self.jobID
+
+        if self.name:
+            job_name = self.name
+        else:
+            job_name = myjobid.split("/")[-1]
+
+        dirname = os.getcwd()+ os.sep + job_name
+        print "copy_back_rundir getting directory is ",myjobid
+        print "directory will be ",dirname
+
+        if os.access( dirname, os.F_OK):
+            # Need to move any old job directories aside
+            global backup_dir
+            print "Old job directory %s exists. Moving it aside" %  dirname
+            try:
+                backup_dir( dirname )
+            except Exception,e:
+                raise JobError,"Nordugrid copy_back_rundir problem backing up %s!\n%s" % ( dirname,e )
+
+            # Remove the old directory
+            try:
+                shutil.rmtree( dirname )
+            except Exception,e:
+                raise JobError,"Nordugrid copy_back_rundir error removing old rundirectory: %s!\n%s" % ( dirname,e )
+        # Now create a directory for the files
+        os.mkdir( dirname )
+
+        try:
+            ftpc = arclib.FTPControl()
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugird copy_back_dir hit error initialising FTPControl!\n%s" %e
+        except Exception,e:
+            raise JobError,"Nordugird copy_back_dir hit error initialising FTPControl!\n%s" %e
+        except:
+            raise JobError,"Nordugird copy_back_dir hit error initialising FTPControl!"
+
+        print "downloading directory"
+        print "ftpc.DownloadDirectory( \"%s\",\"%s\" )" %(  myjobid, dirname )
+
+        try:
+            ftpc.DownloadDirectory( myjobid, dirname )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
+        except arclib.FTPControlError,e:
+            raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
+        except Exception,e:
+            raise JobError,"Nordugird copy_back_dir hit error during download!\n%s" %e
+        except:
+            raise JobError,"Nordugird copy_back_dir hit error during download!"
+
+        return dirname
+
+    def copy_out_file(self,step,kill_on_error=1):
+        """Append the file to the list of files that are to be copied out"""
+
+        if self.debug:
+            print "Nordugrid copying out file: %s : %s" %( step.local_filename,step.remote_filename)
+            
+        if not step.remote_filename and not step.local_filename:
+            return -1,"Nordugrid copy_out_file needs a filename!"
+
+        if not step.remote_filename:
+            remote_filename = None
+        else:
+            remote_filename = step.remote_filename
+
+        self.job_parameters['inputfiles'][step.local_filename] = remote_filename
+
+        return 0,"Appended %s to list of files to copy out" % step.local_filename
+
+
+    def copy_back_file(self,step,kill_on_error=None):
+        """Get the file back from Nordugrid and rename it if necessary"""
+
+        if self.debug:
+            print "Nordugrid copy_back_file: %s : %s" %( step.local_filename,step.remote_filename)
+            
+        if not step.remote_filename and not step.local_filename:
+            return -1,"Nordugrid copy_back_file needs a filename!"
+
+        if not step.remote_filename:
+            remote_filename = step.local_filename
+        else:
+            remote_filename = step.remote_filename
+
+        if not step.local_filename:
+            local_filename = step.remote_filename
+        else:
+            local_filename = step.local_filename
+            
+
+        if not self.jobID:
+            raise JobError,"Nordugrid copy_back_file error no valid jobID found!"
+
+        try:
+            ftpc = arclib.FTPControl()
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid copy_back_file error intialising FTPControl!\n%s" % e
+        except Exception,e:
+            raise JobError,"Nordugrid copy_back_file error intialising FTPControl!\n%s" % e
+        except:
+            raise JobError,"Nordugrid copy_back_file error intialising FTPControl!"
+            
+        rundir = self.jobID
+        fileURL = rundir + "/" + remote_filename
+        print "copy_back_file fileURL: %s" % fileURL
+        local_filenam = os.getcwd() + os.sep + os.path.basename( local_filename )
+        print "copy_back_file local_filename: %s" % local_filename
+            
+        try:
+            ftpc.Download( fileURL, local_filename )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid copy_back_file error retrieving file: %s\n%s" % (fileURL,e)
+        except Exception,e:
+            raise JobError,"Nordugrid copy_back_file error retrieving file: %s\n%s" % (fileURL,e)
+        except:
+            raise JobError,"Nordugrid copy_back_file error retrieving file: %s" % fileURL
+
+        return 0,"Retrived file %s from Nordugrid" % local_filename
+
+    def _kill(self):
+        """ Kill the job if we are running. We either use the supplied kill command, or
+            our own if one wasn't supplied
+        """
+
+        print "Killing Nordugrid job "
+        self.status = JOBSTATUS_KILLPEND
+        if not self.jobID:
+            raise JobError,"kill Nordugrid Job - cannot find a jobID!"
+        try:
+            arclib.CancelJob( self.jobID )
+#            except arclib.ARCLibError,e:
+#                raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
+        except Exception,e:
+            raise JobError,"kill Nordugrid Job - error killing job!\n%s" % e
+        except:
+            raise JobError,"kill Nordugrid Job - error killing job!"
+
+        # Need to wait for the job to die
+        for i in range(2):
+            status = self.GetJobInfo().status
+            if status in self.jobstat_finished:
+                self.status = JOBSTATUS_KILLED
+                return None
+            time.sleep( self.poll_interval )
+
+        # Only get here if the job couldnt' be stopped in 2 poll intervals
+        self.status = JOBSTATUS_FAILED
+        return 1
+
+    def clean( self, jobid=None ):
+        """Clean (remove all external files) for the job. By default clean the job
+           that is identified by the self.jobID unless we have been given a jobid as
+           a keyword argument.
+        """
+
+        if jobid:
+            myjobid = jobid
+        else:
+            if not self.jobID:
+                raise JobError,"clean Nordugrid - no valid jobID found!"
+            myjobid = self.jobID
+
+        try:
+            arclib.CleanJob( myjobid )
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid clean error cleaning job: %s!\n%s" %( myjobid,e)
+        except Exception,e:
+            raise JobError,"Nordugrid clean error cleaning job: %s!\n%s" %( myjobid,e)
+        except:
+            raise JobError,"Nordugrid clean error cleaning job: %s " % myjobid
+        
+        try:
+            arclib.RemoveJobID( myjobid)
+#        except arclib.ARCLibError,e:
+#            raise JobError,"Nordugrid clean error removing jobID: %s\n%s" % (myjobid,e)
+        except Exception,e:
+            raise JobError,"Nordugrid clean error removing jobID: %s\n%s" % (myjobid,e)
+        except:
+            raise JobError,"Nordugrid clean error removing jobID: %s" % myjobid
+
 
 class JobError(RuntimeError):
     def __init__(self,message):
