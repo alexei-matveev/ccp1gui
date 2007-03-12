@@ -252,14 +252,14 @@ of any program using or generating them. The parameters however will be
         else:
             return None
 
-    def getjob(self,create=None):
+    def get_job(self,create=None):
         """If a job has already been created for this calculation and it is of the
            correct type for the selected jobtype return it or None if there isn't one
            if the create flag is set, create a job if one doesn't exist
         """
 
         if self.debug:
-            print "calc getjob"
+            print "calc get_job"
 
         # The selected submission policy
         jobtype = self.get_parameter("submission")
@@ -267,7 +267,7 @@ of any program using or generating them. The parameters however will be
         if self.job:
             # jobtype matches displayed type so return it
             if self.debug:
-                print "calc getjob already has job: %s : %s " % (self.job,jobtype)
+                print "calc get_job already has job: %s : %s " % (self.job,jobtype)
             if self.job.jobtype == jobtype:
                 # Returning an old job:
                 # Sort of a hack - need to null out the home directory parameter if one
@@ -284,7 +284,7 @@ of any program using or generating them. The parameters however will be
             return None
         
         if self.debug:
-            print "getjob creating new job object"
+            print "get_job creating new job object"
 
         job = self.create_job( jobtype )
         
@@ -314,7 +314,7 @@ of any program using or generating them. The parameters however will be
 
         # First set any defaults for this type of job - this assumes we pass
         # a pointer to the job so that this updates the job directly
-        self.set_job_calc_defaults( job )
+        self.set_job_defaults( job )
 
         # Then update the defaults with any the user has in their rc_vars
         job.update_job_parameters()
@@ -324,13 +324,13 @@ of any program using or generating them. The parameters however will be
 
         return job
 
-    def set_job_calc_defaults(self,job):
+    def set_job_defaults(self,job):
         """Set any default parameters for calculations with this type of job
            This method should be overwritten (if need be) in any derived class.
         """
         return None
 
-            
+
     # program specification things
     def set_program(self,name):
         """Sets the program name."""
@@ -341,7 +341,7 @@ of any program using or generating them. The parameters however will be
         if self.program:
             return self.program
         else:
-            return "unknown-prog"
+            return None
 
     # program parameter things
     def set_parameter(self,name,reference):
