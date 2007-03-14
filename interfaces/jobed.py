@@ -866,6 +866,8 @@ class RSLEditor(JobEditor):
         envdict = {}
         for key,vlist in self.selected_RSL.iteritems():
             #print "key: %s value: %s" % ( key,vlist)
+            if key == self.RSLNONE:
+                continue
             value = vlist[1]
             tmp = key.rstrip('0123456789')
             if tmp == 'environment':
