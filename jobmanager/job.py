@@ -1383,7 +1383,7 @@ class GlobusJob(GridJob):
                     print "grid_pwd returning: %s " % match.group(1)
                 return match.group(1)
         if not match:
-            raise JobError,"GlobusJob parse_output: grid-pwd failed!\n%s" % output
+            raise JobError,"GlobusJob parse_output: grid-pwd failed!\n%s" % "\n".join(output)
         
 
     def grid_cp(self,args):
@@ -1420,12 +1420,12 @@ class GlobusJob(GridJob):
                 # Check for errors as we need to throw an exception to propogate stdout &err
                 # up to the user
                 if m.group(1) == 'ERROR':
-                    raise JobError,output+error
+                    raise JobError,"\n".join(output+error)
                 else:
                     return m.group(1)
                 
         # Only get here if we don't get a match
-        raise JobError,"GlobusJob grid-status got unrecognised output!\n%s" % output+error
+        raise JobError,"GlobusJob grid-status got unrecognised output!\n%s" % "\n".join(output+error)
 
 #     def grid_get_jobmanager(self,host):
 #         """See if we can determine the job manager on the remote machine
@@ -1467,7 +1467,7 @@ class GlobusJob(GridJob):
             if m:
                 return m.group(1)
         if not m:
-            raise JobError,"GlobusJob parse_output: grid-submit could not find returned url!\n%s" % output
+            raise JobError,"GlobusJob parse_output: grid-submit could not find returned url!\n%s" % "\n".join(output+error)
 
 
     def job_cancel(self):
@@ -1488,7 +1488,7 @@ class GlobusJob(GridJob):
                 return m.group(1)
         if not m:
             #raise JobError,"GlobusJob cancel_job: error cancelling job!\n%s" % output
-            print "GlobusJob cancel_job: error cancelling job!\n%s" % output
+            print "GlobusJob cancel_job: error cancelling job!\n%s" % "\n".join(output+error)
             return None
 
 
@@ -1743,18 +1743,18 @@ class GlobusJob(GridJob):
         # maps common error re's to the string we use when we raise the JobError
         # we cycle through this before we do owt to pick out any general errors we know about
         common_errors = {
-            re.compile("Usage error:") : "Usage error for %s:\n%s" % (command,output),
+            re.compile("Usage error:") : "Usage error for %s:\n%s" % ( command , "\n".join(output) ),
             re.compile("Permission denied") : "Proxy Error for command: %s\nPlease run grid-proxy-init" % (command),
-            re.compile(".*Name or service not known") : "Cannot contact machine!\n%s" % output,
-            re.compile(".*cannot parse RSL stub") : "Supplied RSL was not valid!\n%s" % output,
-            re.compile(".*No such file or directory") : "Cannot find file on remote machine!\n%s" % output,
-            re.compile("GRAM Job submission failed") : "Job submission failed!\n%s" % output,
-            re.compile(".*lost connection") : "Connection failed!\n%s" % output
+            re.compile(".*Name or service not known") : "Cannot contact machine!\n%s" % "\n".join(output),
+            re.compile(".*cannot parse RSL stub") : "Supplied RSL was not valid!\n%s" % "\n".join(output),
+            re.compile(".*No such file or directory") : "Cannot find file on remote machine!\n%s" % "\n".join(output),
+            re.compile("GRAM Job submission failed") : "Job submission failed!\n%s" % "\n".join(output),
+            re.compile(".*lost connection") : "Connection failed!\n%s" % "\n".join(output)
             }
 
         if self.debug:
             print "check_common_errors command: %s" % command
-            print "check_common_errors output: %s" % output
+            print "check_common_errors output: %s" % "\n".join(output)
 
         # Check for any common errors
         for line in output:
@@ -2313,6 +2313,13 @@ class JobError(RuntimeError):
     def __init__(self,message):
         
        #self.args = args
+       
+       # Make sure that message is a string
+       if type(message) == list:
+           message = "\n".join(message)
+       if type(message) != str:
+           message = str(message)
+       
        self.args = message
        self.message = message
        
