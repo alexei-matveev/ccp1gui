@@ -331,7 +331,7 @@ class CalcEd(Pmw.MegaToplevel):
         self.withdraw()
 
     def WriteInput(self):
-        
+
         self.ReadWidgets()
         try:
             filename = self.calc.WriteInput()
