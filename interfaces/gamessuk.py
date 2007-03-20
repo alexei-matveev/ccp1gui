@@ -352,6 +352,8 @@ class GAMESSUKCalc(QMCalc):
         """
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
+        if not len(directory):
+            directory = paths['user']
         return directory+os.sep+job_name+'.in'
 
     def WriteInput(self,filename=None):
@@ -380,6 +382,25 @@ class GAMESSUKCalc(QMCalc):
         #Get an editor instance to pop up tk-error widgets
         ed = self.get_editor()
 
+        #
+        #  Need to decide what kind of job run
+        # 
+        try:
+            job = self.get_job(create=1)
+        except Exception,e:
+            ed.Error("Problem initialising job!\n%s" % e)
+            return None
+
+        if not job:
+            ed.Error("gamess-uk makejob no job returned!")
+            return None
+
+        directory = job.get_parameter('directory')
+        if directory and len(directory):
+            self.set_parameter('directory',directory)
+        else:
+            self.set_parameter('directory',paths['user'])
+            
         inputfile = self.getInputFilename()
         if writeinput:
             if os.access( inputfile, os.R_OK):
@@ -411,22 +432,10 @@ or use the existing file (No)?" % inputfile )
                          "Please make sure you have written an input file.")
                 return
 
-        #
-        #  Need to decide what kind of job run
-        # 
-        try:
-            job = self.get_job(create=1)
-        except Exception,e:
-            ed.Error("Problem initialising job!\n%s" % e)
-            return None
-
-        if not job:
-            ed.Error("gamess-uk makejob no job returned!")
-            return None
-
         # Run job from the specified directory
         directory = self.get_parameter("directory")
         os.chdir(directory)
+        print "job running from directory: %s" % directory
                 
         #print "gamessuk makejob job.paramters: "
         #print job.job_parameters
@@ -529,7 +538,7 @@ or use the existing file (No)?" % inputfile )
         global rc_vars
 
         # set the type parameter so that we can query this in the jobeditor
-        job.set_parameter('calctype','GAMESSUK')
+        #job.set_parameter('calctype','GAMESSUK')
 
         if job.jobtype == LOCALHOST:
             pass
@@ -640,7 +649,7 @@ or use the existing file (No)?" % inputfile )
             how we create the job
         """
 
-        global rc_vars, find_exe
+        global find_exe
         self.rungamess = None
 
         if job:
@@ -672,9 +681,9 @@ or use the existing file (No)?" % inputfile )
             else:
                 if ErrorWidget:
                     msg = "Cannot find a working gamess.exe binary!\n" + \
-                          "Please either set the gamessuk_exe variable in your ccp1guirc file.\n"+\
-                          "Alternatively, set the environment variable GAMESS_BIN to point to\n"+\
-                          "the directory containing the binary, or put the gamess binary in your path."
+                          "Please either set the path to the executable in the Job Tab using\n"+\
+                          "the Configure button set the environment variable GAMESS_BIN to point to\n"+\
+                          "the directory containing the binary, or put the gamess.exe binary in your path."
                     ErrorWidget(msg)
                 return None
         else:
@@ -683,14 +692,14 @@ or use the existing file (No)?" % inputfile )
             if rungamess:
                 return rungamess
             else:
-                exe =  self.get_gamessuk_exe()
+                exe =  self.find_binary()
                 if exe:
                     return exe
                 else:
                     if ErrorWidget:
                         msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
-                              "Please either set the gamessuk_script or gamessuk_exe variables\n"+\
-                              "in your ccp1guirc file or put the rungamess script in your path\n"+\
+                              "Please either set the path to the executable in the Job Tab using\n"+\
+                              "the Configure button or put the rungamess script in your path\n"+\
                               "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
                               "the binary, or put the gamess binary in your path."
                         ErrorWidget(msg)
@@ -700,7 +709,7 @@ or use the existing file (No)?" % inputfile )
     def find_rungamess(self):
         """ Return the path to the rungamess script and set self.rungamess"""
         
-        global rc_vars, find_exe
+        global find_exe
         self.rungamess = None
 
         # Windows
@@ -709,13 +718,9 @@ or use the existing file (No)?" % inputfile )
             return None
         else:
             # Unix / MacOSX code
-            if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
-                script = rc_vars['gamessuk_script']
-            else:
-                print "No gamessuk_script set in rc file - checking in environment"
-                script = find_exe( 'rungamess' )
-                if script:
-                    print "Found rungamess script: %s" % script
+            script = find_exe( 'rungamess' )
+            if script:
+                print "Found rungamess script: %s" % script
 
             if script:
                 print "Checking rungamess script is suitable..."
@@ -753,32 +758,20 @@ or use the existing file (No)?" % inputfile )
                     
 
     def find_binary(self):
-        """ Return the path to the gamess-uk executable and set self.gamessuk_exe"""
+        """ Return the path to the gamess-uk executable"""
         
-        global rc_vars, find_exe
+        global find_exe
 
         # Windows
         if sys.platform[:3] == 'win':
-            if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
-                gamessuk_exe = rc_vars['gamessuk_exe']
-                if os.access( gamessuk_exe, os.X_OK):
-                    self.gamessuk_exe = gamessuk_exe
-                    print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
-                    return gamessuk_exe
-                else:
-                    print "GAMESS-UK binary from rc file: %s" % gamessuk_exe
-                    print "Cannot be excuted!"
-            
-            # No path to gamessuk executable found in the ccp1guirc file or the file is not executable
-            # so try to see if the environment variable has been set
-            print "No gamessuk_exe set in rc file - checking in environment"
+            # No path to gamessuk executable found so try to see if the
+            # environment variable has been set
             try:
                 gamessuk_dir=os.environ['GAMESS_BIN']
                 gamessuk_exe= gamessuk_dir + os.sep + "gamess.exe"
                 print "Checking binary ",gamessuk_exe
                 if os.access( gamessuk_exe, os.X_OK):
-                    self.gamessuk_exe = gamessuk_exe
-                    print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                    print "Using gamess-uk binary: %s" % gamessuk_exe
                     return gamessuk_exe
             except KeyError:
                 pass            
@@ -788,8 +781,7 @@ or use the existing file (No)?" % inputfile )
             print "Checking for gamess.exe binary in users path..."
             gamessuk_exe = find_exe( 'gamess.exe' )
             if gamessuk_exe:
-                self.gamessuk_exe = gamessuk_exe
-                print "Using gamess-uk binary from users path: %s" % self.gamessuk_exe
+                print "Using gamess-uk binary from users path: %s" % gamessuk_exe
                 return gamessuk_exe
             else:
                 # We couldn't find a binary so state this and return 1
@@ -797,39 +789,28 @@ or use the existing file (No)?" % inputfile )
                 return None
         else:
             # Unix / MacOSX code
-            if rc_vars.has_key('gamessuk_exe') and rc_vars['gamessuk_exe']:
-                gamessuk_exe = rc_vars['gamessuk_exe']
-                print "Checking binary from ccp1guirc file...",gamessuk_exe
+            # No path to gamessuk executable found in the ccp1guirc file
+            # so try to see if the environmen variable has been set
+            try:
+                gamessuk_exe=os.environ['GAMESS_EXE']
+                print "Checking binary GAMESS_EXE...",gamessuk_exe
                 if os.access( gamessuk_exe, os.X_OK):
-                    self.gamessuk_exe = gamessuk_exe
-                    print "Using gamess-uk binary location from ccp1guirc file: %s"  % self.gamessuk_exe
-                    return gamessuk_exe
-            else:
-                # No path to gamessuk executable found in the ccp1guirc file
-                # so try to see if the environmen variable has been set
-                print "No gamessuk_exe set in rc file - checking in environment"
-                try:
-                    gamessuk_exe=os.environ['GAMESS_EXE']
-                    print "Checking binary GAMESS_EXE...",gamessuk_exe
-                    if os.access( gamessuk_exe, os.X_OK):
-                        self.gamessuk_exe = gamessuk_exe
-                        print "Using gamess-uk binary: %s"  % self.gamessuk_exe
-                        return gamessuk_exe
-                    else:
-                        print "GAMESS-UK binary %s cannot be executed!" % gamessuk_exe
-                        pass
-                except KeyError:
-                    pass
-
-                # Now just trundle through the path
-                gamessuk_exe = find_exe( 'gamess' )
-                if gamessuk_exe:
-                    self.gamessuk_exe = gamessuk_exe
-                    print "Using gamess-uk binary: %s" % self.gamessuk_exe
+                    print "Using gamess-uk binary: %s"  % gamessuk_exe
                     return gamessuk_exe
                 else:
-                    print "Cannot find a gamess-uk binary"
-                    return None
+                    print "GAMESS-UK binary %s cannot be executed!" % gamessuk_exe
+                    pass
+            except KeyError:
+                pass
+
+            # Now just trundle through the path
+            gamessuk_exe = find_exe( 'gamess' )
+            if gamessuk_exe:
+                print "Using gamess-uk binary: %s" % gamessuk_exe
+                return gamessuk_exe
+            else:
+                print "Cannot find a gamess-uk binary"
+                return None
 
     def setup_nordugrid_job(self,job, punchfile=None):
         """ Setup a job to run on nordugrid - this checks count to see if we are running

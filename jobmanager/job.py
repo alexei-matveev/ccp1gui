@@ -441,9 +441,18 @@ class Job:
 
         self.job_parameters[parameter] = value
 
-    def update_job_parameters(self, job_dict=None):
+    def update_job_parameters(self, job_dict=None, host=None):
         """Update the job parameters either from the rc_vars or from a
-           a dictionary if one is supplied
+           a dictionary if one is supplied with the job_dict key
+
+           If the host key is supplied, then it should be a host that
+           this calculation/job combination has been run on and will
+           update the parameters with the values from that job.
+
+           If the host is not supplied but there is a last_host key in the
+           dictionary for that calculation/job type, the parameters
+           for this last job are used.
+           
            Only updates for variables that already exist as keys in the
            job_parameters dictionary are permitted.
 
@@ -451,15 +460,121 @@ class Job:
 
         if not job_dict:
             global rc_vars
-            job_dict = rc_vars
+            if self.debug:
+                print "updating job parameters from the rc_vars dictionary"
+
+            # Get the values we use to key the dictionaries
+            ctype = self.get_parameter('calctype')
+            jtype = self.jobtype
+
+            if not rc_vars.has_key('job_dict'):
+                if self.debug:
+                    print "#### update_job_parameters from rc_vars NO JOB DICT!"
+                return
+            maind = rc_vars['job_dict']
+
+            if not maind.has_key( ctype ):
+                if self.debug:
+                    print "#### update_job_parameters no ctype dictionary!"
+                return
+            calcd = maind[ctype]
             
-        for key,value in self.job_parameters.iteritems():
-            if job_dict.has_key( key ):
-                self.job_parameters[key] = job_dict[key]
+            if not calcd.has_key( jtype ):
+                if self.debug:
+                    print "#### update_job_parameters no jtype dictionary!"
+                return
+            jobd = calcd[jtype]
+
+            # Have got a dictionary for a previous calculation run with
+            # this job type so now check if we are keyed by a host or, failing that, there
+            # is a default dictionary we can use instead
+            
+            if host:
+                if self.debug:
+                    print "#### update_job_parameters no host!"
+                if jobd.has_key(host):
+                    job_dict = jobd[host]
+                else:
+                    if self.debug:
+                        print "#### update_job_parameters no dictionary for host:",host
+                    job_dict = None
+
+            if not job_dict:
+                # Either no host or no valid job dict, so use the last host 
+                if jobd.has_key('last_host'):
+                    host = jobd['last_host']
+                    if host:
+                        job_dict = jobd[host]
+                else:
+                    # Use the default
+                    if jobd.has_key('job_dict'):
+                        job_dict = jobd['job_dict']
+            
+        if job_dict:
+            for key,value in self.job_parameters.iteritems():
+                if job_dict.has_key( key ):
+                    self.job_parameters[key] = job_dict[key]
+        else:
+            print "#### update_job_parameters - failed entirely to find a dictionary!"
                 
         if self.debug:
             print "job update_job_parameters: parameters are now:"
             print self.job_parameters
+
+    def save_parameters_as_default(self):
+        """ Save the current job parameters to the rc_vars.
+            The parameters are saved as a dictionary with the stucture:
+            rcvars['job_dict'] = { calculation_type = { job_type = jobd }}
+
+            calculation_type  - from the program name of the calc class
+            (e.g. GAMESS-UK)
+            job_type = from the jobtype of the job (e.g. Nordugrid)
+
+            jobd is a dictionary of the form: { host: job_dict } and maps
+            the job_parameters dictionary for a job onto a host. It is possible
+            to have an entry with the key 'job_dict' in this final dictionary,
+            which serves to hold default parameters (or for those job types that
+            don't have a single host). It may also contain the key 'lasthost'
+            which indicates the last host that was accessed (where hostnames
+            can identify jobs)
+        """
+        
+        # Get the values we use to key the dictionaries
+        ctype = self.get_parameter('calctype')
+        jtype = self.jobtype
+
+        # Make sure we have the structure we need
+        if not rc_vars.has_key('job_dict'):
+            rc_vars['job_dict'] = {}
+
+        if not rc_vars['job_dict'].has_key( ctype ):
+            rc_vars['job_dict'][ctype] = {}
+
+        if not rc_vars['job_dict'][ctype].has_key( jtype ):
+            rc_vars['job_dict'][ctype][jtype] = {}
+
+
+        #if self.host:
+        #    assert type(self.host) == str,"job.py save_parameters_as default - host must be a string!"
+        #    key = self.host
+        #    # Save this as the last host so we can pull it up if needed
+        #    rc_vars['job_dict'][ctype][jtype]['last_host'] = key
+
+        host = self.get_parameter('host')
+        if host:
+            # Should only really be one for the time being...
+            if len(host) > 1:
+                print "save_parameters_as_default - got more than one host!"
+            key = host[0] # dictionary is keyed by the hostname
+            
+            # Save this host as the last that we ran on for this jobtype
+            rc_vars['job_dict'][ctype][jtype]['last_host'] = key
+        else:
+            key = 'job_dict'
+
+        # Now save the dictionary to this location 
+        rc_vars['job_dict'][ctype][jtype][key] = self.job_parameters
+
 
     def stop(self):
         """
@@ -524,7 +639,9 @@ class LocalJob(Job):
     def __init__(self,**kw):
         apply(Job.__init__, (self,), kw)
         self.jobtype=LOCALHOST
+        #self.job_parameters['host'] = LOCALHOST
         self.job_parameters['executable'] = None
+        self.job_parameters['directory'] = None
 
     def allocate_scratch(self,step):
         pass
@@ -1269,6 +1386,7 @@ class GlobusJob(GridJob):
         self.job_parameters['jobmanager'] = None
         self.job_parameters['count'] = 1
         self.job_parameters['hosts'] = []
+        self.job_parameters['host'] = None
 
         # Now make sure that we have a valid proxy
         self.CheckProxy()
@@ -1277,13 +1395,19 @@ class GlobusJob(GridJob):
     def get_host(self):
         """Return the name of the host that we are running on """
 
-        if self.host and len(self.host):
-            return self.host
+        if self.host:
+            if len(self.host):
+                return self.host
 
-        if len( self.job_parameters['hosts'] ) != 1:
-            raise JobError, "GlobusJob needs a single hostname to run job on!" 
-        
-        self.host = self.job_parameters['hosts'][0]
+        host = self.get_parameter('host')
+        if not host or len( host) != 1:
+            raise JobError, "GlobusJob needs a single hostname to run the job on!"
+        else:
+            self.host = host[0]
+
+        if self.debug:
+            print "get_host returning ",self.host
+            
         return self.host
 
     def get_homedir(self):
@@ -1368,6 +1492,10 @@ class GlobusJob(GridJob):
         """Return the full path to the default directory on the remote machine.
         """
 
+        
+        if self.debug:
+            print "grid_pwd: %s" % host
+            
         args = [ '-p',self.gsissh_port ,host,'pwd']
         output,error = self._run_command( 'gsissh',args = args )
 

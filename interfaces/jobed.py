@@ -13,9 +13,6 @@ from viewer.paths import paths
 if __name__ != "__main__":
     from viewer.rc_vars import rc_vars
 
-SEP = "___" # Used to separate any calculation-specific parameters
-
-
 class EntryPair( Tkinter.Frame ):
     """ A widget with two Pmw entry frames that has a singled
         getvalue method returning a list
@@ -90,7 +87,7 @@ class JobEditor(Pmw.MegaToplevel):
 
     def __init__(self, root,job,**kw):
 
-        self.debug = 1
+        self.debug = None
         self.onkill = None
         self.job = job
         #self.calc = None
@@ -166,7 +163,8 @@ class JobEditor(Pmw.MegaToplevel):
             Currently there is no support for variables that run across all calcualtion types
         """
 
-        print "_getInitialJobParameters"
+        if self.debug:
+            print "_getInitialJobParameters"
         
         jobdict = self.job.job_parameters
         for key,value in jobdict.iteritems():
@@ -179,24 +177,9 @@ class JobEditor(Pmw.MegaToplevel):
         # Now update any variables that are set in the rc_vars only update those that are keyed
         # by the calculation type
         if rcUpdate:
-            global rc_vars
-            ctype = self.job.get_parameter('calctype')
-            if not ctype:
-                print "######\njobEditor - _getInitialJobParameters no calctype set so cannot use rc_vars!\n#####"
-                return
-            for key,value in rc_vars.iteritems():
-                if value:
-                    s = key.split(SEP)
-                    if len(s) == 2:
-                        t = s[0]
-                        k = s[1]
-                        if t == ctype:
-                            if self.debug:
-                                print "rc_vars: %s : %s" %(key,value)
-                            if self.values.has_key( k ):
-                                self.values[k] = value
-                                if self.debug:
-                                    print "_getInitialJobParameters rc_vars setting: %s : %s" % (k,value)
+            pass
+            #if self.debug:
+            #    print "_getInitialJobParameters rc_vars setting: %s : %s" % (k,value)
 
 
     def UpdateWidgets(self):
@@ -255,7 +238,12 @@ class JobEditor(Pmw.MegaToplevel):
 
         for key,func in self.getValue.iteritems():
             val = func()
+            # Need to convert empty strings to null
+            if type(val) == str and len(val) == 0:
+                value = None
             self.values[key]= val
+
+            
             if self.debug:
                 print "GetValueDict setting: %s to: %s" % ( key,val )
             
@@ -280,24 +268,13 @@ class JobEditor(Pmw.MegaToplevel):
         jobdict = self.GetValueDict()
         
         for key,value in jobdict.iteritems():
-            
-            # Need to convert empty strings to null
-            if type(value) == str and len(value) == 0:
-                value = None
-                
-            if key in self.job.job_parameters.keys():
+            if key in self.job.job_parameters.keys() and value:
                 self.job.job_parameters[key] = value
                 if self.debug:
                     print "_saveJobParameters setting: %s : %s" % (key,value)
                     
-            if default:
-                # Need to see if we can key this by the calcualtion type
-                ctype = self.job.get_parameter('calctype')
-                if ctype:
-                    key = ctype + SEP + key
-                rc_vars[key] = value
-                if self.debug:
-                    print "_saveJobParameters updating rc_vars with %s : %s" % (key,rc_vars[key])
+        if default:
+            self.job.save_parameters_as_default()
         
 
     def LayoutQuitButtons(self):
@@ -357,19 +334,21 @@ class JobEditor(Pmw.MegaToplevel):
         """ Lay out the machine list widget"""
 
         # Create the widgets to edit the list of machines
-        self.values['machine_list'] = [] # set default value here
         self.values['hosts'] = [] # set default value here
+        self.values['host'] = [] # set default value here
         machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
         machListFrame.pack(fill='both',expand=1)
         self.machList = Pmw.ScrolledListBox(
             machListFrame.interior(),
             listbox_selectmode='extended',
-            items=self.values['machine_list']
+            items=self.values['hosts']
             )
-        self.getValue['hosts'] = lambda s=self: s.machList.getvalue()
-        self.setValue['hosts'] = self.machList.setvalue
-        self.getValue['machine_list'] = lambda s=self: s.machList.get()
-        self.setValue['machine_list'] = self.machList.setlist
+        self.getValue['hosts'] = lambda s=self: s.machList.get()
+        self.setValue['hosts'] = self.machList.setlist
+        self.getValue['host'] = lambda s=self: s.machList.getvalue()
+        # Can't guarantee the list of hosts will have been set up before we
+        # try and set the value of the desired host
+        #self.setValue['host'] = self.machList.setvalue
         self.machList.pack(side='left')
         buttonFrame=Tkinter.Frame( machListFrame.interior() )
         buttonFrame.pack(side='left')
@@ -572,8 +551,6 @@ class RSLEditor(JobEditor):
     
     def __init__(self, root,job,**kw):
 
-        print "initing RSL editor"
-        
         self.jobtype = 'RSLEditor'
 
         # Initialse everything in the base class

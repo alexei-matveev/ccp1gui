@@ -286,9 +286,7 @@ of any program using or generating them. The parameters however will be
         if self.debug:
             print "get_job creating new job object"
 
-        job = self.create_job( jobtype )
-        
-        return job
+        return self.create_job( jobtype )
 
     def create_job(self,jobtype):
         """Create a job of the specified type
@@ -311,6 +309,11 @@ of any program using or generating them. The parameters however will be
             job =  jobmanager.GlobusJob()
         else:
             raise AttributeError,"create_job: unknown jobtype: %s" % jobtype
+
+        # Need to set the program/calc type so we know what sort of
+        # job this is
+        program = self.get_program()
+        job.set_parameter('calctype',program)
 
         # First set any defaults for this type of job - this assumes we pass
         # a pointer to the job so that this updates the job directly
