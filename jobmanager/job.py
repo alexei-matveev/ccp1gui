@@ -53,6 +53,7 @@ import sys
 import os
 import re
 import time
+import copy
 import shutil
 import socket
 from viewer.paths import backup_dir
@@ -441,7 +442,7 @@ class Job:
 
         self.job_parameters[parameter] = value
 
-    def update_job_parameters(self, job_dict=None, host=None):
+    def update_parameters(self, job_dict=None, host=None):
         """Update the job parameters either from the rc_vars or from a
            a dictionary if one is supplied with the job_dict key
 
@@ -469,34 +470,35 @@ class Job:
 
             if not rc_vars.has_key('job_dict'):
                 if self.debug:
-                    print "#### update_job_parameters from rc_vars NO JOB DICT!"
+                    print "#### update_parameters from rc_vars NO JOB DICT!"
                 return
             maind = rc_vars['job_dict']
 
             if not maind.has_key( ctype ):
                 if self.debug:
-                    print "#### update_job_parameters no ctype dictionary!"
+                    print "#### update_parameters no ctype dictionary!"
                 return
             calcd = maind[ctype]
             
             if not calcd.has_key( jtype ):
                 if self.debug:
-                    print "#### update_job_parameters no jtype dictionary!"
+                    print "#### update_parameters no jtype dictionary!"
                 return
             jobd = calcd[jtype]
 
             # Have got a dictionary for a previous calculation run with
             # this job type so now check if we are keyed by a host or, failing that, there
             # is a default dictionary we can use instead
-            
+
             if host:
                 if self.debug:
-                    print "#### update_job_parameters no host!"
+                    print "#### update_parameters got host: %s" % host
+
                 if jobd.has_key(host):
                     job_dict = jobd[host]
-                else:
+                else: 
                     if self.debug:
-                        print "#### update_job_parameters no dictionary for host:",host
+                        print "#### update_parameters no dictionary for host:",host
                     job_dict = None
 
             if not job_dict:
@@ -511,14 +513,21 @@ class Job:
                         job_dict = jobd['job_dict']
             
         if job_dict:
+            
+            # hostlist hack sling this in here so that it includes any hosts
+            # that may have been added in the meantime
+            if jobd.has_key('hostlist'):
+                hostlist = jobd['hostlist']
+                job_dict['hostlist'] = hostlist
+
             for key,value in self.job_parameters.iteritems():
                 if job_dict.has_key( key ):
                     self.job_parameters[key] = job_dict[key]
         else:
-            print "#### update_job_parameters - failed entirely to find a dictionary!"
+            print "#### update_parameters - failed entirely to find a dictionary!"
                 
         if self.debug:
-            print "job update_job_parameters: parameters are now:"
+            print "job update_parameters: parameters are now:"
             print self.job_parameters
 
     def save_parameters_as_default(self):
@@ -537,8 +546,14 @@ class Job:
             don't have a single host). It may also contain the key 'lasthost'
             which indicates the last host that was accessed (where hostnames
             can identify jobs)
+
+            ### HACK ###
+            hostlist is different as it applies to all jobs of a given type. There
+            may be other parameters that work like this, requring something a bit
+            cleverer, but for the time being just this will be treated differently
         """
-        
+
+
         # Get the values we use to key the dictionaries
         ctype = self.get_parameter('calctype')
         jtype = self.jobtype
@@ -560,6 +575,12 @@ class Job:
         #    # Save this as the last host so we can pull it up if needed
         #    rc_vars['job_dict'][ctype][jtype]['last_host'] = key
 
+        # hostlist hack
+        hostlist = self.get_parameter('hostlist')
+        if hostlist:
+            rc_vars['job_dict'][ctype][jtype]['hostlist'] = hostlist
+            
+
         host = self.get_parameter('host')
         if host:
             # Should only really be one for the time being...
@@ -572,8 +593,11 @@ class Job:
         else:
             key = 'job_dict'
 
-        # Now save the dictionary to this location 
-        rc_vars['job_dict'][ctype][jtype][key] = self.job_parameters
+        # Now save the dictionary to this location
+        # Need to save a copy NOT a pointer otherwise the references all point
+        # at the same object until the dictionary is saved out to file.
+        # Do not ask how long it took to debug that one...
+        rc_vars['job_dict'][ctype][jtype][key] = copy.deepcopy(self.job_parameters)
 
 
     def stop(self):
@@ -977,7 +1001,7 @@ class RMCSJob(Job):
         
         # Variables that we use to write out the MCS file
         # Set to none so that we can check we have been passed them
-        self.job_parameters['hosts'] = None
+        self.job_parameters['hostlist'] = None
         self.job_parameters['count'] = None
         self.job_parameters['inputfiles'] = []
         self.job_parameters['outputfiles'] = []
@@ -991,7 +1015,7 @@ class RMCSJob(Job):
         self.job_parameters['myproxy_user'] = None
         self.job_parameters['myproxy_password'] = None
 
-        #self.update_job_parameters()
+        #self.update_parameters()
             
         #self.input_files = []
         #self.output_files = []
@@ -1212,7 +1236,7 @@ class RMCSJob(Job):
                 msg = "Cannot run job as parameter: <%s> has not been set!" % key
                 raise JobError, msg
 
-        if len(self.job_parameters['hosts']) == 0:
+        if len(self.job_parameters['hostlist']) == 0:
             raise JobError,"RMCS needs at least one host to run on!\nPlease select a host in the job submission editor."
 
 
@@ -1242,7 +1266,7 @@ class RMCSJob(Job):
         
         # Buld up the machine list
         s = 'preferredMachineList = '
-        for machine in self.job_parameters['hosts']:
+        for machine in self.job_parameters['hostlist']:
             s += ' %s ' % machine
         s += '\n'
         mcs_file+=s
@@ -1294,7 +1318,7 @@ class GridJob(Job):
         self.gsissh_port = '2222'
         
         self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
-        self.job_parameters['hosts'] = None
+        self.job_parameters['hostlist'] = None
         self.job_parameters['count'] = '1'
         self.job_parameters['executable'] = None
         self.job_parameters['jobName'] = None
@@ -1385,7 +1409,7 @@ class GlobusJob(GridJob):
         self.job_parameters['directory'] = None # The full path to the working directory on the
         self.job_parameters['jobmanager'] = None
         self.job_parameters['count'] = 1
-        self.job_parameters['hosts'] = []
+        self.job_parameters['hostlist'] = []
         self.job_parameters['host'] = None
 
         # Now make sure that we have a valid proxy
@@ -1937,7 +1961,7 @@ class NordugridJob(GridJob):
         self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
 
         # Update the defaults with anything that is in the rc_vars dict
-        #self.update_job_parameters()
+        #self.update_parameters()
 
         if self.name:
             self.job_parameters['jobName'] = self.name
@@ -2576,7 +2600,7 @@ if __name__ == "__main__":
 
     if 0:
         print 'testing rmcs job'
-        rc_vars[ 'hosts'] = ['lake.esc.cam.ac.uk']
+        rc_vars[ 'hostlist'] = ['lake.esc.cam.ac.uk']
         rc_vars[ 'count'] = '1'
         rc_vars['srb_config_file'] ='/home/jmht/srb.cfg'
         rc_vars['srb_executable'] = 'gamess'
@@ -2610,7 +2634,7 @@ if __name__ == "__main__":
         job_parameters['stderr'] = 'hostname.err'
 
         job = NordugridJob()
-        job.update_job_parameters( job_dict = job_parameters )
+        job.update_parameters( job_dict = job_parameters )
         job.add_step(RUN_APP,'run nordugrid')
         print job.CreateRSL()
 #         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
@@ -2622,7 +2646,7 @@ if __name__ == "__main__":
     if 1:
         print 'testing Globus job'
         job = GlobusJob()
-        job.job_parameters['hosts'] = ['grid-compute.leeds.ac.uk']
+        job.job_parameters['hostlist'] = ['grid-compute.leeds.ac.uk']
         job.job_parameters['count'] = 2
         job.job_parameters['jobtype'] = 'mpi'
         

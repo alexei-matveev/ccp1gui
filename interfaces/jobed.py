@@ -147,42 +147,54 @@ class JobEditor(Pmw.MegaToplevel):
         return self.job
 
     def GetInitialValues(self):
-        """ Set self.values and self.selected_RSL to those specified in any calculation
-            object we may have been passed and then overwrite any with those that are
-            set in the rc_vars dictionary.
+        """ Set self.values and self.RSLValues to those specified in any
+            calculation object we may have been passed
         """
+        
+        if self.debug:
+            print "GetIntialValues norsl"
+            
+        self.GetInitialParameters()
 
-        self._getInitialJobParameters(rcUpdate=1)
-
-    def _getInitialJobParameters(self,rcUpdate=None):
+    def GetInitialParameters(self):
         """ Set self.values from the job we were given
-            If the rcUpdate flag is set then overwrite any with those that are
-            set in the rc_vars dictionary.
-            The rc_vars for jobs should be of the form <calctype>SEP<variable> so
-            that the variables for different calculation types can be kept separate
-            Currently there is no support for variables that run across all calcualtion types
+
         """
 
         if self.debug:
             print "_getInitialJobParameters"
         
         jobdict = self.job.job_parameters
-        for key,value in jobdict.iteritems():
-            if value:
-                if self.values.has_key( key ):
-                    self.values[key] = value
-                    if self.debug:
-                        print "_getInitialJobParameters job setting: %s : %s" % (key,value)
-
-        # Now update any variables that are set in the rc_vars only update those that are keyed
-        # by the calculation type
-        if rcUpdate:
-            pass
-            #if self.debug:
-            #    print "_getInitialJobParameters rc_vars setting: %s : %s" % (k,value)
+        self.UpdateValues( jobdict )
 
 
+    def UpdateValues(self,job_dict):
+        """ We just call _UpdateValues here as we are overridden in the RSL
+            class, but the latter is needed thre
+        """
+
+        self._UpdateValues(job_dict)
+        
+    def _UpdateValues(self,job_dict):
+        """ Update self.values with the values from the supplied dictionary
+            of parametesrs
+        """
+        
+        for key,value in job_dict.iteritems():
+            if self.values.has_key( key ):
+                self.values[key] = value
+                if self.debug:
+                    print "_UpdateValues setting: %s : %s" % (key,value)
+            
     def UpdateWidgets(self):
+        """Set all the widgets to the value in self.values
+           we just call _UpdateWidgets as this is used in other
+           classes too
+        """
+        self._UpdateWidgets()
+        
+        
+    def _UpdateWidgets(self):
         """Set all the widgets to the value in self.values
         """
         for key,value in self.values.iteritems():
@@ -196,6 +208,31 @@ class JobEditor(Pmw.MegaToplevel):
             except KeyError:
                 pass
 
+    def UpdateParametersFromHost(self):
+        """ Update the job parameters for the machine selected
+            from the rc_vars dictionary
+        """
+
+        host = self.machList.getvalue()
+
+        if len(host) != 1:
+            print "UpdateParametersFromHost an only update vlaues for a single host!"
+            return
+
+        host = host[0]
+        assert type(host) == str,"jobed UpdateParameters - host must be a string!"
+
+        if self.debug:
+            print "UpdateParametersFromHost: %s" % host
+        
+        self.job.update_parameters( host=host )
+
+        job_dict = self.job.job_parameters
+
+        self.UpdateValues( job_dict )
+        self.UpdateWidgets()
+        
+        
     def AddMachine(self):
         """ Add a machine to the list and update the list widget"""
         
@@ -233,8 +270,20 @@ class JobEditor(Pmw.MegaToplevel):
         return machines
 
 
-    def GetValueDict(self):
-        """Return a dictionary with all of the values in it"""
+    def GetValues(self):
+        """
+            We just call _GetValues as we can be overloaded, but this
+            latter method is needed in the RSL widget
+        """
+
+        return self._GetValues()
+        
+    def _GetValues(self):
+        """ Query the widgets to get their current values and
+             return a dictionary with all of the values in it suitable
+            for passing to a job.
+
+        """
 
         for key,func in self.getValue.iteritems():
             val = func()
@@ -245,33 +294,27 @@ class JobEditor(Pmw.MegaToplevel):
 
             
             if self.debug:
-                print "GetValueDict setting: %s to: %s" % ( key,val )
-            
-        # RSL values need to be handled differently
-        try:
-            self.GetRSLValues()
-        except:
-            print "GetValueDict execption"
-            pass
-
+                print "_GetValues setting: %s to: %s" % ( key,val )
+                
         #print "self.values is ",self.values
         return self.values
 
-
-    def _saveJobParameters(self,default=None):
+    def saveParameters(self,default=None):
         """ Save the job parameters from this widget into the job.job_parameters dictionary
             If the default flag is set we also save the values to the rc_vars dictionary
         """
 
         global rc_vars
         
-        jobdict = self.GetValueDict()
+        jobdict = self.GetValues()
         
         for key,value in jobdict.iteritems():
-            if key in self.job.job_parameters.keys() and value:
+            # Should save the values even if they are none.
+            #if key in self.job.job_parameters.keys() and value:
+            if key in self.job.job_parameters.keys():
                 self.job.job_parameters[key] = value
                 if self.debug:
-                    print "_saveJobParameters setting: %s : %s" % (key,value)
+                    print "saveParameters setting: %s : %s" % (key,value)
                     
         if default:
             self.job.save_parameters_as_default()
@@ -306,7 +349,7 @@ class JobEditor(Pmw.MegaToplevel):
         """ Default quit - should be overwritten"""
 
         if save:
-            self._saveJobParameters( default=default )
+            self.saveParameters( default=default )
 
 
     def _destroy(self):
@@ -334,37 +377,48 @@ class JobEditor(Pmw.MegaToplevel):
         """ Lay out the machine list widget"""
 
         # Create the widgets to edit the list of machines
-        self.values['hosts'] = [] # set default value here
+        self.values['hostlist'] = [] # set default value here
         self.values['host'] = [] # set default value here
         machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
         machListFrame.pack(fill='both',expand=1)
+
+        # The rest of this is managed with the grid geometry manager
         self.machList = Pmw.ScrolledListBox(
             machListFrame.interior(),
             listbox_selectmode='extended',
-            items=self.values['hosts']
+            items=self.values['hostlist']
             )
-        self.getValue['hosts'] = lambda s=self: s.machList.get()
-        self.setValue['hosts'] = self.machList.setlist
+        self.getValue['hostlist'] = lambda s=self: s.machList.get()
+        self.setValue['hostlist'] = self.machList.setlist
         self.getValue['host'] = lambda s=self: s.machList.getvalue()
         # Can't guarantee the list of hosts will have been set up before we
         # try and set the value of the desired host
         #self.setValue['host'] = self.machList.setvalue
-        self.machList.pack(side='left')
-        buttonFrame=Tkinter.Frame( machListFrame.interior() )
-        buttonFrame.pack(side='left')
-        addMachButton = Tkinter.Button( buttonFrame,
-                                        text = 'Add',
-                                        command = self.AddMachine)
-        addMachButton.pack(side='left')
+
+        self.machList.pack( side='left' )
+        frameR = Tkinter.Frame( machListFrame.interior() )
+        frameR.pack(side='left', fill='x', expand='1')
+        
+        self.machEntry = Tkinter.Entry( frameR,
+                                        width=20)
+        self.machEntry.pack( side='top', fill='x', expand='1' )
+        bframe = Tkinter.Frame( frameR )
+        bframe.pack( side='top' )
+        addMachButton = Tkinter.Button( bframe,
+                                         text = 'Add',
+                                         command = self.AddMachine)
+        addMachButton.pack( side='left' )
         #self.balloon.bind( addMachButton, 'Add a machine to the list. )
-        delMachButton = Tkinter.Button( buttonFrame,
+        delMachButton = Tkinter.Button( bframe,
                                         text = 'Del',
                                         command = self.DelMachine)
-        delMachButton.pack(side='left')
-        self.machEntry = Tkinter.Entry( machListFrame.interior(),
-                                        width=20)
-        self.machEntry.pack(side='left')
-
+        delMachButton.pack( side='left' )
+        
+        updateButton = Tkinter.Button( frameR,
+                                        text = 'Update parameters from host',
+                                        command = self.UpdateParametersFromHost)
+        updateButton.pack( side='top' )
+        
 
     def LayoutNprocWidget(self):
         """ Layout the widget to set the number of processors"""
@@ -576,7 +630,7 @@ class RSLEditor(JobEditor):
         self.rslVariables['arguments']=str
         self.rslVariables['environment']='entrypair'
         self.currentRSL = self.RSLNONE # Bit of a hack so we know the last selected RSL
-        self.selected_RSL = { self.currentRSL : ('=',None) } # dict of name : ( op,value ) - value could be a list
+        self.RSLValues = { self.currentRSL : ('=',None) } # dict of name : ( op,value ) - value could be a list
         self.chooseRSLWidget = None
         self.rslValueWidget = None
         self.rslActive = None # To indicate if the RSL widgets are being used
@@ -588,9 +642,9 @@ class RSLEditor(JobEditor):
         i=0
         for var,val in value.iteritems():
             if i==0:
-                self.selected_RSL[key] = ('=',[var,val])
+                self.RSLValues[key] = ('=',[var,val])
             else:
-                self.selected_RSL[key+str(i)] = ('=',[var,val])
+                self.RSLValues[key+str(i)] = ('=',[var,val])
             i+=1
         
     def LayoutRSLWidget(self):
@@ -603,8 +657,8 @@ class RSLEditor(JobEditor):
         RSLFrame.pack(fill='both',expand=1)
         self.selectedRSLWidget = Pmw.OptionMenu(
             RSLFrame.interior(),
-            #items=self.selected_RSL.keys(),
-            items=[self.selected_RSL.keys()],
+            #items=self.RSLValues.keys(),
+            items=[self.RSLValues.keys()],
             command=self._ChangeSelectedRSL
             )
         self.selectedRSLWidget.pack(side='left')
@@ -665,7 +719,6 @@ class RSLEditor(JobEditor):
         # pack the new value widget depend on the type of rsl variable selected
 
         self._ChooseRSL()
-        pass
 
     def _ChooseRSL(self):
         """ Pop up a list of RSLs that the user can select and get them to select one
@@ -699,10 +752,13 @@ class RSLEditor(JobEditor):
 
 
     def _AddSelectedRSL( self, selected):
-        """ Add the selected RSL"""
+        """ Add the selected RSL to self.RSLValues and
+           Then update the widgets
+        """
 
         #print "AddSelectedRSL"
 
+        # Select a suitable empty value 
         vtype = self.rslVariables[selected]
         if vtype == str:
             value = ''
@@ -714,31 +770,28 @@ class RSLEditor(JobEditor):
             print "add_rsl - bad type"
 
         # Need to deal with multiple environment variables
-        if selected == 'environment' and self.selected_RSL.has_key( selected ):
+        if selected == 'environment' and self.RSLValues.has_key( selected ):
             for i in range(10):
                 selected =  'environment'+str(i+1)
-                if not self.selected_RSL.has_key( selected ):
+                if not self.RSLValues.has_key( selected ):
                     break
-            self.selected_RSL[selected] = ( None, value )
+            self.RSLValues[selected] = ( None, value )
         else:
-            self.selected_RSL[selected] = ( None, value )
+            self.RSLValues[selected] = ( None, value )
 
-        if self.RSLNONE in self.selected_RSL.keys():
-            del self.selected_RSL[self.RSLNONE]
+        # Make sure we remove the null value
+        if self.RSLNONE in self.RSLValues.keys():
+            del self.RSLValues[self.RSLNONE]
             
-        self._UpdateRSLWidgets( selected )
+        self.RSLUpdateWidgets( selected=selected )
         
 
     def _ChangeSelectedRSL(self,value):
         """The user has changes the currently selected RSL"""
 
         self._SaveCurrentRSL()
-        self._UpdateRSLWidgets( value )
+        self.RSLUpdateWidgets( selected=value )
 
-#     def _UpdateRSLOpWidget(self,value):
-#         """ Do nowt, just save the current state
-#         """
-#         self._SaveCurrentRSL()
 
     def _SaveCurrentRSL(self):
         """ Save the current state of the RSL list"""
@@ -747,6 +800,7 @@ class RSLEditor(JobEditor):
         #rsl_name = self.selectedRSLWidget.getvalue()
         rsl_name = self.currentRSL
 
+        # None were selected so skip anything else
         if rsl_name == self.RSLNONE:
             return None
             
@@ -764,32 +818,39 @@ class RSLEditor(JobEditor):
             rsl_value = None
 
         #print "SaveCurrentValues got: %s %s %s" % ( rsl_name, rsl_op, rsl_value )
-        self.selected_RSL[rsl_name] = ( rsl_op, rsl_value )
+        self.RSLValues[rsl_name] = ( rsl_op, rsl_value )
         
 
-    def _UpdateRSLWidgets( self, selected ):
-        """ Display the correct widgts for the selected rsl """
+    def RSLUpdateWidgets( self, selected=None ):
+        """ Display the correct widgets for the selected rsl]
+            We only need to consider 2 widgets here:
+            self.selectedRSLWidget - a Pmw Option Menu that holds the
+            list of RSLValues keys
+            self.rslValueWidget that holds a widget for the variable of the
+            type of the currently selected RSL (self.currentRSL)
+        """
 
-        #print "UpdateRSLWidgets: ",selected
 
-        self.selectedRSLWidget.setitems( self.selected_RSL.keys() )
-        self.selectedRSLWidget.setvalue(selected)
+        RSL_list = self.RSLValues.keys()
+
+        # Determine which one we are showing
+        if not selected:
+            selected = RSL_list[0]
         self.currentRSL = selected
+        
+        # deal with the first widget
+        self.selectedRSLWidget.setitems( RSL_list )
+        self.selectedRSLWidget.setvalue(selected)
+
+        # Forget the value widget - we recreate if needed
+        self.rslValueWidget.forget()
 
         # No widgets selected
         if selected == self.RSLNONE:
-            self.rslValueWidget.forget()
             return
 
-        # Update the op widget
-        #op = self.selected_RSL[selected][0]
-        #if not op:
-        #    op = '='
-        #self.RSLOpWidget.setvalue(op)
-
-        # update the value widget
-        value = self.selected_RSL[selected][1]
-        self.rslValueWidget.forget()
+        # Now determine what sort of widget the value widget is
+        value = self.RSLValues[selected][1]
 
         # Need to deal with numbered variables - this might need more work...
         #rsl_type = self.rslVariables[selected]
@@ -824,25 +885,35 @@ class RSLEditor(JobEditor):
         if to_delete == self.RSLNONE:
             return
         
-        if len( self.selected_RSL ) == 0:
+        if len( self.RSLValues ) == 0:
             selected = self.RSLNONE
-        elif len( self.selected_RSL ) == 1:
-            del self.selected_RSL[ to_delete ]
+        elif len( self.RSLValues ) == 1:
+            del self.RSLValues[ to_delete ]
             self.values[ to_delete ] = None
             selected = self.RSLNONE
         else:
-            del self.selected_RSL[ to_delete ]
+            del self.RSLValues[ to_delete ]
             self.values[ to_delete ] = None
-            selected = self.selected_RSL.keys()[0]
+            selected = self.RSLValues.keys()[0]
             
-        self._UpdateRSLWidgets( selected )
+        self.RSLUpdateWidgets( selected=selected )
 
-    def GetRSLValues(self):
-        """Update self.values with all the values from the RSL widgets"""
+    def GetValues(self):
+        """ Return a dictionary with all of the values in it
+        """
+
+        self.GetValuesRSL()
+        return self._GetValues()
+        
+    def GetValuesRSL(self):
+        """ Update self.values with the values from the widgets
+            We also deal with the environment variable here as it is
+            a paired value
+        """
 
         envdict = {}
-        for key,vlist in self.selected_RSL.iteritems():
-            #print "key: %s value: %s" % ( key,vlist)
+        for key,vlist in self.RSLValues.iteritems():
+            #print "RSL key: %s value: %s" % ( key,vlist)
             if key == self.RSLNONE:
                 continue
             value = vlist[1]
@@ -858,66 +929,65 @@ class RSLEditor(JobEditor):
             #self.values['rsl_environment'] = envdict
             self.values['environment'] = envdict
 
-    def _getInitialRSLVariables(self,rcUpdate=None):
-        """ Set self.selected_RSL from the job we were given
+    def GetInitialRSL(self):
+        """ Set self.RSLValues from the job we were given
             If the rcUpdate flag is set then overwrite any with those that are
             set in the rc_vars dictionary.
         """
         
         jobdict = self.job.job_parameters
+        self.SetRSL( jobdict )
+
+
+    def SetRSL(self,job_dict):
+        """ Set self.RSLValues from a dictionary of job parameters
+        """
+
+        # Clear out the old values and set a null one
+        self.RSLValues = {}
+        self.RSLValues[self.RSLNONE] = ('=',None)
         
-        for key,value in jobdict.iteritems():
+        for key,value in job_dict.iteritems():
             if value:
                 if self.rslVariables.has_key( key ):
                     if key == 'environment':
                         self._AddDictAsPair( key, value)
                     else:
-                        self.selected_RSL[key] = ('=',value) # Currently only assume = op
-
-        # Now update any variables that are set in the rc_vars
-        if rcUpdate:
-            global rc_vars
-            for key,value in rc_vars.iteritems():
-                if value:
-                    if self.rslVariables.has_key( key ):
-                        if key == 'environment':
-                            self._AddDictAsPair( key, value)
-                        else:
-                            self.selected_RSL[key] = ('=',value) # Currently only assume = op
-
-
+                        self.RSLValues[key] = ('=',value) # Currently only assume = op
 
     def GetInitialValues(self):
-        """ Set self.values and self.selected_RSL to those specified in any calculation
-            object we may have been passed and then overwrite any with those that are
-            set in the rc_vars dictionary.
+        """ Set self.values and self.RSLValues to those specified in
+            job we've been given
         """
 
-        self._getInitialJobParameters(rcUpdate=1)
-        self._getInitialRSLVariables(rcUpdate=1)
+        if self.debug:
+            print "GetIntialValues RSL"
+            
+        self.GetInitialParameters()
+        self.GetInitialRSL()
+
+    def UpdateValues(self,job_dict):
+        """ Update self.values and self.RSLValues with the supplied
+            dictionary of job paramters
+        """
+
+        self._UpdateValues( job_dict )
+        self.SetRSL( job_dict )
+        
         
     def UpdateWidgets(self):
         """Set all the widgets to the value in self.values
         """
-        for key,value in self.values.iteritems():
-            if self.debug:
-                print "Setting values for %s : %s" % (key,value)
-            try:
-                # Need to convert any None's to empty strings
-                if value == None:
-                    value = ''
-                self.setValue[key]( value )
-            except KeyError:
-                pass
-            
+
+        self._UpdateWidgets()
+
         # This is a definite hack - need to sort out the logic of adding/removing variables
         # and put it in one place
-        if len(self.selected_RSL) > 1 and self.RSLNONE in self.selected_RSL.keys():
-            del self.selected_RSL[self.RSLNONE]
+        if len(self.RSLValues) > 1 and self.RSLNONE in self.RSLValues.keys():
+            del self.RSLValues[self.RSLNONE]
                 
-        selected = self.selected_RSL.keys()[0]
-        self._UpdateRSLWidgets( selected )
-
+        selected = self.RSLValues.keys()[0]
+        self.RSLUpdateWidgets( selected=selected )
 
 
     def _quit(self,save=None,default=None):
@@ -926,7 +996,7 @@ class RSLEditor(JobEditor):
         if save:
             #Make sure we get the latest rsl variable if that was the last thing to be updated
             self._SaveCurrentRSL()
-            self._saveJobParameters( default=default )
+            self.saveParameters( default=default )
 
 
 class GlobusEditor(RSLEditor):
@@ -1141,9 +1211,7 @@ class RMCSEditor(JobEditor):
 
        
 if __name__ == "__main__":
-    rc_vars = {} # Dictionary of the values held by this widget at any point
-    rc_vars['machine_list'] = ['computers','are','evil']
-    rc_vars['count'] = '4'
+    import jobmanager
 
     class Junk:
         def __init__(self):
@@ -1159,21 +1227,17 @@ if __name__ == "__main__":
             return True
         def get_parameter(self,par):
             return self.job_parameters
-    job = Junk()
+    #job = Junk()
     
     root=Tkinter.Tk()
     def test_cmd():
         print "ran test command"
-    ed = LocalJobEditor( root, job, dir_cmd=test_cmd )
-    #ed = GlobusEditor( root, job )
-    #ed.GetInitialValues()
-    #ed.LayoutMachListWidget()
-    #ed.LayoutNprocWidget()
-    #ed.LayoutRSLWidget()
-    #ed.LayoutQuitButtons()
-    #ed.UpdateWidgets()
+    #ed = LocalJobEditor( root, job, dir_cmd=test_cmd )
+    job = jobmanager.job.GlobusJob()
+    job.set_parameter('calctype','GAMESS-UK')
+    ed = GlobusEditor( root, job )
     test = Tkinter.Button( ed.interior(),
                            text = 'Test',
-                           command = ed.GetValueDict)
+                           command = ed.GetValues)
     test.pack()
     root.mainloop()

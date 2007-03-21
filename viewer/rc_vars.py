@@ -24,10 +24,6 @@ rc_vars['mol_cylinder_diffuse'] = 0.7
 rc_vars['mol_cylinder_ambient'] = 0.4
 rc_vars['mol_cylinder_specular_power'] = 10
 # Executable, script and directory locations
-rc_vars['gamessuk_exe'] = None
-rc_vars['gamessuk_script'] = None
-rc_vars['molden_exe'] = None
-rc_vars['dalton_script'] = None
 rc_vars['am1'] = None
 rc_vars['chemsh_script_dir'] = None
 # Stereo visulaisation

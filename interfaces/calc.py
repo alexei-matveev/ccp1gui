@@ -320,7 +320,7 @@ of any program using or generating them. The parameters however will be
         self.set_job_defaults( job )
 
         # Then update the defaults with any the user has in their rc_vars
-        job.update_job_parameters()
+        job.update_parameters()
 
         # Set this job to the calc job
         self.job = job
