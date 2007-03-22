@@ -899,16 +899,13 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         # the visualisation will start with a copy of the first frame
 
         self.type = type
+        debug=None
 
         if type == 'SEQ':
             self.traj_type = STRUCTURE_SEQ
             self.sequence = obj
             self.molecule = obj
             self.nframes = len(obj.frames)
-
-            print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
-            for f in self.sequence.frames:
-                f.zlist()
 
         elif type == 'DLPOLYHISTORY':
             self.traj_type = DLPOLY_HISTORY
@@ -928,7 +925,6 @@ class TrajectoryVisualiser(MoleculeVisualiser):
         #copy.deepcopy(obj.frames[0])
         #VtkMoleculeVisualiser is run next from vtkgraph
 
-        debug=None
         if debug:
             print 'TRAJECTORY INIT',self.sequence, self.sequence.frames
             for f in self.sequence.frames:
