@@ -1,3 +1,14 @@
+"""
+A script to read in a GAMESS-UK output file/or punch file and create a new input file
+with the same values as the previous input, but with the input geometry, that from 
+the last point of the output file/punch file.
+
+Please note that if the output file is from an optimise run (i.e. with a zmatrix) and
+the optimisation crashed because of an undefined variable in the zmatrix definition, then
+the last structure culled from the output file will be rubbish - in these cases it is advised
+to use the punch file if one exists.
+
+"""
 
 import sys,os,re,getopt
 
@@ -74,8 +85,13 @@ def get_last_geom_from_file( filepath, ftype, request_z=None):
         reader = GamessOutputReader( output )
         objects = reader.molecules
 
+
     # Grab a molecule or sequence
     for o in objects:
+        if debug:
+            for o in objects:
+                print "read object from file: ",o
+        
         # take the last field of the class specification
         t1 = str(o.__class__).split('.')
         myclass = t1[len(t1)-1]
@@ -140,23 +156,30 @@ but with the last geometry as the input geometry.
 Usage is: %s [options] <GAMESS-UK_output_file>
 
 Options:
--h,--help           print this help
--z,--zmtarix       try and create input geometry as zmatrix
-                    (default is Cartesian)
+-h,--help                 print this help
+
+-z,--zmatrix              try and create input geometry as zmatrix
+                          (default is Cartesian)
+                          
+-i,--input-file <file>    use <file> as a template input file
+                    
 """ % sys.argv[0]
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "zh", ["zmatrix","help"])
+    opts, args = getopt.getopt(sys.argv[1:], "zhi:", ["zmatrix","help","input-file="])
 except getopt.GetoptError:
     # print help information and exit:
     usage()
-    sys.exit(2)
+    sys.exit(1)
 
 request_z=None
 filepath=None
+inputfile=None
 for o, a in opts:
     if o in ("-z","--zmatrix"):
         request_z = True
+    if o in ("-i","--input-file"):
+        inputfile=a
     if o in ("-h", "--help"):
         usage()
         sys.exit()
@@ -165,15 +188,39 @@ if len(args) == 1:
     filepath = args[0]
 else:
     usage()
-    sys.exit(2)
+    sys.exit(1)
 
+# Filename fun'n'gamess    
 filepath = os.path.abspath( filepath )
 directory, filename = os.path.split( filepath )
 ftype = os.path.splitext( filename )[1].lower()[1:] # remove dot from extension
 filename = os.path.splitext( filename )[0]
 
-lastgeom = get_last_geom_from_file( filepath, ftype, request_z=1)
-oldinput = get_input_from_output( filepath )
+if inputfile:
+    print "Template input file selected: %s" % inputfile
+
+if request_z:
+    print "Will try to write input geometry as zmatrix."
+
+# Check the directives
+if ftype=='pun' and not inputfile:
+    print "If using a punch file, you will need to supply a template"
+    print "input file with the -i or --input-file argument"
+    
+elif ftype != 'pun' and ftype != 'out':
+    print "Unrecognised file suffix: %s" % ftype
+    usage()
+    sys.exit(1)
+
+# Get the input file that serves as the template
+if inputfile or ftype=='pun':
+    f = open(inputfile,'r')
+    oldinput = f.readlines()
+    f.close()
+elif ftype == 'out' and not inputfile:
+    oldinput = get_input_from_output( filepath )
+
+lastgeom = get_last_geom_from_file( filepath, ftype, request_z=request_z)
 newinput = update_input_geom( oldinput, lastgeom )
 
 newname = filename+'.in'
