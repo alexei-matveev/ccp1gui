@@ -28,3 +28,5 @@ rc_vars['am1'] = None
 rc_vars['chemsh_script_dir'] = None
 # Stereo visulaisation
 rc_vars['stereo'] = None
+# Remember paths between restarts
+rc_vars['user_path'] = None

@@ -536,6 +536,14 @@ class TkMolView(Pmw.MegaToplevel):
                     #print e
                     pass
 
+        # Set the default path to where we we were last
+        if rc_vars.has_key('user_path'):
+            p = rc_vars['user_path']
+            print "rc_vars userpath ",p
+            if p:
+                paths['user'] = p
+        
+
     def raw(self, text):
         """Returns a raw string representation of text
            Credit where it's due: this function was written by Brett Cannon and was
@@ -577,6 +585,10 @@ class TkMolView(Pmw.MegaToplevel):
 
         print "writing ccp1guirc file"
         global rc_vars
+
+        # Save the user path to the dictionary so that we can
+        # start from there on a restart
+        rc_vars['user_path'] = paths['user']
         
         # find the ccp1guirc file
         if sys.platform[:3] == 'win':
@@ -1371,8 +1383,11 @@ class TkMolView(Pmw.MegaToplevel):
         for x in seq.__dict__:
             if x not in ['frames','nframes','title','name','tidy']:
                 ex.__dict__[x] = copy.deepcopy(seq.__dict__[x])
+
         ex.title = 'Frame '+str(seq.current_frame+1)+' of '+ seq.title
-        ex.name = self.make_unique_name('Frame_'+str(seq.current_frame+1))
+        #jmht
+        #ex.name = self.make_unique_name('Frame_'+str(seq.current_frame+1))
+        ex.name = self.make_unique_name( ex.title )
         self.append_data(ex);
         self.quick_mol_view([ex])
 
@@ -4103,9 +4118,8 @@ Please check the output on the terminal/log file for further information." % fil
             # take the last field of the class specification
             t1 = string.split(str(o.__class__),'.')
             myclass = t1[len(t1)-1]
-            print 'unique',root, o.title
+            #print 'unique',root, o.title
             o.name = self.make_unique_name(root,o.title)
-            print 'o.name is', o.name
 
             if myclass == 'Field' :
                 self.append_data(o)
