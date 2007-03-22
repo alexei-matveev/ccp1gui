@@ -39,6 +39,7 @@ from Scientific.Geometry.VectorModule import *
 
 import copy
 import string
+import os
 
 End_of_Block = 1
 End_of_Complex = 2
@@ -58,6 +59,7 @@ class PunchReader:
       self.objects=[]
       self.normal=[]
       self.title=None
+      self.filename = None
       self.readers = {}
 
       self.readers['fragment'] = None
@@ -150,6 +152,10 @@ class PunchReader:
       print file
       if self.debug:
          print "> filepunch.py scan"
+
+      # get the root of the filename
+      self.filename = os.path.splitext( os.path.basename( file ) )[0]
+      
       f = open(file)
       while self.read_object(f) != End_of_File:
          pass
@@ -227,7 +233,8 @@ class PunchReader:
             # We use the zmatrix derived-class here, so we can use zmatrix tools
             # to edit it 
             tt = Zmatrix()
-            tt.title='unknown'
+            #tt.title='unknown'
+            tt.title = self.filename
          # This is a hack so the VibFreq instances have a reference structure
          self.fragment = tt
          tt.tidy = self.tidy_frag
@@ -237,6 +244,7 @@ class PunchReader:
             print 'New frag (seq)'
          
          tt = ZmatrixSequence()
+         tt.title = tt.title+ ' ' +self.filename
          #tt2 = Zmatrix()
          #tt2.title='seq 0 frame 0'
          #tt.frames.append(tt2)
@@ -249,7 +257,8 @@ class PunchReader:
          if self.debug:
             print 'New zmatrix frag'
          tt = Zmatrix()
-         tt.title='unknown'
+         #tt.title='unknown'
+         tt.title=self.filename
          tt.variables = []
          tt.constants = []
          tt.tidy = self.tidy_z
@@ -421,6 +430,9 @@ class PunchReader:
       myclass = t1[len(t1)-1]
       clone = tt.copy()
       if myclass == 'ZmatrixSequence':
+         #jmht - need to connect here as otherwise all the child structures
+         # that we add are not connected
+         tt.connect()
          #tt.frames.append(clone)
          tt.add_molecule(clone)
 
@@ -500,8 +512,13 @@ class PunchReader:
          cnt = cnt + 1
          tt.add_atom(p)
 
-      tt.connect()
-
+      # We don't need to connect the additional structures for sequences
+      # as this is done when we read in the first one
+      t1 = string.split(str(tt.__class__),'.')
+      myclass = t1[len(t1)-1]
+      if myclass != 'ZmatrixSequence':
+         tt.connect()
+      
    def read_connectivity(self,f,tt):
 
       for i in range(0,self.records):
