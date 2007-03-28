@@ -282,7 +282,7 @@ class GAMESSUKCalc(QMCalc):
                                           'ga','ge','as','se','br','kr'],ecp=0)
 
         #ECP Basis sets start here:
-        m.define_keyword_basis('ecp sbjkc',['li','be','b','c','n','o','f','ne',
+        m.define_keyword_basis('ecp sbkjc',['li','be','b','c','n','o','f','ne',
                                             'na','mg','al','si','p','s','cl','ar',
                                             'k','ca','sc','ti','v','cr','mn','fe','co','ni','cu','zn',
                                             'ga','ge','as','se','br','kr',
