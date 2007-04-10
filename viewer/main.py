@@ -2638,6 +2638,21 @@ class TkMolView(Pmw.MegaToplevel):
                 vis.Show(update=0)
         self.fit_to_window()
 
+    def quick_trajectory_view(self,trajectories):
+        """create a default image of a trajectory and include it
+        in the tables (vis_dict, vis_list)
+        Then attempt to fit everything on screen
+        """
+        for trajectory in trajectories:
+            vis = self.trajectory_visualiser(self.master,self,trajectory)
+            t = id(trajectory)
+            self.vis_dict[t] = [vis]
+            self.vis_list.append(vis)
+            self.__update_vis_list()
+            vis.Show(update=0)
+        self.fit_to_window()
+        
+
     def build_distance_dialog(self,include_xyz=0):
         """Create a dialog which we will use to 
            determine distances 
@@ -4476,6 +4491,7 @@ Please check the output on the terminal/log file for further information." % fil
         # construct the results list for visualisation
 
         mols = []
+        trajectories = []
         for o in p.objects:
 
             # take the last field of the class specification
@@ -4508,6 +4524,7 @@ Please check the output on the terminal/log file for further information." % fil
 
             elif myclass == 'ZmatrixSequence':
                 self.append_data(o)
+                trajectories.append(o)
 
             elif myclass == 'Brick':
                 self.append_data(o)
@@ -4516,6 +4533,7 @@ Please check the output on the terminal/log file for further information." % fil
                 self.append_data(o)
 
         self.quick_mol_view(mols)
+        self.quick_trajectory_view(trajectories)
 
         if self.debug:
             print 'rdpun: data list', self.data_list
