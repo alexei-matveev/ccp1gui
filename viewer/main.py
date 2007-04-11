@@ -602,11 +602,16 @@ class TkMolView(Pmw.MegaToplevel):
                 rc_file = open( rc_filename, 'w' ) # Open File in write mode
             except IOError,e:
                 print "Cant create user rc file. I give up..."
+                return
 
             rc_file.write("# This ccp1guirc file has been created by the CCP1GUI as no\n")
             rc_file.write("# user file could be found\n#\n#\n")
             for name in rc_vars.keys():
-                rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
+                if type(rc_vars[name]) is str:
+                    # Need to quote strings
+                    rc_file.write( "%s = \'%s\'\n" % (name,str(rc_vars[name])) )
+                else:
+                    rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
 
             rc_file.write( '###################### End User Defaults #####################\n' )
             # Have dumped dictionary so quit here
