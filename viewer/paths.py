@@ -40,7 +40,8 @@ except AttributeError:
 gui_path = os.path.split(mainscriptdir)[0]
 root_path = os.path.split(gui_path)[0]
 python_path = os.path.split(os.__file__)[0]
-user_path = root_path
+#user_path = root_path
+user_path = os.getcwd()
 
 paths = {}
 paths['root'] = root_path
