@@ -29,4 +29,5 @@ rc_vars['chemsh_script_dir'] = None
 # Stereo visulaisation
 rc_vars['stereo'] = None
 # Remember paths between restarts
+rc_vars['old_path'] = 1
 rc_vars['user_path'] = None
