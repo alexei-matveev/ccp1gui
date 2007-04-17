@@ -537,11 +537,12 @@ class TkMolView(Pmw.MegaToplevel):
                     pass
 
         # Set the default path to where we we were last
-        if rc_vars.has_key('user_path'):
-            p = rc_vars['user_path']
-            print "rc_vars userpath ",p
-            if p:
-                paths['user'] = p
+        if rc_vars['old_path']:
+            if rc_vars.has_key('user_path'):
+                p = rc_vars['user_path']
+                print "Using old path from rc_vars: ",p
+                if p:
+                    paths['user'] = p
         
 
     def raw(self, text):
@@ -1396,49 +1397,13 @@ class TkMolView(Pmw.MegaToplevel):
         self.append_data(ex);
         self.quick_mol_view([ex])
 
-    def delete_atom(self):
+    def delete_atom(self,unselected=None):
+        """ Delete the selected atoms for the selected molecules, unless the unselected
+            flag is supplied in which case, delete the unselected atoms
+        """
+
         sel = self.sel()
         dsel = sel.get()
-        if self.debug:
-            deb('delete_atom'+str(dsel))
-        edited = []
-        undo = []
-        # Undo: need to restructure into loops by molecule
-        # and have a single set of undos per mol
-        mols = sel.get_mols()
-        for mol in mols:
-            # Undo code
-            # convert connectivity table to bond list to simplify storage
-            mol.update_bonds()
-            old_list = copy.copy(mol.atom)
-            old_bond = copy.deepcopy(mol.bond)
-            print 'check bonds saved'
-            for b in old_bond:
-                print b.index
-            undo.append(lambda m = mol, oa = old_list: m.apply_atom_list(oa))
-            undo.append(lambda m = mol, ob = old_bond: m.apply_connect(ob))
-            undo.append(lambda m = mol: m.reindex())
-            undo.append(lambda m = mol: m.update_conn())
-            # End of undo code
-
-            list = []
-            for a in sel.get_by_mol(mol):
-                list.append(a.get_index())
-            mol.delete_list(list)
-            sel.clean_deleted(mol)
-
-            self.update_from_object(mol)
-            undo.append(lambda m = mol, s = self: s.update_from_object(m))
-
-        self.undo_stack.append(undo)
-
-    def delete_unselected(self):
-        print 'phase 1'
-        sel = self.sel()
-        dsel = sel.get()
-        if self.debug:
-            deb('delete_unselected'+str(dsel))
-        edited = []
         selats = {}
         selected_mols = []
         for mol,atom in dsel:
@@ -1448,36 +1413,69 @@ class TkMolView(Pmw.MegaToplevel):
             else:
                 selected_mols.append(mol)
                 selats[k] = [atom]
+                
+        if unselected:
+            # Invert the selection
+            for mol in selected_mols:
+                k = id(mol)
+                atomlist = []
+                for atom in mol.atom:
+                    if atom not in selats[k]:
+                        atomlist.append(atom)
+                selats[k] = atomlist
+        
+        if self.debug:
+            deb('delete_atom'+str(dsel))
 
-        print 'phase 2'
-        sel.clear()
-        for mol in selected_mols:
-            k = id(mol)            
+        # NB - need to do shells too - below code from old delete_unselected
+        #print 'sorting shells'
+        ## keep only attached shells
+        #oldshell = mol.shell
+        #mol.shell = []
+        #for s in oldshell:
+        #    if s.linked_core.tempflag:
+        #        mol.shell.append(s)
             
-            oldatom = mol.atom
-            for atom in mol.atom:
-                atom.tempflag=0
-            mol.atom = []
+            
+        edited = []
+        undo = []
+        # Undo: need to restructure into loops by molecule
+        # and have a single set of undos per mol
+        for mol in selected_mols:
+            # Undo code
+            # convert connectivity table to bond list to simplify storage
+            mol.update_bonds()
+            old_list = copy.copy(mol.atom)
+            old_bond = copy.deepcopy(mol.bond)
+            #print 'check bonds saved'
+            #for b in old_bond:
+            #    print b.index
+            undo.append(lambda m = mol, oa = old_list: m.apply_atom_list(oa))
+            undo.append(lambda m = mol, ob = old_bond: m.apply_connect(ob))
+            undo.append(lambda m = mol: m.reindex())
+            undo.append(lambda m = mol: m.update_conn())
+            # End of undo code
 
-            print 'building new atom list'
-            #print 'Selats',selats[k]
-            for atom in selats[k]:
-                mol.atom.append(atom)
-                atom.tempflag=1
-            mol.reindex()
+            list = []
+            #for a in sel.get_by_mol(mol):
+            k = id(mol)
+            for a in selats[k]:
+                list.append(a.get_index())
+            mol.delete_list(list)
 
-            print 'sorting shells'
-            # keep only attached shells
-            oldshell = mol.shell
-            mol.shell = []
-            for s in oldshell:
-                if s.linked_core.tempflag:
-                    mol.shell.append(s)
-
-            print 'clean'
-            sel.clean_deleted(mol)
-            print 'update'
+            # clean_deleted is empty in the SelectionManager in selections2.py
+            #sel.clean_deleted(mol)
             self.update_from_object(mol)
+            undo.append(lambda m = mol, s = self: s.update_from_object(m))
+
+        self.undo_stack.append(undo)
+
+    def delete_unselected(self):
+        """ Delete the unselected atoms - this just calls self.delete_atom
+            with the unselected argument
+        """
+        self.delete_atom(unselected=1)
+        return
 
     def add_bond(self):
         sel = self.sel()
