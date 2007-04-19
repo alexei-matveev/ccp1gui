@@ -292,7 +292,7 @@ class DALTONCalc(QMCalc):
         if not job:
             ed.Error("dalton makejob no job returned!")
             return None
-        
+
         jobtype = job.jobtype
         job.name = self.get_parameter( 'job_name' )
         workdir = self.get_parameter( 'workdir' )
@@ -308,6 +308,7 @@ class DALTONCalc(QMCalc):
 
         try:
             os.chdir(workdir) #Run job in the specified directory
+            print "job running from ",workdir
         except Exception,e:
             ed.Error("Cannot cd to working directory: %s\n%s" % (workdir,e))
             return
@@ -1370,14 +1371,14 @@ class DALTONCalcEd(QMCalcEd):
         self.calc.set_parameter('workdir',str(cwd))
 #        self.workdir_tool.UpdateWidget()
 
-        # Try and find the dalton script
-        script = self.__get_script()
-        if not script:
-            self.Info("The location of your dalton script could not be determined\n" +
-                      "Please set the location of the script in the job editor or\n" +
-                      "ensure that the dalton script is in your path.")
-        else:
-            self.calc.set_parameter( 'dalton_script', script )
+#         # Try and find the dalton script
+#         script = self.__get_script()
+#         if not script:
+#             self.Info("The location of your dalton script could not be determined\n" +
+#                       "Please set the location of the script in the job editor or\n" +
+#                       "ensure that the dalton script is in your path.")
+#         else:
+#             self.calc.set_parameter( 'dalton_script', script )
 
         #self.daltonexe_tool.UpdateWidget()
         
@@ -1396,11 +1397,10 @@ class DALTONCalcEd(QMCalcEd):
         """
 
         global rc_vars,find_exe
-        from interfaces.jobed import SEP
 
-        varname = 'DALTON' + SEP + 'executable'
-        if rc_vars.has_key( varname ) and rc_vars[ varname ]:
-            script = rc_vars[ varname ]
+        # Create a job and use this to get the script
+        if rc_vars.has_key( 'dalton_script' ) and rc_vars[ 'dalton_script' ]:
+            script = rc_vars[ 'dalton_script' ]
             print "Using dalton script from ccp1guirc file: %s" % script
             return script
         else:
