@@ -107,12 +107,14 @@ class CalcEd(Pmw.MegaToplevel):
         self.inputeditor = None
             
 
-        HOST_HPCX  = "hpcx"
-        HOST_LOCAL = "localhost"
-        self.hostnames = [HOST_LOCAL,HOST_HPCX]
-        self.submissionpolicies = {}
-        self.submissionpolicies[HOST_LOCAL] = ["Interactive"]
-        self.submissionpolicies[HOST_HPCX] = ["Interactive","Batch"]
+        #HOST_HPCX  = "hpcx"
+        #HOST_LOCAL = "localhost"
+        #self.hostnames = [HOST_LOCAL,HOST_HPCX]
+        #LOCALHOST = socket.gethostname()
+        
+        #self.submissionpolicies = {}
+        #self.submissionpolicies[HOST_LOCAL] = ["Interactive"]
+        #self.submissionpolicies[HOST_HPCX] = ["Interactive","Batch"]
 
         self.job_editor=job_editor
         # Class associated with job manager thread
@@ -234,17 +236,23 @@ class CalcEd(Pmw.MegaToplevel):
             self.EditCoordinates(model=mol_obj)
 
         # This method can be found one of the derived classes
+        self.CreateCalcMenu(self.menu)
+        
 
-        # List of parameter tools (see tools.py)
-        self.tools = []
 
         # Add some generic tools
         # This must come before any tool widget creation...
-        self.CreateNotebook()
 
+        # List of parameter tools (see tools.py)
+        self.tools = []
+        
+        self.CreateNotebook()
+        
         self.title_tool = TitleTool(self)
-        self.charge_tool = IntegerTool(self,'charge','Charge')
-        self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
+        #self.charge_tool = IntegerTool(self,'charge','Charge')
+        #self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
+
+
 
         # defer until 
         #print 'layout'

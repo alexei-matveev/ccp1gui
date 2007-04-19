@@ -37,13 +37,17 @@ class QMCalcEd(CalcEd):
         '''Initialise a QM calculation editor. First initialise the base 
            class and then do our own stuff.'''
         apply(CalcEd.__init__, (self,root,calc,graph), kw)
-        #Jens' addition of calc menu
-        self.CreateCalcMenu(self.menu)
+        
         self.CreateEditMenu(self.menu)
         self.CreateViewMenu(self.menu)
         self.tasks = []
         self.theories = {}
         self.basissets = []
+
+        # Create some default tools
+        self.charge_tool = IntegerTool(self,'charge','Charge')
+        self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
+        
 
 
     def __CreateStatusFrame(self,parent):
