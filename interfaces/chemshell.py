@@ -1738,7 +1738,7 @@ class ChemShellCalcEd(CalcEd):
         self.qmeditor = None
         self.mmeditor = None
 
-        self.CreateCalcMenu(self.menu)
+        #self.CreateCalcMenu(self.menu)
         self.CreateEditMenu(self.menu)
         self.CreateViewMenu(self.menu)
         
