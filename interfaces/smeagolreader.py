@@ -20,14 +20,22 @@
 #
 # Read a data file output by Smeagol
 
-import objects.field
+# import python modules
+import re
+import string
+import os.path
+import math
+
+# import external modules
 # From Konrad Hinsens scientific python
 import Scientific.Geometry.VectorModule
 import vtk # We create the VTK objects directly
 
-import string
-import os.path
-import math
+# import internal modules
+import objects.zmatrix
+import objects.field
+from viewer.rc_vars import rc_vars
+from objects.periodic import name_to_element
 
 class SmeagolReader:
    """
@@ -38,7 +46,7 @@ class SmeagolReader:
       print "instantiating smeagol reader"
 
       self.debug=0
-      
+
       self.objects = [] # List to hold objects read from the files
 
 
@@ -49,14 +57,33 @@ class SmeagolReader:
        """
 
 
+       # Get filename and directory
+       directory,name = os.path.split( smgfile )
+       name,ext = os.path.splitext( name )
+       ext = ext[1:] # remove dot
+
        if not ftype:
           #Determine filetype from extension
-          ftype = string.split( smgfile, "." )[-1]
+          ftype = ext
+
+       print "ftype is ",ftype
           
        if ( ftype == "RHO" ):
           self.read_RHO( smgfile )
+       elif ( ftype == "fdf" ):
+          self.read_FDF( smgfile,directory,name,ext )
+       elif ( ftype == "ANI" ):
+          self.read_ANI( smgfile,directory,name,ext )
        else:
           print "No SMEAGOL reader for filetype %s !" % ftype
+
+   def get_objects(self):
+      """ Return any objects we have or None if there aren't any"""
+
+      if len(self.objects):
+         return self.objects
+      else:
+         return None
            
 
    def read_RHO(self,smgfile):
@@ -285,6 +312,149 @@ class SmeagolReader:
       
 
       return field
+
+
+   def read_FDF( self, fdffile,directory,name,ext ):
+      """ Dirty hack to read in an fdf file """
+
+      fd = open( fdffile, 'r' )
+
+      line = fd.readline()
+      startCoordRe = re.compile("^%block AtomicCoordinatesAndAtomicSpecies")
+      endCoordRe = re.compile("^%endblock AtomicCoordinatesAndAtomicSpecies")
+      while line:
+         #print "read line ",line
+         line = line.strip()
+         if startCoordRe.match( line ):
+            mol = objects.zmatrix.Zmatrix()
+            mol.title = name
+            mol.name = name
+
+            #print "got start coord"
+            line = fd.readline().strip()
+            while not endCoordRe.match( line ):
+               atom = objects.zmatrix.ZAtom()
+               fields = line.split()
+               #print "fields ",fields
+               x = float( fields[0] )
+               y = float( fields[1] )
+               z = float( fields[2] )
+               atom.coord = [ x, y, z ]
+               atom.name = fields[5]
+               atom.symbol = name_to_element( atom.name )
+               mol.atom.append( atom )
+               
+               # Read in the next line for the coordinate loop
+               line = fd.readline().strip()
+
+            # Get here when finished reading coords
+            fd.close()
+            mol.connect()
+            #self.update_from_object(mol)
+            #self.quick_mol_view([mol])
+            #self.append_data(mol)
+            self.objects.append( mol )
+            # hack set rc_vars
+            rc_vars['smeagol_input'] = fdffile
+            return
+
+         # read in the next line for the first while loop
+         line = fd.readline()
+
+
+# This is nicked from main - just a quick hack until the file readers
+# have been updated
+   def read_ANI(self,anifile,directory,name,ext):
+      """ Read in cartesian coordinates in XMOL .xyz file format.
+      The xyz format can contain multiple frames so we need to
+      check if we have come to the end of one frame and need to
+      start another
+      The optional sequence flag indicates if we should create a
+      ZmatrixSequence of the molecules in the file
+      """
+      
+      print "reading ANI file"
+      if 1:
+         ZmatSeq = objects.zmatrix.ZmatrixSequence()
+      else:
+         models = []
+
+      file = open( anifile,'r' )
+            
+      finished = 0
+      line = file.readline()
+      while( not finished ): # loop to cycle over all the frames
+         words = string.split(line)
+
+         # First word specifies the number of atoms
+         try:
+            natoms = int(words[0])
+         except:
+            finished = 1
+            break
+
+         model = objects.zmatrix.Zmatrix()
+         model.title = name
+         model.name = None
+
+         line = file.readline() # First line is a comment so ignore it
+         for i in range(natoms):
+            line = file.readline()
+            
+            # Make sure we got something to read...
+            if not line:
+               print "Error reading coordinates in rdxyz!"
+               finished = 1
+               break
+                    
+            # Check we are not at the end of the current frame
+            words = string.split(line)
+            if ( len( words ) != 4 ):
+               print "Error reading coordinates in rdxyz!"
+               print "Offending line is: %s" % line
+               break # jump out of for loop and start next cycle
+            
+            atsym = words[0]
+            try:
+               x = float(words[1])
+               y = float(words[2])
+               z = float(words[3])
+               a = objects.zmatrix.ZAtom()
+               a.coord = [x,y,z]
+               a.symbol = name_to_element( words[0] )
+               a.name = a.symbol + string.zfill(i+1,2)
+               model.atom.append(a)
+            except:
+               print "Error reading coordinates in rdxyz!"
+               print "Offending line is: %s" % line
+               break # jump out of for loop and start next cycle
+
+         if 1:
+            ZmatSeq.add_molecule(model)
+         else:
+            #self.connect_model(model)
+            #self.quick_mol_view([model])
+            #self.append_data(model)
+            #models.append( model )
+            pass
+                
+         # Go back to top of while loop with next line
+         line = file.readline()
+
+      if 1:
+         ZmatSeq.connect()
+         # Name the sequence after the first molecule
+         ZmatSeq.name = ZmatSeq.frames[0].name
+         self.objects.append(ZmatSeq)
+         return
+      else:
+         pass
+         #if len( models ) == 0:
+         #   return None
+         #else:
+         #   return models
+
+
 
 
 if ( __name__ == "__main__" ):
