@@ -106,6 +106,9 @@ class SelectionManager:
         pass
 
     def get(self):
+        """ Return a list of tuples mapping: molecule -> selected atom
+            - there is one tuple for each selected atom.
+        """
         res = []
         for mol in self.selected_mols:
             for a in mol.atom:
