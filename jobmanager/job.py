@@ -55,6 +55,7 @@ import re
 import time
 import copy
 import shutil
+import tarfile
 import socket
 from viewer.paths import backup_dir
 from viewer.rc_vars import rc_vars
@@ -72,6 +73,7 @@ EXECUTE_SHELL='execute-shell'
 RUN_APP='running....'
 RUN_APP_BASH='running under bash....'
 COPY_BACK_FILE='copy-back-file'
+COPY_BACK_DIRECTORY='copy-back-directory'
 CLEAN_SCRATCH='clean-scratch'
 PYTHON_CMD='python-code'
 #
@@ -96,6 +98,8 @@ class JobStep:
     def __init__(self,type,name,
                  local_filename=None,
                  remote_filename=None,
+                 local_directory=None,
+                 remote_directory=None,
                  cmd=None,
                  proc=None,
                  jobname=None,
@@ -123,6 +127,8 @@ class JobStep:
         self.local_filename=local_filename
         self.remote_filename=remote_filename
         self.cmd=cmd
+        self.local_directory=local_directory
+        self.remote_directory=remote_directory
         self.jobname=jobname
         self.proc=proc
         self.local_command=local_command
@@ -241,6 +247,8 @@ class Job:
                     code,message = self.execute_shell(step)
                 elif step.type == COPY_BACK_FILE:
                     code,message = self.copy_back_file(step)
+                elif step.type == COPY_BACK_DIRECTORY:
+                    code,message = self.copy_back_directory(step)
                 elif step.type == CLEAN_SCRATCH:
                     code,message = self.clean_scratch(step)
                 elif step.type == PYTHON_CMD:
@@ -1706,6 +1714,60 @@ class GlobusJob(GridJob):
             
         return 0,"Copied file %s from %s" % (step.local_filename,host)
 
+    def copy_back_directory(self,step,kill_on_error=0):
+        """ Copy back a directory from the remote resouce.
+            We tar and gzip the directory on the remote resouce and then unpack
+            it on the local machine
+        """
+        if self.debug:
+            print "Globus copy_back_directory: %s : %s" %( step.local_directory,step.remote_directory)
+            
+        if not step.remote_directory and not step.local_directory:
+            return -1,"copy_back_directory needs a directory name!"
+
+
+        # We need to cd to the directory above the one we want to create the
+        # archive in so that the paths in the archive are correct
+        if step.remote_directory[0] != "/":
+            remote_directory = step.remote_directory 
+            if step.remote_directory[-1] == "/":
+                remote_directory = step.remote_directory[:-1]
+        else:
+            # Relative path
+            remote_home = self.get_homedir()
+            remote_directory = remote_home + "/" + step.remote_directory
+            
+        path,directory = os.path.split( remote_directory )
+
+        # Tar up the remote directory
+        cmd = "cd %s; tar cf %s.tar %s; gzip -f %s.tar" % (path,directory,directory,directory)
+        host = self.get_host()
+        args = [ '-p',self.gsissh_port ,host, cmd]
+
+        if self.debug:
+            print "GlobusJob copy_back_directory running: %s" % 'gsissh '+ ' '.join(args)
+             
+        output,error = self._run_command( 'gsissh',args = args )
+
+        # copy the archive back
+        args = ["%s:%s.tar.gz" % ( host, remote_directory),"." ]
+        self.grid_cp( args )
+
+        # unpack it
+        archname = directory + ".tar.gz"
+        tarch = tarfile.open( archname, "r:gz")
+
+        members = tarch.getmembers()
+        for m in members:
+            if step.local_directory:
+                tarch.extract( step.local_directory + os.sep + m.name )
+            else:
+                tarch.extract( m )
+        tarch.close()
+        
+        return 0,"Copied directory %s from %s" % (remote_directory,host)
+    
+
     def delete_file(self,step):
         """ Delete a file on the remote machine
         """
@@ -2643,7 +2705,7 @@ if __name__ == "__main__":
 #         job.clean()
         print 'end jens job'
 
-    if 1:
+    if 0:
         print 'testing Globus job'
         job = GlobusJob()
         job.job_parameters['hostlist'] = ['grid-compute.leeds.ac.uk']
@@ -2678,4 +2740,14 @@ if __name__ == "__main__":
         #print "which  is ",which
 
         raise JobError,'This is a string'
+
+    if 1:
+        print 'testing Globus job'
+        job = GlobusJob()
+        job.debug = 1
+        job.job_parameters['directory'] = "smeagol/test"
+        job.job_parameters['host'] = ["lancs1.nw-grid.ac.uk"]
+        job.add_step(COPY_BACK_DIRECTORY,'Globus Copy Back Directory',remote_directory='smeagol/test')
+        job.run()
+        
 
