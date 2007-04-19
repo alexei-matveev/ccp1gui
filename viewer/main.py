@@ -176,6 +176,7 @@ from interfaces.mndo import *
 from interfaces.am1calc import *
 from interfaces.dalton import *
 from interfaces.charmm import *
+from interfaces.smeagol import *
 
 from interfaces.gamessoutputreader import *
 from interfaces.cubereader import *
@@ -2409,6 +2410,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.add_mol_cmd(menu,mols,"Dalton",self.dalton_calced)
         self.add_mol_cmd(menu,mols,"Mopac",self.mopac_calced)
         self.add_mol_cmd(menu,mols,"ChemShell",self.chemshell_calced)
+        self.add_mol_cmd(menu,mols,"SMEAGOL",self.smeagol_calced)
 
     def add_mol_cmd(self,menu,mols,txt,fnc,all=0):
         if len(mols) == 0:
@@ -3200,6 +3202,7 @@ class TkMolView(Pmw.MegaToplevel):
                        ('Other Output','.out'),
                        ('Gaussian Output','.gjf'),
                        ('Gaussian Cube','.cube'),
+                       ('Smeagol Input','.fdf'),
                        ('All', '*')])
 
         if filename:
@@ -3285,10 +3288,10 @@ Please check the output on the terminal/log file for further information." % fil
             if ext == 'mol':
                 form = 'MOL'
             # Smeagol Readers
-            if ext == 'RHO':
+            if ext == 'RHO' or ext == 'fdf' or ext == 'ANI':
                 form = 'SMG'
-            if ext == 'ANI':
-                form = 'XYZ_seq'
+            #if ext == 'ANI':
+            #    form = 'XYZ_seq'
             if ext == 'vtk':
                 form = 'vtk'
             elif ext == 'sys':
@@ -4117,18 +4120,11 @@ Please check the output on the terminal/log file for further information." % fil
             print e
             return
 
-        if ( ext == 'RHO' ):
-            fstype = ext
-        else:
-            fstype = None
-
-        #print "fstype is ",fstype
-
         # Instantiate the SmeagolReader
         smeagolreader = SmeagolReader()
 
-        if ( fstype ):
-            smeagolreader.read( file, ftype=fstype )
+        if ( ext ):
+            smeagolreader.read( file, ftype=ext )
         else:
             smeagolreader.read( file )
 
@@ -4139,7 +4135,15 @@ Please check the output on the terminal/log file for further information." % fil
             #print 'unique',root, o.title
             o.name = self.make_unique_name(root,o.title)
 
-            if myclass == 'Field' :
+            if myclass == 'Indexed' or myclass == 'Zmatrix' or myclass == 'ZmatrixSequence' :
+                self.update_from_object(o)
+                if myclass == 'ZmatrixSequence':
+                    self.quick_trajectory_view([o])
+                else:
+                    self.quick_mol_view([o])
+                self.append_data(o)
+                
+            elif myclass == 'Field' :
                 self.append_data(o)
             else:
                 print "Unknown class returned by smeagolreader!"
@@ -4912,6 +4916,10 @@ Please check the output on the terminal/log file for further information." % fil
         c= MNDOCalc(mol=obj)
         self.edit_calc(c)
 
+    def smeagol_calced(self,obj=None):
+        c= SMEAGOLCalc(mol=obj)
+        self.edit_calc(c)
+        
     def edit_calc(self,calc):
         """Open an editor for a given calculation
         Also ensures correct handling of the target structure
