@@ -36,7 +36,6 @@ RUNNING   = "Running"
 KILLED    = "Killed"
 DONE      = "Done"
 
-LOCALHOST = socket.gethostname()
 
 # Global dictionary
 calced_dict = {}
@@ -83,6 +82,7 @@ of any program using or generating them. The parameters however will be
         self.debug_slave = 0
 
         user = getpass.getuser()
+        self.LOCALHOST = socket.gethostname()
 
 ##         self.jobopt    = { "hostname"  : "localhost",
 ##                            "directory" : ".",
@@ -102,7 +102,7 @@ of any program using or generating them. The parameters however will be
 
         # were inputs, now parameters
         #self.set_parameter("hostname", "localhost")
-        self.set_parameter("submission", LOCALHOST)
+        self.set_parameter("submission", self.LOCALHOST)
         self.set_parameter("directory", paths['user'])
         self.set_parameter("username", user)
         self.set_parameter("task", "Energy")
@@ -295,7 +295,7 @@ of any program using or generating them. The parameters however will be
         if self.debug:
             print "calc create_job called with: %s" % jobtype
             
-        if jobtype == LOCALHOST:
+        if jobtype == self.LOCALHOST:
             job =  jobmanager.LocalJob()            
         elif jobtype == 'SSH':
             host = 'login.hpcx.ac.uk'
