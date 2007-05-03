@@ -441,7 +441,12 @@ class Job:
         """Get the parameter specified and return None if it does't exist"""
 
         if self.job_parameters.has_key(parameter):
-            return self.job_parameters[parameter]
+            value = self.job_parameters[parameter]
+            # Empty strings returned as None
+            if type(value) == str and not len(value):
+                return None
+            else:
+                return self.job_parameters[parameter]
         else:
             return None
 
