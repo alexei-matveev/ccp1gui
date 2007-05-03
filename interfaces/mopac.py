@@ -31,7 +31,10 @@ class MopacCalc(QMCalc):
 
     def __init__(self,**kw):
         apply(QMCalc.__init__,(self,),kw)
+
+        self.debug=1
         self.set_program('MOPAC')
+        self.set_parameter('job_name','untitled')
         self.set_parameter("task","energy")
         self.set_parameter("theory","AM1")
         self.set_parameter("basis","STO")
@@ -50,7 +53,8 @@ class MopacCalc(QMCalc):
         self.GetModel()
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
-        job_name = self.get_name()
+        #job_name = self.get_name()
+        job_name = self.get_parameter('job_name')
         if sys.platform[:3] == 'win':
             self.infile='FOR005'
             self.outfile='FOR006'
@@ -69,6 +73,7 @@ class MopacCalc(QMCalc):
         input = file.readlines()
         self.set_input("input_file",input)
         file.close()
+        return self.infile
 
     def makejob(self,writeinput=1,graph=None):
         """ build the mopac job"""
@@ -78,7 +83,8 @@ class MopacCalc(QMCalc):
 
         self.GetModel()
         mol_obj  = self.get_input("mol_obj")
-        job_name = self.get_name()
+        #job_name = self.get_name()
+        job_name = self.get_parameter('job_name')
 
         if sys.platform[:3] == 'win':
             self.infile='FOR005'
@@ -86,7 +92,6 @@ class MopacCalc(QMCalc):
         else:
             self.infile=job_name+'.dat'
             self.outfile=job_name+'.out'
-
 
         if writeinput:
             # maybe this should be moved elsewhere
@@ -107,19 +112,28 @@ class MopacCalc(QMCalc):
             file.close()
 
 #        hostname = self.get_parameter("hostname")
-        hostname = 'localhost'
-        username = self.get_parameter("username")
+#        hostname = 'localhost'
+#        username = self.get_parameter("username")
+#         if hostname == 'localhost':
+#             #job = jobmanager.BackgroundJob()
+#             # jmht Background job doesn't work currently so this is just a quick hack
+#             job = jobmanager.ForegroundJob()
+#         elif hostname == 'hpcx':
+#             job = jobmanager.RemoteForegroundJob('hpcx',username)
+#         elif hostname == 'tcsg7':
+#             job = jobmanager.RemoteForegroundJob('tcsg7',username)
+#         else:
+#             print 'unsupported host'
+#             return None
 
-        if hostname == 'localhost':
-            #job = jobmanager.BackgroundJob()
-            # jmht Background job doesn't work currently so this is just a quick hack
-            job = jobmanager.ForegroundJob()
-        elif hostname == 'hpcx':
-            job = jobmanager.RemoteForegroundJob('hpcx',username)
-        elif hostname == 'tcsg7':
-            job = jobmanager.RemoteForegroundJob('tcsg7',username)
-        else:
-            print 'unsupported host'
+        try:
+            job = self.get_job(create=1)
+        except Exception,e:
+            ed.Error("Problem initialising job!\n%s" % e)
+            return None
+
+        if not job:
+            ed.Error("mopac makejob no job returned!")
             return None
 
         job.name = job_name
@@ -128,21 +142,25 @@ class MopacCalc(QMCalc):
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=self.infile,kill_on_error=0)
 
 
-        mopac_exe = self.get_executable()
+        mopac_exe = self.get_executable(job=job)
         if not mopac_exe:
             ed.Error('Cannot find a mopac executable!')
             return None
+
+
+        # Clear out steps if we are reusing the job
+        job.clear_steps()
         
         # Local windows job, search for local executable
-        if sys.platform[:3] == 'win' and hostname == 'localhost':
+        if sys.platform[:3] == 'win':
             job.add_step(RUN_APP,'run mopac',local_command=mopac_exe)
         else:
-            #job.add_step(RUN_APP,'run mopac',local_command=mopac_exe,stdin_file=self.infile)
             job.add_step(RUN_APP,
                          'run mopac',
                          local_command=mopac_exe,
                          local_command_args=[job_name],
-                         stdout_file=self.outfile)
+                         )
+#                         stdout_file=self.outfile)
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
         job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
@@ -222,8 +240,11 @@ class MopacCalc(QMCalc):
         pass
 
     def __WriteInput(self,mol,file):
-        if self.get_parameter("task") == "energy":
+        task = self.get_parameter("task")
+        if task == "energy":
             txt = "1scf "
+        elif task == "optimise":
+            txt = "bfgs"
         else:
             txt = ""
 
@@ -254,9 +275,16 @@ class MopacCalc(QMCalc):
         # we could write a zmatrix here
         #fac = 0.52917706
         fac = 1.0
+
+        # Need to set the flag on all coordinates we want to optimise
+        if task == "optimise":
+            oflag = 1
+        else:
+            oflag = 0
+            
         for a in mol.atom:
             file.write('%3d  %12.7f %d %12.7f %d %12.7f %d \n' % \
-                       (a.get_number(), fac*a.coord[0],0,fac*a.coord[1],0,fac*a.coord[2],0))
+                       (a.get_number(), fac*a.coord[0],0,fac*a.coord[1],0,fac*a.coord[2],oflag))
         file.write('0  0 0   0 0   0 0\n')
 
 
@@ -292,31 +320,47 @@ class MopacCalc(QMCalc):
 
                 break
             
-    def get_executable(self):
+    def get_executable(self,job=None):
         """
-           Try to work out the location of the executable/run_mopac script
+           Try to work out the location of the executable/runmopac script
         """
-        global rc_vars,find_exe
-        
-        if rc_vars.has_key('mopac_exe'):
-            mopac_exe = rc_vars['mopac_exe']
-            print "Using mopac_exe: %s from ccp1guirc.py file" % mopac_exe
-            return mopac_exe
-        
-        if sys.platform[:3] == 'win' and hostname == 'localhost':
-            # Name of executable, assume install of exe into exe subdirectory
-            try:
-                install_dir = os.environ['MOPAC_BIN']
-                mopac_exe=install_dir+'\mopac.exe'
-            except KeyError:
-                mopac_exe=root_path+'/exe/mopac.exe'
-        else:
-            # Unix case - check default path and gui directories
-            mopac_exe = find_exe('runmopac')
+        global find_exe
+
+        mopac_exe = None
+        print "get_executable"
+        # First see if the user has set an executable path for the job
+        # (also covers a value stored in the rc_vars)x
+        if job:
+            print "got job"
+            print job.job_parameters
+            mopac_exe = job.get_parameter("executable")
+            if mopac_exe:
+                if self.debug:
+                    print "Using mopac_exe from job: %s" % mopac_exe
+            else:
+                mopac_exe = None
+                    
+                
+        if not mopac_exe:
+            if sys.platform[:3] == 'win':
+                # Name of executable, assume install of exe into exe subdirectory
+                try:
+                    install_dir = os.environ['MOPAC_BIN']
+                    mopac_exe=install_dir+'\mopac.exe'
+                except KeyError:
+                    mopac_exe=root_path+'/exe/mopac.exe'
+            else:
+                # Unix case - check default path and gui directories
+                for path in ['/opt/mopac/mopac','/opt/mopac/MOPAC2007.out']:
+                    if  os.access( path, os.X_OK):
+                        mopac_exe = path
+                if not mopac_exe:
+                    mopac_exe = find_exe('mopac')
+                    
+                if self.debug: print "Using mopac_exe from path: %s" % mopac_exe
 
         if self.debug:
             print "Using mopac_exe: %s" % mopac_exe
-        
         return mopac_exe
         
     def get_editor_class(self):
@@ -340,6 +384,7 @@ class MopacCalcEd(QMCalcEd):
 
         self.theories["optimise"] = self.theories["energy"]
         self.basissets = ["STO"]
+        self.submission_policies = [ LOCALHOST ]
 
         self.task_tool = SelectOptionTool(self,"task","Task",self.tasks,command=self.__taskupdate)
 
@@ -358,8 +403,12 @@ class MopacCalcEd(QMCalcEd):
 #        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
 #                                                      self.submissionpolicies['localhost'])
 
-        self.username_tool = TextFieldTool(self,'username','User Name')
-        self.workingdirectory_tool = TextFieldTool(self,'directory','Working Directory')
+        #self.username_tool = TextFieldTool(self,'username','User Name')
+        #self.workingdirectory_tool = TextFieldTool(self,'directory','Working Directory')
+        self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
+        self.balloon.bind(self.jobname_tool.widget, 'Specify the prefix for all output files')
+        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+                                                self.submission_policies)
 
         self.LayoutToolsTk()
 
@@ -406,8 +455,18 @@ class MopacCalcEd(QMCalcEd):
 
 #        self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
 #        self.submission_tool.widget.pack(in_=page.jobgroup.interior())
-        self.username_tool.widget.pack(in_=page.jobgroup.interior())
-        self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.username_tool.widget.pack(in_=page.jobgroup.interior())
+#        self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
+
+        # Job submission
+        self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
+        self.submission_frame.pack()
+        self.submission_config_button = Tkinter.Button(self.submission_frame,
+                                                       text='Configure...',
+                                                       command=self.configure_jobEditor)
+        self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
+        self.submission_config_button.pack(side='left')#
+        
 
     def LaunchCalcEd(self,calc):
         '''Create a new calculation editor.'''
