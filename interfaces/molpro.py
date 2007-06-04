@@ -363,34 +363,39 @@ class MOLPROCalc(QMCalc):
         ed = self.get_editor()
 
         self.GetModel()
+
+        # Set up the names/paths
         mol_name = self.get_input("mol_name")
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
-
         file_ext = '.com'
-        if writeinput:
-            filename = directory+os.sep+job_name+file_ext
-            mol_obj  = self.get_input("mol_obj")
-            writeinput_err = self.__WriteInput(mol_obj,filename)
+        infile = directory+os.sep+job_name+file_ext
 
+        # Change to the working directory
+        os.chdir( directory )
+        
+        if writeinput:
+            mol_obj  = self.get_input("mol_obj")
+            
+            writeinput_err = self.__WriteInput(mol_obj,infile)
             if writeinput_err:
                 return
             
             # load contents of input for viewing
-            file = open(directory+os.sep+job_name+file_ext,'r')
+            file = open(infile,'r')
             input = file.readlines()
             self.set_input("input_file",input)
             file.close()
         else:
             try:
                 print directory,os.sep,job_name
-                file = open(directory+os.sep+job_name+file_ext,'r')
+                file = open(infile,'r')
             except IOError,e:
                 print str(e)
                 ed.Error("Trying to run a calculation with no input file!\n"+
                          "Please make sure you have written an input file.")
                 return
-                
+
         #  Get/create job of type specified by the submission parameter
         try:
             job = self.get_job(create=1)
@@ -403,13 +408,10 @@ class MOLPROCalc(QMCalc):
             return None
         
         jobtype = job.jobtype
-        job.name = self.get_parameter( 'job_name' )
+        job.name = job_name
 
-        # Currently only local jobs supported for molpro
-        if jobtype != LOCALHOST:
-            ed.Error("molpro makejob - unsupported jobtype: %s" % jobtype)
-            return
-
+        
+        # Now we have the jobs, add the steps to it
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
@@ -1842,6 +1844,8 @@ class MOLPROCalcEd(QMCalcEd):
         self.optcoord_opts = [ "Z-Matrix","Cartesian" ]
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
+        
+        self.submission_policies = [ LOCALHOST, "Globus","Nordugrid" ]
 
 
         #Create the tools used in the Molecule tab - spin & charge created in QM.
@@ -1986,51 +1990,8 @@ class MOLPROCalcEd(QMCalcEd):
 
         #Create the tools used for the Job tab
         self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
-        self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' ) 
-        #self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
-        #                                      self.hostnames, command=self.__sethost)
-        #self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
-        #self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
-        #                                        self.submissionpolicies[self.hostname])
-        #self.username_tool = TextFieldTool(self,'username','User Name')
-        self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
-        self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
-
-##         #Create the tools used in the Restart Group
-##         self.ed0keep_tool = BooleanTool(self, 'ed0_keep', 'specify',
-##                                         command=lambda s=self: s.__keepfile('ed0'))
-##         self.ed0path_tool = ChangeDirectoryTool(self,'ed0_path','')
-##         self.ed2keep_tool = BooleanTool(self, 'ed2_keep', 'keep',
-##                                         command=lambda s= self: s.__keepfile('ed2'))
-##         self.balloon.bind( self.ed2keep_tool.widget, 'Save the integral file' )
-##         self.ed2name_tool = BooleanTool (self, 'ed2_specify','specify ',
-##                                          command=lambda s=self: s.__keepfile('ed2'))
-##         self.balloon.bind( self.ed2name_tool.widget, 'Toggle saving with the default name or a user-specified one' )        
-##         self.ed2path_tool = FileTool(self,'ed2_path','',
-##                                       filetypes=[('Mainfiles','*.ed2'), ('All files','*.*')])
-##         self.ed3keep_tool = BooleanTool(self, 'ed3_keep', 'keep',
-##                                         command=lambda s = self: s.__keepfile('ed3'))
-##         self.balloon.bind( self.ed3keep_tool.widget, 'Save the dump file - required to restart calculations' )
-##         self.ed3name_tool = BooleanTool (self, 'ed3_specify','specify ',
-##                                          command=lambda s=self: s.__keepfile('ed3'))
-##         self.balloon.bind( self.ed3name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                
-##         self.ed3path_tool = FileTool(self,'ed3_path','',
-##                                      filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')])
-##         self.ed7keep_tool = BooleanTool(self, 'ed7_keep', 'keep',
-##                                         command=lambda s = self: s.__keepfile('ed7'))
-##         self.balloon.bind( self.ed7keep_tool.widget, 'Save the scratch file' )        
-##         self.ed7name_tool = BooleanTool (self, 'ed7_specify','specify ',
-##                                          command=lambda s=self: s.__keepfile('ed7'))
-##         self.balloon.bind( self.ed7name_tool.widget, 'Toggle saving with the default name or a user-specified one' )                        
-##         self.ed7path_tool = FileTool(self,'ed7_path','',
-##                                       filetypes=[('Tempfiles','*.ed7'), ('All files','*.*')])
-##         self.ed14keep_tool = BooleanTool(self, 'ed14_keep', 'specify',
-##                                         command=lambda s=self: s.__keepfile('ed14'))
-##         self.balloon.bind( self.ed14keep_tool.widget, 'Specify a \'foreign\' dumpfile for a restart calculation' )        
-##         self.ed14path_tool = FileTool(self,'ed14_path','',
-##                                       filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')],
-##                                       action="open")
-
+        self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' )
+        # See LayoutTK for the job submission tools
         self.LayoutToolsTk()
 
         self.__initialisetools()
@@ -2052,9 +2013,6 @@ class MOLPROCalcEd(QMCalcEd):
         job_name = str(self.calc.get_name())
         self.calc.set_parameter('job_name',job_name)
         self.jobname_tool.UpdateWidget()
-        cwd = os.getcwd()
-        self.calc.set_parameter('directory',str(cwd))
-        self.workingdirectory_tool.UpdateWidget()
         self.__getenvironment()
 ###        self.ed0path_tool.UpdateWidget()
  
@@ -2173,11 +2131,6 @@ class MOLPROCalcEd(QMCalcEd):
                                  self.guessgetqsection2_tool.widget])
                 
  
-    def __sethost(self,host):
-        """Update the submission types for the particular host.
-        """
-        self.submission_tool.SetItems(self.submissionpolicies[host])
-
     def __dftradialgridpoints(self,choice):
         """Select the number of gridpoints dependant on the radial grid selected
         """
@@ -2694,80 +2647,17 @@ class MOLPROCalcEd(QMCalcEd):
         page.jobgroup.pack(side='top',expand='yes',fill='both')
 
         self.jobname_tool.widget.pack(in_=page.jobgroup.interior())
-        #self.hostname_tool.widget.pack(in_=page.jobgroup.interior())
-        #self.submission_tool.widget.pack(in_=page.jobgroup.interior())
-        #self.username_tool.widget.pack(in_=page.jobgroup.interior())
-        self.workingdirectory_tool.widget.pack(in_=page.jobgroup.interior())
 
-        #Add Restart group
-        page.fpathgroup = Pmw.Group(page,tag_text="File Path Group")
-        page.fpathgroup.pack(expand='yes',fill='both')
-
-
-##         #Need to create multiple frames so things can be packed and forgotten
-##         # without the order getting all jumbled.
-##         page.ed0frame = Tkinter.Frame(page.fpathgroup.interior())
-##         page.ed0frame.pack(in_=page.fpathgroup.interior(),side='top',
-##                              expand='yes', fill='both')
-##         ed0label = Tkinter.Label(page.ed0frame, text='ECP Libraries (ed0) ')
-##         ed0label.pack(side='left')
-##         self.ed0keep_tool.SetParent(page.ed0frame)
-##         self.ed0path_tool.SetParent(page.ed0frame)
-##         self.ed0keep_tool.widget.pack(in_=page.ed0frame, side='left')
-
-##         page.ed2frame = Tkinter.Frame(page.fpathgroup.interior())
-##         page.ed2frame.pack(in_=page.fpathgroup.interior(),side='top',
-##                              expand='yes', fill='both')
-##         ed2label = Tkinter.Label(page.ed2frame, text='Mainfile (ed2) ')
-##         ed2label.pack(side='left')
-##         self.ed2keep_tool.SetParent(page.ed2frame)
-##         self.ed2name_tool.SetParent(page.ed2frame)
-##         self.ed2path_tool.SetParent(page.ed2frame)
-##         self.ed2keep_tool.widget.pack(in_=page.ed2frame, side='left')
-
-##         page.ed3frame = Tkinter.Frame(page.fpathgroup.interior())
-##         page.ed3frame.pack(in_=page.fpathgroup.interior(),side='top',
-##                              expand='yes', fill='x')
-##         ed3label = Tkinter.Label(page.ed3frame, text='Dumpfile (ed3) ')
-##         ed3label.pack(side='left')
-##         self.ed3keep_tool.SetParent(page.ed3frame)
-##         self.ed3path_tool.SetParent(page.ed3frame)
-##         self.ed3name_tool.SetParent(page.ed3frame)
-##         self.ed3keep_tool.widget.pack(in_=page.ed3frame, side='left')
-
-##         page.ed7frame = Tkinter.Frame(page.fpathgroup.interior())
-##         page.ed7frame.pack(in_=page.fpathgroup.interior(),side='top',
-##                              expand='yes', fill='both')
-##         ed7label = Tkinter.Label(page.ed7frame, text='Tempfile (ed7) ')
-##         ed7label.pack(side='left')
-##         self.ed7keep_tool.SetParent(page.ed7frame)
-##         self.ed7name_tool.SetParent(page.ed7frame)
-##         self.ed7path_tool.SetParent(page.ed7frame)
-##         self.ed7keep_tool.widget.pack(in_=page.ed7frame, side='left')
-
-##         page.ed14frame = Tkinter.Frame(page.fpathgroup.interior())
-##         page.ed14frame.pack(in_=page.fpathgroup.interior(),side='top',
-##                              expand='yes', fill='both')
-##         ed14label = Tkinter.Label(page.ed14frame, text='Foreign Dumpfile (ed14) ')
-##         ed14label.pack(side='left')
-##         self.ed14keep_tool.SetParent(page.ed14frame)
-##         self.ed14path_tool.SetParent(page.ed14frame)
-##         self.ed14keep_tool.widget.pack(in_=page.ed14frame, side='left')
-
-##         Pmw.alignlabels([self.ed0keep_tool.widget,
-##                          self.ed0path_tool.widget,
-##                          self.ed2keep_tool.widget,
-##                          self.ed2path_tool.widget,
-##                          self.ed2name_tool.widget,
-##                          self.ed2keep_tool.widget,
-##                          self.ed3path_tool.widget,
-##                          self.ed3name_tool.widget,
-##                          self.ed3keep_tool.widget,
-##                          self.ed7path_tool.widget,
-##                          self.ed7name_tool.widget,
-##                          self.ed7keep_tool.widget,
-##                          self.ed14path_tool.widget,
-##                          self.ed14keep_tool.widget])
+        # Job submission
+        self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
+        self.submission_frame.pack()
+        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+                                                self.submission_policies)
+        self.submission_config_button = Tkinter.Button(self.submission_frame,
+                                                       text='Configure...',
+                                                       command=self.configure_jobEditor)
+        self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
+        self.submission_config_button.pack(side='left')#
         
 
     def EditCoordinates(self,model=None):
