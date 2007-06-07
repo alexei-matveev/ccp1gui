@@ -17,7 +17,7 @@ class File:
         self.filename = filename
         self.type = type
         self.title = "File:"+self.filename
-        #self.name = "File:"+self.filename
+        self.name = "File:"+self.filename
 
     def get_name(self):
         return self.title
