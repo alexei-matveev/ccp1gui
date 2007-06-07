@@ -162,7 +162,7 @@ class SubProcess:
                 kw['hStderr'] = msvcrt.get_osfhandle(self.stderr.fileno())
             if self.debug:
                 print 'winprocess.Process',cmd,kw
-            self.child = winprocess.Process(cmd, **kw)
+            self.child = winprocess.Process(cmd, show=0, **kw)
         else:
             # Unix code
 
