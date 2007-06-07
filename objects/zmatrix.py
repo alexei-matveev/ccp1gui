@@ -241,13 +241,13 @@ class Indexed:
 
     # also need to adapt connectivity data
     def delete_atom(self,index):
-
         self.delete_list([index])
 
     def delete_list(self,list):
         deadmen = []
         for a in self.atom:
             a.tempflag=0
+            a.oldix = a.get_index()
         for i in list:
             deadmen.append(self.atom[i])
             self.atom[i].tempflag=1
@@ -265,7 +265,20 @@ class Indexed:
             self.delete_atom_obj(a)
         self.reindex()
 
+        # if we have moved atoms into the first 3 we need to preserve
+        # their coordinates by marking as cartesian
+        if self.atom[0].oldix > 0 and self.atom[0].zorc == 'z':
+            self.atom[0].zorc = 'c'
+        if self.atom[1].oldix > 1 and self.atom[1].zorc == 'z':
+            self.atom[1].zorc = 'c'
+        if self.atom[2].oldix > 2 and self.atom[2].zorc == 'z':
+            self.atom[2].zorc = 'c'
+
+        # Could do a rotation/translation here....
+
     def delete_atom_obj(self,a):
+        # This enables references to be resolved as refs to delete atoms
+        a.seqno = -1
         for c in a.conn:
             c.conn.remove(a)
         self.atom.remove(a)
@@ -1372,53 +1385,88 @@ class Zmatrix(Indexed):
         # fill in name field
         # a.name = a.symbol + string.zfill(i,2)
         if a.zorc == 'z':
-            i1 = a.i1
             i1i = -999
-            if i1 and i1.ok:
-                i1i=i1.get_index()
-            else:
-                try:
-                    i1i = a.i1x
-                    if i1i == -1:
-                        i1 = fp0
-                    elif i1i == -2:
-                        i1 = fp1
-                    elif i1i == -3:
-                        i1 = fp2
-                except AttributeError:
-                    pass
+            if i > 0 or 1:
+                print 'check a.i1',a.i1
+                i1 = a.i1
+                if i1 and i > 0:
+                    i1i=i1.get_index()
+                    if i1i < 0:
+                        self.logerr('i1 for atom %d references missing atom' % (i+1))
+                        ok = 0 
+                        a.ok = 0
+                        return
+                    if not i1.ok:
+                        self.logerr('i1 for atom %d references undefined atom : %d' % (i+1,i1i+1))
+                        ok = 0 
+                        a.ok = 0
+                        return
+                else:
+                    try:
+                        i1i = a.i1x
+                        if i1i == -1:
+                            i1 = fp0
+                        elif i1i == -2:
+                            i1 = fp1
+                        elif i1i == -3:
+                            i1 = fp2
+                    except AttributeError:
+                        print ' i1 PASS'
+                        pass
 
-            i2 = a.i2
             i2i = -999
-            if i2 and i2.ok:
-                i2i=i2.get_index()
-            else:
-                try:
-                    i2i = a.i2x
-                    if i2i == -1:
-                        i2 = fp0
-                    elif i2i == -2:
-                        i2 = fp1
-                    elif i2i == -3:
-                        i2 = fp2
-                except AttributeError:
-                    pass
+            if i > 1 or 1:
+                i2 = a.i2
+                if i2 and i > 1:
+                    i2i=i2.get_index()
+                    if i2i < 0:
+                        self.logerr('i2 for atom %d references missing atom' % (i+1))
+                        ok = 0 
+                        a.ok = 0
+                        return
+                    if not i2.ok:
+                        self.logerr('i2 for atom %d references undefined atom : %d' % (i+1,i1i+1))
+                        ok = 0 
+                        a.ok = 0
+                        return
+                else:
+                    try:
+                        i2i = a.i2x
+                        if i2i == -1:
+                            i2 = fp0
+                        elif i2i == -2:
+                            i2 = fp1
+                        elif i2i == -3:
+                            i2 = fp2
+                    except AttributeError:
+                        pass
 
-            i3 = a.i3
             i3i = -999
-            if i3 and i3.ok:
-                i3i=i3.get_index()
-            else:
-                try:
-                    i3i = a.i3x
-                    if i3i == -1:
-                        i3 = fp0
-                    elif i3i == -2:
-                        i3 = fp1
-                    elif i3i == -3:
-                        i3 = fp2
-                except AttributeError:
-                    pass
+            if i > 2 or 1:
+                i3 = a.i3
+                if i3 and i > 2:
+                    i3i=i3.get_index()
+                    if i3i < 0:
+                        self.logerr('i3 for atom %d references missing atom' % (i+1))                    
+                        ok = 0 
+                        a.ok = 0
+                        return
+                    if not i3.ok:
+                        self.logerr('i2 for atom %d references undefined atom : %d' % (i+1,i1i+1))
+                        ok = 0 
+                        a.ok = 0
+                        return
+                else:
+                    try:
+                        i3i = a.i3x
+                        if i3i == -1:
+                            i3 = fp0
+                        elif i3i == -2:
+                            i3 = fp1
+                        elif i3i == -3:
+                            i3 = fp2
+                    except AttributeError:
+                        pass
 
             if i == 0 and not self.is_frag:
                 p1 = [ 0.0, 0.0, 0.0]
@@ -1455,7 +1503,9 @@ class Zmatrix(Indexed):
                 elif i1i == 1 and i2i == 0:
                     pass
                 else:
-                    if i1i > 1 or i1i == -999 or i2i > 1 or i2i == -999:
+                    if i1i > 1 or i1i == -999 \
+                       or i2i > 1 or i2i == -999 \
+                       or i2i == i1i :
                         self.logerr('bad atom indices for atom 3: %d %d' % (i1i+1,i2i+1))
                         ok = 0
                         a.ok = 0
@@ -1503,17 +1553,19 @@ class Zmatrix(Indexed):
                     a.ok = 0
 
 
-            # Check for numerical problems with the dihedral
-            if i > 2:
-                if theta < SMALL:
-                    print 'Small theta, torsion undefined'
-                elif cpv.get_angle_formed_by(p3,p2,p1) < SMALL:
-                    print 'WARNING: Small jkl angle, torsion undefined'
-                elif abs(math.pi - cpv.get_angle_formed_by(p3,p2,p1)) < SMALL:
-                    print 'WARNING: 180 jkl angle, torsion undefined'
 
             if(ok):
                 # add exception handling here later
+
+                # Check for numerical problems with the dihedral
+                if i > 2:
+                    if theta < SMALL:
+                        print 'Small theta, torsion undefined'
+                    elif cpv.get_angle_formed_by(p3,p2,p1) < SMALL:
+                        print 'WARNING: Small jkl angle, torsion undefined'
+                    elif abs(math.pi - cpv.get_angle_formed_by(p3,p2,p1)) < SMALL:
+                        print 'WARNING: 180 jkl angle, torsion undefined'
+
                 if self.debug > 1:
                     print 'ziccd arg types',type(r),type(phi),type(dtorad),type(theta)
 
@@ -1543,14 +1595,17 @@ class Zmatrix(Indexed):
         self.reindex()
         self.load_coordinate_variables()
 
+        print 'CHECK i1s cc',self.atom[0].i1,self.atom[1].i1,self.atom[2].i1,self.atom[3].i1
+
         # Loop over atoms computing cartesians
         ok = 1
         for i in range(len(self.atom)):
-            ok = ok and not self.calculate_one_coordinate(i)
+            tester = self.calculate_one_coordinate(i)
+            ok = ok and not tester
 
         if self.debug:
             if len(self.errors):
-                print 'calculate_coordinates done, errors:',errors
+                print 'calculate_coordinates done, errors:',self.errors
             else:
                 print 'calculate_coordinates done with no errors'
             if not ok:
@@ -2384,8 +2439,10 @@ class Zmatrix(Indexed):
                 ', improper'                
         if improper:
             list = i1atom.conn
-        else:
+        elif i2atom:
             list = i2atom.conn
+        else:
+            list = []
 
         for test in list:
             if self.debug:
@@ -4296,8 +4353,8 @@ class ZmatrixSequence(Zmatrix):
         Zmatrix.__init__(self,**kw)
         self.frames=[]
         self.title="Sequence of Structures"
+        ####self.current_frame=0
         self.name="Unnamed"
-        self.current_frame=0
 
     def add_molecule(self,molecule):
         """ Add a molecule to the sequence

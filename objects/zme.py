@@ -126,7 +126,7 @@ class ZME(Pmw.MegaToplevel):
         self.dialogresult = ""
         self.query = Pmw.MessageDialog(self.interior(),
                                        title = "Warning", iconpos='w', icon_bitmap='warning',
-                                       buttons = ("Yes",),
+                                       buttons = ("OK",),
                                        command = self._QueryResult)
         self.query.withdraw()
 
@@ -768,6 +768,8 @@ class ZME(Pmw.MegaToplevel):
         i = 0
         for i in range(len(self.model.atom)):
             txt = self.model.output_atom_full(self.model.atom[i])
+            if not self.model.atom[i].ok:
+                txt = '!'+txt
             self.sel.insert(i, txt)
         self.sel.insert(i+1, '[End]')
 
@@ -1137,7 +1139,6 @@ class ZME(Pmw.MegaToplevel):
                                     except IndexError, e:
                                         raise BadInput, "invalid value for i2"
                                     # replace variable if not symbolic
-
                                     #  !!!!! Paul test
                                     if a.theta_var == None or 1:
                                         recomp_theta = 1
@@ -1171,6 +1172,7 @@ class ZME(Pmw.MegaToplevel):
                                     i3 = int(txt)
                                 except ValueError, e:
                                     raise BadInput, "non integer for i3"
+
                                 if i == 0:
                                     a.i3 = None
                                 else:
@@ -1302,6 +1304,7 @@ class ZME(Pmw.MegaToplevel):
 
                     for t in string.split(txt):
                         i = int(t) 
+                        print 'WARNING'
                         if i < 1 or i > len(self.model.atom):
                             self.warn("connection index out of range: " + str(i))
                         else:
@@ -1569,6 +1572,39 @@ class ZME(Pmw.MegaToplevel):
     def delete_atoms(self,save_to_clipboard=0):
         """ Delete the selected atoms"""
         list = []
+
+        for s in self.sel.curselection():
+            i = int(s)
+            if i < len(self.model.atom):
+                list.append(i)
+
+        if self.debug:
+            print 'deletion list',list,' save=',save_to_clipboard
+
+        if save_to_clipboard:
+            self.clear_clipboard()
+            for i in list:
+                if save_to_clipboard:
+                    self.clipboard.insert(-1,self.model.atom[i])
+                else:
+                    self.trash.append(self.model.atom[i])
+
+        self.model.delete_list(list)
+        
+        self.active_atom = None
+
+        if self.debug:
+            print 'trash:',self.trash
+            print 'clip :',self.clipboard
+        
+        self._store_atom_selection()
+        self._update_atom_editor()
+        self._update()
+
+    def delete_atoms_old(self,save_to_clipboard=0):
+        """ Delete the selected atoms"""
+        list = []
+
         for s in self.sel.curselection():
             i = int(s)
             if i < len(self.model.atom):
@@ -1585,7 +1621,6 @@ class ZME(Pmw.MegaToplevel):
 
         n = len(self.model.atom)
         for i in lrev:
-
             self.model.atom[i].seqno = -1
             if save_to_clipboard:
                 self.clipboard.insert(0,self.model.atom[i])
@@ -1606,9 +1641,13 @@ class ZME(Pmw.MegaToplevel):
             print 'trash:',self.trash
             print 'clip :',self.clipboard
         
+        print 'CHECK i1s',self.model.atom[0].i1,self.model.atom[1].i1,self.model.atom[2].i1
+
         self._store_atom_selection()
         self._update_atom_editor()
         self._update()
+
+
 
     def clear_clipboard(self):
         self.trash = self.trash + self.clipboard
@@ -2203,7 +2242,7 @@ class ZME(Pmw.MegaToplevel):
     def warn(self,msg):
         self.query.configure(message_text = msg)
         self.query.activate()
-        #self.query.show()
+        self.query.show()
         if self.dialogresult == 'OK':
             self.query.withdraw()
             self.query.destroy()
@@ -2354,7 +2393,7 @@ def getgeometry(something):
     return map(int, re.split(s, "[x+]"))
  
 if __name__ == '__main__':
-    model = Zmatrix(file="../examples/feco5.zmt")
+    model = Zmatrix(file="../examples/feco5.zmt",debug=1)
     #atom = ZAtom()
     #atom.symbol = 'C'
     #atom.name = 'C0'
