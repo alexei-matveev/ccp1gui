@@ -708,7 +708,7 @@ class LocalJob(Job):
                 # We are running in a Cygwin shell rather than the standard
                 # windows process 
                 # THIS DOESNT WORK .. nospawn variant
-                step.local_command_args = [step.local_command] + step.local_command_args
+                step.local_command_args = ['-c'] + ['"'] + [step.local_command] + step.local_command_args + ['"']
                 step.local_command = 'bash'
 
             # Remove stdout
