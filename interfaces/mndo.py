@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@ import string
 
 import tkFileDialog
 
-from   qm import *
-from   filepunch import *
-from   objects.periodic import z_to_el
+from qm import *
+from filepunch import *
+from objects.periodic import z_to_el
 
 homolumoa = 0
 
@@ -298,21 +298,9 @@ class MNDOCalc(QMCalc):
                 file.write(a)
             file.close()
 
-        hostname = self.get_parameter("hostname")
-        username = self.get_parameter("username")
-
-        if hostname == 'localhost':
-            job = jobmanager.BackgroundJob()
-        elif hostname == 'hpcx':
-            job = jobmanager.RemoteForegroundJob('hpcx',username)
-        elif hostname == 'tcsg7':
-            job = jobmanager.RemoteForegroundJob('tcsg7',username)
-        else:
-            print 'unsupported host'
-            return None
-
+        job = self.get_job()
         job.name = job_name
-        #
+
         # Delete old vectors
         if self.chk == 0:
             job.add_step(DELETE_FILE,'remove old vectors',remote_filename="fort.11",kill_on_error=0)

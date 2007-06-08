@@ -270,7 +270,7 @@ class MopacCalc(QMCalc):
 
         file.write('xyz ' + txt + ' charge=' +str(self.get_parameter("charge")) + ' ' + 
                    txt2 + txt3 + txt4 + self.get_parameter("keywords") + '\n')
-        file.write('This file was generate by the CCP1 PyMol GUI\n')
+        file.write('This file was generate by CCP1GUI\n')
         file.write('\n')
         # we could write a zmatrix here
         #fac = 0.52917706
@@ -284,9 +284,8 @@ class MopacCalc(QMCalc):
             
         for a in mol.atom:
             file.write('%3d  %12.7f %d %12.7f %d %12.7f %d \n' % \
-                       (a.get_number(), fac*a.coord[0],0,fac*a.coord[1],0,fac*a.coord[2],oflag))
+                       (a.get_number(), fac*a.coord[0],oflag,fac*a.coord[1],oflag,fac*a.coord[2],oflag))
         file.write('0  0 0   0 0   0 0\n')
-
 
     def __ReadOutput(self,file):
         '''Loading of results from Mopac output file
