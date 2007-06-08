@@ -60,10 +60,8 @@ class JobEditor(Pmw.MegaToplevel):
         self.root = root
         self.manager=manager
         self.sel_height = 20
-
         self.title('Job Manager')
-
-        self.debug = 1
+        self.debug = 0
 
         self.__build()
         self.report_func = report_func
@@ -80,7 +78,7 @@ class JobEditor(Pmw.MegaToplevel):
               buttons = ("Dismiss",))
 
         self.info = Pmw.MessageDialog(self.root,
-              title = "Info", iconpos='w', icon_bitmap='info',
+              title = "Job Editor Info", iconpos='w', icon_bitmap='info',
               buttons = ("Dismiss",))
         
         self.error.withdraw()
@@ -143,28 +141,28 @@ class JobEditor(Pmw.MegaToplevel):
                                                command=self.__kill_job)
         self.kill.pack(side='left') 
 
-        self.suspendbutton =       self.createcomponent('suspendbutton', (), None,
-                                               Tkinter.Button,(self.line,),
-                                               text="Suspend",
-                                               command=self.suspend)
-        self.suspendbutton.pack(side='left')
+#         self.suspendbutton =       self.createcomponent('suspendbutton', (), None,
+#                                                Tkinter.Button,(self.line,),
+#                                                text="Suspend",
+#                                                command=self.suspend)
+#         self.suspendbutton.pack(side='left')
         
-        self.savebutton =       self.createcomponent('savebutton', (), None,
-                                               Tkinter.Button,(self.line,),
-                                               text="Save",
-                                               command=self.save)
-        self.savebutton.pack(side='left')
+#         self.savebutton =       self.createcomponent('savebutton', (), None,
+#                                                Tkinter.Button,(self.line,),
+#                                                text="Save",
+#                                                command=self.save)
+#         self.savebutton.pack(side='left')
         
-        self.startbutton =       self.createcomponent('startbutton', (), None,
-                                               Tkinter.Button,(self.line,),
-                                               text="Start",
-                                               command=self.start)
-        self.startbutton.pack(side='left') 
-        self.removebutton =       self.createcomponent('removebutton', (), None,
-                                               Tkinter.Button,(self.line,),
-                                               text="Remove",
-                                               command=self.remove)
-        self.removebutton.pack(side='left') 
+#         self.startbutton =       self.createcomponent('startbutton', (), None,
+#                                                Tkinter.Button,(self.line,),
+#                                                text="Start",
+#                                                command=self.start)
+#         self.startbutton.pack(side='left') 
+#         self.removebutton =       self.createcomponent('removebutton', (), None,
+#                                                Tkinter.Button,(self.line,),
+#                                                text="Remove",
+#                                                command=self.remove)
+#         self.removebutton.pack(side='left') 
 
         self.line.pack(side='bottom')
         self.sel.pack(fill='both',expand=1)
@@ -281,10 +279,14 @@ class JobEditor(Pmw.MegaToplevel):
 
                 if job.tidy:
                     print 'Executing tidy function'
+                    #job.tidy()
                     try:
                         job.tidy()
-                    except Exception, e:  
-                        info_messages.append(str(e))
+                    except Exception, e:
+                        print "Exception executing job tidy"
+                        import traceback;traceback.print_exc()
+                        #info_messages.append(str(e))
+                        error_messages.append(str(e))                        
                         items.append(str(e))
                         job.status = JOBSTATUS_FAILED
                         job.msg = (str(e))
@@ -323,6 +325,7 @@ class JobEditor(Pmw.MegaToplevel):
         # perhaps related to threading, or some problem with
         # root
         # (perhaps XP specific)
+
         for msg in error_messages:
             #self.error.configure(message_text = msg)
             #self.error.activate()
@@ -361,7 +364,7 @@ class JobEditor(Pmw.MegaToplevel):
 
     def start_job(self,job):
         """Start a job running
-           MIght be issues with storing the thread in the job object?
+        Might be issues with storing the thread in the job object?
         """
 
         if self.debug:
