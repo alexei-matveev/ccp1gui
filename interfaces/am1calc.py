@@ -106,7 +106,9 @@ class AM1Calc(QMCalc):
 
         self.set_defaults()
 
-        job = jobmanager.ForegroundJob()
+        # note that the sub-processes (pipe, spawn etc) are not used
+        # in this case
+        job = jobmanager.LocalJob()
 
         # Check we have parameters for this atom
         failed = self.check_avail_parameters()
@@ -115,10 +117,10 @@ class AM1Calc(QMCalc):
             for element in failed:
                 txt = txt+element+' '
             if ed:
-                ed.error("Sorry, cannot run am1 optimisation as there are no parameters for the elements: %s" % txt)
+                ed.Error("Sorry, cannot run am1 optimisation as there are no parameters for the elements: %s" % txt)
             else:
                 print "Sorry, cannot run am1 optimisationas there are no parameters for the elements: %s" % txt
-            return
+            return None
 
         self.GetModel()
         mol_name = self.get_input("mol_name")
@@ -289,6 +291,9 @@ class AM1CalcEd(QMCalcEd):
         # the final load of results back into the GUI
         job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
 
+        if not job:
+            print 'could not create am1 job'
+            return
 
         # create a calculation monitor window
         if not self.calcMon:
@@ -358,7 +363,7 @@ class AM1CalcEd(QMCalcEd):
         
         elif operation == 'stop':
             print "Stopping calc from calcmon"
-            self.stopAM1Opt()
+            self.calc.killAM1()
 
 
 if __name__ == "__main__":
