@@ -28,6 +28,8 @@ rc_vars['am1'] = None
 rc_vars['chemsh_script_dir'] = None
 # Stereo visulaisation
 rc_vars['stereo'] = None
-# Remember paths between restarts
-rc_vars['old_path'] = 1
+# dont remember paths between restarts
+rc_vars['old_path'] = 0
+# dont prompt for guk input file overwrites
+rc_vars['guk_check_overwrite_input'] = 0
 rc_vars['user_path'] = None
