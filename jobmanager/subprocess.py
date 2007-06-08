@@ -55,7 +55,7 @@ if sys.platform[:3] == 'win':
     import win32api, win32process, win32security
     import win32event, win32con, msvcrt, win32gui
 
-import jobmanager
+#import jobmanager
 
 class MyTime:
     def __init__(self):
@@ -225,12 +225,16 @@ class SubProcess:
                 # Duplicate the file descriptors so that stdin comes from the file (if applicable)
                 # and stdout & err go to the file descriptor that either points at the file we were
                 # given or the parent end of the pipe
+
+                if self.debug:
+                    print "child code running:  os.execvp(%s,%s)"  % (self.cmd,self.args)
+
                 if self.stdin:
                     os.dup2(child_stdin, 0)
                 os.dup2(child_stdout, 1)
                 os.dup2(child_stderr, 2)
 
-                # Close all file descriptors bar stdin,out & err
+                # Close all file descriptors bar stdin, out & err
                 self.MAXFD = 256
                 for i in range(3, self.MAXFD):
                     try:
@@ -250,11 +254,6 @@ class SubProcess:
                     # Below sets the handler for SIGHUP to that for SIG_IGN
                     # i.e. if we get told to hang up, we ignore it
                     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-                    #words = self.cmd.split()
-                    if self.debug:
-                        #print "child running:  os.execvp(%s,%s)"  % (words[0],words)
-                        print "child running:  os.execvp(%s,%s)"  % (self.cmd,self.args)
-                    #os.execvp(words[0],words)
                     os.execvp(self.cmd,self.args)
                 except Exception,e:
                     #print "Error trying to execute: os.execvp(%s,%s)"  % (words[0],words)
@@ -294,17 +293,20 @@ class SubProcess:
                 # parent
                 if self.debug:
                     print "parent executing wait"
+
                 if not self.stdout:
                     self.output = self.stdout_file.read()
-                    print 'OUT:'
-                    print self.output
+                    if self.debug:
+                        print 'OUT:'
+                        print self.output
                         
                 if not self.stderr:
                     # No stderr file from user so we read the file
                     # created from the pipe
                     self.error = self.stderr_file.read()
-                    print 'ERR:'
-                    print self.error
+                    if self.debug:
+                        print 'ERR:'
+                        print self.error
                 else:
                     if self.debug:
                         # User gave us a stderr file so we open it and read it
@@ -387,9 +389,10 @@ class SubProcess:
                 sig = 'KILL'
                 signals = {'QUIT': 3, 'KILL': 9, 'STOP': 23, 'CONT': 25}
                 try:
-                    #os.kill(-self.pid,signals[sig]) # -pid since we did set pgid to pid
-                    os.kill(self.pid,signals[sig]) # -pid since we did set pgid to pid
-                    # and we are trying to kill all children too
+                    os.kill(-self.pid,signals[sig]) # -pid since we did set pgid to pid
+                    #                                  and we are trying to kill all children too
+                    # jmht version
+                    #os.kill(self.pid,signals[sig]) 
                 except os.error,e:
                     print "kill - %s of process %d failed" % (sig,self.pid)
                     print e
@@ -401,15 +404,20 @@ class SubProcess:
     def cmd_as_string(self):
         """Return the command to be invoked, together with it's arguments as a single string
         """
-        print 'TEST CMD',self.cmd
+        if self.debug:
+            print 'cmd_as_string, checking for embedded spaces'
+            print 'cmd', self.cmd, " " in self.cmd
+
         if " " in self.cmd:
             cmd = '"'+self.cmd+'"'
         else:
             cmd = self.cmd
 
+
         if self.args:
             for arg in self.args:
-                print 'arg', arg, " " in arg
+                if self.debug:
+                    print 'arg', arg, " " in arg
                 if " " in arg:
                     # need to quote args containing spaces
                     cmd += ' "' + arg + '"'
@@ -434,7 +442,8 @@ class Pipe(SubProcess):
         # the return code from the child processes
 
         cmd = self.cmd_as_string()
-        print 'DEBUG',cmd
+        if self.debug:
+            print 'Pipe.run, calling popen3 on',cmd
         (stdin,stdout,stderr) = os.popen3(cmd)
         self.output = stdout.readlines()
         self.error = stderr.readlines()
@@ -443,17 +452,15 @@ class Pipe(SubProcess):
             print 'error', self.error
         status = stdout.close()
         if self.debug:
-            print 'status on out', status 
+            print 'status on closing stout', status 
 
         status1 = stderr.close()
         if self.debug:
-            print 'status on err', status1
+            print 'status on closing sterr', status1
 
         status2 = stdin.close()
         if self.debug:
-            print 'status on in', status2
-
-        print 'status,1,2',status,status1,status2
+            print 'status on closing stdin', status2
 
         if len(self.error):
             msg = 'Result on Stderr:'
@@ -508,6 +515,8 @@ class Spawn(SubProcess):
         else:
             self.status = SPAWNED
 
+        return self.status
+
     def kill(self):
         code = self._kill_child()
         self.status = KILLED
@@ -529,12 +538,10 @@ class Spawn(SubProcess):
             return code
 
         else:
-            print 'Spawn in wait',self.status
             if self.debug:
-                print t.time(), 'class Spawn, err'
+                print t.time(), 'class Spawn in wait, self.status =',self.status
+                print 'will return -2'
 
-            if self.debug:
-                print 'return -2'
             return -2
 
     def get_output(self):
@@ -560,22 +567,24 @@ class PipeRemoteCmd(Pipe):
         self.host=host
         self.user=user
 
-    def run(self,stdin_file=None,stdout_file=None,**kw):
+    def run(self,**kw):
 
-        print self.cmd, self.args
+        if self.debug:
+            print 'PipeRemoteCmd cmd,args=',self.cmd, self.args
 
         # combine command and arguments as presented
         # hopefully no spaces as this will be a unix command
         cmd = self.cmd_as_string()
 
-        # Add redirection
-        if stdin_file:
-            cmd = cmd + ' <'+stdin_file
-        if stdout_file:
-            cmd = cmd + ' >'+stdout_file
+        # Add redirection - omit for now as not needed, we'll need
+        # to decide whether local or remote files are correct here
+
+#         if stdin_file:
+#             cmd = cmd + ' <'+stdin_file
+#         if stdout_file:
+#             cmd = cmd + ' >'+stdout_file
             
         if sys.platform[:3] == 'win':
-
             self.cmd = '"C:/Program Files/PuTTY/plink.exe"' 
             # just two args, the host and everything else, which should get quoted
             # because it has embedded spaces
@@ -583,7 +592,8 @@ class PipeRemoteCmd(Pipe):
             print 'remote command:',self.cmd_as_string()
         else:
             self.cmd = 'ssh'
-            self.args =  [self.user+'@'+self.host, cmd] + args
+            #self.args =  [self.user+'@'+self.host, cmd] + args
+            self.args =  [self.user+'@'+self.host, cmd]
 
         Pipe.run(self,**kw)        
 
