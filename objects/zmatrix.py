@@ -40,12 +40,9 @@ import exceptions
 import string
 import re
 import symdet
-
+import Numeric,LinearAlgebra
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
-
-import Numeric,LinearAlgebra
-
 
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv, atomic_number
@@ -1387,7 +1384,8 @@ class Zmatrix(Indexed):
         if a.zorc == 'z':
             i1i = -999
             if i > 0 or 1:
-                print 'check a.i1',a.i1
+                if self.debug:
+                    print 'check a.i1',a.i1
                 i1 = a.i1
                 if i1 and i > 0:
                     i1i=i1.get_index()
@@ -1411,7 +1409,8 @@ class Zmatrix(Indexed):
                         elif i1i == -3:
                             i1 = fp2
                     except AttributeError:
-                        print ' i1 PASS'
+                        if self.debug:
+                            print ' i1 PASS'
                         pass
 
             i2i = -999
@@ -1552,8 +1551,6 @@ class Zmatrix(Indexed):
                     ok = 0
                     a.ok = 0
 
-
-
             if(ok):
                 # add exception handling here later
 
@@ -1595,7 +1592,7 @@ class Zmatrix(Indexed):
         self.reindex()
         self.load_coordinate_variables()
 
-        print 'CHECK i1s cc',self.atom[0].i1,self.atom[1].i1,self.atom[2].i1,self.atom[3].i1
+        #print 'CHECK i1s cc',self.atom[0].i1,self.atom[1].i1,self.atom[2].i1,self.atom[3].i1
 
         # Loop over atoms computing cartesians
         ok = 1
@@ -1621,17 +1618,17 @@ class Zmatrix(Indexed):
         phi = tor(x--c--b--a)
         """
 
-        assert type(a) == type([]), 'bad type for a'+type(a)
-        assert type(b) == type([]), 'bad type for b'+type(b)
-        assert type(c) == type([]), 'bad type for c'+type(c)
+        assert type(a) == type([]), 'bad type for a'+str(type(a))
+        assert type(b) == type([]), 'bad type for b'+str(type(b))
+        assert type(c) == type([]), 'bad type for c'+str(type(c))
 
-        assert type(a[0]) == type(0.0), 'bad type for a[0]'+type(a[0])
-        assert type(b[0]) == type(0.0), 'bad type for b[0]'+type(b[0])
-        assert type(c[0]) == type(0.0), 'bad type for c[0]'+type(c[0])
+        assert type(a[0]) == type(0.0), 'bad type for a[0]'+str(type(a[0]))
+        assert type(b[0]) == type(0.0), 'bad type for b[0]'+str(type(b[0]))
+        assert type(c[0]) == type(0.0), 'bad type for c[0]'+str(type(c[0]))
 
-        assert type(r) == type(0.0), 'bad type for r'+type(r)
-        assert type(theta) == type(0.0), 'bad type for theta'+type(theta)
-        assert type(phi) == type(0.0), 'bad type for phi'+type(phi)
+        assert type(r) == type(0.0), 'bad type for r'+str(type(r))
+        assert type(theta) == type(0.0), 'bad type for theta'+str(type(theta))
+        assert type(phi) == type(0.0), 'bad type for phi'+str(type(phi))
 
         PI=3.14159265358979323846
 
@@ -2850,7 +2847,8 @@ class Zmatrix(Indexed):
                             tester = abs(v.value - rnew)
                         else:
                             tester = abs(self.atom[1].r - rnew)
-                            print 'atom 1 r diff=',tester
+                            if self.debug:
+                                print 'atom 1 r diff=',tester
                             if  tester > SMALL:
                                 print 'could not import, constant parameter has changed'
                                 raise ImportGeometryError, "constant value changed"
@@ -2878,7 +2876,8 @@ class Zmatrix(Indexed):
                             tester = abs(v.value - rnew)
                         else:
                             tester = abs(self.atom[2].r - rnew)
-                        print 'atom 2 r diff=',tester
+                        if self.debug:
+                            print 'atom 2 r diff=',tester
                         if tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError
@@ -2897,7 +2896,8 @@ class Zmatrix(Indexed):
                             tester = abs(v.value - anew)
                         else:
                             tester = abs(self.atom[2].theta - anew)
-                        print 'atom 2 theta diff=',tester
+                        if self.debug:
+                            print 'atom 2 theta diff=',tester
                         if tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError
@@ -2931,7 +2931,8 @@ class Zmatrix(Indexed):
                             tester = abs(v,value - rnew)
                         else:
                             tester = abs(a.r - rnew)
-                        print 'atom '+str(i)+' r diff=',tester
+                        if self.debug:
+                            print 'atom '+str(i)+' r diff=',tester
                         if tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError
@@ -2952,7 +2953,8 @@ class Zmatrix(Indexed):
                             tester = abs(v,value - anew)
                         else:
                             tester = abs(a.theta - anew)
-                        print 'atom '+str(i)+' theta diff=',tester
+                        if self.debug:
+                            print 'atom '+str(i)+' theta diff=',tester
                         if tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError
@@ -2979,7 +2981,8 @@ class Zmatrix(Indexed):
 
                         print a.get_index(),'phi',a.phi,tnew
                         tester = abs(a.phi - tnew)
-                        print 'atom '+str(i)+' phi diff=',tester
+                        if self.debug:
+                            print 'atom '+str(i)+' phi diff=',tester
                         if tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError
@@ -3191,7 +3194,8 @@ class Zmatrix(Indexed):
                         tester = abs(v.value - rnew)
                     else:
                         tester = abs(a.r - rnew)
-                        print '    atom ',index+1,' r diff=',tester
+                        if self.debug:
+                            print '    atom ',index+1,' r diff=',tester
                         if  tester > SMALL:
                             print 'could not import, constant parameter has changed'
                             raise ImportGeometryError, "constant value changed"
@@ -3217,7 +3221,8 @@ class Zmatrix(Indexed):
                         tester = abs(v.value - anew)
                     else:
                         tester = abs(a.theta - anew)
-                    print '   atom ',index,'theta diff=',tester
+                    if self.debug:
+                        print '   atom ',index,'theta diff=',tester
                     if tester > SMALL:
                         print 'could not import, constant parameter has changed'
                         raise ImportGeometryError
