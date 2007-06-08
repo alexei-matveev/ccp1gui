@@ -179,7 +179,7 @@ class Job:
                             # so that the run method can react accordingly on a restart
         self.thread = None
         
-        self.debug = None
+        self.debug = 0
         
     def __repr__(self):
         txt = self.jobtype + ':'
@@ -257,10 +257,24 @@ class Job:
                         print 'Python Step code=',code,message
                 else:
                     raise JobError, "Unknown job step type: %s" % step.type
+
             except Exception, e:
+                import traceback
+                traceback.print_exc()
                 if self.debug:
                     print 'Fatal Exception in step: %s' % step.name
-                    print 'Exception is: %s' % str(e)
+                    print 'e=',e
+                    print 'type(e)=',type(e)
+                    try:
+                        print 'dict e=',e.__dict__
+                    except:
+                        print 'dict failed'
+
+                    try:
+                        print 'str(e)',str(e)
+                    except:
+                        print 'str failed'
+
                 self.status = JOBSTATUS_FAILED
                 self.msg = str(e)
                 return 1
@@ -415,15 +429,16 @@ class Job:
         """ Kill the job if we are running. We either use the supplied kill command, or
             our own if one wasn't supplied
         """
-
         if self.active_step and self.active_step.kill_cmd:
+            if self.debug:
                 print 'running kill cmd for the current step'
-                self.status = JOBSTATUS_KILLPEND
-                self.active_step.kill_cmd()
-                self.status = JOBSTATUS_KILLED
+            self.status = JOBSTATUS_KILLPEND
+            self.active_step.kill_cmd()
+            self.status = JOBSTATUS_KILLED
                 
         elif self.active_step and not self.active_step.kill_cmd:
-            print 'Running built-in kill for this step'
+            if self.debug:
+                print 'Running built-in kill for this step'
             self.status = JOBSTATUS_KILLPEND
             self._kill()
             self.status = JOBSTATUS_KILLED
