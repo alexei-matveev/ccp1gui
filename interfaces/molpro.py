@@ -43,7 +43,7 @@ from viewer.rc_vars import rc_vars
 # see  http://sourceforge.net/tracker/index.php?func=detail&aid=1075984&group_id=5470&atid=105470
 
 import xml.sax
-from parse_molpro_xml import MolproCMLContentHandler
+from molproxmlcontenthandler import MolproXMLContentHandler
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -158,6 +158,7 @@ class MOLPROCalc(QMCalc):
         self.set_parameter('accuracy','medium')
         
         #Geometry optimisation parameters
+        self.set_parameter('optimiser','Cartesian')
         self.set_parameter('opt_jorgensen',0)
         self.set_parameter('opt_hess_update','default')
         self.set_parameter('opt_powell',0)
@@ -471,10 +472,9 @@ class MOLPROCalc(QMCalc):
         file.close()
 
         mols = []
-
         parser = xml.sax.make_parser()
         parser.setFeature( xml.sax.handler.feature_namespaces, 0 )
-        ch = MolproCMLContentHandler(mols)
+        ch = MolproXMLContentHandler(mols)
         parser.setContentHandler(ch)
 
         if self.debug:
@@ -1033,10 +1033,11 @@ class MOLPROCalc(QMCalc):
                 # for more details see the basis manager module
                 first=1
                 file.write('basis={\n')
-                file.write('default=fred,')
+                file.write('default=dummy,')
                 for entry in basis:
                     (ass_type, tag, b) = entry
-                    print 'entry', ass_type, tag, b
+                    if self.debug:
+                        print 'entry', ass_type, tag, b
                     if ass_type == 'TYPE.KEY':
                         #If b contains 2 fields, need to place element symbol between the two:
                         basis_keyword=string.split(b)
@@ -1047,6 +1048,7 @@ class MOLPROCalc(QMCalc):
                         file.write('%s=%s' % (tag,basis_keyword[0])) #  only 1 keyword
                     elif ass_type == 'TYPE.EXPL':
                         # NOT CODED YET FOR MOLPRO
+                        raise CalcError,"explict basis set input not coded yet"
                         b.list()
                         for shell in b.shells:
                             file.write('%s %s\n' % (shell.type, tag))
@@ -1931,62 +1933,24 @@ def pickler(obj):
     
 
 if __name__ == "__main__":
-
     from interfaces.molpro import *
     from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'Cl'
-    atom.name = 'Cl'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
 
-    from interfaces.gamessuk import *
-    from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'Cl'
-    atom.name = 'Cl'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
+    if 0:
+        calc = MOLPROCalc()
+        calc.set_input('mol_obj',Zmatrix(file='../examples/water.zmt'))
+        job = calc.makejob()
+        job.debug = 1
+        job.run()
+        calc.endjob()
 
-    print 'x'
-    calc = MOLPROCalc()
-    calc.set_input('mol_obj',model)
-    job = calc.makejob()
-    job.debug = 1
-    job.run()
-    calc.endjob()
-
-    #root=Tk()
-    #button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
-    #button.pack()
-    #if 1:
-    #    jm = JobManager()
-    #    je = JobEditor(root,jm)
-    #    calc2 = copy.deepcopy(calc)
-    #    vt = MOLPROCalcEd(root,calc,None,job_editor=je)
-    #    vt.Run()
-    #root.mainloop()
-
-    
+    if 1:
+        root = Tk()
+        calc = MOLPROCalc()
+        calc.set_input('mol_obj',Zmatrix(file='../examples/water.zmt'))
+        jm = JobManager()
+        je = JobEditor(root,jm)
+        vt = MOLPROCalcEd(root,calc,None,job_editor=je)
+        # invoke via calculation editor
+        vt.Run()
+        root.mainloop()
