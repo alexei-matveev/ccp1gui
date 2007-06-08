@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2006 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -37,7 +37,13 @@ from filepunch import *
 from jobmanager import *
 from viewer.paths import root_path,find_exe
 from viewer.rc_vars import rc_vars
-##from interfaces.molprooutputreader import MolproOutputReader
+
+# may need
+# setenv LD_PRELOAD /usr/lib/libexpat.so
+# see  http://sourceforge.net/tracker/index.php?func=detail&aid=1075984&group_id=5470&atid=105470
+
+import xml.sax
+from parse_molpro_xml import MolproCMLContentHandler
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -130,7 +136,6 @@ class MOLPROCalc(QMCalc):
 ##         self.set_parameter("classidirectives","")
 ##         self.set_parameter("classiidirectives","")
 
-
         self.set_parameter("ana_homolumo",0)
         self.set_parameter("ana_homolumo1",0)
         self.set_parameter("ana_homolumo2",0)
@@ -172,7 +177,7 @@ class MOLPROCalc(QMCalc):
         
         #Set up the keyword basis sets for MOLPRO
         m = self.basis_manager
-        m.define_keyword_basis('sto3g',['h','he','li',' be','b','c','n','o','f','ne',
+        m.define_keyword_basis('sto-3g',['h','he','li',' be','b','c','n','o','f','ne',
                                         'na','mg','al','si','p','s','cl','ar',
                                         'k','ca','sc','ti','v','cr','mn','fe','co','ni','cu','zn',
                                         'ga','ge','as','se','br','kr',
@@ -410,13 +415,11 @@ class MOLPROCalc(QMCalc):
         jobtype = job.jobtype
         job.name = job_name
 
-        
         # Now we have the jobs, add the steps to it
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
-        job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
+        #job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
 
-        
         molpro_exe = self.get_executable()
         if not molpro_exe:
             ed.Error('Cannot find an executable to run!\n'+
@@ -426,6 +429,7 @@ class MOLPROCalc(QMCalc):
         print 'Using MOLPRO path ' + molpro_exe
 
         stdout_file=None
+        # Run with -X to get XML marked up output
         local_command_args = ['-X',job_name+'.com']
         
         if sys.platform[:3] == 'win' and jobtype == LOCALHOST:
@@ -439,77 +443,87 @@ class MOLPROCalc(QMCalc):
         
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
 
-        if sys.platform[:3] == 'win':
-            job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
-        else:
-            job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
-
-        job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
-        job.add_tidy(self.endjob2)
+        #if sys.platform[:3] == 'win':
+        #    job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
+        #else:
+        #    job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
+        #job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
+        job.add_tidy(self.endjob)
         return job
 
-    def endjob(self,graph):
-        """This is executed in the slave thread when the job completes
-        successfully.
-        There should be no output from slaves unless activated from
-        using the debug_slave flag.
+    def endjob(self,code=0):
+
+        """This function is executed in the main thread (not the job thread)
+        This is so that it can perform GUI update operations and output
         """
-        return 0,""
 
-    def endjob2(self,code=0):
-        """This function is executed in the main thread"""
-
-        if self.debug:
-            print 'running endjob2 code=',code
+        #if self.debug:
+        print 'running endjob2 code=',code
 
         # load contents of listing for viewing
         if self.debug_slave:
             print 'endjob....'
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
-        file = open(directory+'/'+job_name+'.out','r')
+        filename=directory+'/'+job_name+'.out'
+        file = open(filename)
         self.ReadOutput(file)
         file.close()
 
+        mols = []
 
-##  No Molpro Output Reader Yet
-##
-##         print 'scan output'
-## #        John's stuff
-## #
-## #  potential problem here with pickling the calculation
-## # ... all sorts of stuff inder there
-## #
-##         fname = job_name+'.out'
-##         try:
-##             g = MolproOutputReader(fname)
-##             #self.g = g
+        parser = xml.sax.make_parser()
+        parser.setFeature( xml.sax.handler.feature_namespaces, 0 )
+        ch = MolproCMLContentHandler(mols)
+        parser.setContentHandler(ch)
 
-##             # Hack
-##             self.final_energy = g.finalTotalEnergy
+        if self.debug:
+            print 'Parsing Molpro XML FILE',filename
+        parser.parse(filename)
+        print  'Parsed %s molecules' % ( len(mols) )
 
-##             if self.debug_slave:
-##                 print 'scan output done'
-##         except:
-##             self.g = None
-##             if self.debug_slave:
-##                 print 'scan output failed'
+        if(len(mols)):
 
-##         # scan the punchfile ... only in case of success
-##         if code:
-##             return
-        
-##         if self.__ReadPunch(directory+'/'+job_name+'.pun') != 1:
-##             raise JobError, "No molecular structure in Punchfile - check output"
+            oldo = self.get_input("mol_obj")
+            t2 = string.split(str(oldo.__class__),'.')
+            myclass2 = t2[len(t2)-1]
+            if myclass2 == 'Zmatrix':
 
-        # problem here as that as we are running in a slave thread
-        # we cannot use Tk .. so this is silent
+                for o in mols[:-1]:
+                    self.results.append(o)
+                o = mols[-1]
+
+                if self.debug:
+                    print 'NEW GEOMETRY'
+                    o.connect()
+                    print o.bonds_and_angles()
+
+                # patch up atom symbols
+                for i in range(len(o.atom)):
+                    o.atom[i].symbol = oldo.atom[i].symbol
+
+                warn=0
+                try:
+                    oldo.import_geometry(o,update_constants=0)
+                except ImportGeometryError:
+                    warn=1
+                    copycontents(oldo,o)
+
+                if self.debug:
+                    print 'UPDATED GEOMETRY'
+                    oldo.zlist()
+                    print oldo.bonds_and_angles()
+
+                if warn:
+                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
+
+                structure_loaded=1
 
         ed = self.get_editor()
         if ed:
             if ed.graph:
                 ed.graph.import_objects(self.results)
-                txt = "Objects loaded from punchfile:"
+                txt = "Objects loaded from Molpro XML:"
                 txt = txt  + "Structure update" + '\n'
                 for r in self.results:
                     txt = txt + r.title + '\n'
@@ -534,13 +548,7 @@ class MOLPROCalc(QMCalc):
         elif sys.platform[:3] == 'mac':
             return None
         else:
-            molpro_exe = find_exe( 'molpro', path=['/c/qcg/psh/codes/molpro2002.10/bin/'])
-            if not molpro_exe:
-                return None
-            else:
-                # Set rc_vars to point to the binary we've found
-                rc_vars['molpro_exe'] = molpro_exe
-                return molpro_exe
+            return find_exe( 'molpro' )
         
     def get_theory(self):
         """Convenience function for ChemShell interface"""
@@ -688,70 +696,6 @@ class MOLPROCalc(QMCalc):
 ##                             os.putenv('ed14',ed14_path)
 
     def __WriteInput(self,mol,filename):
-        
-
-##     if { $nbq  != 0 } then {
-## #   write IN.LAT
-## # this file will contain the point charges coordinates, charge,
-## # and an integer flag (set to 1). These will
-## # represent the MM part of the system on the QM calculation. 
-## #
-
-## 	set fp [ open IN.LAT w ] 
-##          puts $fp "Point Charges"
-##          puts $fp $nbq
-##          for { set i 1 } { $i <= $nbq } { incr i } {
-##           set entry [ get_bq_entry coords=$molpro($name,coords) bq_number=$i ]
-##           puts $fp "[ expr $toang * [ lindex $entry 1 ] ] [ expr $toang * [ lindex $entry 2 ] ] \
-##  [ expr $toang * [ lindex $entry 3 ] ] [lindex $entry 4 ] 1"
-##         }
-##         close $fp
-##     }
-
-
-
-##     set basisspec $molpro($name,basisspec) 
-##     set basisfile $molpro($name,basisfile) 
-##     set basis $molpro($name,basis) 
-##     set ecpspec $molpro($name,ecpspec) 
-##     set ecpfile $molpro($name,ecpfile) 
-
-
-## ECP/BAS here
-
-        
-##     puts $fp "\}"
-##     set tmp $molpro($name,hamiltonian)
-##     switch $scftype {
-## 	rhf  { 
-## 	    switch $dft {
-## 		1 { set tmp "ks,$tmp" }
-## 		0 { set vortmp "rhf" }
-## 	    }
-## 	}
-## 	uhf  { 
-## 	    switch $dft {
-## 		1 { set tmp "uks,$tmp" }
-## 		0 { set vortmp "uhf" }
-## 	    }
-## 	}
-##     }
-##     if { $densityfit == "yes" } { 
-##         if { $tmp != "hfscf" } { set tmp "df-$tmp" }
-##         set vortmp "df-$vortmp" }
-##     if { ($tmp != "hfscf") && ($dft == 0) } { 
-##         set tmp "$vortmp\n$tmp" }
-##     if { ($tmp == "hfscf")} { puts $fp $vortmp
-##         } else { puts $fp $tmp }
-##     if { $local == "yes" } { 
-##         if { $multipole == "yes" } {puts $fp "multp"
-##         } else {puts $fp "local"}
-##     }
-##     puts $fp "show, energy"
-##     if { $get_gradient } {
-## 	puts $fp "force"
-##     }
-##     close $fp
 
         #Get an editor object so we can pop up tk error widgets
         ed = self.get_editor()
@@ -777,115 +721,29 @@ class MOLPROCalc(QMCalc):
             dft=1
         else:
             dft=0
-        
 
         file = open(filename,'w') 
-        
 
         # dynamic memory limit is set to 64 M, so as to allow for large calculations
         job_name = self.get_parameter("job_name")
         title = self.get_title()
-        file.write("***,%s\nmemory,64,m\n" % title)
+
+
+        #file.write("***,%s\nmemory,64,m\n" % title)
+        file.write("***,%s\n" % title)
 
         file.write("file,2,%s.wfu\n" % job_name)
-
-##        file.write(self.get_parameter("predirectives"))
-        guess_method = self.get_parameter("guess_method")
         
-        if self.get_parameter("ana_hessian"):
-            file.write('file ed2 test.ed2 keep\n')
-
-        if (guess_method == 'Dumpfile'):
-            file.write('restart new\n')
-
-
-
-##        file.write('title\n')
-##        file.write(self.get_title()+'\n')
-
-##        if task == MENU_OPT:
-##            file.write('punch coor conn title opti\n')
-##        else:
-##            file.write('punch coor conn title\n')
-
-##        if not self.get_parameter('symmetry'):
-##            file.write('nosym\n')
-##            file.write('adapt off\n')
-
-##        if self.get_parameter('scf_bypass'):
-##            if (scftype == "rhf"):
-##                file.write('bypass one\n')
-##            elif (scftype == "uhf"):
-##                file.write('bypass one two\n')
-
-        #file.write(self.get_parameter("classidirectives"))
-
-
-##     if { ($molpro($name,direct) == "yes") || ($molpro($name,local) == "yes") } {
-##         puts $fp [format "gdirect"]
-##     }
-##     if { $get_gradient } { puts $fp [format "gradtyp=alaska"] }
-##     puts $fp [format "gprint,cpu=1;"]
-##     switch $molpro($name,accuracy) {
-## 	low { puts $fp "gthresh,energy=1.d-4" }
-## 	medium { }
-## 	high { puts $fp "gthresh,energy=1.d-8" }
-## 	veryhigh { puts $fp "gthresh,energy=1.d-10" }
-## 	default { chemerr "molpro: unrecognised accuracy $molpro($name,accuracy)" }
-## 	}
-##     switch $molpro($name,mult) {
-## 	1 { }
-## 	default { 
-## 	    puts $fp "set,spin=[expr $molpro($name,mult)-1]"
-## 	}
-##     }
         if self.get_parameter("spin")-1 != 0:
             file.write("set,spin=%d\n" % self.get_parameter("spin")-1)
 
-##     #
-##     #  Geometry
-##     #
-##     set coords $molpro($name,coords)
-##     set units "bohr"
-##     set n [ get_number_of_atoms coords=$molpro($name,coords) ]  
-##
-##     puts $fp [format "geometry=\{\n%s;" $units]
-##     if { $molpro($name,local) == "yes" || !($symmetry) } {
-##         puts $fp "nosym" }
-##     puts $fp "noorient"
-##     for {set i 1} {$i <= $n} {incr i} {
-## 	set line [get_atom_entry coords=$coords atom_number=$i]
-## 	set element [lindex $line 0]
-## 	set line_out [format "%s,0" $element]
-## 	for {set j 1} {$j <= 3} {incr j} {
-## 	    set item [lindex $line $j]
-## 	    set line_out [format "%s,%s" $line_out $item]
-## 	}
-## 	puts $fp $line_out
-##     }
-##     puts $fp "\}"    
-##     set charge $molpro($name,charge)
-##     if { $charge != 0 } { puts $fp "set,charge=$charge" }
-##     if { $nbq  != 0 } then {    puts $fp "lat,in.lat,out.lat"   }
-##     flush $fp
-
-
-##     # Specify Basis set and ECPs
-##     switch [ check_boolean harmonic ] {
-##        0 { puts $fp "cartesian" }
-##        1 { }
-##     }
-
-
-
-        request_z = 0
-
-        if self.get_parameter('task') == MENU_OPT and self.get_parameter('optimiser') == 'Z-Matrix':
-            request_z = 1
-
+        request_z = (self.get_parameter('task') == MENU_OPT and self.get_parameter('optimiser') == 'Z-Matrix')
         write_x = 1
 
         if request_z == 1:
+
+            # MOLPRO CODE NEEDED HERE
+            
             # Try to load mixed coordinates from the Z-matrix editor
             z = 0
             for a in mol.atom:
@@ -905,7 +763,6 @@ class MOLPROCalc(QMCalc):
                     raise Exception, "Bad z-matrix"
 
                 else:
-
                     # check for variables
                     counts = mol.counts()
                     print 'counts',counts
@@ -926,7 +783,6 @@ class MOLPROCalc(QMCalc):
                         
                     # skip the zmatrix card as we replaced it
                     txt.pop(0)
-#                    txt.remove(0)
 
                     for field in txt:
                         check = field.split()
@@ -940,28 +796,26 @@ class MOLPROCalc(QMCalc):
 
         if write_x:
             # Geometry
+            file.write('geomtyp=xyz\n')
             file.write('geometry={\n')
             file.write('angstrom;\n')
-            file.write('noorient\n')
+            file.write('%d\n' % (len(mol.atom)))
+            file.write('%s\n' % ('gui structure'))
             for a in mol.atom:
-##                 t = string.lower(a.symbol)[:2]
-##                 if t[1:2] == string.upper(t[1:2]):
-##                     t = t[:1]
                 if a.get_number() > 0:
                     file.write(
-                        a.name + ',,' +
+                        a.name + ',' +
                         str(a.coord[0]) + ',' +
                         str(a.coord[1]) + ',' +
                         str(a.coord[2]) + '\n')
 
+## NEED to put partial charges in IN.LAT ?
 ##                 else:
 ##                     file.write(str(a.coord[0]) + ' ' +
 ##                                str(a.coord[1]) + ' ' +
 ##                                str(a.coord[2]) + ' ' +
 ##                                str(a.partial_charge) + ' ' +
 ##                                a.name + '\n')
-
-
         file.write('}\n')
         file.write('set,charge='+str(self.get_parameter("charge"))+'\n')
 
@@ -979,20 +833,132 @@ class MOLPROCalc(QMCalc):
 ##            return 0
 
         #
-        #  RUNTYPE directives
+        #  SCFTYPE directive
         #
-        if task == MENU_ENER:
-             if postscf_method == 'CISD':
-                 file.write('runtype ci\n')
-             elif postscf_method == 'CCSD' or postscf_method == 'CCSD(T)':
-                 file.write('runtype ci\n')
-             else:
-                 file.write('hf;accu,14\n')
+        #if postscf_method == "MP2":
+        #    file.write('scftype mp2\n')
+        #elif postscf_method == "MP3":
+        #    file.write('scftype mp3\n')
+        #elif postscf_method == "Direct MP2":
+        #    file.write('scftype direct mp2\n')
+        ## Restricted
+        #elif (scf_method == "RHF" or scf_method == "DFT"):
+        #    file.write('scftype rhf\n')
+        #elif (scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+        #    file.write('scftype direct rhf\n')
+        #Unrestricted
+        #elif (scf_method == "UHF" or scf_method == "UDFT"):
+        #    file.write('scftype uhf\n')
+        #elif (scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
+        #    file.write('scftype direct uhf\n')
+        #else:
+        #    file.write('scftype rhf')
 
-#         elif task == MENU_GRAD:
-#             file.write('runtype gradient\n')
-#         elif task == 'hessian':
-#             file.write('runtype hessian\n')
+        if dft:
+            functional = self.get_parameter("dft_functional")
+
+
+        if self.check_direct():
+            file.write('{');
+
+        if scf_method == "RHF" or scf_method == "Direct RHF":
+            file.write('rhf;\n')
+        elif scf_method == "DFT" or scf_method == "Direct DFT":
+            file.write('rks,%s\n' % (functional))
+        elif scf_method == "UHF" or  scf_method == "Direct UHF":
+            file.write('uhf;\n')
+        elif scf_method == "UDFT" or scf_method == "Direct UDFT":
+            file.write('uks,%s\n' %(functional))
+
+        if self.check_direct():
+            file.write('direct}\n')
+
+        if postscf_method == 'CISD':
+            file.write('cisd\n')
+        elif postscf_method == 'CCSD':
+            file.write('ccsd;\n')
+        elif postscf_method == 'CCSD(T)':
+            file.write('ccsd(t);\n')
+
+        #This is where all the DFT directives go
+        #        if scf_method == "DFT" or scf_method == "UDFT" or scf_method == "Direct DFT" or scf_method == "Direct UDFT"
+        if dft:
+            functional = self.get_parameter("dft_functional")
+            accuracy   = self.get_parameter("dft_grid")
+            weights    = self.get_parameter("dft_weights")
+            
+            #Map what's written in the menus to MOLPRO directives
+            dft_dictionary={"Euler-MacLaurin": "euler",
+                            "Mura-Knowles" : "log",
+                            "Lebedev-Laikov": "lebedev",
+                            "Gauss-Legendre" : "gausslegendre",
+                            "Lebedev-Laikov": "lebedev",
+                            "Gauss-Legendre" : "gausslegendre"}
+            
+            radialgrid = self.get_parameter("dft_radialgrid")
+            angulargrid = self.get_parameter("dft_angulargrid")
+            jfit = self.get_parameter("dft_jfit")
+             
+            #file.write('dft '+str(functional)+'\n')
+            #file.write('dft quadrature '+str(accuracy)+'\n')
+            #if weights != "default":
+            #    file.write('dft weights '+str(weights)+'\n')
+
+            #if radial & angular grids not default specify type and no. points
+            #if radialgrid != "default":
+            #    file.write('dft '+dft_dictionary[radialgrid]+
+            #               ' '+str(self.get_parameter("dft_radialgridpoints"))+'\n')
+            #if angulargrid != "default":
+            #    file.write('dft '+dft_dictionary[angulargrid]+
+            #               ' '+str(self.get_parameter("dft_angulargridpoints"))+'\n')
+
+            #if coulomb fitting  add aux basis and scwarz cutoff
+
+#             if jfit:
+#                 file.write('dft jfit memory \n') #memory is default as MOLPRO will
+#                     #recalualte the integrals anyway
+#                     #if they don't fit in memory.
+#                 file.write('dft schwartz '+str(self.get_parameter("dft_schwarz"))+'\n')
+#                 file.write('dft jbas '+str(self.get_parameter("dft_jbas"))+'\n')
+#SCF convergence options
+#         if (scf_method == "RHF" or scf_method == "DFT" or 
+#             scf_method == "Direct RHF" or scf_method == "Direct DFT"):
+#         if (scftype == "rhf"):
+#             file.write('level '+
+#                        str(self.get_parameter("scf_level_init"))+' '+
+#                        str(self.get_parameter("scf_level_it"))+' '+
+#                        str(self.get_parameter("scf_level_final"))+'\n')
+            
+#         elif (scf_method == "UHF" or scf_method == "UDFT" or
+#               scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
+#        elif (scftype == "uhf"):
+#             file.write('level '+
+#                        str(self.get_parameter("scf_level_init"))+' '+
+#                        str(self.get_parameter("scf_level_init"))+' '+
+#                        str(self.get_parameter("scf_level_it"))+' '+
+#                        str(self.get_parameter("scf_level_final"))+' '+
+#                        str(self.get_parameter("scf_level_final"))+'\n')
+            
+#        file.write('maxcyc '+str(self.get_parameter("scf_maxcyc"))+'\n')
+#        file.write('thresh '+str(self.get_parameter("scf_threshold"))+'\n')
+
+
+
+
+        if task == MENU_OPT:
+            #if self.get_parameter('optimiser') == 'Z-Matrix':
+            #if self.get_parameter('opt_jorgensen'):
+            #    file.write('maxjorg '+str(self.get_parameter("max_opt_step"))+'\n')
+            #    file.write('minmax '+str(self.get_parameter("max_opt_step"))+' '
+            #               +str(self.get_parameter('max_opt_line'))+'\n')
+            #file.write('xtol '+str(self.get_parameter('opt_conv_thsld'))+'\n')
+            #file.write('stepmax '+str(self.get_parameter("max_opt_step_len"))+'\n')
+
+            file.write('optg\n');
+
+        elif task == MENU_GRAD:
+            file.write('grad; FIX ME\n')            
+
 #         elif task == MENU_OPT:
 #             if self.get_parameter('optimiser') == 'Z-Matrix':
 #                 if self.get_parameter('opt_jorgensen'):
@@ -1026,440 +992,6 @@ class MOLPROCalc(QMCalc):
 #                         file.write('runtype optim\n')
 #             else:
 #                 file.write('runtype optx\n')
-
-        #
-        #  SCFTYPE directive
-        #
-        #if postscf_method == "MP2":
-        #    file.write('scftype mp2\n')
-        #elif postscf_method == "MP3":
-        #    file.write('scftype mp3\n')
-        #elif postscf_method == "Direct MP2":
-        #    file.write('scftype direct mp2\n')
-        ## Restricted
-        #elif (scf_method == "RHF" or scf_method == "DFT"):
-        #    file.write('scftype rhf\n')
-        #elif (scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-        #    file.write('scftype direct rhf\n')
-        #Unrestricted
-        #elif (scf_method == "UHF" or scf_method == "UDFT"):
-        #    file.write('scftype uhf\n')
-        #elif (scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
-        #    file.write('scftype direct uhf\n')
-        #else:
-        #    file.write('scftype rhf')
-
-        #This is where all the DFT directives go
-#        if scf_method == "DFT" or scf_method == "UDFT" or scf_method == "Direct DFT" or scf_method == "Direct UDFT"
-        if dft:
-            functional = self.get_parameter("dft_functional")
-            accuracy   = self.get_parameter("dft_grid")
-            weights    = self.get_parameter("dft_weights")
-            
-            #Map what's written in the menus to MOLPRO directives
-            dft_dictionary={"Euler-MacLaurin": "euler",
-                            "Mura-Knowles" : "log",
-                            "Lebedev-Laikov": "lebedev",
-                            "Gauss-Legendre" : "gausslegendre",
-                            "Lebedev-Laikov": "lebedev",
-                            "Gauss-Legendre" : "gausslegendre"}
-            
-            radialgrid = self.get_parameter("dft_radialgrid")
-            angulargrid = self.get_parameter("dft_angulargrid")
-            jfit = self.get_parameter("dft_jfit")
-             
-            #file.write('dft '+str(functional)+'\n')
-            #file.write('dft quadrature '+str(accuracy)+'\n')
-            #if weights != "default":
-            #    file.write('dft weights '+str(weights)+'\n')
-
-            #if radial & angular grids not default specify type and no. points
-            #if radialgrid != "default":
-            #    file.write('dft '+dft_dictionary[radialgrid]+
-            #               ' '+str(self.get_parameter("dft_radialgridpoints"))+'\n')
-            #if angulargrid != "default":
-            #    file.write('dft '+dft_dictionary[angulargrid]+
-            #               ' '+str(self.get_parameter("dft_angulargridpoints"))+'\n')
-
-            #if coulomb fitting  add aux basis and scwarz cutoff
-            if jfit:
-                file.write('dft jfit memory \n') #memory is default as MOLPRO will
-                                                 #recalualte the integrals anyway
-                                                 #if they don't fit in memory.
-                file.write('dft schwartz '+str(self.get_parameter("dft_schwarz"))+'\n')
-                file.write('dft jbas '+str(self.get_parameter("dft_jbas"))+'\n')
-
-        #SCF convergence options
-#         if (scf_method == "RHF" or scf_method == "DFT" or 
-#             scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-#         if (scftype == "rhf"):
-#             file.write('level '+
-#                        str(self.get_parameter("scf_level_init"))+' '+
-#                        str(self.get_parameter("scf_level_it"))+' '+
-#                        str(self.get_parameter("scf_level_final"))+'\n')
-            
-#         elif (scf_method == "UHF" or scf_method == "UDFT" or
-#               scf_method == "Direct UHF" or scf_method == "Direct UDFT"):
-#        elif (scftype == "uhf"):
-#             file.write('level '+
-#                        str(self.get_parameter("scf_level_init"))+' '+
-#                        str(self.get_parameter("scf_level_init"))+' '+
-#                        str(self.get_parameter("scf_level_it"))+' '+
-#                        str(self.get_parameter("scf_level_final"))+' '+
-#                        str(self.get_parameter("scf_level_final"))+'\n')
-            
-#        file.write('maxcyc '+str(self.get_parameter("scf_maxcyc"))+'\n')
-#        file.write('thresh '+str(self.get_parameter("scf_threshold"))+'\n')
-
-        if task == MENU_OPT:
-            #If optimising with jorgensen algorithm, minmax not applicable
-            if self.get_parameter('opt_jorgensen'):
-                file.write('maxjorg '+str(self.get_parameter("max_opt_step"))+'\n')
-            else:
-                file.write('minmax '+str(self.get_parameter("max_opt_step"))+' '
-                           +str(self.get_parameter('max_opt_line'))+'\n')
-            file.write('xtol '+str(self.get_parameter('opt_conv_thsld'))+'\n')
-            file.write('stepmax '+str(self.get_parameter("max_opt_step_len"))+'\n')
-            if self.get_parameter('optimiser') == 'Z-Matrix':
-                file.write('value '+str(self.get_parameter('opt_value'))+'\n')
-
-        if task == MENU_ENER:
-            if postscf_method == 'MCSCF':
-                file.write('mcscf\n')
-                file.write('orbital\n')
-                file.write('<specify your reference configuration here>\n')
-                file.write('end\n')
-
-        if guess_method == "Compute":
-            pass
-        #    file.write('vectors '+str(self.get_parameter("guess_comp"))+'\n')
-        
-        elif guess_method == "Dumpfile":
-            if (scf_method == "RHF" or scf_method == "DFT" or 
-                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-                file.write('vectors '+str(self.get_parameter("guess_sect1"))+'\n')
-            else:
-                file.write('vectors '+str(self.get_parameter("guess_sect1"))+' '+
-                           str(self.get_parameter("guess_sect2"))+'\n')
-                
-        elif guess_method == "GETQ":
-            guess_lfn = 'ed14' #just use ed14 for now
-            guess_blk1 = self.get_parameter("getq_block1")
-            guess_blk2 = self.get_parameter("getq_block2")
-            guess_sect1 = self.get_parameter("getq_sect1")
-            guess_sect2 = self.get_parameter("getq_sect2")
-            if (scf_method == "RHF" or scf_method == "DFT" or 
-                scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+'\n')
-            else:
-                file.write('vectors getq '+str(guess_lfn)+' '+str(guess_blk1)+' '+str(guess_sect1)+' '+
-                           str(guess_lfn)+' '+str(guess_blk2)+' '+str(guess_sect2)+'\n')
-                
-
-        if task == MENU_ENER:
-            if postscf_method == 'MRDCI':
-                file.write('mrdci direct\n')
-            elif postscf_method == 'CCSD':
-                file.write('ccsd\n')
-            elif postscf_method == 'CCSD(T)':
-                file.write('ccsd(t)\n')
-
-##         if self.get_parameter('ed3_keep'):
-##             if (scf_method == "RHF" or scf_method == "DFT" or 
-##                 scf_method == "Direct RHF" or scf_method == "Direct DFT"):
-##                 file.write('enter '+str(self.get_parameter('enter_sect1'))+'\n')
-##             else:
-##                 file.write('enter '+str(self.get_parameter('enter_sect1'))+' '
-##                            +str(self.get_parameter('enter_sect2'))+'\n')
-        else:
-            file.write('enter\n')
-
-        #
-        # Analysis Options
-        #
-
-        #
-        # Plot (graphics) options
-        #
-        uhf = (scf_method == 'UHF' or scf_method == 'Direct UHF' or
-               scf_method == 'UDFT' or scf_method == 'Direct UDFT')
-
-        rohf = self.get_parameter("spin") != 1 and not uhf
-
-        count = mol.get_nuclear_charges()
-        charge = self.get_parameter("charge")
-        count = count - int(charge)
-        homo = (count+1)/2
-        lumo = homo+1
-
-
-        alpha_props = []; beta_props = []
-        alpha_titles = {}; beta_titles = {}
-        alpha_sections = {}; beta_sections = {}
-        alpha_punch = []; beta_punch = []
-
-        self.next_section = 100
-
-        if self.get_parameter("ana_chargeden"):
-            alpha_props.append('dens')
-            alpha_sections['dens'] = self.get_next_section()
-            if uhf:
-                alpha_titles['dens'] = "Charge Density (alpha)"
-                beta_props.append('dens')
-                beta_titles['dens'] = "Charge Density (beta)"
-                beta_props.append('totdens')
-                beta_sections['dens'] = self.get_next_section()
-                beta_titles['totdens'] = "Total Charge Density"
-                beta_sections['totdens'] = self.get_next_section()
-                beta_punch.append(beta_sections['totdens'])                
-            else:
-                alpha_titles['dens'] = "Charge Density"
-                alpha_punch.append(alpha_sections['dens'])
-
-        if self.get_parameter("ana_spinden"):
-            if uhf:
-                if not self.get_parameter("ana_chargeden"):
-                    alpha_props.append('dens')
-                    alpha_titles['dens'] = "Charge Density (alpha)"
-                    alpha_sections['dens'] = self.get_next_section()
-                    beta_props.append('dens')
-                    beta_titles['dens'] = "Charge Density (beta)"
-                    beta_sections['dens'] = self.get_next_section()
-                beta_props.append('spindens')
-                beta_titles['spindens'] = "Spin Density"
-                beta_sections['spindens'] = self.get_next_section()
-                beta_punch.append(beta_sections['spindens'])
-            elif rohf:
-                self.warn("spin density not implemented for rohf yet")
-            else:
-                self.warn("cant compute spin density for closed shell system")
-                
-
-        if self.get_parameter("ana_chargedengrad"):
-            alpha_props.append('grad dens')
-            alpha_sections['grad dens'] = self.get_next_section()
-            if uhf:
-                alpha_titles['grad dens'] = "Grad Charge Density (alpha)"
-                beta_titles['grad dens'] = "Grad Charge Density (beta)"
-                beta_props.append('grad dens')
-                beta_sections['grad dens'] = self.get_next_section()
-                beta_props.append('totgraddens')
-                beta_titles['totgraddens'] = "Grad Charge Density (total)"
-                beta_sections['totgraddens'] = self.get_next_section()
-                beta_punch.append(beta_sections['totgraddens'])
-            else:
-                alpha_titles['grad dens'] = "Grad Charge Density"
-                alpha_punch.append(alpha_sections['grad dens'])
-
-        if self.get_parameter("ana_potential"):
-            alpha_props.append('pote')
-            alpha_sections['pote'] = self.get_next_section()
-            if uhf:
-                alpha_titles['pote'] = "Potential (alpha)"
-                beta_titles['pote'] = "Potential (beta)"
-                beta_props.append('pote')
-                beta_props.append('totpote')
-                beta_sections['pote'] = self.get_next_section()
-                beta_titles['totpote'] = "Total Potential"
-                beta_sections['totpote'] = self.get_next_section()
-                beta_punch.append(beta_sections['totpote'])
-            else:
-                alpha_titles['pote'] = "Potential"
-                alpha_punch.append(alpha_sections['pote'])                
-
-        if self.get_parameter("ana_diffden"):
-            alpha_props.append('atom')
-            alpha_sections['atom'] = self.get_next_section()
-            if uhf:
-                # Not sure of atom difference density works for UHF.....
-                alpha_titles['atom'] = "Atom Difference Density (alpha)"
-                beta_props.append('atom')
-                beta_sections['atom'] = self.get_next_section()
-                beta_titles['atom'] = "Atom Difference Density (beta)"
-                beta_props.append('totatom')
-                beta_titles['totatom'] = "Total Atom Difference Density"
-                beta_sections['totatom'] = self.get_next_section()
-                beta_punch.append(beta_sections['totatom'])
-            else:
-                alpha_titles['atom'] = "Atom Difference Density"
-                alpha_punch.append(alpha_sections['atom'])                
-
-        for n in range(0,5):
-            txt = "ana_homolumo"
-            if n != 0:
-                txt = txt + str(n)
-            if self.get_parameter(txt):
-                txt1 = 'mo '+str(homo-n)
-                alpha_props.append(txt1)
-                alpha_sections[txt1] = self.get_next_section()
-                txt2 = 'mo '+str(lumo+n)
-                alpha_props.append(txt2)
-                alpha_sections[txt2] = self.get_next_section()
-                alpha_punch.append(alpha_sections[txt1])
-                alpha_punch.append(alpha_sections[txt2])
-                if n == 0:
-                    txt3 = "HOMO"
-                    txt4 = "LUMO"
-                else:
-                    txt3 = "HOMO-"+str(n)
-                    txt4 = "LUMO+"+str(n)
-                if uhf:
-                    alpha_titles[txt1] = txt3 +' (alpha)'
-                    alpha_titles[txt2] = txt3 +' (alpha)'
-                    beta_props.append(txt1)
-                    beta_titles[txt1] = txt3 +' (beta)'
-                    beta_sections[txt1] = self.get_next_section()
-                    beta_props.append(txt2)
-                    beta_titles[txt2] = txt4 +' (beta)'
-                    beta_sections[txt2] = self.get_next_section()
-                    beta_punch.append(beta_sections[txt1])
-                    beta_punch.append(beta_sections[txt2])
-                else:
-                    alpha_titles[txt1] = txt3
-                    alpha_titles[txt2] = txt4
-
-        for orb in self.get_parameter('ana_orbitals'):
-            txt1 = 'mo '+str(orb)
-            alpha_props.append(txt1)
-            alpha_sections[txt1] = self.get_next_section()
-            alpha_punch.append(alpha_sections[txt1])
-            if uhf:
-                alpha_titles[txt1] = "MO "+str(orb)+' (alpha)'
-                beta_props.append(txt1)
-                beta_titles[txt1] = "MO "+str(orb)+' (beta)'
-                beta_sections[txt1] = self.get_next_section()
-                beta_punch.append(beta_sections[txt1])
-            else:
-                alpha_titles[txt1] = "MO "+str(orb)
-                    
-        if uhf and len(beta_props):
-            spins = ['alpha','beta']
-        elif len(alpha_props):
-            spins = ['alpha']
-        else:
-            spins = []
-                
-        for spin in spins:
-
-            file.write('runtype analysis\n')
-
-            if spin == 'alpha':
-                props = alpha_props
-                sections = alpha_sections
-                titles = alpha_titles
-                punch = alpha_punch
-            else:
-                props = beta_props
-                sections = beta_sections
-                titles = beta_titles
-                punch = beta_punch                
-
-            # Punchfile output
-            #file.write('nosym\n')
-            #file.write('adapt off\n')
-            for sect in punch:
-                file.write('punch eform grid ' + str(sect)+'\n')
-
-            file.write('graphics\n')
-            file.write('gdef\n')
-            grid = self.get_parameter('grid')
-
-            if not self.field_sized:
-                # use automatic size unless explicitly edited
-                # but dont set flag to ensure resizing will happen
-                # each time
-                self.fit_grid_to_mol(grid,mol)
-
-            scale = 1.0 / 0.529177
-            if len(grid.dim) == 3:
-                file.write('type 3d\n')
-                file.write('points %d %d %d\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
-                file.write('size %f %f %f\n' % (scale*grid.axis[0].length(),
-                                                scale*grid.axis[1].length(),
-                                                scale*grid.axis[2].length()))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],
-                                             scale*v[1],
-                                             scale*v[2]))
-                v = grid.axis[1]
-                file.write('y %f %f %f\n'% (scale*v[0],
-                                            scale*v[1],
-                                            scale*v[2]))
-            elif len(grid.dim) == 2:
-                file.write('type 2d\n')
-                file.write('points %d %d\n' % (grid.dim[0],grid.dim[1]))
-                file.write('size %f %f \n' %  (scale*grid.axis[0].length(),
-                                               scale*grid.axis[1].length()))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
-                v = grid.axis[1]
-                file.write('y %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
-            else:
-                file.write('type 1d\n')
-                file.write('points %d\n' % (grid.dim[0],))
-                file.write('size %f \n' % (scale*grid.axis[0].length()))
-                file.write('size %f %f %f\n' % (grid.dim[0],grid.dim[1],grid.dim[2]))
-                file.write('orig %f %f %f\n' % (scale*grid.origin[0],
-                                                scale*grid.origin[1],
-                                                scale*grid.origin[2]))
-                v = grid.axis[0]
-                file.write('x %f %f %f\n' % (scale*v[0],scale*v[1],scale*v[2]))
-
-            for prop in props:
-                # Load beta component of property for linear combinations (UHF only)
-                if prop == 'spindens' or prop == 'totdens':
-                    file.write('restore data ed3 1 ' + str(beta_sections['dens']) + '\n')
-                elif prop == 'totgraddens':
-                    file.write('restore data ed3 1 ' + str(beta_sections['grad dens']) + '\n')
-                elif prop == 'totpote':
-                    file.write('restore data ed3 1 ' + str(beta_sections['pote']) + '\n')
-                elif prop == 'totatom':
-                    file.write('restore data ed3 1 ' + str(beta_sections['atom']) + '\n')
-
-                file.write('calc\n')
-                # Build linear combinations (UHF only) or else pass
-                # the prop string through to MOLPRO
-                if prop == 'spindens':
-                    file.write('type comb ' + str(alpha_sections['dens']) + ' -1.0\n')
-                elif prop == 'totdens':
-                    file.write('type comb ' + str(alpha_sections['dens']) + ' 1.0\n')
-                elif prop == 'totgraddens':
-                    file.write('type comb ' + str(alpha_sections['grad dens']) + ' 1.0\n')
-                elif prop == 'totpote':
-                    file.write('type comb ' + str(alpha_sections['pote']) + ' 1.0\n')
-                elif prop == 'totatom':
-                    file.write('type comb ' + str(alpha_sections['atom']) + ' 1.0\n')
-                else:
-                    file.write('type ' + prop + '\n')
-                file.write('title\n')
-                file.write(titles[prop]+'\n')
-                if sections.has_key(prop):
-                    file.write('section '+str(sections[prop])+'\n')
-
-            # Select vectors to analyse
-            if spin == 'alpha':
-                if uhf:
-                    file.write('vectors 2\n')
-                    file.write('enter 2\n')
-                elif rohf:
-                    # pick canonicalised set
-                    file.write('vectors 5\n')
-                    file.write('enter 5\n')
-                else:
-                    file.write('vectors 1\n')
-                    file.write('enter 1\n')
-            else:
-                file.write('vectors 3\n')
-                file.write('enter 3\n')
-        #
-        # Frequencies
-        #
 
         if self.get_parameter("ana_frequencies"):
             file.write('runtype force\n')
@@ -1499,7 +1031,9 @@ class MOLPROCalc(QMCalc):
             if basis:
                 # Use the result of the basis manager
                 # for more details see the basis manager module
-                file.write('basis,')
+                first=1
+                file.write('basis={\n')
+                file.write('default=fred,')
                 for entry in basis:
                     (ass_type, tag, b) = entry
                     print 'entry', ass_type, tag, b
@@ -1507,9 +1041,12 @@ class MOLPROCalc(QMCalc):
                         #If b contains 2 fields, need to place element symbol between the two:
                         basis_keyword=string.split(b)
                         length=len(basis_keyword)
-                        file.write(',%s=%s\n' % (tag,basis_keyword[0])) #  only 1 keyword
+                        if not first:
+                            file.write(',')
+                        first = 0
+                        file.write('%s=%s' % (tag,basis_keyword[0])) #  only 1 keyword
                     elif ass_type == 'TYPE.EXPL':
-                        # NOT CODED YET
+                        # NOT CODED YET FOR MOLPRO
                         b.list()
                         for shell in b.shells:
                             file.write('%s %s\n' % (shell.type, tag))
@@ -1522,89 +1059,12 @@ class MOLPROCalc(QMCalc):
                                     file.write( '%12.8f %8.4f %8.4f\n' % (p[1],p[0],p[2]))
                                 else:
                                     print 'ELSE'
-                file.write('end\n')
+                file.write('}\n')
 
             else:
                 # Use the default
                 basis = self.get_parameter("default_basis")
                 file.write('basis=' + basis+'\n')
-
-##     puts $fp "basis=\{"
-##     if { "$basisspec" != "undefined" } {
-## 	set bas [ get_basis coords=$coords specification= $basisspec ]
-## 	foreach bas1 $bas {
-## 	    set sym       [ lindex $bas1 0 ]
-## 	    set data      [ lrange $bas1 1 end ]
-## 	    # Need to bring all s functions for a given atom type together 
-## 	    foreach angmom {s S p P d D f F g G} {
-## 		set ix 1
-## 		set nc 0
-## 		catch {unset exponents}
-## 		foreach function $data  {
-## 		    catch "unset coefficients($nc)"
-## 		    set test [ lindex $function 0 ]
-## 		    if { "$test" == "$angmom" } {
-## 			set start($nc) $ix
-## 			foreach contr  [ lrange $function 1 end ] {
-## 			    lappend exponents [ string trim [ lindex $contr 0 ] \n ]
-## 			    lappend coefficients($nc) [ string trim [ lindex $contr 1 ] \n ]
-## 			    incr ix
-## 			}
-## 			set end($nc)  [ expr $ix -1 ]
-## 			incr nc
-## 			catch "unset coefficients($nc)"
-## 		    }
-## 		    if { "$test" == "L" && "$angmom" == "S" } {
-## 			set start($nc) $ix
-## 			foreach contr  [ lrange $function 1 end ] {
-## 			    lappend exponents [ string trim [ lindex $contr 0 ] \n ]
-## 			    lappend coefficients($nc) [ string trim [ lindex $contr 1 ] \n ]
-## 			    incr ix
-## 			}
-## 			set end($nc)  [ expr $ix -1 ]
-## 			incr nc
-## 			catch "unset coefficients($nc)"
-## 		    }
-
-## 		    if { "$test" == "L" && "$angmom" == "P" } {
-## 			set start($nc) $ix
-## 			foreach contr  [ lrange $function 1 end ] {
-## 			    lappend exponents [ string trim [ lindex $contr 0 ] \n ]
-## 			    lappend coefficients($nc) [ string trim [ lindex $contr 2 ] \n ]
-## 			    incr ix
-## 			}
-## 			set end($nc)  [ expr $ix -1 ]
-## 			incr nc
-## 			catch "unset coefficients($nc)"
-## 		    }
-## 		}
-## 		if { $nc > 0 } {
-## 		    puts $fp "$angmom,$sym" nonewline
-## 		    foreach exp $exponents { puts $fp ",$exp" nonewline}
-## 		    puts $fp " "
-## 		    for {set i 0} {$i < $nc} { incr i } {
-## 			puts $fp [ format "c,%d.%d" $start($i) $end($i) ] nonewline 
-## 			foreach coef $coefficients($i) { puts $fp ",$coef" nonewline} 
-## 			puts $fp " "
-## 		    }
-## 		}
-## 	    }
-## 	}
-##     } else {
-## 	switch $basisfile {
-## 	    undefined {
-## 		#chemerr "keyword basis sets not implemented in molpro yet"
-## 		puts $fp "basis $basis"
-## 	    }
-## 	    default {
-## 		###puts $fp "basis"
-## 		puts $fp [ exec cat $basisfile ]
-## 		####puts $fp "end"
-## 	    }
-## 	}
-##     }
-
-
 
     def _write_ecp(self,file):
         
@@ -1633,138 +1093,6 @@ class MOLPROCalc(QMCalc):
                             file.write( '%d %8.4f %8.4f\n' % (p[0],p[1],p[2]))
                         else:
                             print 'ELSE'
-
-
-##     switch $ecpfile {
-
-## 	undefined { 
-
-## 	    switch $basisspec {
-## 		undefined {} 
-## 		default {
-## 		    switch $ecpspec  {
-## 			undefined {
-## 			    set ecpspec [concat {{null *}} $basisspec ]
-## 			}
-## 			default {} 
-## 		    }
-## 		}
-## 	    }
-
-## 	    switch $ecpspec {
-## 		undefined {} 
-## 		default {
-## 		    push_banner_flag 0
-## 		    set ecp [ get_ecp coords=$coords specification= $ecpspec ]
-## 		    pop_banner_flag
-## 		    if { [ llength $ecp ] } {
-## 			foreach bas1 $ecp {
-## 			    set sym       [ lindex $bas1 0 ]
-## 			    set temp      [ lrange $bas1 1 end ]
-## 			    set temp2  [lindex $temp 0 ]
-## 			    set data   [lrange $temp 1 end ]
-## 			    set lmax [ lindex $temp2 0 ]
-## 			    set ncore [ lindex $temp2 1 ]
-## 			    puts $fp "ECP,$sym,$ncore,$lmax"
-## 			    # first the lmax term
-## 			    foreach function $data {
-## 				set angmom [ lindex $function 0 ]
-## 				set tag    [ lindex $function 1 ]
-## 				if { $angmom == $lmax } {
-## 				    set tmp  [ lrange $function 2 end ] 
-## 				    puts $fp "[llength $tmp ]; ! $tag"
-## 				    foreach contr  $tmp {
-## 					puts $fp "[lindex $contr 0 ],[lindex $contr 1 ],[lindex $contr 2 ];"
-## 				    }
-## 				}
-## 			    }
-## 			    for { set i 0} { $i < $lmax } { incr i } {
-## 				foreach function $data {
-## 				    set angmom [ lindex $function 0 ]
-## 				    set tag    [ lindex $function 1 ]
-## 				    if { $angmom == $i } {
-## 					set tmp  [ lrange $function 2 end ] 
-## 				        puts $fp "[llength $tmp ]; ! $tag"
-## 					foreach contr  $tmp {
-## 					    puts $fp "[lindex $contr 0 ],[lindex $contr 1 ],[lindex $contr 2 ];"
-## 					}
-## 				    }
-## 				}
-## 			    }
-## 			}
-## 		    }   
-## 		}
-## 	    }
-## 	}
-## 	default { puts $fp [ tclcat $ecpfile ] }
-##     }
-
-
-
-    def scan(self):
-        """Extract and Store results from a punchfile"""
-        file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
-        job_name = self.get_parameter("job_name")
-        self.__ReadPunch(file)
-        # reflect changes in the visible page
-        if self.editor():
-            self.editor().UpdateOpenPage()
-
-    def __ReadPunch(self,file):
-        """Read the MOLPRO punchfile and store all resulting objects
-        """
-        p = PunchReader()
-        p.scan(file)
-
-        if not p.title:
-            p.title = self.get_title()
-        if p.title == "untitled":
-            p.title = self.get_input("mol_name")
-
-        self.results = []
-
-        # construct the results list for visualisation
-
-        structure_loaded=0
-        for o in p.objects:
-
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-
-            if myclass == 'VibFreq' :
-                # create a vibration visualiser
-                self.results.append(o)
-
-            elif myclass == 'Indexed' or myclass == 'Zmatrix':
-                # will need to organise together with other results
-                # assume overwrite for now
-                ###name = self.get_input("mol_name")
-                ###print 'set_input executed',o
-                ###self.set_input("mol_obj",o)
-                #
-                #PS keep all elements of old structure
-                #
-                oldo = self.get_input("mol_obj")
-                copycontents(oldo,o)
-
-                #o.list()
-                #tt = self.get_input("mol_obj")
-                #tt.list()
-
-                structure_loaded=1
-                # Used by visualisers
-                #o.title = name
-                #o.list()
-
-            elif myclass == 'Brick':
-                self.results.append(o)
-
-            elif myclass == 'Field':
-                self.results.append(o)
-
-        return structure_loaded
-
 
 homolumoa = 0
 
@@ -1807,7 +1135,6 @@ class MOLPROCalcEd(QMCalcEd):
         self.scf_methods[MENU_OPT] = [
              "RHF", "UHF", "GVB", "DFT", "UDFT" ,
              "Direct RHF", "Direct UHF", "Direct GVB", "Direct DFT", "Direct UDFT"]
-
 
         #DFT options
         self.dft_functionals = [
@@ -1996,10 +1323,11 @@ class MOLPROCalcEd(QMCalcEd):
 
         self.__initialisetools()
         
-        self.menu.addmenuitem('View','command',
-                     'View a summary of results',
-                     command = lambda s=self: s.summarise_results(),
-                     label = 'Results Summary')
+#        self.menu.addmenuitem('View','command',
+#                     'View a summary of results',
+#                     command = lambda s=self: s.summarise_results(),
+#                     label = 'Results Summary')
+
         # flag to check if we already have a summary editor open
         self.summaryeditor=None
 
@@ -2264,75 +1592,6 @@ class MOLPROCalcEd(QMCalcEd):
             self.optminhess_tool.Pack()
             self.optmaxhess_tool.Pack()
             self.optrfo_tool.Pack()
-
-
-##     def __keepfile(self,lfn):
-##         """If we are saving the file, show the tool to select the file name.
-##         """
-##         name = str(self.calc.get_parameter("job_name"))
-##         dir = str(self.calc.get_parameter("directory"))
-
-##         if (lfn =='ed0'):
-##             self.ed0keep_tool.ReadWidget()
-##             if (self.calc.get_parameter('ed0_keep')):
-##                 self.ed0path_tool.Pack(side='left')
-##             else:
-##                 self.ed0path_tool.Forget()
-                
-##         if (lfn =='ed2'):
-##             self.ed2keep_tool.ReadWidget()
-##             self.ed2name_tool.ReadWidget()
-##             if (self.calc.get_parameter('ed2_keep')):
-##                 self.ed2path_tool.Pack(side='left')
-##                 self.ed2name_tool.Pack(side='left')
-##                 if (self.calc.get_parameter('ed2_specify')):
-##                     self.calc.set_parameter('ed2_path',dir+os.sep+name+'.ed2')
-##                     self.ed2path_tool.UpdateWidget()
-##                     self.ed2path_tool.Pack(side='left')
-##                 else:
-##                     self.ed2path_tool.Forget()
-##             else:
-##                 self.ed2path_tool.Forget()
-##                 self.ed2name_tool.Forget()
-
-##         if (lfn =='ed3'):
-##             self.ed3keep_tool.ReadWidget()
-##             self.ed3name_tool.ReadWidget()
-##             if (self.calc.get_parameter('ed3_keep')):
-##                 self.ed3path_tool.Pack(side='left')
-##                 self.ed3name_tool.Pack(side='left')
-##                 if (self.calc.get_parameter('ed3_specify')):
-##                     self.calc.set_parameter('ed3_path',dir+os.sep+name+'.ed3')
-##                     self.ed3path_tool.UpdateWidget()
-##                     self.ed3path_tool.Pack(side='left')
-##                 else:
-##                     self.ed3path_tool.Forget()
-##             else:
-##                 self.ed3path_tool.Forget()
-##                 self.ed3name_tool.Forget()
-
-##         if (lfn =='ed7'):
-##             self.ed7keep_tool.ReadWidget()
-##             self.ed7name_tool.ReadWidget()
-##             if (self.calc.get_parameter('ed7_keep')):
-##                 self.ed7path_tool.Pack(side='left')
-##                 self.ed7name_tool.Pack(side='left')
-##                 if (self.calc.get_parameter('ed7_specify')):
-##                     self.calc.set_parameter('ed7_path',dir+os.sep+name+'.ed7')
-##                     self.ed7path_tool.UpdateWidget()
-##                     self.ed7path_tool.Pack(side='left')
-##                 else:
-##                     self.ed7path_tool.Forget()
-##             else:
-##                 self.ed7path_tool.Forget()
-##                 self.ed7name_tool.Forget()
-
-##         if (lfn =='ed14'):
-##             self.ed14keep_tool.ReadWidget()
-##             if (self.calc.get_parameter('ed14_keep')):
-##                 self.ed14path_tool.Pack(side='left')
-##             else:
-##                 self.ed14path_tool.Forget()
                 
     def __restartcalc(self):
         """If this is a restart calculation, display the relevant widgets.
@@ -2379,67 +1638,6 @@ class MOLPROCalcEd(QMCalcEd):
             output file and summarise the results.
         """
         print 'scanning output...'
-        # John's stuff
-##         calcdir = self.calc.get_parameter("directory")
-##         if self.calc.has_parameter("job_name"):
-##             name = self.calc.get_parameter("job_name")
-##         else:
-##             name = self.calc.get_name()
-##         fname = os.path.join(calcdir,name+".out")
-        
-##         if not os.path.exists(fname):
-##             fname = tkFileDialog.askopenfilename(initialfile = name+".out",
-##                                                  initialdir = calcdir,
-##                                                  filetypes=[("Output Files","*.out"),])
-##             if len(fname) == 0:
-##                 return
-
-##         try:
-##             if self.summaryeditor:
-##                 try:
-##                     self.summaryeditor.withdraw()
-##                     self.summaryeditor.show()
-##                     return
-##                 except:
-##                     print "Missing summary editor!"
-##             else:
-##                 data = []
-##                 output_summary = MolproOutputReader(fname)
-##                 data.append('Title = %s\n' % output_summary.title)
-##                 data.append('Date = %s\n' % output_summary.date)
-##                 data.append('Time = %s\n' % output_summary.time)
-##                 data.append('Multiplicity = %s\n' %output_summary.multiplicity)
-##                 data.append('Charge = %s\n' %output_summary.charge)
-##                 data.append('No. of electrons = %s\n' %output_summary.nelec)
-##                 data.append('Basis set = %s\n' %output_summary.basis)
-##                 data.append('No. basis functions = %s\n' %output_summary.nbasis)
-##                 data.append('No. of shells = %s\n' %output_summary.nshells)
-##                 data.append('Symmetry = %s\n' %output_summary.pointGroup)
-##                 data.append('Order of principle axis = %s\n' %output_summary.orderOfPrincipalAxis)
-##                 data.append('Nuclear energies: %s\n' %output_summary.nuclearEnergies)
-##                 data.append('Electronic energies: %s\n' %output_summary.electronicEnergies)
-##                 data.append('Total energies: %s\n' %output_summary.totalEnergies)
-##                 data.append('Final nuclear energy = %s\n' %output_summary.finalNuclearEnergy)
-##                 data.append('Final electronic energy = %s\n' %output_summary.finalElectronicEnergy)
-##                 data.append('Final total energy = %s\n' %output_summary.finalTotalEnergy)
-##                 data.append('Orbital Irreps: %s\n' %output_summary.orbitalIrreps)
-##                 data.append('Orbital energies: %s\n' %output_summary.orbitalEnergies)
-##                 data.append('Orbital occupancies: %s\n' %output_summary.orbitalOccupancies)
-##                 data.append('Mulliken pops: %s\n' %output_summary.mullikens)
-##                 data.append('Lowdin pops: %s\n' %output_summary.lowdins)
-##                 data.append('Scftypes: %s\n' %output_summary.scftypes)
-##                 data.append('Runtypes: %s\n' %output_summary.runtypes)
-##                 data.append('Convergence: %s\n' %output_summary.maximumSteps)
-##                 data.append('Converged = %s\n' %output_summary.converged)
-##                 data.append('homo = %s\n' %output_summary.homo)
-##                 data.append('lumo = %s\n' %output_summary.lumo)
-##                 data.append('Nuclear Dipole:%s\n' % output_summary.nuclearDipole)
-##                 data.append('Electronic Dipole:%s\n' % output_summary.electronicDipole)
-##                 data.append('Total Dipole:%s\n' % output_summary.totalDipole)
-##                 self.summaryeditor = Editor(self.interior(),title="summary",data=data)
-##                 return 
-##         except AttributeError:
-##             print 'No results to summarise'
 
 
     def LayoutToolsTk(self):
@@ -2753,8 +1951,6 @@ if __name__ == "__main__":
     atom.coord = [ 1.,1.,0. ]
     model.insert_atom(1,atom)
 
-
-
     from interfaces.gamessuk import *
     from objects.zmatrix import *
     from jobmanager import *
@@ -2780,6 +1976,7 @@ if __name__ == "__main__":
     job = calc.makejob()
     job.debug = 1
     job.run()
+    calc.endjob()
 
     #root=Tk()
     #button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
@@ -2792,8 +1989,4 @@ if __name__ == "__main__":
     #    vt.Run()
     #root.mainloop()
 
-
     
-
-
-
