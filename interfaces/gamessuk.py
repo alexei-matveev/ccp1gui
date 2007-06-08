@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2006 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -47,12 +47,12 @@ MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
 MENU_OPT   = "Geometry Optimisation"
 
+
 class GAMESSUKCalc(QMCalc):
     """GAMESS-UK specifics."""
     def __init__(self, **kw):
 
         QMCalc.__init__(self,**kw)
-
         
         self.debug = None
         self.set_parameter("task",MENU_ENER)
@@ -164,6 +164,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter('accuracy','medium')
         
         #Geometry optimisation parameters
+        self.set_parameter('optimiser','Cartesian')
         self.set_parameter('opt_jorgensen',0)
         self.set_parameter('opt_hess_update','default')
         self.set_parameter('opt_powell',0)
@@ -385,15 +386,7 @@ class GAMESSUKCalc(QMCalc):
         #
         #  Need to decide what kind of job run
         # 
-        try:
-            job = self.get_job(create=1)
-        except Exception,e:
-            ed.Error("Problem initialising job!\n%s" % e)
-            return None
-
-        if not job:
-            ed.Error("gamess-uk makejob no job returned!")
-            return None
+        job = self.get_job()
 
         directory = job.get_parameter('directory')
         if directory and len(directory):
@@ -403,7 +396,8 @@ class GAMESSUKCalc(QMCalc):
             
         inputfile = self.getInputFilename()
         if writeinput:
-            if os.access( inputfile, os.R_OK):
+
+            if (rc_vars['guk_check_overwrite_input'] == 1) and os.access( inputfile, os.R_OK):
                 result = ed.Query("An inputfile for this calculation appears to exist already:\n\n%s\n\n\
 Would you like to create a new input (Yes)\n\
 or use the existing file (No)?" % inputfile )
@@ -454,7 +448,6 @@ or use the existing file (No)?" % inputfile )
         local_command = None
         local_command_args = None
 
-
         # Block of code to tweak the job depending on how it is being run
         if jobtype == LOCALHOST:
             
@@ -462,9 +455,8 @@ or use the existing file (No)?" % inputfile )
             remote_stdin  = stdin_file
             
             # Determine how we will be running GAMESS-UK
-            executable = self.get_executable( job=job, ErrorWidget = ed.Error)
-            if not executable:
-                return
+            executable = self.get_executable( job=job)
+            
             # See if we are keeping any files and set environment variables / get the rungamess string
             if self.rungamess:
                 rungamess_cmdline = self.keepfiles()
@@ -578,7 +570,8 @@ or use the existing file (No)?" % inputfile )
         self.ReadOutput(file)
         file.close()
 
-        print 'scan output'
+        if self.debug:
+            print 'scan output'
 #        John's stuff
 #
 #  potential problem here with pickling the calculation
@@ -689,6 +682,7 @@ or use the existing file (No)?" % inputfile )
         else:
             # Unix / MacOSX code
             rungamess =  self.find_rungamess()
+
             if rungamess:
                 return rungamess
             else:
@@ -696,15 +690,12 @@ or use the existing file (No)?" % inputfile )
                 if exe:
                     return exe
                 else:
-                    if ErrorWidget:
-                        msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
-                              "Please either set the path to the executable in the Job Tab using\n"+\
-                              "the Configure button or put the rungamess script in your path\n"+\
-                              "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
-                              "the binary, or put the gamess binary in your path."
-                        ErrorWidget(msg)
-                    return None
-        
+                    msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
+                          "Please either set the path to the executable in the Job Tab using\n"+\
+                          "the Configure button or put the rungamess script in your path\n"+\
+                          "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
+                          "the binary, or put the gamess binary in your path."
+                    raise CalcError, msg
 
     def find_rungamess(self):
         """ Return the path to the rungamess script and set self.rungamess"""
@@ -2064,10 +2055,11 @@ class GAMESSUKCalcEd(QMCalcEd):
         scf_rhf = ["RHF","B3LYP" ,"BLYP" ,"SVWN" ,"HCTH" ,"FT97"]
         scf_uhf = ["UHF","UB3LYP","UBLYP","USVWN","UHCTH","UFT97"]
 
-        self.optcoord_opts = [ "Z-Matrix","Cartesian" ]
+        self.optcoord_opts = [ "Cartesian" , "Z-Matrix"]
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
-        self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "Globus"]
+        #self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "Globus"]
+        self.submission_policies = [ LOCALHOST, "SSH", "RMCS", "Nordugrid", "Globus"]
         
         #Create the tools used in the Molecule tab - spin & charge created in QM.
         self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
@@ -2126,7 +2118,6 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.postscfmethod_tool = SelectOptionTool(self,'postscf_method',
                                                    'Method',
                                                    self.postscf_methods[self.tasktoolvalue])
-
 
         #Create the tools for the DFT tab
         self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
@@ -3162,8 +3153,7 @@ if __name__ == "__main__":
         calc.set_input('mol_obj',model)
         jm = JobManager()
         je = JobEditor(root,jm)
-        calc2 = copy.deepcopy(calc)
         vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
-        #vt.Run()
+        vt.Run()
 
     root.mainloop()
