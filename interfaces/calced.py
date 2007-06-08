@@ -22,6 +22,7 @@ import os
 import re
 import copy
 import cPickle
+import traceback
 
 import Pmw
 import Tkinter
@@ -384,16 +385,21 @@ class CalcEd(Pmw.MegaToplevel):
         # the graph object is needed so that the job can include
         # the final load of results back into the GUI
         self.ReadWidgets()
-        job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
 
-        if not job:
-            self.Error("Run: problem preparing Job - not submitted")
-            return
-                
+        try:
+            job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
+        except Exception,e:
+            traceback.print_exc()
+            self.Error( "Error creating job: %s" % (e,) )
+            return 
+            
         try:
             self.start_job( job )
         except Exception,e:
+            traceback.print_exc()
             self.Error( "Error starting job: %s!\n%s" % (job.name,e) )
+            return
+
 
     def start_job(self,job):
         """Start a job running under control of the job manager"""

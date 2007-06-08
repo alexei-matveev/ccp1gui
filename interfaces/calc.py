@@ -252,7 +252,7 @@ of any program using or generating them. The parameters however will be
         else:
             return None
 
-    def get_job(self,create=None):
+    def get_job(self,create=1):
         """If a job has already been created for this calculation and it is of the
            correct type for the selected jobtype return it or None if there isn't one
            if the create flag is set, create a job if one doesn't exist
@@ -509,7 +509,11 @@ of any program using or generating them. The parameters however will be
         #      if self.editor:
         #         self.editor.error(txt)
         #      else:
+
         print 'Error: ' + txt
+        ed = self.get_editor()
+        if ed:
+            ed.Error(txt)
         raise Exception, txt
 
     def fit_grid_to_mol(self,field,mol,border=1.0):
@@ -536,3 +540,19 @@ of any program using or generating them. The parameters however will be
         field.axis[1] = Vector(0.,maxy-miny,0.)
         field.axis[2] = Vector(0.,0.,maxz-minz)
         
+class CalcError(RuntimeError):
+    def __init__(self,message):
+        
+       #self.args = args
+       # Make sure that message is a string
+       if type(message) == list:
+           message = "\n".join(message)
+       if type(message) != str:
+           message = str(message)
+       
+       self.args = message
+       self.message = message
+       
+    def __str__(self):
+        return self.message
+
