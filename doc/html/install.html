@@ -120,6 +120,18 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
+<!-- Debian/Ubuntu  -->
+<tr>
+<td>Linux: Debian/Ubuntu</td>
+<td>x86, x86_64</td>
+<td><a href="./install_unix.html#apt-get">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
 <!-- SuSE  -->
 <tr>
 <td>Linux: Suse</td>
@@ -144,6 +156,18 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
+<tr>
+<td>Linux: CentOS</td>
+<td>x86_64</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/centos/">y</a></td>
+<td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#numeric">Numeric</a></td>
+<td><a href="./install_unix.html#scientific">Scientific</a></td>
+<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
+</tr>
+
+
 </table>
 
 <p>If you have installed all of the packages, then click <a
@@ -154,9 +178,12 @@ the software bundles.</p>
 
 <a name="ftpbundle"></a><h3 align=center>Using the software bundle</h3>
 <p>To get the archive file containing the CCP1GUI and all of the
-packages it depends on, go the to ccp1gui <a
+packages it depends on, either follow the links in the <b>bundle</b>
+column of the above table, or go the to ccp1gui <a
 href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a>. You should be able to
-do this with your browser, if not you can use a command-line ftp
+do this by just openening the url with your browser.</p>
+
+<p> If that doesn't work, you can use a command-line ftp
 client. To do this open a terminal on Linux / Unix / MacOSX or fire up the
 Windows command-prompt and type:</p>
 
@@ -240,9 +267,10 @@ ccp1gui_bundle/---|--ccp1gui.sh ( or ccp1gui.bat )
 <tt>ccp1gui.bat</tt> on Windows systems in the ccp1gui_bundle
 directory should be used to start the CCP1GUI.</p>
 
-<blockquote><b>NB:</b> Mac OSX users will need to run the script
-<b><tt>setpaths.sh</tt></b> before trying to run the CCP1GUI, as
-otherwise the paths to the VTK libraries are likely to be wrong.</blockquote>
+<blockquote><b>NB:</b> Mac OSX users might need to run the script
+<b><tt>setpaths.sh</tt></b>, which may be included in the bundle before
+trying to run the CCP1GUI, as otherwise the paths to the VTK libraries
+are likely to be wrong.</blockquote>
 
 <p>On Unix and Linux systems, make sure the script is executable with the command:</p>
 
