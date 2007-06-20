@@ -39,9 +39,27 @@ class MoldenDriver:
         fp.write(" NPTSX="+str(npts)+" NPTSY="+str(npts)+" NPTSZ="+str(npts))
         fp.write("\n")
                  
-        fp.write("FILE="+self.wfn+" WRBAS")
+        fp.write("FILE="+self.wfn+" WRBAS\n")
 
         fp.close()
+
+        # Convert the file
+        if sys.platform[:3] == 'win':
+            import os
+            if os.access('omolden.dat', os.X_OK):
+                os.unlink('omolden.dat')
+            os.rename('molden.dat','omolden.dat')
+            t = open('molden.dat',"wb")
+            o = open('omolden.dat',"rb")
+            while 1:
+                data = o.read(4096)
+                print len(data)
+                if data == "":
+                    break
+                newdata = re.sub("\r\n","\n",data)
+                t.write(newdata)
+            t.close()
+            o.close()
 
         # execute MOLDEN
         molden_exe = self.get_executable()
@@ -50,16 +68,16 @@ class MoldenDriver:
 
         if sys.platform[:3] == 'win':
             # Windows/Cygwin
-            job = jobmanager.BackgroundJob()
+            job = jobmanager.LocalJob()
         else:
-            job = jobmanager.ForegroundJob()
+            job = jobmanager.LocalJob()
             
         job.debug = 1
         job.add_step(DELETE_FILE,'remove 3dgridfile',remote_filename='3dgridfile',kill_on_error=0)        
         job.add_step(RUN_APP,
                      'run molden',
                      local_command=molden_exe,
-                     local_command_args=[" molden.dat"]
+                     local_command_args=['molden.dat']
                      )
         job.run()
         
@@ -83,8 +101,6 @@ class MoldenDriver:
 
         print "using molden_exe: %s" %molden_exe
         return molden_exe
-
-        
 
 
 
