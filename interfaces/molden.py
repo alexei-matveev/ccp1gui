@@ -84,7 +84,7 @@ class MoldenDriver:
 
         if not os.access('3dgridfile', os.R_OK):
             print 'Problem reading molden field - You need an adapted molden for use with CCP1GUI'
-            print 'See www.cse.scitech.ac.uk/ccg/software/ccp1gui/molden.htm'
+            print 'See www.cse.scitech.ac.uk/ccg/software/ccp1gui/molden.shtml'
             raise Exception,'Problem reading molden field - You need an adapted molden for use with CCP1GUI'
 
         # Load resultant field into a grid
