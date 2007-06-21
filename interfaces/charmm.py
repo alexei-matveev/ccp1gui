@@ -3,6 +3,7 @@ At present this is limited to support for reading in .crd format files.
 """
 
 from objects.zmatrix import *
+from interfaces.fileio import FileIO
 
 charmm_map = {}
 
@@ -148,7 +149,7 @@ charmm_map['ZN'] = 'ZN'
 charmm_map['CU'] = 'CU'
 
 
-class CRDReader:
+class CRDReader(FileIO):
 
     """Reader for CHARMM .CRD files
 
@@ -193,20 +194,35 @@ class CRDReader:
 
         """
 
-    def __init__(self,filename,filepointer=None,root="Untitled",map=charmm_map):
+
+    def __init__(self,**kw):
+
+        # Initialise base class
+        FileIO.__init__(self,**kw)
+        
+        self.debug = 0
+        
+        # capapbilties
+        self.canRead = True
+        self.canWrite = [ 'Zmatrix','Indexed' ]
+
+
+#    def __init__(self,filename,filepointer=None,root="Untitled",map=charmm_map):
+    def _ReadFile(self,**kw):
 
         old_segid='X99'
-        self.objects = []
+        #self.objects = []
         replica = 0
         
         trans = string.maketrans('a','a')
 
-        if filepointer:
-            file=filepointer
-        else:
-            file=open(filename,"r")
-            words = string.split(filename,'.')
-            root = words[0]
+        #if filepointer:
+        #    file=filepointer
+        #else:
+        #    file=open(filename,"r")
+        #    words = string.split(filename,'.')
+        #    root = words[0]
+        file = open( self.filepath, 'r' )
 
         while 1:
             model = None
@@ -214,7 +230,7 @@ class CRDReader:
             if line == "":
                 break
             while 1:
-                print line
+                #print line
                 if line[0] == '*':
                     if (line.find("replica") != -1 or \
                         line.find("REPLICA") != -1):
@@ -251,8 +267,10 @@ class CRDReader:
 
                 if not model or (replica and txt_segid != old_segid):
                     model = Zmatrix()
-                    model.title = root
-                    self.objects.append(model)
+                    #model.title = root
+                    model.title = self.name
+                    #self.objects.append(model)
+                    self.molecules.append( model )
                     old_segid = txt_segid
 
                 #print txt_n, txt_resno, txt_res, txt_type, txt_x, txt_y, txt_z, txt_segid, txt_resid
@@ -270,7 +288,8 @@ class CRDReader:
 
                 a.name = txt_type
                 try:
-                    a.symbol = map[txt_type]
+                    #a.symbol = map[txt_type]
+                    a.symbol = charmm_map[txt_type]
                     #a.name = a.symbol + string.zfill(i+1,2)
                 except KeyError:
                     # strip off any numbers and punctuation
@@ -299,6 +318,13 @@ class CRDReader:
                 str(rdnat)+" atoms were read"
                 #self.warn(msg)
                 print msg
+
+    def _WriteMolecule(self,molecule,**kw):
+
+        """The write method sits in the Zmatrix class"""
+        
+        molecule.wrtcrd( self.filepath )
+
 
 if __name__ == "__main__":
     o = CRDReader("../examples/neb_hf.crd")
