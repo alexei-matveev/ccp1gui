@@ -588,7 +588,13 @@ class Field:
 
         fp = open(file,"r")
         line = fp.readline()
-        natoms = int(line.split()[0])
+        try:
+            natoms = int(line.split()[0])
+        except ValueError:
+            print 'Problem reading molden field - You need an adapted molden for use with CCP1GUI'
+            print 'See www.cse.scitech.ac.uk/ccg/software/ccp1gui/molden.shtml'
+            raise Exception,'Problem reading molden field - You need an adapted molden for use with CCP1GUI'
+                
         nat = []
         i = 0
         while i < natoms:
@@ -667,9 +673,9 @@ class Field:
             for v in values:
                 self.data[i] = float(v)
                 i = i + 1
-    
-        print 'molden data loaded'
-        self.list()
+        print 'Read formatted Field data from MOLDEN, dimensions:',nx,ny,nz
+        if self.debug:
+            self.list()
 
 if __name__ == "__main__":
     f = Field(nd=3)
