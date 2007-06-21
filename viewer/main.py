@@ -25,7 +25,7 @@ classes in files (e.g. vtkgraph.py and openglgraph.py)
 """
 
 # Required so we can exit...
-import sys
+import os,sys
 
 if __name__ == "__main__":
     
@@ -125,6 +125,14 @@ http://public.kitware.com/VTK/get-software.php"""
         print whereget
         sys.exit(-1)
 
+    # Append the gui directory to the PYTHONPATH
+    # 
+    me=os.path.abspath(__file__)
+    guidir=os.path.split( os.path.split(me)[0] )[0]
+    sys.path.append( guidir )
+    
+    from viewer.paths import paths
+    
     print
     print 'Module paths:'
     print '============='
@@ -132,19 +140,9 @@ http://public.kitware.com/VTK/get-software.php"""
     print Numeric.__file__
     print Scientific.__file__
     #print Pmw.__file__
+    print "CCP1GUI directory: ",paths['gui']
     print
 
-    # Append the gui directory to the PYTHONPATH
-    # Need to trap the error here as whether this works depends on
-    # whether the gui has been installed into a python distribution
-    try:
-#        from viewer.paths import gui_path
-        from viewer.paths import paths
-    except ImportError:
-        #from paths import gui_path
-        from paths import paths
-#    sys.path.append(gui_path)
-    sys.path.append(paths['gui'])
 
 import os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
@@ -165,8 +163,6 @@ import viewer.help
 from viewer.debug import deb_setwidget,deb
 from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
-#from viewer.paths import python_path, user_path
-from viewer.paths import paths
 
 #print dir()
 from interfaces.calc import *
