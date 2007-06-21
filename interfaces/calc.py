@@ -22,6 +22,7 @@ import sys
 import getpass
 import socket
 import jobmanager
+import traceback
 from viewer.paths import paths
 
 from interfaces.calced import *
@@ -247,6 +248,7 @@ of any program using or generating them. The parameters however will be
 
     def get_output(self,name):
         """Returns the reference to the output data set."""
+
         if ( self.output.has_key( name ) ):
             return self.output[name]
         else:
