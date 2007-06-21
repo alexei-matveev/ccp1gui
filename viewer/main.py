@@ -24,6 +24,9 @@ render the molecule into the main window, for this see the derived
 classes in files (e.g. vtkgraph.py and openglgraph.py)
 """
 
+# Required so we can exit...
+import sys
+
 if __name__ == "__main__":
     
     # Before we do owt else, make sure we can import the modules that we need
@@ -131,7 +134,6 @@ http://public.kitware.com/VTK/get-software.php"""
     #print Pmw.__file__
     print
 
-    import sys
     # Append the gui directory to the PYTHONPATH
     # Need to trap the error here as whether this works depends on
     # whether the gui has been installed into a python distribution
@@ -144,13 +146,14 @@ http://public.kitware.com/VTK/get-software.php"""
 #    sys.path.append(gui_path)
     sys.path.append(paths['gui'])
 
-import sys,os,stat
+import os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
 from tkFileDialog import *
 from tkSimpleDialog import *
 from tkColorChooser import *
 from SimpleDialog import SimpleDialog
+import traceback
 
 import time
 from generic.graph import *
@@ -165,6 +168,7 @@ from viewer.shell import env, mypyshell
 #from viewer.paths import python_path, user_path
 from viewer.paths import paths
 
+#print dir()
 from interfaces.calc import *
 from interfaces.calced import *
 from interfaces.gamessuk import *
@@ -178,9 +182,9 @@ from interfaces.dalton import *
 from interfaces.charmm import *
 from interfaces.smeagol import *
 
-from interfaces.gamessoutputreader import *
-from interfaces.cubereader import *
-from interfaces.filepunch import *
+#from interfaces.gamessukIO import *
+#from interfaces.cubereader import *
+#from interfaces.filepunch import *
 #xml interface
 #from interfaces.filexml import *
 
@@ -198,6 +202,9 @@ import interfaces.am1calc, interfaces.calcmon
 from objects import symed, symdet
 import thread
 from viewer.rc_vars import rc_vars
+
+from interfaces.getfileio import GetFileIO
+
 
 def set_rc_var( name, value ):
     """
@@ -245,12 +252,14 @@ class TkMolView(Pmw.MegaToplevel):
         # Associate helpfile with widget
         viewer.help.sethelp(self.master,'Introduction')
 
-        #jmht test code
+        #jmhttest code
         self.master.bind_all("<q>",
                        lambda e,s=self: s.rotate_about_bond())
         #self.master.bind("<j>",lambda e,s=self: s.restore_saved_jobs())
 
         self.xmlreader = None
+        # jmht
+        self.getfileIO = None # object to get the correct reader for a file
     
         # Variables required by the AM1 optimiser
         #self.am1 = None
@@ -314,6 +323,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_command_window()
         #self.build_save_image_dialog()
         self.build_save_movie_dialog()
+        self.build_saveas_filetype_dialog()
 
         #Pass viewer object to the help.py module
         viewer.help.get_tkmolview(self)
@@ -341,6 +351,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.define_colourmaps()
 
         self.undo_stack = []
+
         #
         # This group of options can be set by the user from the 
         # Options tool
@@ -1186,6 +1197,165 @@ class TkMolView(Pmw.MegaToplevel):
             filetypes=[("JPEG","*.jpg")])
         if len(ofile):
             self.save_image2d(self.pane2d.GetRenderWindow(),ofile)
+
+    def build_saveas_filetype_dialog(self):
+        """ Create the dialog to use to query the user for the type
+        of file they would like to save as"""
+
+        # First variables used to pass data between the widgets
+        self.saveas_filetype_name = None
+        self.saveas_filetype_format=None
+        self.saveas_filetype_appendext=Tkinter.BooleanVar()
+        self.__saveas_oldext = None
+
+        self.saveas_filetype_dialog = Pmw.Dialog(
+            self.master,
+            buttons = ('Save','Cancel'),
+            title = 'Save As Filetype',
+            command = self.saveas_filetype_dialog_process)
+
+        # Only do this once
+        if not self.getfileIO:
+            self.getfileIO = GetFileIO()
+            items = self.getfileIO.GetOutputFiletypesAsString()
+
+        self.saveas_filetype_listbox = Pmw.ScrolledListBox(
+            self.saveas_filetype_dialog.interior(),
+            items=items,
+            labelpos='n',
+            label_text='Please select the type of file to save as',
+            listbox_selectmode='browse',
+            selectioncommand=self.saveas_filetype_addextension
+            )
+        
+        self.saveas_filetype_listbox.pack(expand=1,fill='both')                              
+
+        f = Tkinter.Frame( self.saveas_filetype_dialog.interior() )
+        f.pack(padx=5,pady=5)
+        flabel = Tkinter.Label(
+            f,
+            text='Saving as:',
+            #relief='raised',
+            padx=3,
+            pady=3
+                           )
+        flabel.pack(side='left')
+        self.saveas_filetype_label = Tkinter.Label(
+            f,
+            text=self.saveas_filetype_name,
+            relief='ridge',
+            bg='white')
+        self.saveas_filetype_label.pack(side='left')
+
+        extension = Tkinter.Checkbutton(
+            self.saveas_filetype_dialog.interior(),
+            text="Automatically Append Extension",
+            variable=self.saveas_filetype_appendext,
+            command=self.saveas_filetype_addextension
+            )
+        extension.pack()
+        self.saveas_filetype_dialog.withdraw()
+
+    def saveas_ask_filetype( self, filepath ):
+        """ Fire up the dialog to get the use to specify the type
+            of file they would like to save
+        """
+
+        # Need to ask the user to specify the type
+        self.saveas_filetype_name = filepath # Needed by the dialog
+
+        # Now set this as the variable in the widget
+        self.saveas_filetype_label.config( text=self.saveas_filetype_name )
+
+        # Highlight the first item in the list - need to do this before
+        # we activate the widget or otherwise we can't sent it events.
+        # Don't understand why we can't do this when we create the widget
+        # but it seems not to work - it also fails if the user tries to
+        # overwrite a file so it seems a bug with Tkinter
+        self.saveas_filetype_listbox.select_set( 0 )
+        self.saveas_filetype_dialog.activate()
+
+        format = self.saveas_filetype_format
+        filepath = self.saveas_filetype_name
+
+        return ( format, filepath )
+
+    def saveas_filetype_addextension(self):
+        """User has clicked the button asking us to automatically append
+           the extension. We add the extension if it wasn't
+           already there or remove it depending on the option selected.
+        """
+
+        doit = self.saveas_filetype_appendext.get()
+        if doit:
+            fpath = self.saveas_filetype_name
+            
+            # Get the extension - need to deal with the bug that nothing
+            # will be selected if the user tried to overwrite a file
+            try:
+                ftypestr = self.saveas_filetype_listbox.getvalue()[0]
+            except IndexError:
+                # Get the whole list & select the first one
+                ftypestr = self.saveas_filetype_listbox.get()[0]
+                
+            ext = ftypestr.split('[')[1].strip()[:-1]
+            #print "ext ",ext
+
+            # remember this as the old one
+            if not self.__saveas_oldext:
+                self.__saveas_oldext = ext
+
+            # Check if it's already appended
+            stem,cext = os.path.splitext( fpath )
+            #print "stem: %s cext %s" % (stem,cext)
+            newname = None
+            if not len(cext):
+                # No extension so we can just add it
+                newname = self.saveas_filetype_name+ext
+            else:
+                if cext == ext:
+                    # File already has the extension appended so pass
+                    pass
+                elif cext == self.__saveas_oldext:
+                    # Extension on file is the last one we added so we
+                    # remove it before added the new one
+                    newname,next = os.path.splitext( self.saveas_filetype_name )
+                    newname += ext
+                    
+            if newname:
+                # Set the old extension
+                self.__saveas_oldext = ext
+                # Set the name and the widget with it
+                self.saveas_filetype_name = newname
+                self.saveas_filetype_label.config( text=newname )
+                
+        else:
+            # Not appending extension - so remove it if it is already appended
+
+            # Get the extension - need to deal with the bug that nothing
+            # will be selected if the user tried to overwrite a file
+            try:
+                ftypestr = self.saveas_filetype_listbox.getvalue()[0]
+            except IndexError:
+                # Get the whole list & select the first one
+                ftypestr = self.saveas_filetype_listbox.get()[0]
+
+            ext = ftypestr.split('[')[1].strip()[:-1]
+            newname,next = os.path.splitext( self.saveas_filetype_name )
+            if next == ext:
+                self.saveas_filetype_name = newname
+                self.saveas_filetype_label.config( text=newname )
+        
+        
+    def saveas_filetype_dialog_process(self,result):
+        if result == 'Cancel':
+            self.saveas_filetype_format = None
+            self.saveas_filetype_name = None
+            self.saveas_filetype_dialog.deactivate()
+        elif result == 'Save':
+            ftypestr = self.saveas_filetype_listbox.getvalue()[0]
+            self.saveas_filetype_format = ftypestr.split('[')[0].strip()
+            self.saveas_filetype_dialog.deactivate()
 
     def loaded_mols(self):
         """Return a list of all molecules currently loaded"""
@@ -3171,416 +3341,136 @@ class TkMolView(Pmw.MegaToplevel):
     def colorheight(self):
         self.setheightcolor()
 
+            
     def ask_load_from_file(self):
         """Ask for a file to load structure from"""
-        filename = askopenfilename(
-            defaultextension='',
+
+        # Only do this once
+        if not self.getfileIO:
+            self.getfileIO = GetFileIO()
+
+        # Build up the list of tuples mapping FileTypes -> extensions
+        ftypes = self.getfileIO.GetInputFiletypesAsTuple()
+        
+        #print "ftypes is ",ftypes
+        filepath = tkFileDialog.askopenfilename(
+#            defaultextension='',
             initialdir=paths['user'],
-            filetypes=[('Molecules','.xyz'),
-                       ('Molecules','.pdb'),
-                       ('Molecules','.pun'),
-                       ('Molecules','.c'),
-                       ('Molecules','.crd'),
-                       ('Molecules','.z'),
-                       ('Molecules','.cml'),
-                       ('Molecules','.xml'),
-                       ('Molecules','.zmt'),
-                       ('Molecules','.gjf'),
-                       ('Molecules','.mol'),
-                       ('AgentX Ontology','.owl'),
-                       ('AgentX RDFMap','.rdf'),
-                       ('XYZ','.xyz'),
-                       ('PDB','.pdb'),
-                       ('PDB','.PDB'),
-                       ('CML','.cml'),
-                       ('CML','.xml'),
-                       ('DL_POLY CONFIG','CONFIG'),
-                       ('DL_POLY HISTORY','HISTORY'),
-                       ('Zmatrix','.zmt'),
-                       ('Spartan Input','.spinput'),
-                       ('GAMESS-UK Input','.in'),
-                       ('Other Output','.out'),
-                       ('Gaussian Output','.gjf'),
-                       ('Gaussian Cube','.cube'),
-                       ('Smeagol Input','.fdf'),
-                       ('All', '*')])
+            filetypes=ftypes)
+        
+        if not filepath:
+            print "No file selected"
+            return None
 
-        if filename:
+        self.load_from_file( filepath )
 
-            print 'ATTEMPT LOAD',filename
-
-            err = self.load_from_file( filename )
-            if err == -1:
-                self.error( "There was a problem reading in structures from the file:\n%s\n\
-Please check the output on the terminal/log file for further information." % filename )
-                return
-            elif err == 2: # for reading xml ontologies or other files that don't return objects
-                return
+    def load_from_file(self,filepath):
+        """load structure from a file"""
+        
+        print 'ATTEMPT LOAD',filepath
+        
+        # Only do this once
+        if not self.getfileIO:
+            self.getfileIO = GetFileIO()
             
-            # add to any open dialogs
-            self.__update_data_list()
-
-            # store the directory part for future file operations
-            dirname = os.path.dirname(filename)
-            paths['user'] = dirname
-            print 'user directory is now',paths['user']
-
-
-    def load_from_file(self,filename=None):
-
-        if not filename:
-            print 'Must specify a file to read!'
+        # See if we have a reader suitable for the selected file
+        reader = self.getfileIO.GetReader( filepath=filepath )
+        if not reader:
+            self.error( "A suitable reader for the file %s could not be found!" % filepath )
             return
-        
-        words2 = string.split(filename,'/')
-        name = words2[-1]
-        words = string.split(name,'.')
-        root = words[0]
-        objs = []
-        
-        form = 'PUN'
 
-        molecular_format = 1
-
-        if len(words) == 1:
-            if root == 'CONFIG':
-                form = 'dlpcfg'
-                print 'form=dlpcfg'
-            elif root == 'HISTORY':
-                form = 'dlphist'
-                print 'form=dlphist'
-                molecular_format = 0
-        else:
-            ext = words[-1]
-            if ext == 'xyz':
-                form = 'XYZ'
-            if ext == 'pdb':
-                form = 'PDB'
-            if ext == 'PDB':
-                form = 'PDB'
-            if ext == 'crd':
-                form = 'CRD'
-            if ext == 'pun':
-                form = 'PUN'
-            if ext == 'c':
-                form = 'PUN'
-            if ext == 'z':
-                form = 'PUN'
-            if ext == 'zmt':
-                form = 'ZMT'
-            # AgentX
-            if ext == 'cml':
-                #form = 'CML'
-                form = 'XML'
-            if ext == 'xml':
-                #form = 'CML'
-                form = 'XML'
-            if ext == 'owl':
-                form = 'ONT'
-            if ext == 'rdf':
-                form = 'MAP'
-            if ext == 'spinput':
-                form = 'SPARTAN'
-            if ext == 'gjf':
-                form = 'GAU'
-            if ext == 'cube':
-                form = 'CUBE'
-            if ext == 'mol':
-                form = 'MOL'
-            # Smeagol Readers
-            if ext == 'RHO' or ext == 'fdf' or ext == 'ANI':
-                form = 'SMG'
-            #if ext == 'ANI':
-            #    form = 'XYZ_seq'
-            if ext == 'vtk':
-                form = 'vtk'
-            elif ext == 'sys':
-                form = 'SYS'
-            elif ext == 'bs':
-                form = 'XBS'
-            elif ext == 'out':
-                form = 'OUT'
-            elif ext == 'in':
-                form = 'GAMIN'
-
-        if form == 'PDB':
-            objs = self.rdpdb(filename,root)
-        elif form == 'PUN':
-            objs = self.rdpun(filename,root)
-        elif form == 'ZMT':
-            objs = self.rdzmt(filename,root)
-        elif form == 'XML':
-            objs = self.rdxml(filename,root)
-        # ONT & MAP are different in that they don't return any objects
-        # so we return their exit codes directly
-        elif form == 'ONT':
-            return self.rdont(filename,root)
-        elif form == 'MAP':
-            return self.rdmap(filename,root)
-        elif form == 'GAMIN':
-            objs = self.rdgamin(filename,root)
-        elif form == 'MOL':
-            objs = self.rdmol(filename,root)
-        elif form == 'SMG':
-            objs = self.rdsmeagol(filename,root,ext)
-        elif form == 'vtk':
-            objs = self.rdvtk(filename,root)
-        elif form == 'dlpcfg':
-            print 'calling rdcfg'
-            objs = self.rdcfg(filename)
-        elif form == 'dlphist':
-            print 'calling rdhist'
-            objs = self.rdhist(filename)
-        elif form == 'CUBE':
-            objs = self.rdcube(filename)
-        elif form == 'SPARTAN':
-            objs = self.rdsptn(filename)
-        elif form == 'OUT':
-            objs = self.rdout(filename,root)
-        else:
-            fileh = open(filename,'r')
-            if form == 'XYZ':
-                objs = self.rdxyz(fileh,root)
-            elif form == 'XYZ_seq':
-                objs = self.rdxyz(fileh,root,sequence=1)
-            elif form == 'CRD':
-                objs = self.rdcrd(fileh,root)
-            elif form == 'GAU':
-                objs = self.rdgjf(fileh,root)
-            else:
-                print 'No reader for format ',form
-            fileh.close()
-
-        if molecular_format:
-            if not objs:
-                return -1
-            else:
-                for o in objs:
-                    print 'obj',o
-                    t = id(o)
-                    self.file_dict[t] = file
-        return 0
-                
-    def rdout(self,filename,root):
-        """
-           We scan the output to determine what sort of output we are reading
-           and then call the relevant reader to parse the file. We then return
-           the objects found by the reader.
-        """
-
-        objs = None
-        prog = self.scan_output( filename )
-        if not prog:
-            print "Cannot determine output file type for file: %s" % filename
-            return None
-        elif ( prog == "GAMESS-UK"):
-            objs = self.rdgamout( filename, root )
-        elif ( prog == "DALTON"):
-            objs = self.rddalout( filename, root )
-        else:
-            print "Bad output type returned by scan_output!"
-
-        return objs
-
-    def scan_output(self, filename):
-        """ Scan through an output to determine which programme produced it
-            We compare each line against a list of regular expressions that
-            are considered indicative of a particular programmes output and then
-            break out as soon as we hit a match.
-        """
-
-        # Dictionary to hold regular expressions and the return value
-        redict = {
-            re.compile('\s*\*\s*===  G A M E S S - U K    ===\s*\*') : 'GAMESS-UK',
-            re.compile('\s*\*{11}  DALTON - An electronic structure program  \*{11}') : 'DALTON',
-            }
-        
-        f = open( filename, 'r' )
-
-        done = None
-        retval = None
-        while not done:
-
-            line = f.readline()
-            if not line:
-                print "Error reading file in scan_output!"
-                done = 1
-                break
-            
-            for myre in redict.items():
-                if myre[0].match( line ):
-                    retval = myre[1]
-                    done = 1
-                    break
-
-        f.close()
-        return retval
-        
-    def rdzmt(self,file,root):
-        """Load from a zmatrix
-        """
-        model = Zmatrix(file=file)
-        model.title = root
-        model.name = self.make_unique_name(root)
-        self.connect_model(model)
-        self.quick_mol_view([model])
-        self.append_data(model)
-        return [model]
-
-    def get_xmlreader(self):
-        """ Try and return an XML Reader - trap an import failure if agentX
-            ins't available.
-        """
-        if self.xmlreader:
-            return self.xmlreader
-
-        print "no existing xmlreader-creating new"
         try:
-            from interfaces.filexml import XMLReader
-            self.xmlreader = XMLReader()
-            return self.xmlreader
-        except ImportError:
-            self.error("Cannot import AgentX reader! Please install agentX and then restart the CCP1GUI.")
-            return None
+            objects = reader.GetObjects()
+        except Exception,e:
+            self.error( "There was a problem reading in structures from the file:\n%s\n\
+            Please check the output on the terminal/log file for further information." % filepath )
+            # Print a traceback to stderr for information
+            print "Printing traceback"
+            traceback.print_exc()
+            return
 
-    def rdont(self,file,root):
-        """ Read in an agentX ontology """
-
-        global rc_vars
-
-        xd = self.get_xmlreader()
-        if not xd:
-            return -1
-        err = xd.read_ontology(file)
-        if err:
-            print "There was an error reading the ontology file!"
-            return -1
-        else:
-            print "Read ontology from: %s " % file
-            # set the rc_vars so that we don't have to read this in each time
-            rc_vars['AgentX_ontology'] = file
-            return 2
+        if objects:
+            name = reader.name
+            self.import_view_objects( objects, name=name  )
+            #self.info("Imported %s objects for viewing" % len(objects))
         
-    def rdmap(self,file,root):
-        """ Read in an agentX mapping file """
-        
-        global rc_vars
+        # Set this directory as the cwd for future operations
+        dirname = os.path.dirname(filepath)
+        paths['user'] = dirname
+        print 'user directory is now',paths['user']
 
-        xd = self.get_xmlreader()
-        if not xd:
-            return None
-        err = xd.read_mappings(file)
-        if err:
-            print "There was an error reading the Mapping file!"
-            return -1
-        else:
-            print "Read mapping from: %s " % file
-            # set the rc_vars so that we don't have to read this in each time
-            rc_vars['AgentX_mapping'] = file
-            return 2
-    
-    def rdxml(self,file,root):
-        """ Read in an xml output using agentX """
 
-        global rc_vars
-        
-        xd = self.get_xmlreader()
-        if not xd:
-            return None
+    def import_view_objects( self, objects,name=None ):
+        """ Import a selection of objects into the GUI """
 
-# Can't check if we don't have ontology/mapping files as AgentX can get it's mappings and
-# ontologies from the working directory or a URL can be embedded in the actual xml file,
-# so not having a mapping or ontology cannot be considered an error
-
-#         # If the reader does not already have on owl or map file, we check to see if there
-#         # is one in the rc_vars
-        if not xd.owl_file:
-            print "checking rc_vars for an ontology file..."
-            # See if we've ontology/mapping files in the rc_vars and load then if so
-            if rc_vars.has_key('AgentX_ontology'):
-                ofile = rc_vars['AgentX_ontology']
-                if ofile and os.access( ofile, os.R_OK):
-                    err = xd.read_ontology(ofile)
-                    if err == -1:
-                        print "Error reading in existing ontology from rc_vars: %s" % ofile
-                    else:
-                        print "Read in AgentX ontology file specified in rc_vars: %s" % ofile
-                        
-        if not xd.rdf_file:
-            print "checking rc_vars for a mapping file..."
-            if rc_vars.has_key('AgentX_mapping'):
-                ofile = rc_vars['AgentX_mapping']
-                if ofile and os.access( ofile, os.R_OK):
-                    err = xd.read_mappings(ofile)
-                    if err == -1:
-                        print "Error reading in AgentX mapping file specified in rc_vars: %s" % ofile
-                    else:
-                        print "Error eading AgentX mapping file from rc_vars: %s" % ofile
-
-        xd.read_data_file(file)
-        if(xd.xml_error):
-            print "Error while reading XML data file!"
-            return None
-        
-        xd.read_coordinates(root)
-        if(xd.xml_error):
-            print "Error while reading XML coordinates!"
-            return None
-        
-        xd.read_normal()
-        if(xd.xml_error):
-            print "Error while reading XML normal coordinates!"
-            return None
-        
-        if len( xd.objects ) <= 0:
-            print "AgentX reading did not generate any errors but no objects are present!"
-            print "Data file was: ",file
-            return None
-        
-        # Reading went o.k. so if there are any objects copy them so
-        # that we can destroy the xd reader object - otherwise it persists
-        # and keeps using the old data objects - currently there is no way
-        # to destory the data objects and keep the owl and map file references
-        objects = copy.deepcopy (xd.objects)
-        
-        # Destroy reader
-        xd.cleanup()
-        xd = None
-        self.xmlreader = None
-
+        if not name:
+            name = 'untitled'
+            
+        mols = []
+        trajectories = []
         for o in objects:
+            
+            myclass = self.get_class( o )
+            print 'import_view_objects: obj',o
+            print 'class ',myclass
 
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-            o.name = self.make_unique_name(root,o.title)
+            #print 'unique',root, o.title
+            #root = os.path.basename( filepath )
+            #o.name = self.make_unique_name(root,o.title)
+            o.name = self.make_unique_name(name,title=o.title)
+            #print 'o.name is', o.name
 
-            if myclass == 'VibFreq' :
+            if myclass == 'VibFreq':
+                self.append_data(o)
+
+            elif myclass == 'VibFreqSet' :
                 self.append_data(o)
 
             elif myclass == 'Indexed' or myclass == 'Zmatrix':
+
                 # will need to organise together with other results
                 # assume overwrite for now
 
-                self.append_data(o)
-                if len(o.atom) < 150:
-                    self.connect_model(o)
-                self.quick_mol_view([o])
+                if len( o.atom ) < 500:
+                    o.connect()
 
+                self.append_data(o)
                 # Used by visualisers
                 #o.title = name
                 #o.list()
+                mols.append(o)
+
+            elif myclass == 'ZmatrixSequence':
+                
+                if len( o.atom ) < 500:
+                    o.connect()
+                    
+                self.append_data(o)
+                trajectories.append(o)
 
             elif myclass == 'Brick':
                 self.append_data(o)
 
             elif myclass == 'Field':
                 self.append_data(o)
+                
+            elif myclass == 'Dl_PolyHISTORYFile':
+                self.append_data(o)
+                
+            else:
+                print "import_view_objects unknown class ",myclass
 
-            if self.debug:
-                print 'data list', self.data_list
+            # Below wasn't working
+            # Add to the main dictionary
+            #t = id(o)
+            #self.file_dict[t] = file
+                
+        self.quick_mol_view(mols)
+        self.quick_trajectory_view(trajectories)
+        # add to any open dialogs
+        self.__update_data_list()
+            
 
-        return objects
 
 #     def rdcml(self,file,root):
 #         import cml
@@ -3615,542 +3505,7 @@ Please check the output on the terminal/log file for further information." % fil
 #         ###self.connect_model(model)
 
 #         return [model]
-
-    def rdgamout(self,file,root):
-        """ Read in the structures from a GAMESS-UK output file. This uses
-            the reader in ccp1gui/gamessoutreader.py, which returns a list
-            of molecules. In retrospect it may be better to sort this bit
-            out of the reader and create a file to collect all the readers
-            together.
-        """
-
-        maxmol = 10 # max number of molecules acceptable before we don't display them
-        r = GamessOutputReader(file)
-        count = 1
-        for model in r.molecules:
-            if r.title:
-                model.title = r.title
-            else:
-                model.title = "Mol from " + file
-            if len(r.molecules) > 1:
-                model.title = model.title + ' # ' + str(count)
-            model.name = self.make_unique_name(root)
-            self.append_data(model)
-            self.connect_model(model)
-            count = count + 1
-            
-        # If we have less than molecules, show them all - otherwise just show
-        # the first and last
-        if len(r.molecules) <= maxmol:
-            self.quick_mol_view(r.molecules)
-        else:
-            self.quick_mol_view(r.molecules, noshow=1)
-            # bit of a hack - just display the first and last molecules
-            first = id(r.molecules[0])
-            last = id(r.molecules[-1])
-            v =  self.vis_dict[first][0]
-            v.Show()
-            v =  self.vis_dict[last][0]
-            v.Show()
-
-        if len(r.normalModes) > 0:
-            # Create a VibFreqSet object to hold the vibrations
-            vs=VibFreqSet()
-            # Get reference mol from first vib
-            mol = r.normalModes[0].reference
-            vs.reference=mol
-            vs.title = "modes of " + mol.title
-            vs.name = "modes of " + mol.title
-            for vib in r.normalModes:
-                vib.name = self.make_unique_name(root,vib.title)
-                vs.vibs.append( vib )
-            self.append_data( vs )
-
-        if len( r.molecules ) == 0:
-            return None
-        else:
-            #return [ r.molecules ]
-            return r.molecules
-
-    def rdgamin(self,filename,root):
-        """ Read a GAMESS-UK input file. Currently this only reads in the
-            structure of the molecule and no calculation details. It parses
-            the z-matrix into a list and then uses the ZMatrix method with the
-            load from list method. If it encounters a geom field it assumes everything
-            that follows is gamess cartesian format and reformats each string so that it
-            can be handled by the list method.
-        """
-        print "Reading GAMESS-UK input file: %s" % filename
-
-        # root is the default filename, file is the filename, not the file handle
-        try:
-            file  = open(filename,'r')        #The file descriptor
-        except:
-            print 'Error opening file: %s in rdgamin' % fileName
-            return None
         
-        # loop to find where the coordinate specification starts
-        finished = 0
-        while not finished:
-            line = file.readline()
-            if not line: # EOF so return 
-                finished = 1
-                return None
-                break
-
-            line = string.strip( line )
-            line = string.lower( line )
-            
-            if line:
-                fields = string.split( line )
-            else:
-                # ignore empty lines
-                continue
-            if ( fields[0][0:4] == "zmat" ):
-                mode = 'z'
-                finished = 1
-            elif ( fields[0][0:4] == "cart" ):
-                mode = 'x'
-                finished = 1
-            elif ( fields[0][0:4] == "geom"):
-                # Check for NWChem input style
-                if ( len(fields) == 3 and fields[2][0:4] == 'nwch'):
-                    mode = 'n'
-                else:
-                    mode = 'x'
-                finished = 1
-
-        zmat_buffer = []
-
-        # We should now be at the start of a line beginning with zmat or geom
-        # Append the header line we just read:
-        zmat_buffer.append( line )
-        
-#        if ( fields[0][0:4] == "zmat" ):# start
-#            mode = 'z'
-#        elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
-#            mode = 'x'
-#             if ( len( fields ) > 1 ):
-#                 if ( fields[1][0:4] == "angs" ):
-#                     zmat_buffer.append( "coordinates angstrom" )
-#                 elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
-#                     zmat_buffer.append( "coordinates bohr" )
-#                 else:
-#                     print "Unknown modifier for geometry directive!"
-#                     print "Offending line is %s" % line
-#                    zmat_buffer.append( "coordinates" )
-#        else:
-#            # shouldn't ever get here
-#            print "Error reading GAMESS-UK input"
-#           return 1
-
-        # loop to read in the coordinates
-        reading = 1
-        while ( reading ):
-            line = file.readline()
-
-            if not line: # EOF so return 
-                reading = 0
-                print "ERROR! Encountered EOF while reading in coordinates from GAMESS-UK Input file!"
-                return None
-                break
-        
-            line = string.strip( line )
-            line = string.lower( line )
-            
-            if line:
-                # See if the line has commas in it, as GAMESS-UK supports this as a
-                # separator as well as whitespace
-                if re.compile(",").search( line ):
-                    fields = string.split( line, ','  )
-                    line = string.join( fields ) # Rejoin split line using space as separator
-                else:
-                    fields = string.split( line )                    
-            else:
-                # ignore empty lines
-                continue
-
-            if ( fields[0][0] == "#" or fields[0][0] == "?" ): # ignore comments
-                continue
-            elif ( fields[0][0:3] == "end" ): # stop
-                zmat_buffer.append( "end" )
-                reading = 0
-            else:
-                if mode == 'z':
-                    zmat_buffer.append( line )
-                elif mode == 'x': # reformat the line
-                    cart_string = fields[4] + "\t" + fields[0] + "\t" \
-                                  + fields[1] + "\t" + fields[2]
-                    zmat_buffer.append( cart_string )
-                elif mode == 'n':
-                    # Reformat the string from NWChem input format
-                    cart_string = fields[0] + "\t" + fields[2] + "\t" \
-                                  + fields[3] + "\t" + fields[4]
-                    zmat_buffer.append( cart_string )
-                    
-
-        #self.debug = 1
-        if ( self.debug == 1 ):
-            print "viewer/main.py: rdgamin read zmat_buffer:"
-            for line in zmat_buffer:
-                print "zmat: ",line
-
-        # Now we've got a buffer with the coordinates, create the model
-        model = Zmatrix( list = zmat_buffer )
-        model.title = root
-        model.name = self.make_unique_name(root)
-        self.connect_model(model)
-        self.quick_mol_view([model])
-        self.append_data(model)
-
-        return [model]
-        
-    def rddalout( self, filename, root ):
-        """ Get the structures from a Dalton Output file
-        """
-        d = DaltonOutputReader( ofile = filename )
-        molecules = d.get_molecules()
-
-        if not molecules:
-            return None
-        
-        count = 1
-        for mol in molecules:
-            if d.title:
-                mol.title = d.title
-            else:
-                mol.title = "Mol from " + filename
-            if len( molecules ) > 1:
-                mol.title = mol.title + ' # ' + str(count)
-            mol.name = self.make_unique_name(root)
-            mol.connect()
-            self.quick_mol_view([mol])
-            self.append_data(mol)
-            #self.connect_model(mol)
-            count = count + 1
-        return [ molecules ]
-
-
-    def rdxyz(self,file,root,sequence=None):
-        """ Read in cartesian coordinates in XMOL .xyz file format.
-            The xyz format can contain multiple frames so we need to
-            check if we have come to the end of one frame and need to
-            start another
-            The optional sequence flag indicates if we should create a
-            ZmatrixSequence of the molecules in the file
-        """
-
-        if sequence:
-            ZmatSeq = ZmatrixSequence()
-        else:
-            models = []
-            
-        finished = 0
-        line = file.readline()
-        while( not finished ): # loop to cycle over all the frames
-            words = string.split(line)
-
-            # First word specifies the number of atoms
-            try:
-                natoms = int(words[0])
-            except:
-                finished = 1
-                break
-
-            model = Zmatrix()
-            model.title = root
-            model.name = self.make_unique_name(root)
-
-            line = file.readline() # First line is a comment so ignore it
-            for i in range(natoms):
-                line = file.readline()
-
-                # Make sure we got something to read...
-                if not line:
-                    print "Error reading coordinates in rdxyz!"
-                    finished = 1
-                    break
-                    
-                # Check we are not at the end of the current frame
-                words = string.split(line)
-                if ( len( words ) != 4 ):
-                    print "Error reading coordinates in rdxyz!"
-                    print "Offending line is: %s" % line
-                    break # jump out of for loop and start next cycle
-                
-                atsym = words[0]
-                try:
-                    x = float(words[1])
-                    y = float(words[2])
-                    z = float(words[3])
-                    a = ZAtom()
-                    a.coord = [x,y,z]
-                    a.symbol = name_to_element( words[0] )
-                    a.name = a.symbol + string.zfill(i+1,2)
-                    model.atom.append(a)
-                except:
-                    print "Error reading coordinates in rdxyz!"
-                    print "Offending line is: %s" % line
-                    break # jump out of for loop and start next cycle
-
-            if sequence:
-                ZmatSeq.add_molecule(model)
-            else:
-                self.connect_model(model)
-                self.quick_mol_view([model])
-                self.append_data(model)
-                models.append( model )
-                
-            # Go back to top of while loop with next line
-            line = file.readline()
-
-        if sequence:
-            ZmatSeq.connect()
-            # Name the sequence after the first molecule
-            ZmatSeq.name = ZmatSeq.frames[0].name
-            self.append_data(ZmatSeq)
-            return [ZmatSeq]
-        else:
-            if len( models ) == 0:
-                return None
-            else:
-                return models
-
-    def rdgjf(self,file,root):
-        """Load a zmatrix from a Gaussian input file
-        """
-        line = file.readline()
-        zmatrix=[]
-        zmatrix.append('zmatrix angstrom')
-        linecount = -1
-        zmat=0 
-        oldmode = ''
-        while line:
-            linecount = linecount+1
-            line=string.lstrip(line)
-            fields = string.split(line)
-            if not zmat: #Clumsy check for charge/spin field before gaussian zmatrix
-                if len(fields) == 2:
-                    try:
-                        int(fields[0])
-                    except:
-                        line=file.readline()
-                        continue
-                    try:
-                        int(fields[1])
-                        zmat = 1
-                        line=file.readline()
-                        continue
-                    except:
-                        line=file.readline()
-                        continue
-                else:
-                    line = file.readline()
-                    continue
-            if zmat:
-                if len(fields) == 1: #can add various keyword stuff here
-                      if str(fields[0])[:4] == 'vari':
-                            mode = 'vari'
-                            line=file.readline()
-                            continue
-                elif len(fields) == 5:
-                      mode = 'cart'
-                elif len(fields) == 7:
-                      mode = 'inte'
-                elif len(fields) == 2:
-                      mode = 'vari'
-
-                if (mode == 'cart'):
-                      if (oldmode != 'cart'):
-                            zmatrix.append('cartesian')
-                      zmatrix.append(fields[0]+' '+fields[2]+' '+fields[3]+' '+fields[4])
-                      oldmode = 'cart'
-
-                if mode == 'inte':
-                      if (oldmode != 'inte'):
-                            zmatrix.append('internal')
-                      zmatrix.append(string.join(fields,' '))
-                      oldmode = 'inte'
-
-                if mode == 'vari':
-                      if (oldmode != 'vari'):
-                            zmatrix.append('variables')
-                      zmatrix.append(string.join(fields,' '))
-                      oldmode = 'vari'
-
-            line = file.readline()
-
-        zmatrix.append('end\n')
-        model = Zmatrix(list=zmatrix)
-        model.title = root
-        model.name = self.make_unique_name(root)
-        self.connect_model(model)
-        self.quick_mol_view([model])
-        self.append_data(model)
-        return [model]
-
-    def rdmol(self,file,root):
-        """Read in a small molecule from a file in MDL .mol file format. This reader
-        has been constructed from the information found at:
-        http://www.eyesopen.com/docs/html/smack/node13.html
-        If this reader doesnt work it is almost certainly THEIR problem not MINE...
-        """
-
-        # root is the default filename, file is the filename, not the file handle
-        molname = root
-
-        f = open( file, 'r' )
-
-        #Header block contains 3 lines: name, info & a comment - only need the name if present
-        line = string.strip( f.readline() )
-        if line:
-            molname = string.split(line)[0]
-
-        # set up the model
-        model = Zmatrix()
-        model.title = molname
-        model.name = self.make_unique_name(molname)
-
-        # Skip the other two header lines
-        f.readline()
-        f.readline()
-
-        # Now read in # of molecules and bonds
-        line = f.readline()
-        try:
-            natoms = int( line[0:3] )
-            nbonds = int( line[4:6] )
-        except:
-            print "Error reading in # of atoms and bonds in rdmol!"
-            return
-
-        # Now cycle over the atom block reading in the coordinates
-        atom_count = 0
-        while ( atom_count < natoms ):
-            line = f.readline()
-            if ( not line or ( len(line) < 39 )  ):
-                print "Error reading in atoms in rdmol!"
-                return
-            try:
-                x = float( line[0:9] )
-                y = float( line[10:19] )
-                z = float( line[20:29] )
-                symbol = string.strip( line[31:33] )
-                charge = int( line[35:37] )
-            except:
-                print "Error reading atom line in rdmol!"
-
-            a = ZAtom()
-            a.coord = [ x, y, z ]
-            a.symbol = string.capitalize(symbol)
-            a.name = a.symbol + string.zfill(atom_count+1,2)
-            model.atom.append(a)
-            atom_count += 1
-
-        # Index the model or adding bonds wont work
-        model.reindex()
-
-        # Now read in the bond block
-        bond_count = 0
-        while ( bond_count < nbonds ):
-            line = f.readline()
-            if ( not line or ( len(line) < 9 )  ):
-                print "Error reading in bonds in rdmol!"
-                return
-            try:
-                i1 = int( line[0:3] )
-                i2 = int( line[4:6] )
-                bond_order = int( line[7:9] )
-            except:
-                print "Error reading bond line in rdmol!"
-
-            atom1 = model.atom[i1-1] # Rem we index from 0 , they start at 1
-            atom2 = model.atom[i2-1]
-            model.add_bond( atom1, atom2 )
-            bond_count += 1
-
-        f.close()
-        self.update_from_object(model)
-        self.quick_mol_view([model])
-        self.append_data(model)
-        return [ model ]
-    
-    def rdvtk(self,file,root):
-        """ Read in data contained in a vtk format file.
-            This is currrently a pretty brain-dead hack
-            that assumes we are reading in structured points
-            with aligned axes.
-        
-         """
-        import vtk
-
-        print "Reading VTK File"
-        
-        # Instantiate the field object
-        field = objects.field.Field()
-        
-        reader = vtk.vtkDataSetReader()
-        reader.SetFileName(file)
-        field.vtkdata = reader.GetStructuredPointsOutput()
-        #field.data = reader.GetStructuredGridOutput()
-       
-        if not field.vtkdata:
-            print "Error creating data object while reading vtk file!"
-            return 1
-
-        #print field.data
-        field.title = root
-        field.name = self.make_unique_name(root)
-        self.append_data(field)
-        
-        return [field]
-   
-    def rdsmeagol(self,file,root,ext):
-        """ Read in the ouptut of the smeagol programme
-            This uses the reader defined in the file interfaces/smeagolreader.py
-        """
-
-        # file is the path to the file
-        # root is the filename minus suffix
-        # ext is the filname extension
-        try:
-            from interfaces.smeagolreader import SmeagolReader
-        except e:
-            print "Cannot import smeagolreader in main.py rdsmeagol!"
-            print e
-            return
-
-        # Instantiate the SmeagolReader
-        smeagolreader = SmeagolReader()
-
-        if ( ext ):
-            smeagolreader.read( file, ftype=ext )
-        else:
-            smeagolreader.read( file )
-
-        for o in smeagolreader.objects:
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-            #print 'unique',root, o.title
-            o.name = self.make_unique_name(root,o.title)
-
-            if myclass == 'Indexed' or myclass == 'Zmatrix' or myclass == 'ZmatrixSequence' :
-                self.update_from_object(o)
-                if myclass == 'ZmatrixSequence':
-                    self.quick_trajectory_view([o])
-                else:
-                    self.quick_mol_view([o])
-                self.append_data(o)
-                
-            elif myclass == 'Field' :
-                self.append_data(o)
-            else:
-                print "Unknown class returned by smeagolreader!"
-
-            return smeagolreader.objects
-        
-
     def append_data(self, data):
         self.data_list.append(data)
         # Initially the callback list is empty
@@ -4234,318 +3589,6 @@ Please check the output on the terminal/log file for further information." % fil
                 except KeyError:
                     print 'calced_dict entry missing??'
 
-    def rdcrd(self,file,root,map=charmm_map):
-        """Loader for CHARMM CRD format files"""
-
-        t=CRDReader(None,filepointer=file,root=root,map=charmm_map)
-
-        # SHOW THEM ALL
-        for model in t.objects:
-            model.name = self.make_unique_name(root)
-            self.connect_model(model)
-            self.quick_mol_view([model])
-            self.append_data(model)
-        return t.objects
-
-    def wrtpdb(self,file,model):
-        """PDB reader, based on Konrad Hinsens Scientific Python"""
-
-        from Scientific.IO import PDB
-        pdbf = PDB.PDBFile(file,mode='w')
-        for atom in model.atom:
-            d = { 'position': atom.coord, 'name' : atom.name }
-            pdbf.writeLine('ATOM',d)
-
-    def rdpdb(self,file,root,map=charmm_map):
-        """PDB reader, based on Konrad Hinsens Scientific Python"""
-
-        model = Zmatrix()
-        model.title = root
-        model.name = self.make_unique_name(root)
-
-        from Scientific.IO import PDB
-
-        conf = PDB.Structure(file)
-        print conf
-        i=0
-        trans = string.maketrans('a','a')
-        for residue in conf.residues:
-            for atom in residue:
-                #print atom
-                atsym = atom.name
-
-                x = atom.position[0]
-                y = atom.position[1]
-                z = atom.position[2]
-                # atno = Element.sym2no[atsym]
-                a = ZAtom()
-                a.coord = [x,y,z]
-
-                print atsym
-
-                try:
-                    # for newer versions of Scientific
-                    a.symbol = atom['element']
-                except KeyError:
-                    try:
-                        txt_type = string.strip(atsym)
-                        txt_type = string.upper(txt_type)
-                        print 'trying to map',atsym
-                        a.symbol = map[txt_type]
-                        print 'done',a.symbol
-                        #a.name = a.symbol + string.zfill(i+1,2)
-                    except KeyError:
-                        a.symbol = string.translate(atsym,trans,string.digits)
-                        a.symbol = string.capitalize(a.symbol)
-
-                if 0:
-                    a.name = atsym
-                else:
-                    a.name = a.symbol + string.zfill(i+1,2)
-                model.atom.append(a)
-                #print 'get number', a.symbol, a.get_number()
-                i=i+1
-
-        self.connect_model(model)
-        self.quick_mol_view([model])
-        self.append_data(model)
-
-        return [model]
-
-    def rdcfg(self,file):
-        print 'rdcfg'
-        reader = Dl_PolyCONFIGReader()
-        model = reader.scan(file)
-        print 'result', model
-        print 'result', model.list()
-        self.connect_model(model)
-        self.append_data(model)
-        self.quick_mol_view([model])
-        return [reader.model]
-
-    def rdhist(self,file):
-        print 'rdhist traj version'
-        # this should wrap the object such that it gets shown as a trajectory
-        obj = Dl_PolyHISTORYFile(file)
-        self.append_data(obj)
-        return [ ]
-
-    def rdhist_old(self,file):
-        print 'rdhist'
-        reader = Dl_PolyHISTORYReader()
-        models = reader.scan(file)
-        for model in models:
-            print 'result', model
-            print 'result', model.list()
-            self.connect_model(model)
-            self.append_data(model)
-            self.quick_mol_view([model])
-        return models
-
-
-    def rdcube(self,file):
-        print 'rdcube'
-        reader = CubeReader()
-        (model,field) = reader.ParseFile(file)
-        model.name = self.make_unique_name("Structure from " + file)
-        field.name = self.make_unique_name("Grid from " + file)
-        self.connect_model(model)
-        self.append_data(model)
-        self.quick_mol_view([model])
-        self.append_data(field)
-        return [model,field]
-
-    def rdsptn(self,filename):
-        """ V. basic reader for spartan input files written only having seen 2 files
-            Assumes that the format of the files is:
-            3 or 4 (for us) uniteresting lines followed by a line with the charge & spin then a
-            sequence of lines each of which is charge, x, y, z terminated by a line
-            with ENDCAR
-            There may then be an optional block starting with the line "ATOMLABELS"
-            that contains a list of the names for the previously read in atoms with one
-            label per atom
-        """
-        if self.debug:
-            print "Reading Spartan input file: %s" % filename
-
-        try:
-            f = open(filename,'r')
-        except Exception,e:
-            print "rdsptn: error opening file: %s!\n%s" % (filename,e)
-            return None
-
-        #Read 1st 3 lines
-        for i in range(3):
-            line = f.readline()
-
-        # Check if this is the charge/spin line 
-        fields = line.split()
-        if len(fields) != 2:
-            # line is not charge/spin so skip to next
-            line = f.readline()
-
-        # read in initial coordinates
-        natom = 0
-        atoms_read = [] # list - each item is list [ tag, charge, x, y, z ]
-        while 1:
-            line = f.readline()
-            if not len(line):
-                # EOF
-                print "rdsptn: EOF before ENDCART label!"
-                break
-            
-            line = line.strip()
-
-            if len(line) >= 7 and line[0:7] == 'ENDCART':
-                print "rdsptn: got end coords"
-                # End of coordinates
-                break
-
-            fields = line.split()
-            # Each line should be charge, x, y, z
-            if len(fields) >= 4:
-                try:
-                    atoms_read.append( [ None,
-                                       int(fields[0]),
-                                       float(fields[1]),
-                                       float(fields[2]),
-                                       float(fields[3]) ])
-                except Exception,e:
-                    print "rdsptn: error reading coords!\nLine was: %s\nError:%s" % (line,e)
-                    break
-                natom+=1 # incrememt atom counter
-            else:
-                print "rdsptn: invalid coord line?: %s" % line
-
-
-        # Now check for labels
-        labels = None
-        while 1:
-            line = f.readline()
-            if not len(line):
-                # EOF
-                print "rdsptn: EOF before got labels"
-                break
-            
-            line = line.strip()
-
-            if len(line) >= 10 and line[0:10] == 'ATOMLABELS':
-                print "rdsptn: got atomlabels"
-                labels = 1
-                # found labelsblock
-                break
-
-        # Loop over labels
-        if labels:
-            print "rdsptn: reading labels ",natom
-            for i in range( natom ):
-                line = f.readline()
-                if not len(line):
-                    # EOF
-                    print "rdsptn: EOF before all atom labels read in"
-                    break
-            
-                line = line.strip()
-
-                if len(line) >= 13 and line[0:13] == 'ENDATOMLABELS':
-                    print "rdsptn: got end labels early!"
-                    # End of coordinates
-                    break
-
-                line = line.strip('"') # Remove quotes around label
-                atoms_read[i][0] = line
-
-        # Now loop over the read in atoms and create the atom objects
-        mol = Zmatrix()
-        fname = os.path.basename(filename)
-        name = os.path.splitext( fname )[0]
-        mol.title = name
-        mol.name = self.make_unique_name( name )
-
-        for a in atoms_read:
-            atom = ZAtom()
-            charge = a[1]
-            if a[0]:
-                # Read in label
-                tag = a[0]
-            else:
-                # Determine label from charge
-                tag = z_to_el[charge]
-
-            atom.name = tag
-            atom.symbol = z_to_el[charge]
-            atom.formal_charge = charge
-            atom.coord = [a[2],a[3],a[4] ]
-            mol.atom.append( atom )
-
-        # Got a molecule so prepare it and return it
-        self.connect_model(mol)
-        self.append_data(mol)
-        self.quick_mol_view([mol])
-        return [mol]
-
-    def rdpun(self,file,root):
-
-        """Punchfile reader"""
-        p = PunchReader()
-        p.scan(file)
-
-        #if not p.title:
-        #    p.title = self.get_title()
-        #if p.title == "untitled":
-        #    p.title = self.get_input("mol_name")
-
-        # construct the results list for visualisation
-
-        mols = []
-        trajectories = []
-        for o in p.objects:
-
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-
-            #print 'unique',root, o.title
-            o.name = self.make_unique_name(root,o.title)
-            #print 'o.name is', o.name
-
-            if myclass == 'VibFreq':
-                self.append_data(o)
-
-            if myclass == 'VibFreqSet':
-                self.append_data(o)
-
-            if myclass == 'VibFreqSet' :
-                self.append_data(o)
-
-            elif myclass == 'Indexed' or myclass == 'Zmatrix':
-
-                # will need to organise together with other results
-                # assume overwrite for now
-
-                self.append_data(o)
-                # Used by visualisers
-                #o.title = name
-                #o.list()
-                mols.append(o)
-
-            elif myclass == 'ZmatrixSequence':
-                self.append_data(o)
-                trajectories.append(o)
-
-            elif myclass == 'Brick':
-                self.append_data(o)
-
-            elif myclass == 'Field':
-                self.append_data(o)
-
-        self.quick_mol_view(mols)
-        self.quick_trajectory_view(trajectories)
-
-        if self.debug:
-            print 'rdpun: data list', self.data_list
-
-        return p.objects
 
     def rdjagout(self,file):
 
@@ -4578,9 +3621,6 @@ Please check the output on the terminal/log file for further information." % fil
 
         return
 
-    def rdjag(self,file):
-        print 'Reading from a Jaguar file is not yet implemented!'
-        return
 
     def rdsys(self,file):
         while 1:
@@ -4665,95 +3705,74 @@ Please check the output on the terminal/log file for further information." % fil
 
         """Save molecule to file"""
 
-        #calcdir = re.sub(r"[^\/\\:]*$","",self.filename)
-        #name    = re.split(r"[\/\\:]",self.filename)
-        #name    = name[len(name)-1]
-        #if name == "":
-        #name = self.calc.get_name()+".zmt"
-        #name = "temp.zmt"
-        
         mol = self.choose_mol()
-
         if not mol:
             return
 
-        t = id(mol)
+        # Get the object that returns a suitable IO object
+        if not self.getfileIO:
+            self.getfileIO = GetFileIO()
+
+        # This bust under linux as the menu gets too long
+        #ftypes = self.getfileIO.GetOutputFiletypesAsTuple()
+        ftypes = {}
+        filepath = tkFileDialog.asksaveasfilename(
+            initialfile = mol.name,
+            initialdir = paths['user'],
+#            defaultextension='.pun',
+            filetypes= ftypes
+            )
+
+
+        if not len(filepath):
+            print "No file selected"
+            return None
+
+        # Try and determine the format from the extension
+        format = self.getfileIO.FormatFromExt( filepath )
+        if not format:
+            format,filepath = self.saveas_ask_filetype( filepath )
+
+        if not format:
+            # User probably canced
+            print "### User cancelled write"
+            return None
+
+        print 'ATTEMPT WRITE',filepath,format
+        # See if we have a reader suitable for the selected file
+        writer = self.getfileIO.GetWriter( dataobj=mol, filepath=filepath, format=format )
+        if not writer:
+            self.error( "A suitable writer for the molecule %s could not be found!" % mol )
+            return None
+
         try:
-            name = self.file_dict[t]
-        except KeyError:
-            name=""
-
-        ofile = tkFileDialog.asksaveasfilename(
-            initialfile = name,
-            initialdir = '.',
-            filetypes=[("Punch File","*.pun"),
-                       ("PDB","*.pdb"),
-                       ("CML","*.cml"),
-                       ("MSI","*.msi"),
-                       ("CHARMM","*.crd"),
-                       ("SHELX .RES","*.res"),
-                       ("Zmatrix File","*.zmt")])
-
-        if len(ofile):
-            self.save_to_file(mol,ofile)
-
-    def save_to_file(self,mol,ofile):
-        """Save to file, GAMESS-UK punch or zmatrix format"""
-        
-        words2 = string.split(ofile,'/')
-        name = words2[-1]
-        words = string.split(name,'.')
-        root = words[0]
-        try:
-            ext = words[1]
-        except IndexError:
-            msg = "No filename extension supplied!\n"+\
-            "File will not be saved"
-            self.error(msg)
+            writer.WriteFile( mol )
+        except Exception,e:
+            traceback.print_exc()
+            self.error("Error writing file: %s\n%s\nPlease see the terminal for more info" %( filepath, e))
             return
-        print 'File',ofile
-        print 'Extension',ext
-        if ext == 'zmt':
-            txt = mol.output_zmat()
-            fobj = open(ofile,'w')
-            for rec in txt:
-                fobj.write(rec + '\n')
-            fobj.close()
-        elif ext == 'pun':
 
-            # to handle extended structures, check for
-            # need to output cell
-            try:
-                prim = mol.primitive_atom
-                if len(prim) != len(mol.atom):
-                    t = not self.query("Write out Cell Vectors?")
-            except AttributeError:
-                t = 0
 
-            txt = mol.output_coords_block(exclude_cell=t)
-            #print 'Output Text',txt
-            fobj = open(ofile,'w')
-            for rec in txt:
-                fobj.write(rec + '\n')
-            fobj.close()
-        elif ext == 'pdb':
-            self.wrtpdb(ofile,mol)
-        elif ext == 'cml':
-            mol.wrtcml(ofile,title=mol.name)
-        elif ext == 'msi':
-            mol.wrtmsi(ofile)
-        elif ext == 'crd':
-            mol.wrtcrd(ofile)
-        elif ext == 'res':
-            mol.wrtres(ofile)
+
+    def get_class(self,object):
+        """ Return an object's class
+             take the last field of the class specification
+        """
+        #t1 = string.split(str(object.__class__),'.')
+        t1 = str(object.__class__).split('.')
+        myclass = t1[len(t1)-1]
+        return myclass
 
     def make_unique_name(self,name,title=None):
 
         old_names = self.get_names()
+
+        # Build up a list of suffixes
         suf = []
         suf.append('')
         for i in range(1,1000):
             suf.append('['+str(i)+']')
+            
         orig = name
         sname = name
         # first try the title, if provided
@@ -4763,9 +3782,7 @@ Please check the output on the terminal/log file for further information." % fil
             sname = name
         else:
             name = orig
-        try:
-            index = old_names.index(name)
-        except ValueError:
+        if name not in old_names:
             return name
 
         # try a combination of name and title
@@ -4773,17 +3790,13 @@ Please check the output on the terminal/log file for further information." % fil
             t = string.maketrans(' ','_')
             name = orig + '.' + string.translate(string.strip(title),t)
             sname = name
-            try:
-                index = old_names.index(name)
-            except ValueError:
-                return name
+        if name not in old_names:
+            return name
 
         # finally append a suffix
         for s in suf:
             name = sname + s
-            try:
-                index = old_names.index(name)
-            except ValueError:
+            if name not in old_names:
                 return name
 
     def connect_model(self,model,all=0):
@@ -5126,8 +4139,7 @@ Please check the output on the terminal/log file for further information." % fil
     def get_names(self,molecules_only=0):
         list = []
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass = self.get_class( d )            
             if (not molecules_only) or (myclass == 'Indexed' or myclass == 'Zmatrix'):
                 list.append(d.name)
         return list
