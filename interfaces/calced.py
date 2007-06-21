@@ -391,7 +391,11 @@ class CalcEd(Pmw.MegaToplevel):
         except Exception,e:
             traceback.print_exc()
             self.Error( "Error creating job: %s" % (e,) )
-            return 
+            return
+
+        if not job:
+            self.Error( "No job returned by the makejob routine!" )
+            return
             
         try:
             self.start_job( job )
