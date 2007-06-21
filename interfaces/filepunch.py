@@ -362,7 +362,12 @@ class PunchReader:
       if self.debug:
          print 'header words before loop',tmp
 
+      if header.strip()[0:5] != 'block':
+         print 'BAD HEADER'
+         return 0
+
       while len(tmp):
+
          t1 = tmp.pop(0)
          junk = tmp.pop(0)
          t2 = []
@@ -843,14 +848,6 @@ class PunchReader:
    def read_normal(self,f,obj):
       if self.debug:
          print self.name , self.records, self.index
-      cnt = 0
-      v = VibFreq(self.index)
-      v.reference = self.fragment
-      v.displacement = []
-      for i in range(0,self.records):
-         rr = string.split(f.readline())
-         vec = Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
-         v.displacement.append(vec)
 
       if len(self.normal) == 0:
          vs = VibFreqSet()
@@ -863,8 +860,16 @@ class PunchReader:
          self.vfs = vs
          self.objects.append(vs)
 
-      self.vfs.vibs.append(v)
+      cnt = 0
+      disp = []
+      for i in range(0,self.records):
+         rr = string.split(f.readline())
+         vec = Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
+         disp.append(vec)
 
+      v = self.vfs.add_vib(disp)
+      v.reference = self.fragment
+      v.index = self.index
       self.normal.append(v)
       #self.objects.append(v)
       return v
@@ -873,13 +878,9 @@ class PunchReader:
       if self.debug:
          print self.name , self.records, self.index
       tt = f.readline()
-      used = {}
-
       for v in self.normal:
          if v.index == self.index:
-            v.freq = float(tt)
-            t='v%-10.0f' % v.freq
-            v.title = t
+            self.vfs.set_freq(v,float(tt))
       return None
 
    def read_zmatrix_title(self,f,tt):
