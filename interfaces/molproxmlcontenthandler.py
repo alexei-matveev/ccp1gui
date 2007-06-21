@@ -1,8 +1,9 @@
 import xml.sax
 import sys, StringIO
 from UserDict import UserDict
-
-from ccp1gui.objects import zmatrix
+from Scientific.Geometry.VectorModule import *
+from objects import zmatrix
+from objects import vibfreq
 
 # CML 1.01 Parser adapted to read molpro 2006.1 outputs into CCP1 GUI
 # taken from web page
@@ -55,7 +56,9 @@ class MolproXMLContentHandler(xml.sax.ContentHandler):
         self.inAtomArray = 0
         self.inBondArray = 0
         self.inMolecule = 0
-        
+        self.inVib = 0 
+        self.inNormCoord = 0 
+
     def startDocument(self):
         print 'Doc handling started'
 
@@ -69,6 +72,10 @@ class MolproXMLContentHandler(xml.sax.ContentHandler):
         #print 'start-element',name, attrs
 
         # MOLPRO 
+
+        if name == 'cml:molecule':
+            self.jobtitle=attrs['title'].encode('ascii')
+
         if name == 'cml:atomArray':
             self.inMolecule = 1
             self.tmpmol = zmatrix.Zmatrix()
@@ -84,7 +91,17 @@ class MolproXMLContentHandler(xml.sax.ContentHandler):
         if name == 'molecule':
             self.inMolecule = 1
             self.tmpmol = Molecule(self.currattr)
+
+        if name == 'vibrations':
+            self.inVib = 1
+            self.tmpVibFreqSet = vibfreq.VibFreqSet()
+            self.tmpVibFreqSet.title  = 'Normal Modes for' + self.jobtitle
             
+        if name == 'normalCoordinate':
+            self.inNormCoord = 1
+            self.tmpFreq =float(attrs['wavenumber'])
+            self.tmpstr = ''
+
         if name == 'string':
             self.tmpstr = ''
             self.inString = 1
@@ -130,6 +147,22 @@ class MolproXMLContentHandler(xml.sax.ContentHandler):
             self.tmpmol.numbond = len(self.tmpmol.bondlist)
             self.m.append( self.tmpmol )
             self.inMolecule = 0
+
+        if name == 'normalCoordinate': 
+            self.inNormCoord=0
+            #print 'VIB:', self.tmpstr
+            rr = self.tmpstr.encode('ascii').split()
+            n = len(rr)/3
+            disp = []
+            count=0
+            for i in range(0,n):
+                vec = Vector([ float(rr[count+0]) , float(rr[count+1]), float(rr[count+2]) ])
+                count = count + 3
+                disp.append(vec)
+            self.tmpVibFreqSet.add_vib(disp,self.tmpFreq)
+
+        if name == 'vibrations':
+            self.m.append( self.tmpVibFreqSet )
 
         # We have a Atom element data
         if name == 'string' and self.inAtom: 
@@ -189,12 +222,12 @@ if __name__ == '__main__':
     parser = xml.sax.make_parser()
     parser.setFeature( xml.sax.handler.feature_namespaces, 0 )
 
-    ch = XMLContentHandler(m)
+    ch = MolproXMLContentHandler(m)
 
     parser.setContentHandler(ch)
     for i in sys.argv[1:]:
         parser.parse(i)
 
-    print  'Parsed %s molecules' % ( len(m) )
+    print  'Parsed %s objects' % ( len(m) )
     for i in m:
         i.list()

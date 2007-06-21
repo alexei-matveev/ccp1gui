@@ -37,6 +37,7 @@ from filepunch import *
 from jobmanager import *
 from viewer.paths import root_path,find_exe
 from viewer.rc_vars import rc_vars
+from objects.file import *
 
 # may need
 # setenv LD_PRELOAD /usr/lib/libexpat.so
@@ -418,7 +419,8 @@ class MOLPROCalc(QMCalc):
 
         # Now we have the jobs, add the steps to it
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
-        #job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
+        job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
+        job.add_step(DELETE_FILE,'remove old Molden',remote_filename=job_name+'.molden',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
 
         molpro_exe = self.get_executable()
@@ -431,7 +433,8 @@ class MOLPROCalc(QMCalc):
 
         stdout_file=None
         # Run with -X to get XML marked up output
-        local_command_args = ['-X',job_name+'.com']
+        #local_command_args = ['-X',job_name+'.com']
+        local_command_args = [job_name+'.com']
         
         if sys.platform[:3] == 'win' and jobtype == LOCALHOST:
             stdout_file=job_name+'.out'
@@ -471,19 +474,31 @@ class MOLPROCalc(QMCalc):
         self.ReadOutput(file)
         file.close()
 
-        mols = []
+        xmlfilename=directory+'/'+job_name+'.xml'
+        results = []
         parser = xml.sax.make_parser()
         parser.setFeature( xml.sax.handler.feature_namespaces, 0 )
-        ch = MolproXMLContentHandler(mols)
+        ch = MolproXMLContentHandler(results)
         parser.setContentHandler(ch)
-
         if self.debug:
-            print 'Parsing Molpro XML FILE',filename
-        parser.parse(filename)
-        print  'Parsed %s molecules' % ( len(mols) )
+            print 'Parsing Molpro XML FILE',xmlfilename
+        parser.parse(xmlfilename)
+        print  'Parsed %s objects' % ( len(results) )
 
-        if(len(mols)):
+        mols = []
+        self.results = []
+        r = None
+        for r in results:
+            t2 = string.split(str(r.__class__),'.')
+            myclass2 = t2[len(t2)-1]
+            if myclass2 == 'Zmatrix':
+                lastmol=r
+                mols.append(r)
+            elif myclass2 == 'VibFreqSet':
+                r.reference = lastmol
+                self.results.append(r)
 
+        if len(mols):       
             oldo = self.get_input("mol_obj")
             t2 = string.split(str(oldo.__class__),'.')
             myclass2 = t2[len(t2)-1]
@@ -518,6 +533,9 @@ class MOLPROCalc(QMCalc):
                     print ' Warning: could not retain old zmatrix, so imported as cartesians'
 
                 structure_loaded=1
+
+        o = File(job_name+'.molden',type=MOLDEN_WFN)
+        self.results.append(o)
 
         ed = self.get_editor()
         if ed:
@@ -993,19 +1011,26 @@ class MOLPROCalc(QMCalc):
 #             else:
 #                 file.write('runtype optx\n')
 
+
         if self.get_parameter("ana_frequencies"):
-            file.write('runtype force\n')
+            file.write('frequencies,finite_difference,FIXME')
             #file.write('nosym\n')
             #file.write('adapt off\n')
-            file.write('punch normal vibr\n')
-            file.write('enter 1\n')
+            #file.write('punch normal vibr\n')
+            #file.write('enter 1\n')
 
         if self.get_parameter("ana_hessian"):
-            file.write('runtype hessian\n')
+            file.write('frequencies,analytic\n')
+            #file.write('runtype hessian\n')
             #file.write('nosym\n')
             #file.write('adapt off\n')
-            file.write('punch normal vibr\n')
-            file.write('enter 1\n')
+            #file.write('punch normal vibr\n')
+            #file.write('enter 1\n')
+
+        # Output Options
+        #file.write('put,xml\n')
+        file.write('put,xml,'+job_name+'.xml\n')
+        file.write('put,molden,'+job_name+'.molden\n')
 
         # Input writing finishes here
         file.close()
@@ -1936,15 +1961,16 @@ if __name__ == "__main__":
     from interfaces.molpro import *
     from objects.zmatrix import *
 
-    if 0:
+    if 1:
         calc = MOLPROCalc()
+        calc.set_parameter('ana_hessian',1)
         calc.set_input('mol_obj',Zmatrix(file='../examples/water.zmt'))
         job = calc.makejob()
         job.debug = 1
         job.run()
         calc.endjob()
 
-    if 1:
+    if 0:
         root = Tk()
         calc = MOLPROCalc()
         calc.set_input('mol_obj',Zmatrix(file='../examples/water.zmt'))
