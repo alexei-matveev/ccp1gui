@@ -40,7 +40,8 @@ from viewer.paths import find_exe
 from viewer.rc_vars import rc_vars
 
 from objects.periodic import *
-from daltonoutputreader import DaltonOutputReader
+#from daltonoutputreader import DaltonOutputReader
+from daltonio import DaltonIO
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -406,35 +407,21 @@ class DALTONCalc(QMCalc):
         # Merge the stdout and output to give a full output
         all_output = stdout  +  ["\n\t===*** END OF DALTON SCRIPT OUTPUT ***==\n"] + readout
 
-        self.set_output( "all_output", all_output )
+        #self.set_output( "all_output", all_output )
 
-        #self.set_output( "log_file",output )
+        self.set_output( "log_file",all_output )
 
         # Bit of a hack - if we are running a geometry optimisation, get the structures
         geomopt = self.get_parameter( 'geomopt' )
         if ( geomopt ):
-            d = DaltonOutputReader( olist = all_output)
-            molecules = d.get_molecules()
-            index = 1
-            if ( molecules ):
-                if len(molecules) > 1:
-                    # bin the first molecule as it will be the same as the one sat in the GUI
-                    molecules.pop(0)
-
-                for mol in molecules:
-                    #print "mol is ",mol
-                    #print "mol.title is ",mol.title
-                    #if not mol.title:
-                    mol.title = job_name + str( index )
-                    mol.name = ed.graph.make_unique_name( mol.title )
-                    ed.graph.append_data( mol )
-                    ed.graph.connect_model( mol )
-                    index += 1
-            ed.graph.quick_mol_view( molecules )
+            d = DaltonIO(olist=copy.copy(all_output),debug=None)
+            objects = d.GetObjects()
+            if objects:
+                ed.graph.import_view_objects( objects )
         # Parsing the ouput files to get structures, orbitals would be called from here
         ed.Info( "Dalton calculation has completed. Please check the output to see if \n" +
                  "what you thought should happen actually has..." )
-        return 0
+        return
 
 
     def __writemolfile(self,molecule):
@@ -1096,19 +1083,19 @@ class DALTONCalcEd(QMCalcEd):
         self.calc.WriteInput( only_mol=1 )
         return self.calc.get_parameter('dalfilename') + '.dal'
         
-    def ViewOutput(self):
-        """Drag out the output file and show in a text widget."""
-        output = self.calc.get_output('all_output')
-        if output == None:
-            self.Info("No output file available currently")
-        else:
-            textview = self.textview
-            textview.configure(text_state="normal",title="Job Listing")
-            textview.clear()
-            for a in output:
-                textview.insert('end',a)
-            textview.configure(text_state="disabled")
-            textview.show()
+#     def ViewOutput(self):
+#         """Drag out the output file and show in a text widget."""
+#         output = self.calc.get_output('all_output')
+#         if output == None:
+#             self.Info("No output file available currently")
+#         else:
+#             textview = self.textview
+#             textview.configure(text_state="normal",title="Job Listing")
+#             textview.clear()
+#             for a in output:
+#                 textview.insert('end',a)
+#             textview.configure(text_state="disabled")
+#             textview.show()
 
     def LowerPage(self,pagename):
         """ This method is called each time one of the tabs in the notebook is lowered and calls
@@ -1155,10 +1142,12 @@ class DALTONCalcEd(QMCalcEd):
                 # User didn't select a file
                 return 1
 
-            summary = DaltonOutputReader( ofile = fname )
+            #summary = DaltonOutputReader( ofile = fname )
+            summary = ['THIS NEEDS TO BE FIXED']
 
         else:
-            summary = DaltonOutputReader( olist = output )
+            #summary = DaltonOutputReader( olist = output )
+            summary = ['THIS NEEDS TO BE FIXED']
 
         try:
             if self.summaryeditor:

@@ -39,7 +39,8 @@ import tools
 import viewer.help
 from viewer.rc_vars import rc_vars
 from viewer.paths import paths
-from interfaces import smeagolreader
+#from interfaces import smeagolreader
+from smeagolio import SmeagolIO
 
 
 LOCALHOST = socket.gethostname()
@@ -171,15 +172,18 @@ class SMEAGOLCalc(calc.Calc):
             print 'running endjob in directory: %s - code=' % (directory,code)
 
         # Get a reader objectt
-        reader = smeagolreader.SmeagolReader()
+        #reader = smeagolreader.SmeagolReader()
+        reader = SmeagolIO()
         # Get any trajectory files
         anifiles = glob.glob("*.ANI")
 
         for f in anifiles:
             print "trying to read file ",f
-            reader.read( f )
+            #reader.read( f )
+            reader.ReadFile( f )
 
-        results = reader.get_objects()
+        #results = reader.get_objects()
+        results = reader.GetObjects()
 
         if not results:
             return None
@@ -201,7 +205,6 @@ class SMEAGOLCalc(calc.Calc):
             if ed.update_func and code > 0:
                 o = self.get_input("mol_obj")
                 #name = self.get_input("mol_name")
-                print 'calling update_func from gamess'
                 ed.update_func(o)
                 
         # jmht - is this a hack?

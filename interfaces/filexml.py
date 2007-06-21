@@ -1,15 +1,31 @@
+# import python modules
+import os
 
 #import methods from the python wrapper
-
 from _libpyagentx import *
+
+# import internal modules
+from viewer.rc_vars import rc_vars
+from fileio import FileIO
 from objects.zmatrix import *
 from objects.vibfreq import *
+        
 
-class XMLReader:
+class XML_IO(FileIO):
 
-    def __init__(self):
+    def __init__(self,**kw):
 
-        self.objects=[]
+
+        # Initialise base class
+        FileIO.__init__(self,**kw)
+
+        self.debug=1
+        
+        # State what our capabilites are
+        self.can_read = True
+        self.can_write = [ 'Zmatrix','Indexed' ]
+
+        #self.objects=[]
         self.xml_error=0
         self.owl_file = None
         self.rdf_file = None
@@ -26,37 +42,162 @@ class XMLReader:
 
         axBaseUri("http://www.grids.ac.uk/eccp/owl-ontologies#")
 
-    def read_mappings(self,file):
+    def ReadFile(self, filepath=None, **kw ):
+        """ Need to overwrite this to not set self.read to as we call
+            this multiple times to read in the ontology, mapping etc.
+        """
+        if filepath:
+            self._ParseFilepath( filepath )
+                
+        self._ReadFile(**kw)
+        
+
+    def _ReadFile(self,**kw):
+        """ This will be called to read all three filetypes (ontology, mappings and xml)
+            so it needs to determine it's actions from the file suffix
+        """
+
+        # For the time being use the file extensions to determine the filetype
+        if self.ext == '.owl':
+            # Ontology
+            err = self.read_ontology( self.filepath )
+            if err:
+                print "####  There was an error reading the ontology file!  ####"
+                return
+            
+            if self.debug:print "DEBUG: Read ontology from: %s " % self.filepath
+            # set the rc_vars so that we don't have to read this in each time
+            rc_vars['AgentX_ontology'] = self.filepath
+            return
+                
+        elif self.ext == '.rdf':
+            # Mapping file
+            err = self.read_mappings(self.filepath)
+            if err:
+                print "### There was an error reading the Mapping file! ####"
+                return
+            
+            if self.debug: print "Read mapping from: %s " % self.filepath
+            # set the rc_vars so that we don't have to read this in each time
+            rc_vars['AgentX_mapping'] = self.filepath
+            return
+                
+        elif self.ext == '.xml':
+            # data file
+            self.read_datafile( self.filepath )
+        else:
+            print "XMLReader _readefile unknown filtype for file: %s" % self.filepath
+
+        return
+
+    def read_mappings(self,filepath):
 
         # load the mapping documents
 
+        if self.debug: print "DEBUG reading mappings from %s" % filepath
+
         self.xml_error=0
-        datafile="file://"+file
+        datafile="file://"+filepath
         self.xml_error=axGetUri(datafile)
         if not self.xml_error:
-            self.rdf_file = file
+            self.rdf_file = filepath
+            if self.debug:
+                print "DEBUG: set rdf_file to ",self.owl_file,id(self.owl_file)
+                print "DEBUG self is ",id(self)
+                
         return self.xml_error
 
-    def read_ontology(self,file):
-    
+    def read_ontology(self,filepath):
+
+        if self.debug: print "DEBUG reading ontology from %s" % filepath
+
         #load the ontology documents
 
         self.xml_error=0
-        datafile="file://"+file
+        datafile="file://"+filepath
         self.xml_error=axGetUri(datafile)
         if not self.xml_error:
-            self.owl_file = file
+            self.owl_file = filepath
+            #print "DEBUG: set owl_file to ",self.owl_file,id(self.owl_file)
+            #print "DEBUG self is ",id(self)
+
         return self.xml_error
     
-    def read_data_file(self,file):
+    def _read_datafile(self,filepath):
     
         #load the data documents
 
+        print "_read_datafile: ",filepath
+
         self.xml_error=0
-        datafile="file://"+file
+        datafile="file://"+filepath
         self.xml_error=axDataGetUri(datafile)
 
         return self.xml_error
+
+    def read_datafile(self,filepath):
+        """ Read in an xml output using agentX """
+
+        if self.debug: print "DEBUG reading datafile from %s" % filepath
+        
+        global rc_vars
+        
+        # Can't check if we don't have ontology/mapping files as AgentX can get it's mappings and
+        # ontologies from the working directory or a URL can be embedded in the actual xml file,
+        # so not having a mapping or ontology cannot be considered an error
+
+         # If the reader does not already have on owl or map file, we check to see if there
+         # is one in the rc_vars
+         
+         
+        #print "DEBUG: owl file is ",id(self.owl_file)
+        #print "DEBUG: self is ",id(self)
+        if not self.owl_file:
+            #print "checking rc_vars for an ontology file..."
+            # See if we've ontology/mapping files in the rc_vars and load then if so
+            if rc_vars.has_key('AgentX_ontology'):
+                ofile = rc_vars['AgentX_ontology']
+                if ofile and os.access( ofile, os.R_OK):
+                    err = self.read_ontology(ofile)
+                    if err == -1:
+                        print "Error reading in existing ontology from rc_vars: %s" % ofile
+                    else:
+                        print "Read in AgentX ontology file specified in rc_vars: %s" % ofile
+                        
+        if not self.rdf_file:
+            #print "checking rc_vars for a mapping file..."
+            if rc_vars.has_key('AgentX_mapping'):
+                ofile = rc_vars['AgentX_mapping']
+                if ofile and os.access( ofile, os.R_OK):
+                    err = self.read_mappings(ofile)
+                    if err == -1:
+                        print "Error reading in AgentX mapping file specified in rc_vars: %s" % ofile
+                    else:
+                        print "Error eading AgentX mapping file from rc_vars: %s" % ofile
+
+        self._read_datafile(self.filepath)
+        if(self.xml_error):
+            print "Error while reading XML data file!"
+            return None
+        
+        self.read_coordinates(self.name)
+        if(self.xml_error):
+            print "Error while reading XML coordinates!"
+            return None
+        
+        self.read_normal()
+        if(self.xml_error):
+            print "Error while reading XML normal coordinates!"
+            return None
+        
+        # Reading went o.k. so if there are any objects copy them so
+        # that we can destroy the xd reader object - otherwise it persists
+        # and keeps using the old data objects - currently there is no way
+        # to destory the data objects and keep the owl and map file references
+        #objects = copy.deepcopy (xd.objects)
+        
+        # Destroy reader
+        self.cleanup()
 
     def read_normal(self):
 
@@ -104,6 +245,8 @@ class XMLReader:
         return self.xml_error
  
     def read_coordinates(self,root):
+
+        if self.debug: print "DEBUG: read_coordinates"
 
         self.xml_error=0
         
@@ -179,7 +322,9 @@ class XMLReader:
         if(noatom):axDeselect()
         if(noMolecule):axDeselect()
 
-        self.objects.append(model)
+        #self.objects.append(model)
+        #print "got molecule ",model.atom
+        self.molecules.append(model)
         self.mol=model
 
         return self.xml_error
@@ -193,46 +338,43 @@ class XMLReader:
 
 if __name__ == "__main__":
     import os
-    #agentXroot = "/Users/jmht/work/CODES/AGENTX/AgentX-0.3.6/"
-    agentXroot = "/home/jmht/Documents/GuiCCP1/AgentX/AgentX-0.3.6"
+    agentXroot = "/home/jmht/Documents/codes/AgentX/AgentX-0.3.6"
 
-    xd = XMLReader()
+    xd = XML_IO()
     
     # Read an ontology
     ontfile = agentXroot + "/ontology/ontology.owl"
     print "loading ",ontfile
-    xd.read_ontology(ontfile)
+    xd.ReadFile(filepath=ontfile)
 
     # Read a mapping file
     mapfile = agentXroot + "/map/map.rdf"
-    xd.read_mappings(mapfile)
     print "loading ",mapfile
+    xd.ReadFile(filepath=mapfile)
 
     # Read in the molecule
     datafile = agentXroot + "/examples/xml/dlpoly.xml"
-    xd.read_data_file(datafile)
-    print "loading ",datafile
-    xd.read_coordinates(".xml")
-    xd.read_normal()
-    xd.cleanup()
+    print "loading objects from",datafile
  
-    print "object1 is"
-    for o in xd.objects:
+    for o in xd.GetObjects( filepath=datafile):
         print o.title
         print len(o.atom)
         #print o.__dict__
     
-    xd = XMLReader()
-    xd.read_ontology(ontfile)
-    xd.read_mappings(mapfile)
-    datafile = agentXroot + "/examples/xml/siesta.xml"
-    xd.read_data_file(datafile)
-    xd.read_coordinates(".xml")
-    xd.read_normal()
-    xd.cleanup()
+#     xd = XML_IO()
+#     #xd.read_ontology(ontfile)
+#     #xd.read_mappings(mapfile)
+#     xd.ReadFile(filepath=ontfile)
+#     xd.ReadFile(filepath=mapfile)
+#     datafile = agentXroot + "/examples/xml/siesta.xml"
+#     #xd.read_data_file(datafile)
+#     xd.ReadFile(filepath=datafile)
+#     #xd.read_coordinates(".xml")
+#     #xd.read_normal()
+#     #xd.cleanup()
 
-    print "object2 is"
-    for o in xd.objects:
-        print o.title
-        print len(o.atom)
-        #print o.__dict__
+#     print "object2 is"
+#     for o in xd.GetObjects():
+#         print o.title
+#         print len(o.atom)
+#         #print o.__dict__

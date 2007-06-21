@@ -31,6 +31,8 @@ from objects.field import *
 from objects.matrix import *
 from objects.vibfreq import *
 from objects.list import *
+#from interfaces.filereader import FileReader
+from fileio import FileIO
 
 ###from tkmolview.vtkgraph import VtkColourMap
 
@@ -47,19 +49,27 @@ End_of_File = 3
 Read_Error = 4
 Bad_Position = 5
 
-class PunchReader:
+class PunchIO(FileIO):
+#class PunchReader:
    """Load result objects from GAMESS-UK format punchfiles"""
-   def __init__(self):
+   def __init__(self,**kw):
 
+      self.debug=1
+      
+      # Initialise Base Class
+      FileIO.__init__(self,**kw)
+
+      self.canRead = True
+      self.canWrite = [  ]
+      
+        
       global frame_count
       frame_count = 0
-      self.debug=0
       self.skip_parse=0
 
       self.objects=[]
       self.normal=[]
       self.title=None
-      self.filename = None
       self.readers = {}
 
       self.readers['fragment'] = None
@@ -148,15 +158,12 @@ class PunchReader:
       self.iter = 0
       self.fragment = None
 
-   def scan(self,file):
-      print file
+   #def scan(self,file):
+   def _ReadFile(self,**kw):
       if self.debug:
          print "> filepunch.py scan"
 
-      # get the root of the filename
-      self.filename = os.path.splitext( os.path.basename( file ) )[0]
-      
-      f = open(file)
+      f = open(self.filepath)
       while self.read_object(f) != End_of_File:
          pass
       f.close()
@@ -165,7 +172,7 @@ class PunchReader:
       if self.debug:
          print "> filepunch.py rescan"
 
-      f = open(file)
+      f = open(self.filepath)
       while self.read_object(f,object=object) != End_of_File:
          pass
       f.close()
@@ -234,7 +241,7 @@ class PunchReader:
             # to edit it 
             tt = Zmatrix()
             #tt.title='unknown'
-            tt.title = self.filename
+            tt.title = self.name
          # This is a hack so the VibFreq instances have a reference structure
          self.fragment = tt
          tt.tidy = self.tidy_frag
@@ -244,7 +251,7 @@ class PunchReader:
             print 'New frag (seq)'
          
          tt = ZmatrixSequence()
-         tt.title = tt.title+ ' ' +self.filename
+         tt.title = tt.title+ ' ' +self.name
          #tt2 = Zmatrix()
          #tt2.title='seq 0 frame 0'
          #tt.frames.append(tt2)
@@ -258,7 +265,7 @@ class PunchReader:
             print 'New zmatrix frag'
          tt = Zmatrix()
          #tt.title='unknown'
-         tt.title=self.filename
+         tt.title=self.name
          tt.variables = []
          tt.constants = []
          tt.tidy = self.tidy_z
@@ -289,7 +296,26 @@ class PunchReader:
       if tf:
          tf(tt)
 
-      self.objects.append(tt)
+      #self.objects.append(tt)
+      # jmht - readers need to specify what objects they are returning
+      t1 = string.split(str(tt.__class__),'.')
+      myclass = t1[len(t1)-1]
+      if myclass == 'Indexed' or myclass == 'Zmatrix':
+         self.molecules.append( tt )
+      elif myclass == 'ZmatrixSequence':
+         self.trajectories.append( tt )
+      elif myclass == 'VibFreq':
+          self.vibrations.append( tt )
+      elif myclass == 'VibFreqSet' :
+          self.vibration_sets.append(tt)
+      elif myclass == 'Brick':
+         self.bricks.append( tt )
+      elif myclass == 'Field':
+          self.fields.append( tt )
+      else:
+          print "unknown class ",myclass
+          self.objects.append( tt )
+      
  
    def parse_header(self,f):
       """Parse the next header on the file"""
@@ -357,7 +383,7 @@ class PunchReader:
          else:
             tmp.append(a)
 
-      print 'read>', header
+      if self.debug: print 'read>', header
       counter = 0
       if self.debug:
          print 'header words before loop',tmp
@@ -626,7 +652,8 @@ class PunchReader:
             rr.append(txt[30:40])
             rr.append(txt[40:50])
             rr.append(txt[50:60])
-            print rr
+            #jmht
+            #print rr
 
          if i == 0:
             brik.origin_corner = Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ])
@@ -636,9 +663,9 @@ class PunchReader:
          if i == 2:
             brik.mapping.append(Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
 
-      #if self.debug:
-      print 'origin', brik.origin
-      print 'mapping', brik.mapping
+      if self.debug:
+         print 'origin', brik.origin
+         print 'mapping', brik.mapping
 
       #if len(brik.dim) == 1:
       #   brik.grid = [ brik.range[0] / float(brik.dim[0] - 1) ]
@@ -693,9 +720,10 @@ class PunchReader:
          # this  may throw an exception
          dummy = brik.dim
 
-         print 'Dim array',brik.dim
-         print 'Recs',self.records
-         print 'Elements',self.elements
+         if self.debug:
+            print 'Dim array',brik.dim
+            print 'Recs',self.records
+            print 'Elements',self.elements
 
 
          if self.records == 0:
@@ -908,7 +936,7 @@ class PunchReader:
 
       for i in range(0,self.records):
 
-         print 'read i',i
+         if self.debug: print 'read i',i
          a = ZAtom()
          rr = string.split(f.readline())
 
@@ -1139,7 +1167,7 @@ class PunchReader:
 
          if a.zorc == 'z':
             if a.r_var:
-               print a.r_var
+               #print a.r_var
                a.r_var = self.lookup_var(tt,a.r_var)
                a.r = a.r_var.value
                a.r_var.metric = 'd'
@@ -1183,7 +1211,7 @@ class PunchReader:
 
    def lookup_var(self,tt,var):
       ix = int(var[1:])
-      print 'ix is',ix,len(tt.variables)
+      if self.debug:print 'ix is',ix,len(tt.variables)
 
       return tt.variables[ix-1]
 

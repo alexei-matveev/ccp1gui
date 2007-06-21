@@ -30,6 +30,7 @@ from interfaces.mmtools   import *
 from interfaces.tools   import *
 from objects.periodic import z_to_el
 from objects.file import File
+from interfaces.fileio import FileIO
 
 
 class Dl_PolyHISTORYFile(File):
@@ -106,23 +107,34 @@ class DLPOLYCalcEd(MMCalcEd):
 
 
 
-class Dl_PolyCONFIGReader:
+#class Dl_PolyCONFIGReader:
+class DLPOLY_CONFIG_IO(FileIO):
     """Reader for DL_POLY config files
     """
-    def __init__(self):
+    def __init__(self,**kw):
+
+        # Initialise base class
+        FileIO.__init__(self,**kw)
+        
         self.debug = 0
+        
+        # capapbilties
+        self.canRead = True
+        #self.canWrite = [ 'Zmatrix','Indexed' ]
 
-
-    def scan(self,file):
+#    def scan(self,file):
+    def _ReadFile(self,**kw):
         """ Parse CONFIG
         """
 
-        print file
+        #print file
         if self.debug:
             print "> config reader scannig file"
-        f = open(file)
+        #f = open(file)
+        f = open(self.filepath)
 
-        self.title = f.readline()
+        #self.title = f.readline()
+        title = f.readline()
 
         tt = f.readline().split()
         #print 'Line 2 integers',tt[0],tt[1]
@@ -141,18 +153,19 @@ class Dl_PolyCONFIGReader:
         if ncell:
             for i in range(0,ncell):
                 tt = f.readline().split()
-                print tt
+                #print tt
                 self.cell.append([ float(tt[0]), float(tt[1]), float(tt[2]) ] )
 
-        self.model = Zmatrix()
+        #self.model = Zmatrix()
+        model = Zmatrix()
 
-        self.model.title = self.title
-        self.model.name = self.model.title
+        model.title = title
+        model.name = model.title
 
         more=1
         while more:
             line = f.readline()
-            print line
+            #print line
             if line != "":
                 p = ZAtom()
                 t = line.split()
@@ -180,24 +193,54 @@ class Dl_PolyCONFIGReader:
                 p.coord[0] = float(t[0])
                 p.coord[1] = float(t[1])
                 p.coord[2] = float(t[2])
-                self.model.add_atom(p)
+                model.add_atom(p)
                 for i in range(0,nskip):
                     junk = f.readline()
-                    print 'skip',junk
+                    #print 'skip',junk
             else:
                 more=0
         
         f.close()
-        print 'reindex'
-        self.model.reindex()
-        print 'returning', self.model
-        return self.model
+        #print 'reindex'
+        model.reindex()
+        #print 'returning', self.model
+        #return self.model
+        self.molecules.append( model )
+        return None
 
-class Dl_PolyHISTORYReader:
+#class Dl_PolyHISTORYReader:
+class Dl_PolyHISTORYReader(FileIO):
     """Reader for DL_POLY history files
+
+       This is rather different to the other readers as it parses the file
+       on demand for individual frames and doesn't read in the whole file
+       therefore we overwrite the public methods ReadFile and GetObjects
     """
-    def __init__(self):
+    def __init__(self,**kw):
+        
+        # Initialise base class
+        FileIO.__init__(self,**kw)
+        
         self.debug = 0
+        
+        # capapbilties
+        self.canRead = True
+        #self.canWrite = [ 'Zmatrix','Indexed' ]
+
+    def ReadFile(self,filepath=None,**kw):
+        """Overload to not do anything - just set filepath"""
+        
+        if filepath:
+            self._ParseFilepath( filepath )
+
+    def GetObjects(self,filepath=None,**kw):
+        """Overload to just return self"""
+
+        if filepath:
+            self._ParseFilepath( filepath )
+
+
+        return [Dl_PolyHISTORYFile(self.filepath)]
 
 
     def scan(self,file):
@@ -210,6 +253,7 @@ class Dl_PolyHISTORYReader:
         self.results = []
 
         self.open(file)
+        
         while 1:
             iret = self.scan1()
             print 'ret=',iret
