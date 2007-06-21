@@ -1094,7 +1094,7 @@ class TrajectoryVisualiser(MoleculeVisualiser):
 class OutlineVisualiser:
     """To add outline to the volume widgets"""
 
-    def __init__(self):
+    def __init__(self,**kw):
         self.outline_colour   =  '#00ff00'
         self.outline_rgb = [0, 255, 0]
         self.show_outline = 0
