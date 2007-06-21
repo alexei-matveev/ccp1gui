@@ -175,14 +175,14 @@ class MopacCalc(QMCalc):
         print 'endjob....'
         job_name = self.get_name()
 
-        # load contents of listing for viewing
-        file = open(self.outfile,'r')
-        self.__ReadOutput(file)
-        file.close()
-
         file = open(self.outfile,'r')
         # this just load into the browser
         self.ReadOutput(file)
+        file.close()
+        
+        # load contents of listing for viewing
+        file = open(self.outfile,'r')
+        self.__ReadOutput(file)
         file.close()
 
         self.results = []
