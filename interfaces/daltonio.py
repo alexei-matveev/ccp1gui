@@ -17,17 +17,22 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
+
+# Import python modules
 import re
 import string
 import copy
+
+# Import internal modules
 from objects import zmatrix
+from fileio import FileIO
 
 # Define bohrs 2 anstrom - this really needs to be stored globally
 bohr_2_angs = 0.529177
 angs_2_bohr = eval( "1 / 0.529177 " )
 
 
-class DaltonOutputReader:
+class DaltonIO(FileIO):
     """ Read a Dalton output file, list of strings read from an outputfile and store relevant information.
         A dictionary of tuples is defined, which is keyed by a string that just serves to
         identify the information that is being searched for. The first item in the tuple
@@ -38,14 +43,30 @@ class DaltonOutputReader:
         the dictionary match.
     """
     
-    def __init__(self, ofile=None, olist=None ):
+    def __init__(self,**kw):
         
-        # To check if we are in file or list mode
-        self.file = None
-        self.list = None
-        self.debug = 0
+        # Now initialise base class
+        FileIO.__init__(self,**kw)
+        
+        # Now set any variables that define the capabilities of this class
+        self.canRead = True
+        self.canWrite = []
 
-        self.molecules = []    # use to hold the list of molecules
+        self.fd = None
+        # The file output file reader can work from a file or a list
+        if kw.has_key('olist'):
+            self.list = kw['olist']
+        else:
+            self.list=None
+
+    def _ReadFile( self, olist=None ):
+        """
+        Parse a dalton output file and build up the list of objects
+        """
+
+        # To check if we are in file or list mode
+        if olist:
+            self.list = olist
 
         # List of data items we are looking for
         self.type = 'Dalton output'
@@ -56,6 +77,7 @@ class DaltonOutputReader:
         self.multiplicity = 0
 
         self.geomoptsteps = [] # list to hold information on the individual geom opt steps
+        self.trajectory = None # To hold a trajectory for geometry optimisations
         # Need to think more about how to set this up. Each item in the list will be a dictinoary
         # holding information on a particular optimisation step, the key specifying the type of info.
         self.finalNuclearEnergy = 0.0
@@ -75,19 +97,9 @@ class DaltonOutputReader:
         #self.manage['final_geom'] = ( re.compile('^  *Total charge of the molecule') , self._read_charge )
 
 
-        # Check if we are reading a list or a file
-        if ( ofile ):
-            try:
-                self.file = open( ofile, 'r' )
-            except Exception, e:
-                print "Error opening output file in Dalton output reader!: %s" % e
-                return
-            
-        elif( olist ):
-            self.list = copy.deepcopy(olist)
-        else:
-            print "Dalton output reader must be called with a file or a list as an argument!"
-            return
+        # Check if we are reading a list or a file and open the file if we are using one
+        if not self.list:
+            self.fd = open( self.filepath, 'r' )
         
         # Loop through the contents of the file a line at a time and parse the contents
         line = self.getline()
@@ -95,14 +107,14 @@ class DaltonOutputReader:
             #print line
             for k in self.manage.keys():
                 if self.manage[k][0].match(line):
-                    #print 'Match found %s' % k
+                    if self.debug: print 'Match found %s' % k
                     self.manage[k][1](line)
                     break
             line = self.getline()
             
         #end while
-        if ( self.file ):
-            self.file.close()
+        if ( self.fd ):
+            self.fd.close()
         return 
     #end def
     
@@ -111,8 +123,8 @@ class DaltonOutputReader:
         """ Method to get a line that will work with either a file or a list of strings
         """
 
-        if ( self.file ):
-            line = self.file.readline()
+        if ( self.fd ):
+            line = self.fd.readline()
         elif ( self.list ):
             line = self.list.pop(0)
         else:
@@ -301,6 +313,21 @@ class DaltonOutputReader:
             Next geometry (au)
             line
         """
+
+        # The first time we need to create a trajectory object. We delete the first structure we read in
+        # and use this as the first structure in the trajectory object - this is a hack as we really should
+        # read the initial data to see what we are doing.
+        
+        if not len(self.trajectories):
+            self.trajectories.append( zmatrix.ZmatrixSequence() )
+
+            if not len(self.molecules) ==1:
+                raise AttributeError,"daltonio geometry optimisation with >1 initial structure."
+
+            mol = self.molecules[0]
+            self.molecules = []
+            self.trajectories[-1].add_molecule( mol )
+        
         # Be lazy and assume that there will always be 2 blank lines b4 the coordinates
         self.getline()
         self.getline()
@@ -344,18 +371,19 @@ class DaltonOutputReader:
         # end of while loop
         
         # Add the molecule
-        self.molecules.append( molecule )
+        #self.molecules.append( molecule )
+        self.trajectories[0].add_molecule( molecule )
 
 
     # Here follows a list of methods that can be expected to be called by external functions
     # that are querying us for bits and bobs
-    def get_molecules( self ):
-        """ Return the list of molecules that we have read
-        """
-        if len( self.molecules ) > 0 :
-            return self.molecules
-        else:
-            return None
+    #def get_molecules( self ):
+    #    """ Return the list of molecules that we have read
+    #    """
+    #    if len( self.molecules ) > 0 :
+    #        return self.molecules
+    #    else:
+    #        return None
     
     def list_summary( self ):
         """ Return a list of strings containing the summary.

@@ -17,7 +17,7 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-"""Read a GAMESS-UK output file
+"""Readers for GAMESS-UK input and output files
 Provide an interface to the contents of the output file
 
 still to do.....
@@ -27,12 +27,18 @@ remove rotations/translations
 
 """
 
+# import python modules
 import string
-from objects.zmatrix import *
-from objects.vibfreq import *
 import re
 #import xreadlines
+
+# import external modules
 from Scientific.Geometry.VectorModule import *
+
+# import internal modules
+from fileio import FileIO
+from objects.zmatrix import *
+from objects.vibfreq import *
 from objects import periodic # for name_to_element
 
 toAngstrom = 0.529177249
@@ -45,12 +51,169 @@ def _spliteformat(mobj):
     string = mobj.group(0) 
     return string[0]+' '+string[1:2]
 #end def
+
+
+class GUKInputIO(FileIO):
+    """
+     A reader GAMESS-UK input files
+    """
+
+    def __init__(self, filepath=None,**kw):
+        """ Set up the structures we need
+
+        """
+
+        # Initialise base class
+        FileIO.__init__(self,filepath=filepath,**kw)
+
+        # State we can read these files
+        self.canRead = True
+
+
+    def _ReadFile(self,**kw):
+        """ Read a GAMESS-UK input file. Currently this only reads in the
+        structure of the molecule and no calculation details. It parses
+        the z-matrix into a list and then uses the ZMatrix method with the
+        load from list method. If it encounters a geom field it assumes everything
+        that follows is gamess cartesian format and reformats each string so that it
+        can be handled by the list method.
+        """
+        print "Reading GAMESS-UK input file: %s" % self.filepath
+
+        # root is the default filename, file is the filename, not the file handle
+        file  = open(self.filepath,'r')        #The file descriptor
+        
+        # loop to find where the coordinate specification starts
+        finished = 0
+        while not finished:
+            line = file.readline()
+            if not line: # EOF so return 
+                finished = 1
+                return None
+                break
+
+            # Remove space and convert to lower case
+            line.strip()
+            line.lower()
+            
+            if line:
+                #fields = string.split( line )
+                fields = line.split()
+            else:
+                # ignore empty lines
+                continue
+            if ( fields[0][0:4] == "zmat" ):
+                mode = 'z'
+                finished = 1
+            elif ( fields[0][0:4] == "cart" ):
+                mode = 'x'
+                finished = 1
+            elif ( fields[0][0:4] == "geom"):
+                # Check for NWChem input style
+                if ( len(fields) == 3 and fields[2][0:4] == 'nwch'):
+                    mode = 'n'
+                else:
+                    mode = 'x'
+                finished = 1
+
+        zmat_buffer = []
+
+        # We should now be at the start of a line beginning with zmat or geom
+        # Append the header line we just read:
+        zmat_buffer.append( line )
+        
+#        if ( fields[0][0:4] == "zmat" ):# start
+#            mode = 'z'
+#        elif (fields[0][0:4] == "geom" ): # start but need to flag the mode
+#            mode = 'x'
+#             if ( len( fields ) > 1 ):
+#                 if ( fields[1][0:4] == "angs" ):
+#                     zmat_buffer.append( "coordinates angstrom" )
+#                 elif ( fields[1][0:4] == 'bohr' or fields[1][0:4] == 'a.u.' or fields[1][0:4] == 'au' ):
+#                     zmat_buffer.append( "coordinates bohr" )
+#                 else:
+#                     print "Unknown modifier for geometry directive!"
+#                     print "Offending line is %s" % line
+#                    zmat_buffer.append( "coordinates" )
+#        else:
+#            # shouldn't ever get here
+#            print "Error reading GAMESS-UK input"
+#           return 1
+
+        # loop to read in the coordinates
+        reading = 1
+        while ( reading ):
+            line = file.readline()
+
+            if not line: # EOF so return 
+                reading = 0
+                print "ERROR! Encountered EOF while reading in coordinates from GAMESS-UK Input file!"
+                return None
+                break
+        
+            #line = string.strip( line )
+            line.strip()
+            #line = string.lower( line )
+            line.lower()
+            
+            if line:
+                # See if the line has commas in it, as GAMESS-UK supports this as a
+                # separator as well as whitespace
+                if re.compile(",").search( line ):
+                    #fields = string.split( line, ','  )
+                    fields = line.split(',')
+                    #line = string.join( fields ) # Rejoin split line using space as separator
+                    line = fields.join() # Rejoin split line using space as separator
+                else:
+                    #fields = string.split( line )                    
+                    fields = line.split()                    
+            else:
+                # ignore empty lines
+                continue
+
+            if ( fields[0][0] == "#" or fields[0][0] == "?" ): # ignore comments
+                continue
+            elif ( fields[0][0:3] == "end" ): # stop
+                zmat_buffer.append( "end" )
+                reading = 0
+            else:
+                if mode == 'z':
+                    zmat_buffer.append( line )
+                elif mode == 'x': # reformat the line
+                    cart_string = fields[4] + "\t" + fields[0] + "\t" \
+                                  + fields[1] + "\t" + fields[2]
+                    zmat_buffer.append( cart_string )
+                elif mode == 'n':
+                    # Reformat the string from NWChem input format
+                    cart_string = fields[0] + "\t" + fields[2] + "\t" \
+                                  + fields[3] + "\t" + fields[4]
+                    zmat_buffer.append( cart_string )
+                    
+
+        #self.debug = 1
+        if ( self.debug == 1 ):
+            print "viewer/main.py: rdgamin read zmat_buffer:"
+            for line in zmat_buffer:
+                print "zmat: ",line
+
+        # Now we've got a buffer with the coordinates, create the model
+        model = Zmatrix( list = zmat_buffer )
+        model.title = self.name
+        model.name = self.name
+        self.molecules.append( model )
+        #self.objects.append( model )
+
     
-class GamessOutputReader:
+#class GamessOutputReader:
+class GUKOutputIO( FileIO ):
     """ Read an GAMESS-UK output file and store information"""
     
-    def __init__(self, fileName):
-        self.debug = 0
+    def __init__(self,filepath=None,**kw):
+
+        # Initialise base class
+        FileIO.__init__(self,filepath=filepath,**kw)
+        
+        self.debug = None
         self.title = None
         self.type = 'Gamess-UK output'
         self.name = ''
@@ -110,8 +273,11 @@ class GamessOutputReader:
         self.zmatrix_auto = None
         self.readvar = None # flag to monitor calls to _read_variables
         self.molecules = []    # use to hold the list of coordinates as z-matrices
-        self.manage  = {}      # Manage holds a tuple with a matching string, and function to handle
 
+
+    def _ReadFile(self):
+        """ Read a GAMESS-UK Output file"""
+        self.manage  = {}      # Manage holds a tuple with a matching string, and function to handle
         # Define a phrase to search for and the routine to read the data
         self.manage['molsym'] = ( re.compile('^ *molecular point group'), self._read_molecular_symmetry)
         self.manage['nuclear_xyz'] = ( re.compile('^ *point.*nuclear coordinate') , self._read_nuclear_xyz )
@@ -148,19 +314,19 @@ class GamessOutputReader:
         self.manage['freq_force'] = ( re.compile('^  *harmonic frequencies ') , self._read_frequencies_force )
         self.manage['drf_area'] = ( re.compile('^  *contact area:') , self._read_DRF_area )
         self.manage['drf'] = ( re.compile('^  *--- quantum system ---') , self._read_DRF )
-        # Attempt opening the file, if this doesn't work exit with a warning
-        try:
-            self.fd = open(fileName,'r')        #The file descriptor
-        except:
-            print 'Warning: Filename %s does not exist' % fileName
-            return 
+        
+        # Attempt opening the file. Any exception should be trapped in the methods in the base
+        # class that call this
+        self.fd = open(self.filepath,'r')
+        
         # Loop through the contents of the file a line at a time and parse the contents
         line = self.fd.readline()
         while line != '' :
             #jk print line
             for k in self.manage.keys():
                 if self.manage[k][0].match(line):
-                    #print 'Match found %s' % k
+                    if self.debug:
+                        print 'Match found %s' % k
                     self.manage[k][1](line)
                     break
                 #end if
@@ -253,9 +419,17 @@ class GamessOutputReader:
     #end def
 
     def _read_nuclear_xyz(self,line):
-        """ This reads in instances of the cartesian coordinates printed by the optimiser
-            and creates new molecules from them.
+        """ This reads in instances of the cartesian coordinates printed by the optx
+            optimiser and creates new molecules from them.
         """
+
+        # Find which point of the optimisation we are at
+        point = int(line.split()[1])
+        if point == 0:
+            # First optimisation point so add a trajectory object
+            # we then append all further molecules to this
+            self.trajectories.append( ZmatrixSequence() )
+            
         # skip to start of coordinates
         while ( line and not line[3:5] == "==" ):
             line = self.fd.readline()
@@ -293,7 +467,10 @@ class GamessOutputReader:
 
         # We should now have the structure - Really should check 
         # this but not sure of best way to do this.
-        self.molecules.append(zz)
+        #self.molecules.append(zz)
+
+        # Add this molecule to the latest trajectory object
+        self.trajectories[-1].add_molecule( zz )
 
     def _read_variables(self, line):
         """This method reads in the updated variables for the z-matrix, deep copies
@@ -421,71 +598,71 @@ class GamessOutputReader:
         
         
 
-    def _read_input_zmatrix2(self, line):
-        """ This reads the input z-matrix into a a text buffer and passed it to the
-            load_from_file method of the z-matrix class.
-            This is pretty messy and in retrospect, it is probably far easier just
-            to parse the z-matrix out of the echoed input. But I'd started so...
-        """
+#     def _read_input_zmatrix2(self, line):
+#         """ This reads the input z-matrix into a a text buffer and passed it to the
+#             load_from_file method of the z-matrix class.
+#             This is pretty messy and in retrospect, it is probably far easier just
+#             to parse the z-matrix out of the echoed input. But I'd started so...
+#         """
         
-        self.zmatrix = 1
+#         self.zmatrix = 1
         
-        zmat_buffer = []
-        zmat_buffer.append("zmatrix angstrom")
-        # skip 2 lines
-        line = self.fd.readline()
-        line = self.fd.readline()
-        line = self.fd.readline()
-        finished = 0
+#         zmat_buffer = []
+#         zmat_buffer.append("zmatrix angstrom")
+#         # skip 2 lines
+#         line = self.fd.readline()
+#         line = self.fd.readline()
+#         line = self.fd.readline()
+#         finished = 0
 
-        # Read in the first bit of the z-matrix
-        while ( line and not finished ):
-            if ( len( line ) > 1 ):
-                if ( line[1] == "=" ):
-                    finished = 1
-                if ( not finished ):
-                    words =  string.split( string.strip( line ) )
-                    if ( words[0] != "comment" ):
-                        zmat_buffer.append( string.strip( line ) )
-            line = self.fd.readline()
+#         # Read in the first bit of the z-matrix
+#         while ( line and not finished ):
+#             if ( len( line ) > 1 ):
+#                 if ( line[1] == "=" ):
+#                     finished = 1
+#                 if ( not finished ):
+#                     words =  string.split( string.strip( line ) )
+#                     if ( words[0] != "comment" ):
+#                         zmat_buffer.append( string.strip( line ) )
+#             line = self.fd.readline()
 
-        #Now read in the variables
-        zmat_buffer.append( "variables" )
-        finished = 0
-        gotvar = 0
-        gotconst = 0
-        while ( line and not finished ):
-            line = string.strip( line )
-            try:
-                fields = string.split(line)
-                var_value = float( fields[1] )
-                varline = fields[0].lower() + "   " + fields[1] 
-                zmat_buffer.append( varline )
-                gotvar = 1
-            except:
-                if ( gotvar ):
-                    if ( gotconst ):
-                        finished = 1
-                    else:
-                        # Check if we are reading in the constants or have finished
-                        line = self.fd.readline()
-                        try:
-                            if string.split( line )[0] == "constants":
-                                self.fd.readline() # read in the ---- line
-                                line = self.fd.readline()
-                                zmat_buffer.append("constants")
-                                gotconst = 1
-                                continue
-                        except:
-                            finished = 1
-                else:
-                    pass
+#         #Now read in the variables
+#         zmat_buffer.append( "variables" )
+#         finished = 0
+#         gotvar = 0
+#         gotconst = 0
+#         while ( line and not finished ):
+#             line = string.strip( line )
+#             try:
+#                 fields = string.split(line)
+#                 var_value = float( fields[1] )
+#                 varline = fields[0].lower() + "   " + fields[1] 
+#                 zmat_buffer.append( varline )
+#                 gotvar = 1
+#             except:
+#                 if ( gotvar ):
+#                     if ( gotconst ):
+#                         finished = 1
+#                     else:
+#                         # Check if we are reading in the constants or have finished
+#                         line = self.fd.readline()
+#                         try:
+#                             if string.split( line )[0] == "constants":
+#                                 self.fd.readline() # read in the ---- line
+#                                 line = self.fd.readline()
+#                                 zmat_buffer.append("constants")
+#                                 gotconst = 1
+#                                 continue
+#                         except:
+#                             finished = 1
+#                 else:
+#                     pass
                 
-            line = self.fd.readline()
-        zmat_buffer.append("end")
+#             line = self.fd.readline()
+#         zmat_buffer.append("end")
         
-        model = Zmatrix( list = zmat_buffer )
-        self.molecules.append( model )
+#         model = Zmatrix( list = zmat_buffer )
+#         self.molecules.append( model )
 
     def _read_orient_geom(self, line):
         """
@@ -495,7 +672,9 @@ class GamessOutputReader:
         """
         if self.zmatrix:
             return
-        print "read_orient_geom"
+
+        if self.debug:
+            print "read_orient_geom"
 
         # The regexp that identifies lines with the coordinates on them
         # REM: \s=space, \d=digit
@@ -583,6 +762,7 @@ class GamessOutputReader:
             under "geometry angstrom all"
         """
         if not self.zmatrix_auto:
+            if self.debug: print "## not reading zmatrix2 ##"
             return
 
         zmat_buffer = [] # Buffer to hold zmatrix
