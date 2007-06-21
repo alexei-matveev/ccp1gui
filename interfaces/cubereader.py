@@ -7,35 +7,81 @@ au_to_angstrom = 0.529177249
 from objects.zmatrix import *
 from objects.field import *
 from objects.periodic import z_to_el
+from fileio import FileIO
 
-class CubeReader:
+class CubeIO(FileIO):
 
-    def __init__(self):
-        pass
+    def __init__(self, filepath=None,**kw):
+        """ Set up the structures we need
 
-    def ParseFile(self,file):
+        """
+
+        # Initialise base class
+        FileIO.__init__(self,filepath=filepath,**kw)
+
+        # List which types of object we can read/write
+        self.canRead = True
+        self.canWrite = [ ]
+
+
+    def _ReadFile(self,**kw):
         """Parse a cube file returning Field and Zmatrix objects
         We do not attempt to convert the units of the field,
         so they are probably in atomic units.
+
+
+        Below from: http://www.ks.uiuc.edu/Research/vmd/plugins/molfile/cubeplugin.html
+
+C     WRITE A FORMATTED CUBEFILE VERY SIMILAR TO THOSE CREATED BY 
+C     THE GAUSSIAN PROGRAM OR THE CUBEGEN UTILITY.
+C     THE FORMAT IS AS FOLLOWS (LAST CHECKED AGAINST GAUSSIAN 98):
+C
+C     LINE   FORMAT      CONTENTS
+C     ===============================================================
+C      1     A           TITLE
+C      2     A           DESCRIPTION OF PROPERTY STORED IN CUBEFILE
+C      3     I5,3F12.6   #ATOMS, X-,Y-,Z-COORDINATES OF ORIGIN
+C      4-6   I5,3F12.6   #GRIDPOINTS, INCREMENT VECTOR
+C      #ATOMS LINES OF ATOM COORDINATES:
+C      ...   I5,4F12.6   ATOM NUMBER, CHARGE, X-,Y-,Z-COORDINATE
+C      REST: 6E13.5      CUBE DATA (WITH Z INCREMENT MOVING FASTEST, THEN
+C                        Y AND THEN X)
+C
+C     FOR ORBITAL CUBE FILES, #ATOMS WILL BE < 0 AND THERE WILL BE ONE
+C     ADDITIONAL LINE AFTER THE FINAL ATOM GIVING THE NUMBER OF ORBITALS
+C     AND THEIR RESPECTIVE NUMBERS. ALSO THE ORBITAL NUMBER WILL BE
+C     THE FASTEST MOVING INCREMENT.
+C
+C     ALL COORDINATES ARE GIVEN IN ATOMIC UNITS.
+        
         """
 
 
         mol = Zmatrix()
         field = Field(nd=3)
 
-        fp = open(file,"r")
+        fp = open( self.filepath ,"r" )
 
-        self.title1 = fp.readline()
-        self.title2 = fp.readline()
+
+        title1 = fp.readline().strip()
+        title2 = fp.readline().strip()
 
         # could load titles from here
-        mol.title = self.title1
-        field.title = self.title1 + self.title2
+        mol.title = title1
+        field.title = title1 + title2
         
         # empirically axes and coordinates are in au
         fac = au_to_angstrom
         tmp = fp.readline().split()
-        self.natoms = int(tmp[0])
+
+        # -ve natoms indicates an orbital file (see comments above)
+        orbitals = None
+        natoms = int(tmp[0])
+        if natoms < 0:
+            orbitals=1
+            natoms = abs(natoms)
+            if self.debug: "CubeIO reading orbital file"
+        
         field.origin = fac*Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
         # note that the Field object follows the punchfile (Fortran-style)
         # ordering so we reorder the axes
@@ -51,9 +97,9 @@ class CubeReader:
         # geometry seems to be in au
         fac = au_to_angstrom
         cnt = 0
-        for i in range(0,self.natoms):
+        for i in range(0,natoms):
             tmp = fp.readline().split()
-            print i,tmp
+            #print i,tmp
             p = ZAtom()
             try:
                 p.coord = [ float(tmp[2])*fac , float(tmp[3])*fac, float(tmp[4])*fac ]
@@ -66,25 +112,72 @@ class CubeReader:
             mol.add_atom(p)
         mol.reindex()
 
-        # Now pull records off the file until all done
+
+        # Set up the base field object
         ndata = field.dim[0]*field.dim[1]*field.dim[2]
         field.data = ndata*[0.0]
-        i = 0
-        while i < ndata:
-            line = fp.readline()
-            if line == "":
-                print "Warning Incomplete Cube Data"
-                return
-            values = line.split()
-            for v in values:
-                field.data[i] = float(v)
-                i = i + 1
 
-        return (mol,field)
+        # If we're reading orbitals, there could be multiple datasets
+        # we read in the number of datasets and then need to read in as
+        # many integers as there are datasets
+        nfields = 1
+        if orbitals:
+            orbital_description = []
+            
+            tmp = fp.readline().split()
+            
+            nfields = int( tmp[0] ) # First item is # datasets
+            
+            for d in tmp[1:]:
+                # Add remaining fields to the descriptions
+                orbital_description.append( d )
 
+            # Now keep looping till we've read as many descriptions
+            # as there are datasets
+            while len( orbital_description ) < nfields:
+                descs = fp.readline().split()
+                for d in descs:
+                    orbital_description.append( d )
+
+        # Create a list of fields to cycle through - for non-orbital
+        # files there is only one
+        fields = [ field ]
+
+        # We only do this loop if we are reading an orbital file
+        if orbitals:
+            # Rename first field
+            title = field.title
+            fields[0].title = title+'_orbital_'+str( orbital_description[0] )
+
+            # Duplicate the field so we have a list of fields to work with
+            for i in range(nfields-1):
+                new = copy.deepcopy( field )
+                new.title = title+'_orbital_'+str(orbital_description[i+1])
+                fields.append( new )
+
+        # Now pull records off the file until all done
+        for field_obj in fields:
+            i = 0
+            while i < ndata:
+                line = fp.readline()
+                if line == "":
+                    print "Warning Incomplete Cube Data"
+                    break
+                values = line.split()
+                for v in values:
+                    #print "i ",i
+                    field_obj.data[i] = float(v)
+                    i = i + 1
+                
+        #return (mol,field)
+        self.molecules.append( mol )
+        self.fields = self.fields + fields
+        
 if __name__ == "__main__":
-    r = CubeReader()
-    mol,field = r.ParseFile("c:\Documents and Settings\ps96\My Documents\CECAM2006\CubeFiles/acrolein1_gs.cube")
-    mol.list()
-    field.list()
-    print field.data
+
+    # new file from: http://www.stolaf.edu/academics/chemapps/jmol/docs/examples-11/data/dxy.cube
+    r = CubeIO()
+    objects = r.GetObjects( filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/cube/phoh.cube')
+
+    for o in objects:
+        o.list()
