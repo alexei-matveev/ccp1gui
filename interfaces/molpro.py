@@ -35,7 +35,7 @@ from tools import *
 from qmtools import *
 from filepunch import *
 from jobmanager import *
-from viewer.paths import root_path,find_exe
+from viewer.paths import paths,find_exe
 from viewer.rc_vars import rc_vars
 from objects.file import *
 
@@ -347,6 +347,8 @@ class MOLPROCalc(QMCalc):
         mol_obj  = self.get_input("mol_obj")
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
+        if not directory:
+            directory = paths['user']
         filename = directory+os.sep+job_name+'.com'
        
         writeinput_err = self.__WriteInput(mol_obj,filename)
@@ -380,6 +382,7 @@ class MOLPROCalc(QMCalc):
 
         # Change to the working directory
         os.chdir( directory )
+        print "Running molpro job from: %s" % directory
         
         if writeinput:
             mol_obj  = self.get_input("mol_obj")
@@ -407,13 +410,14 @@ class MOLPROCalc(QMCalc):
         try:
             job = self.get_job(create=1)
         except Exception,e:
+            traceback.print_exc()
             ed.Error("Problem initialising job!\n%s" % e)
             return None
 
         if not job:
             ed.Error("molpro makejob no job returned!")
             return None
-        
+
         jobtype = job.jobtype
         job.name = job_name
 
@@ -423,12 +427,19 @@ class MOLPROCalc(QMCalc):
         job.add_step(DELETE_FILE,'remove old Molden',remote_filename=job_name+'.molden',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
 
-        molpro_exe = self.get_executable()
-        if not molpro_exe:
-            ed.Error('Cannot find an executable to run!\n'+
-                     'Please make sure an executable is in your path or set the\n'
-                     'molpro_exe variable in your ccp1guirc file to point at one.')
+        # Block of code to tweak the job depending on how it is being run
+        if jobtype == LOCALHOST:
+            molpro_exe = self.get_executable( job )
+            if not molpro_exe:
+                ed.Error('Cannot find an executable to run!\n'+
+                         'Please make sure an executable is in your path or use the\n'
+                         'the job tab to set the path to the executable.')
+                return
+        else:
+            ed.Error("Runing Molpro currently only supported for remote resources!")
             return
+        
+        
         print 'Using MOLPRO path ' + molpro_exe
 
         stdout_file=None
@@ -436,7 +447,7 @@ class MOLPROCalc(QMCalc):
         #local_command_args = ['-X',job_name+'.com']
         local_command_args = [job_name+'.com']
         
-        if sys.platform[:3] == 'win' and jobtype == LOCALHOST:
+        if sys.platform[:3] == 'win':
             stdout_file=job_name+'.out'
 
         job.add_step(RUN_APP,
@@ -552,15 +563,14 @@ class MOLPROCalc(QMCalc):
                 #name = self.get_input("mol_name")
                 ed.update_func(o)
 
-    def get_executable(self):
+    def get_executable(self,job):
         """Return the path to the Molpro Executable"""
-        global rc_vars,find_exe
+        global find_exe
 
-        if rc_vars.has_key('molpro_executable'):
-            molpro_exe = rc_vars['molpro_executable']
-            print "Using molpro exectable location defined in ccp1guirc.py file"
-            return molpro_exe
-        
+        executable = job.get_parameter( 'executable' )
+        if executable:
+            return executable
+
         if sys.platform[:3] == 'win':
             return None
         elif sys.platform[:3] == 'mac':
