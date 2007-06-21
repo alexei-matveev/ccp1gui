@@ -16,6 +16,8 @@ class MoldenDriver:
         """ Initialise buy specifying the file (Molden or GAMESS-UK
         that molden will use to get the wavefunction) """
         self.wfn = wavefunctionfile
+        if not os.access(wavefunctionfile,os.R_OK):
+            raise Exception, 'MoldenDriver: wfn file '+wavefunctionfile+' is not readable'
 
     def ComputePlot(self,planespec,npts=21,edge=None,mo=None):
         """driver for Molden calculations

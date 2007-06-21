@@ -3,15 +3,18 @@
 #
 import unittest
 import os
-from viewer.paths import gui_path
 from molden import *
-class testMolden(unittest.TestCase):
+
+from viewer.paths import gui_path
+out=gui_path+os.sep+'examples'+os.sep+'methanol_sample.out'
+
+class MoldenTestCase(unittest.TestCase):
     """ using a sample output try and get a 3d density """
 
     def testDensity(self):
         if os.access('3dgridfile', os.R_OK):
             os.unlink('3dgridfile')
-        t=MoldenDriver("../examples/methanol_sample.out")
+        t=MoldenDriver(out)
         t.ComputePlot((1,2,3))
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
@@ -19,10 +22,15 @@ class testMolden(unittest.TestCase):
     def testOrbital(self):
         if os.access('3dgridfile', os.R_OK):
             os.unlink('3dgridfile')
-        t=MoldenDriver("../examples/methanol_sample.out")
+        t=MoldenDriver(out)
         t.ComputePlot((1,2,3),mo=5)
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
+
+
+def suite():
+    return unittest.TestLoader().loadTestsFromTestCase(MoldenTestCase)
+
 
 if __name__ == "__main__":
 
