@@ -482,6 +482,22 @@ class GetFileIO:
         # Need to add the option to open any file type
         ftypes.append(('All','*'))
 
+        # So that we have a separate heading for molecule types
+        moltypes=[('Molecules','.xyz'),
+                  ('Molecules','.pdb'),
+                  ('Molecules','.pun'),
+                  ('Molecules','.c'),
+                  ('Molecules','.crd'),
+                  ('Molecules','.z'),
+                  ('Molecules','.cml'),
+                  ('Molecules','.xml'),
+                  ('Molecules','.zmt'),
+                  ('Molecules','.gjf'),
+                  ('Molecules','.mol')]
+        
+        # put it at the top of the list
+        ftypes = moltypes+ftypes
+        
         return ftypes
     
     def GetOutputFiletypesAsTuple(self):
@@ -508,6 +524,14 @@ class GetFileIO:
             names.append('%s [%s]' % (name,ext) )
         return names
 
+    def GetOpenBabelIO(self,format=None):
+        """ If Openbabel is available, return the IO object
+        """
+
+        if openbabel:
+            return OpenBabelIO( format=format, desc2OBfmt=self.desc2OBfmt )
+        else:
+            return None
 
 if __name__ == "__main__":
 

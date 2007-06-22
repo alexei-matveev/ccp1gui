@@ -5,13 +5,19 @@ import unittest
 import os
 
 from getfileio import GetFileIO
-
 from objects.zmatrix import Zmatrix, ZAtom
+from viewer.paths import paths
 
+try:
+    import openbabel
+except ImportError:
+    openbabel = None
 
 class IOTestCase(unittest.TestCase):
     """Base class - might come in useful later and save lots of typing..."""
 
+    # So that all tests can find the examples directory
+    egdir = egdir=paths['gui']+os.sep+'examples'+os.sep
     
     def getMolecule(self):
         """ Return a molecule suitable for testing the writers - could
@@ -420,6 +426,32 @@ class testZmatrix_IO(IOTestCase):
         self.assertEqual( len(molecules[0].atom) , 16)
 
 
+if openbabel:
+    class testOpenBabel_IO(IOTestCase):
+        """Test whether we deal with the openbabel interface
+           If it is some of the other tests will fail as the file
+           sizes written out by different readers for (e.g. pdb) vary
+           This is on the list of things to sort out...
+        """
+
+        def setUp(self):
+            """Set the reader for all these filetypes"""
+
+            getIO = GetFileIO()
+            self.IO = getIO.GetOpenBabelIO( )
+
+        def testReadPDB(self):
+            """ read in a PDB  FIle
+            """
+
+            molecules = self.IO.GetObjects(
+                format='Protein Data Bank format',
+                filepath=self.egdir+'caffeine.pdb',
+                otype = 'molecules'
+                )
+
+            self.assertEqual( len(molecules[0].atom) , 24)
+
 if __name__ == "__main__":
 
     if 1:
@@ -430,7 +462,7 @@ if __name__ == "__main__":
 
         myTestSuite = unittest.TestSuite()
 
-        myTestSuite.addTest(testCube_IO("testRead"))
+        myTestSuite.addTest(testOpenBabel_IO("testReadPDB"))
 
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)

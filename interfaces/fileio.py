@@ -55,7 +55,7 @@ class FileIO:
 
     The base class provides a number of things that should be useful to all the writers,
     in including attributes of the file (full path, name, extension etc
-    - see self._ParseFilepat
+    - see self._ParseFilepath
 
     At the moment the assumption for reading is that the entire file is read in one pass and
     all objects returned together. It should be relatively simple to change things
@@ -136,7 +136,7 @@ class FileIO:
             return False
 
 
-    def GetObjects(self,otype=None, filepath=None, debug=None):
+    def GetObjects(self,otype=None, filepath=None, debug=None,**kw):
         """ Return any objects suitable for viewing
             If the otype argument is set, return only the object of the specified type
 
@@ -146,7 +146,7 @@ class FileIO:
             self.debug=1
 
         if not self.read:
-            self.ReadFile( filepath=filepath )
+            self.ReadFile( filepath=filepath,**kw )
         
         if otype:
             if hasattr( self, otype ):
@@ -311,11 +311,16 @@ class OpenBabelIO(FileIO):
 
         # Initialise base class
         FileIO.__init__(self,filepath,**kw)
+
         
-        if not format:
-            raise AttributeError,"OpenBabelReader needs a format keyword!"
-        else:
-            self.format = format
+        #if not format:
+        #    raise AttributeError,"OpenBabelReader needs a format keyword!"
+        #else:
+        #    self.format = format
+        
+        self.format=None
+        if format:
+            self.format=format
 
         # Need to set these as global as we import them here
         #global openbabel,pybel
@@ -346,11 +351,12 @@ class OpenBabelIO(FileIO):
         self.canWrite = [ 'Zmatrix','Indexed' ]
 
 
-    def _ReadFile(self):
+    def _ReadFile(self,format=None):
         """ Read the file and return the molecule(s)"""
 
-        #print "openbabel ReadFile"
-
+        if format:
+            self.format=format
+            
         if not self.format:
             raise Exception,"OpenBabel _ReadFile no format set!"
 
@@ -361,9 +367,12 @@ class OpenBabelIO(FileIO):
         ok = self.OBConv.SetInFormat( format )
         if not ok:
             raise Exception,"OpenBabelReader could not set input format to: %s" % format
+        elif self.debug:
+            print "OpenBabel _ReadFile set input format to ",format
         OBmol = openbabel.OBMol()
+        
         notatend = self.OBConv.ReadFile( OBmol, self.filepath )
-
+        
         while notatend:
 
             # Check we've got a valid molecule back
@@ -451,10 +460,12 @@ class OpenBabelIO(FileIO):
 
 #             self.molecules.append( mol )
 
-    def _WriteMolecule(self,molecule):
+    def _WriteMolecule(self,molecule,format=None):
         """  Write out the molecule """
 
-        print "openbabel WriteMolecule"
+        if format:
+            self.format=None
+            
         if not self.format:
             raise Exception,"OpenBabel _WriteMolecule format not set!"
         
