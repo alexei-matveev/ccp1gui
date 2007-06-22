@@ -17,7 +17,7 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-"""a container class for normal modes and associated vibrational
+"""A container class for normal modes and associated the vibrational
 frequencies.
 """
 
@@ -49,8 +49,8 @@ class VibFreqSet:
 
    def set_freq(self, v, freq):
       v.freq = freq
-      for descriminator in [ '', '_2', '_3', '_4', '_6','_7','_8']:
-         title = 'v'+str(freq)+descriminator
+      for discriminator in [ '', '_2', '_3', '_4', '_6','_7','_8']:
+         title = 'v'+str(freq)+discriminator
          try:
             self.vibtitles.index(title)
          except ValueError:
@@ -69,9 +69,9 @@ class VibFreq:
    def get_name(self):
       return self.title
 
-
-v = VibFreqSet()
-v1 = v.add_vib([],100)
-v2 = v.add_vib([])
-v.set_freq(v2,100)
-v.list()
+if __name__ == "__main__":
+   v = VibFreqSet()
+   v1 = v.add_vib([],100)
+   v2 = v.add_vib([])
+   v.set_freq(v2,100)
+   v.list()
