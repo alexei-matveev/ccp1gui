@@ -202,26 +202,6 @@ class VtkGraph(TkMolView,Graph):
     def fit_to_window(self):
         self.pane.ResetToFit(0,0)
 
-    def myquit(self):
-        """Handler for exit, deletes VTK windows before loss of tk"""
-        
-        try:
-            # process rc_vars
-            self.write_ccp1guirc()
-        except Error,e:
-            print "Error writing ccp1guirc file!"
-            print e
-
-# Needs looking at...
-#         try:
-#             self.job_editor.ask_quit()
-#         except Exception,e:
-#             print "Error quitting jobeditor!\n%s" % e                
-          
-        self.pane.destroy()
-        self.pane2d.destroy()
-        self.quit()
-        
     def update(self):
         """Update the VTK images"""
 
@@ -532,17 +512,6 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         self.debug_selection = 0
         self.selection_key = None
 
-        t = vtkLookupTable()
-        t.SetNumberOfColors(len(colours) + 1)
-        t.Build()
-        ix = 0
-        for i in range(len(colours)):
-            r,g,b = colours[i]
-            t.SetTableValue(ix,r,g,b,1)
-            ix = ix + 1
-        self.colour_table = t
-
-
         # dictionary to locate which actor highlights which atom
         self.atom_to_selection_actor = {}
 
@@ -576,6 +545,16 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
             self.molecule = object
 
         self.molecule.reindex()
+
+        t = vtkLookupTable()
+        t.SetNumberOfColors(len(colours) + 1)
+        t.Build()
+        ix = 0
+        for i in range(len(colours)):
+            r,g,b = colours[i]
+            t.SetTableValue(ix,r,g,b,1)
+            ix = ix + 1
+        self.colour_table = t
 
         #for a in self.molecule.atom:
         #    a.conn = []
