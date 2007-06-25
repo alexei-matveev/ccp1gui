@@ -318,6 +318,9 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_distance_dialog(include_xyz=1)
         self.build_command_window()
         #self.build_save_image_dialog()
+
+        self.build_save_image_dialog_jens()
+
         self.build_save_movie_dialog()
         self.build_saveas_filetype_dialog()
 
@@ -817,6 +820,7 @@ class TkMolView(Pmw.MegaToplevel):
 
         menu.add_command(label='Save Image', underline=0, 
                command=self.ask_save_image3d)
+
         
         # menu.add_separator()
         # menu.add_command(label='Watch ', underline=0, 
@@ -884,14 +888,33 @@ class TkMolView(Pmw.MegaToplevel):
         return mbutton
 
     def destroy(self):
-        """invoked when window is closed by windowmanager"""
-        self.myquit()
+        """Handler for window close events"""
+        self.quit()
         
     def myquit(self):
-        """Called on user-requested exit
-            This is overloaded in VTK case to destroy VTK parts first
-        """
+        """Called on user-requested exit"""
         self.quit()
+
+    def quit(self):
+        """Handler for exit"""
+        
+        try:
+            # process rc_vars
+            self.write_ccp1guirc()
+        except Error,e:
+            print "Error writing ccp1guirc file!"
+            print e
+
+        # Needs looking at...
+        #         try:
+        #             self.job_editor.ask_quit()
+        #         except Exception,e:
+        #             print "Error quitting jobeditor!\n%s" % e                
+        #
+        # parent is the initial Tk root window (kept hidden)
+        # destroy works better than exit when using Pmw.Ballon
+        # see http://mail.python.org/pipermail/python-list/2005-February/308718.html
+        self.parent.destroy()
 
     def EditMenu(self):
         #mbutton = Menubutton(self.mBar, text='Edit', underline=0)
@@ -1131,10 +1154,14 @@ class TkMolView(Pmw.MegaToplevel):
         
     def ask_save_image3d(self):
         #need code here to choose a sensible initial file
+
+        #self.build_save_image_dialog_jens()
+        #self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
         renderWindow = self.pane.GetRenderWindow()
         self.build_save_image_dialog()
 #        self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
         self.image_filename = self.save_image_dialog.go(paths['user'],"*.*","out.jpg")
+
         format = self.image_format.get()
         print 'filename',self.image_filename
         if format == "png":
