@@ -776,7 +776,7 @@ class LocalJob(Job):
             e = open('stderrfile','r')
             txt = e.readlines()
             e.close()
-            print 'stderr is ',txt
+            #print 'stderr is ',txt
             if len(txt):
                 msg = 'txt on Stderr:\n'
                 for t in txt:
@@ -1458,6 +1458,7 @@ class GlobusJob(GridJob):
         GridJob.__init__(self)
 
         self.jobtype = 'Globus'
+        # Define which job parameters we support
         self.job_parameters['remote_home'] = None
         self.job_parameters['remote_directory'] = None # The full path to the working directory on the
         self.job_parameters['jobmanager'] = None
@@ -1475,8 +1476,10 @@ class GlobusJob(GridJob):
 
         # Not been called before so get the parameter
         host = self.get_parameter('host')
-        if not host or type(host) != str:
-            raise JobError, "GlobusJob needs a single hostname to run the job on!"
+        if type(host) == list or type(host) == tuple:
+            if not len(host) == 1:
+                raise JobError, "GlobusJob needs a single hostname to run the job on!"
+            host = host[0]
 
         self.host=host
         if self.debug:
