@@ -178,12 +178,6 @@ from interfaces.dalton import *
 from interfaces.charmm import *
 from interfaces.smeagol import *
 
-#from interfaces.gamessukIO import *
-#from interfaces.cubereader import *
-#from interfaces.filepunch import *
-#xml interface
-#from interfaces.filexml import *
-
 from viewer.selections2 import *
 
 import objects
@@ -197,27 +191,10 @@ from viewer.toolpanel import *
 import interfaces.am1calc, interfaces.calcmon
 from objects import symed, symdet
 import thread
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 
 from interfaces.getfileio import GetFileIO
 
-
-def set_rc_var( name, value ):
-    """
-       Set an rc_variable.
-       name: the name of the variable in the rc_vars dictionary
-       value: what the variable should be set to
-
-       We return 1 if name is not in the dictionary
-    """
-    global rc_vars
-    
-    if rc_vars.has_key( name ):
-        rc_vars[name] = value
-        return None
-    else:
-        print "Error in set_rc_var! rc_vars has no key %s" % name
-        return 1
 
 
 class TkMolView(Pmw.MegaToplevel):
@@ -479,81 +456,111 @@ class TkMolView(Pmw.MegaToplevel):
            in the rc_vars dictionary. Any variables that are attributes of self
            are set.
         """
-        global rc_vars
+        global defaults
 
-        # Need to append all variables that we are going to change to locals
-        # in order for them to be in scope when execfile executes
-        #for var_name in rc_vars.keys():
-        #    locals()[var_name] = rc_vars[var_name]
-
-        # Load user Defaults if present
-        if sys.platform[:3] == 'win':
-            rcfile = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
-        else:
-            rcfile = os.path.expandvars('$HOME/.ccp1guirc.py')
-            
+        rcfile = defaults.rcfile            
         if not os.path.isfile( rcfile ):
             # No ccp1guirc file so we can return
             #print "No user preferences file: %s found" % rcfile
             return
         
-        #print "Executing ccp1guirc file %s" % rcfile
-        #try:
+        print "Executing ccp1guirc file %s" % rcfile
         execfile( rcfile )
-        #except Exception,e:
-        #        print "Error reading ccp1guirc file: %s" % rcfile
-        #        print e
 
-        # Pull any rc_vars out
-        rc_buff = []
-        f = open( rcfile )
-
-        for line in f.readlines():
-            rc_buff.append(line)
-        f.close()
-
-        for line in rc_buff:
-            if re.compile( '###################### End User Defaults #####################' ).match( line ):
-                break
-            elif re.compile( '^[a-zA-Z][a-zA-Z1-9 _-]*={1}.*' ).match( line ):
-                split = line.split('=')
-                key = split[0].strip()
-                execline = 'tmp = '+key
-                try:
-                    exec(execline)
-                    #print "%s from ccp1guirc is: %s" % (key, tmp)
-                    # Need to check if this is a string. Under windows a path could contain the
-                    # \b character (backspace). If the string is interpreted as a normal string
-                    # this causes the \b and the preceding character to be deleted. We therefore
-                    # need to convert the variable to a raw string.
-                    if type(tmp) is str:
-                        tmp = self.raw( tmp )
-                   
-                    rc_vars[key] = tmp
-                except NameError:
-                    #print "%s is not in ccp1guirc file" % key
-                    pass
-                # Now try and set this if it is an attribute of main
-                # and set it if it is
-                try:
-                    if type(rc_vars[key]) is str:
-                        execline = "self."+key+" = \'"+str(rc_vars[key])+"\'"
-                    else:
-                        execline = "self."+key+" = "+str(rc_vars[key])
-                    exec(execline)
-                    #print "Set self."+key+" to "+str(rc_vars[key])
-                except Exception, e:
-                    #print "%s is not a self var" % key
-                    #print e
-                    pass
+        # New read in the file using defaults
+        defaults.read_from_file()
+        
+        # Now try and set this if it is an attribute of main
+        # and set it if it is
+        for key,value in defaults.iteritems():
+            if hasattr( self, key ):
+                #print "setting attribute of main: %s : %s" %(key,value)
+                setattr( self, key, value )
+                    
 
         # Set the default path to where we we were last
-        if rc_vars['old_path']:
-            if rc_vars.has_key('user_path'):
-                p = rc_vars['user_path']
-                print "Using old path from rc_vars: ",p
-                if p:
-                    paths['user'] = p
+        #if rc_vars['old_path']:
+        #    if rc_vars.has_key('user_path'):
+        #        p = rc_vars['user_path']
+        #        print "Using old path from rc_vars: ",p
+        #        if p:
+        #            paths['user'] = p
+
+
+#     def read_ccp1guirc(self):
+#         """Process the ccp1guirc file:
+#            Execute the file to execute any of the users python code, and then
+#            check for any variables that are set in the file. These are stored
+#            in the rc_vars dictionary. Any variables that are attributes of self
+#            are set.
+#         """
+#         global rc_vars
+
+#         # Need to append all variables that we are going to change to locals
+#         # in order for them to be in scope when execfile executes
+#         #for var_name in rc_vars.keys():
+#         #    locals()[var_name] = rc_vars[var_name]
+
+#         # Load user Defaults if present
+#         if sys.platform[:3] == 'win':
+#             rcfile = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
+#         else:
+#             rcfile = os.path.expandvars('$HOME/.ccp1guirc.py')
+            
+#         if not os.path.isfile( rcfile ):
+#             # No ccp1guirc file so we can return
+#             #print "No user preferences file: %s found" % rcfile
+#             return
+        
+#         #print "Executing ccp1guirc file %s" % rcfile
+#         #try:
+#         execfile( rcfile )
+#         #except Exception,e:
+#         #        print "Error reading ccp1guirc file: %s" % rcfile
+#         #        print e
+
+#         # Pull any rc_vars out
+#         rc_buff = []
+#         f = open( rcfile )
+
+#         for line in f.readlines():
+#             rc_buff.append(line)
+#         f.close()
+
+#         for line in rc_buff:
+#             if re.compile( '###################### End User Defaults #####################' ).match( line ):
+#                 break
+#             elif re.compile( '^[a-zA-Z][a-zA-Z1-9 _-]*={1}.*' ).match( line ):
+#                 split = line.split('=')
+#                 key = split[0].strip()
+#                 execline = 'tmp = '+key
+#                 try:
+#                     exec(execline)
+#                     #print "%s from ccp1guirc is: %s" % (key, tmp)
+#                     # Need to check if this is a string. Under windows a path could contain the
+#                     # \b character (backspace). If the string is interpreted as a normal string
+#                     # this causes the \b and the preceding character to be deleted. We therefore
+#                     # need to convert the variable to a raw string.
+#                     if type(tmp) is str:
+#                         tmp = self.raw( tmp )
+                   
+#                     rc_vars[key] = tmp
+#                 except NameError:
+#                     #print "%s is not in ccp1guirc file" % key
+#                     pass
+#                 # Now try and set this if it is an attribute of main
+#                 # and set it if it is
+#                 if hasattr( self, key ):
+#                     setattr( self, key, rc_vars[key] )
+                    
+
+#         # Set the default path to where we we were last
+#         if rc_vars['old_path']:
+#             if rc_vars.has_key('user_path'):
+#                 p = rc_vars['user_path']
+#                 print "Using old path from rc_vars: ",p
+#                 if p:
+#                     paths['user'] = p
         
 
     def raw(self, text):
@@ -591,96 +598,96 @@ class TkMolView(Pmw.MegaToplevel):
             except KeyError: new_string+=char
         return new_string
 
-    def write_ccp1guirc(self):
-        """ Write out the current state of the rc_vars to file
-        """
+#     def write_ccp1guirc(self):
+#         """ Write out the current state of the rc_vars to file
+#         """
 
-        print "writing ccp1guirc file"
-        global rc_vars
+#         print "writing ccp1guirc file"
+#         global rc_vars
 
-        # Save the user path to the dictionary so that we can
-        # start from there on a restart
-        rc_vars['user_path'] = paths['user']
+#         # Save the user path to the dictionary so that we can
+#         # start from there on a restart
+#         rc_vars['user_path'] = paths['user']
         
-        # find the ccp1guirc file
-        if sys.platform[:3] == 'win':
-            rc_filename = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
-        else:
-            rc_filename = os.path.expandvars('$HOME/.ccp1guirc.py')
+#         # find the ccp1guirc file
+#         if sys.platform[:3] == 'win':
+#             rc_filename = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
+#         else:
+#             rc_filename = os.path.expandvars('$HOME/.ccp1guirc.py')
 
-        if not os.path.isfile( rc_filename ):
-            # No ccp1guirc file found, so just dump out the dictionary to a new ccp1guirc file
-            try:
-                rc_file = open( rc_filename, 'w' ) # Open File in write mode
-            except IOError,e:
-                print "Cant create user rc file. I give up..."
-                return
+#         if not os.path.isfile( rc_filename ):
+#             # No ccp1guirc file found, so just dump out the dictionary to a new ccp1guirc file
+#             try:
+#                 rc_file = open( rc_filename, 'w' ) # Open File in write mode
+#             except IOError,e:
+#                 print "Cant create user rc file. I give up..."
+#                 return
 
-            rc_file.write("# This ccp1guirc file has been created by the CCP1GUI as no\n")
-            rc_file.write("# user file could be found\n#\n#\n")
-            for name in rc_vars.keys():
-                if type(rc_vars[name]) is str:
-                    # Need to quote strings
-                    rc_file.write( "%s = \'%s\'\n" % (name,str(rc_vars[name])) )
-                else:
-                    rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
+#             rc_file.write("# This ccp1guirc file has been created by the CCP1GUI as no\n")
+#             rc_file.write("# user file could be found\n#\n#\n")
+#             for name in rc_vars.keys():
+#                 if type(rc_vars[name]) is str:
+#                     # Need to quote strings
+#                     rc_file.write( "%s = \'%s\'\n" % (name,str(rc_vars[name])) )
+#                 else:
+#                     rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
 
-            rc_file.write( '###################### End User Defaults #####################\n' )
-            # Have dumped dictionary so quit here
-            return
+#             rc_file.write( '###################### End User Defaults #####################\n' )
+#             # Have dumped dictionary so quit here
+#             return
 
-        # Read the file into a buffer
-        try:
-            rc_file = open( rc_filename, 'r' )
-            rc_buff = rc_file.readlines()
-            rc_file.close()
-        except Error,e:
-            print "Error reading ccp1guirc file!"
-            print e
-            return
+#         # Read the file into a buffer
+#         try:
+#             rc_file = open( rc_filename, 'r' )
+#             rc_buff = rc_file.readlines()
+#             rc_file.close()
+#         except Error,e:
+#             print "Error reading ccp1guirc file!"
+#             print e
+#             return
 
-        # For each line of the file, if a variable appears at the start of the line
-        # we replace the old value with the one from the rc_vars dictionary
-        count = 0
-        last_var = 0
-        keys = [] # list to remember which keys we have written out
-        for line in rc_buff:
-            for var_name in rc_vars.keys():
-                re_str = '^'+var_name+' *='
-                if re.compile( re_str ).match( line ):
-                    last_var = count
-                    keys.append( var_name )
-                    # replace that line in the buffer with the new value
-                    if type(rc_vars[var_name]) is str:
-                        rc_buff[ count ] = "%s = \'%s\'\n" % (var_name, str(rc_vars[var_name]) )
-                    else:
-                        rc_buff[ count ] = "%s = %s\n" % (var_name, str(rc_vars[var_name]) )
-            count += 1
+#         # For each line of the file, if a variable appears at the start of the line
+#         # we replace the old value with the one from the rc_vars dictionary
+#         count = 0
+#         last_var = 0
+#         keys = [] # list to remember which keys we have written out
+#         for line in rc_buff:
+#             for var_name in rc_vars.keys():
+#                 re_str = '^'+var_name+' *='
+#                 if re.compile( re_str ).match( line ):
+#                     last_var = count
+#                     keys.append( var_name )
+#                     # replace that line in the buffer with the new value
+#                     if type(rc_vars[var_name]) is str:
+#                         rc_buff[ count ] = "%s = \'%s\'\n" % (var_name, str(rc_vars[var_name]) )
+#                     else:
+#                         rc_buff[ count ] = "%s = %s\n" % (var_name, str(rc_vars[var_name]) )
+#             count += 1
 
-        # Now see if there are any variables in the rc_vars that we didn't write out
-        # because they have been added this session. We add these into the file at the
-        # spot we found the last variable.
-        newvar_buff = []
-        for key,var in rc_vars.iteritems():
-            if  key not in keys:
-                if type(rc_vars[key]) is str:
-                    newvar_buff.append("%s = \'%s\'\n" % (key, str(rc_vars[key]) ))
-                else:
-                    newvar_buff.append("%s = %s\n" % (key, str(rc_vars[key]) ))
+#         # Now see if there are any variables in the rc_vars that we didn't write out
+#         # because they have been added this session. We add these into the file at the
+#         # spot we found the last variable.
+#         newvar_buff = []
+#         for key,var in rc_vars.iteritems():
+#             if  key not in keys:
+#                 if type(rc_vars[key]) is str:
+#                     newvar_buff.append("%s = \'%s\'\n" % (key, str(rc_vars[key]) ))
+#                 else:
+#                     newvar_buff.append("%s = %s\n" % (key, str(rc_vars[key]) ))
                     
-        if len(newvar_buff) > 0:
-            for line in newvar_buff:
-                rc_buff.insert(last_var+1,line)
+#         if len(newvar_buff) > 0:
+#             for line in newvar_buff:
+#                 rc_buff.insert(last_var+1,line)
 
-        # Write out the ammended file
-        try:
-            rc_file = open( rc_filename, 'w')
-            for line in rc_buff:
-                rc_file.write( line )
-        except Error,e:
-            print "Can't write rc_file %s " % rc_filename
-            print "Error is:"
-            print e
+#         # Write out the ammended file
+#         try:
+#             rc_file = open( rc_filename, 'w')
+#             for line in rc_buff:
+#                 rc_file.write( line )
+#         except Error,e:
+#             print "Can't write rc_file %s " % rc_filename
+#             print "Error is:"
+#             print e
 
     def restore_saved_jobs(self,directory=None):
         """
@@ -900,10 +907,11 @@ class TkMolView(Pmw.MegaToplevel):
         
         try:
             # process rc_vars
-            self.write_ccp1guirc()
-        except Error,e:
+            #self.write_ccp1guirc()
+            defaults.write_to_file()
+        except Exception,e:
             print "Error writing ccp1guirc file!"
-            print e
+            traceback.print_exc()
 
         # Needs looking at...
         #         try:
@@ -5329,11 +5337,11 @@ class TkMolView(Pmw.MegaToplevel):
             # been modified
             print 'Store'
             self.set_bg_colour(self.bg_rgb)
-            set_rc_var( 'bg_rgb', self.bg_rgb )
+            defaults.set_value( 'bg_rgb', self.bg_rgb )
 
             self.pick_tolerance  = float(self.w_picktol.get())
             self.set_pick_tolerance()
-            set_rc_var( 'pick_tolerance', self.pick_tolerance )
+            defaults.set_value( 'pick_tolerance', self.pick_tolerance )
 
             txt = self.w_nearclip.get()
             if txt == "Auto":
@@ -5349,45 +5357,45 @@ class TkMolView(Pmw.MegaToplevel):
             self.set_clipping_planes()
 
             self.conn_toler  = float(self.w_conn_toler.get())
-            set_rc_var( 'conn_toler', self.conn_toler )
+            defaults.set_value( 'conn_toler', self.conn_toler )
             self.conn_scale  = float(self.w_conn_scale.get())
-            set_rc_var( 'conn_scale', self.conn_scale )
+            defaults.set_value( 'conn_scale', self.conn_scale )
             self.contact_toler  = float(self.w_contact_toler.get())
-            set_rc_var( 'contact_toler', self.contact_toler )
+            defaults.set_value( 'contact_toler', self.contact_toler )
             self.contact_scale  = float(self.w_contact_scale.get())
-            set_rc_var( 'contact_scale', self.contact_scale )
+            defaults.set_value( 'contact_scale', self.contact_scale )
 
             self.mol_line_width = int(self.w_mol_line_width.get())
-            set_rc_var( 'mol_line_width', self.mol_line_width )
+            defaults.set_value( 'mol_line_width', self.mol_line_width )
             self.mol_point_size  = int(self.w_mol_point_size.get())
-            set_rc_var( 'mol_point_size', self.mol_point_size )
+            defaults.set_value( 'mol_point_size', self.mol_point_size )
 
             self.field_line_width = int(self.w_field_line_width.get())
-            set_rc_var( 'field_line_width', self.field_line_width )
+            defaults.set_value( 'field_line_width', self.field_line_width )
             self.field_point_size  = int(self.w_field_point_size.get())
-            set_rc_var( 'field_point_size', self.field_point_size )
+            defaults.set_value( 'field_point_size', self.field_point_size )
 
             self.mol_sphere_resolution = int(self.w_mol_sphere_resolution.get())
-            set_rc_var( 'mol_sphere_resolution', self.mol_sphere_resolution )
+            defaults.set_value( 'mol_sphere_resolution', self.mol_sphere_resolution )
             self.mol_sphere_specular_power = int(self.w_mol_sphere_specular_power.get())
-            set_rc_var( 'mol_sphere_specular_power', self.mol_sphere_specular_power )
+            defaults.set_value( 'mol_sphere_specular_power', self.mol_sphere_specular_power )
             self.mol_sphere_diffuse = float(self.w_mol_sphere_diffuse.get())
-            set_rc_var( 'mol_sphere_diffuse', self.mol_sphere_diffuse )
+            defaults.set_value( 'mol_sphere_diffuse', self.mol_sphere_diffuse )
             self.mol_sphere_ambient = float(self.w_mol_sphere_ambient.get())
-            set_rc_var( 'mol_sphere_ambient', self.mol_sphere_ambient )
+            defaults.set_value( 'mol_sphere_ambient', self.mol_sphere_ambient )
             self.mol_sphere_specular = float(self.w_mol_sphere_specular.get())
-            set_rc_var( 'mol_sphere_specular', self.mol_sphere_specular )
+            defaults.set_value( 'mol_sphere_specular', self.mol_sphere_specular )
 
             self.mol_cylinder_resolution = int(self.w_mol_cylinder_resolution.get())
-            set_rc_var( 'mol_cylinder_resolution', self.mol_cylinder_resolution )
+            defaults.set_value( 'mol_cylinder_resolution', self.mol_cylinder_resolution )
             self.mol_cylinder_specular_power = int(self.w_mol_cylinder_specular_power.get())
-            set_rc_var( 'mol_cylinder_specular_power', self.mol_cylinder_specular_power )
+            defaults.set_value( 'mol_cylinder_specular_power', self.mol_cylinder_specular_power )
             self.mol_cylinder_diffuse = float(self.w_mol_cylinder_diffuse.get())
-            set_rc_var( 'mol_cylinder_diffuse', self.mol_cylinder_diffuse )
+            defaults.set_value( 'mol_cylinder_diffuse', self.mol_cylinder_diffuse )
             self.mol_cylinder_ambient = float(self.w_mol_cylinder_ambient.get())
-            set_rc_var( 'mol_cylinder_ambient', self.mol_cylinder_ambient )
+            defaults.set_value( 'mol_cylinder_ambient', self.mol_cylinder_ambient )
             self.mol_cylinder_specular = float(self.w_mol_cylinder_specular.get())
-            set_rc_var( 'mol_cylinder_specular', self.mol_cylinder_specular )
+            defaults.set_value( 'mol_cylinder_specular', self.mol_cylinder_specular )
 
         else:
             # Cancel them
