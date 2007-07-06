@@ -76,7 +76,6 @@ class CalcEd(Pmw.MegaToplevel):
                  **kw):
 
         if calc.get_editor():
-            print "Editor open already"
             raise EditError, "Editor open already"
         else:
             calc.set_editor(self)
@@ -188,7 +187,6 @@ class CalcEd(Pmw.MegaToplevel):
         # mol_name = self.calc.get_input("mol_name")
 
         mol_obj  = self.calc.get_input("mol_obj")
-        print 'calced: obj,name',mol_obj, mol_name
 
         if not mol_obj:
 
@@ -405,7 +403,7 @@ class CalcEd(Pmw.MegaToplevel):
         # Update the job_dict with the parameters from this job
         jobtype = job.jobtype
         parameters = job.get_parameters()
-        self.job_dict[ jobtype ] = parameters
+        self.job_dict[ jobtype ] = copy.copy(parameters)
         self.set_job( None )
 
     def start_job(self,job):
@@ -853,7 +851,7 @@ class CalcEd(Pmw.MegaToplevel):
                         raise EditError,"No molecular structure selected!"
 
             self.calc.set_input("mol_name",mol_name)
-            print 'reload called from selectmolecule'
+            #print 'reload called from selectmolecule'
             self.Reload()
             if self.calc.get_name() == "untitled":
                 self.calc.set_name(mol_name)
@@ -949,7 +947,6 @@ class CalcEd(Pmw.MegaToplevel):
 
         # Determine which editor we are using
         jobtype = job.jobtype
-        print "jobsub jobtype ",jobtype
 
         if self.jobsub_editor:
             edtype = self.jobsub_editor.jobtype
@@ -963,6 +960,13 @@ class CalcEd(Pmw.MegaToplevel):
 
         # Creating a new editor
         #print "creating new editor"
+
+        # See if we have a hostlist from this session
+        if self.job_dict.has_key('hostlist'):
+            hostlist = self.job_dict['hostlist']
+        else:
+            hostlist=[]
+            
         if jobtype == LOCALHOST:
             self.jobsub_editor = LocalJobEditor(
                                             self.interior(),
@@ -983,7 +987,8 @@ class CalcEd(Pmw.MegaToplevel):
                                              self.interior(),
                                              job,
                                              onkill=self.kill_jobsub_editor,
-                                             update_cmd=self.update_job_dict
+                                             update_cmd=self.update_job_dict,
+                                             hostlist=hostlist
                                              )
         elif jobtype == 'Globus':
             self.jobsub_editor = GlobusEditor(
@@ -991,7 +996,8 @@ class CalcEd(Pmw.MegaToplevel):
                                          job,
                                          onkill=self.kill_jobsub_editor,
                                          update_cmd=self.update_job_dict,
-                                         debug=None
+                                         debug=None,
+                                         hostlist=hostlist
                                          )
         else:
             self.Error("calced - unrecognised job editor: %s" % jobtype)
@@ -1031,17 +1037,22 @@ class CalcEd(Pmw.MegaToplevel):
         print "chrdir_cmd set directory to ",directory
 
 
-    def update_job_dict( self, job ):
+    def update_job_dict( self, job=None, hostlist=None ):
         """
         Job editor has saved changes to the job parameters so we
         update the dictionary 
         """
 
-        jobtype = job.jobtype
-        parameters = job.get_parameters()
-
-        self.job_dict[jobtype] = parameters
         print "calced updating job dict ..."
+        if job:
+            jobtype = job.jobtype
+            parameters = job.get_parameters()
+            # Need to use a copy or else any changes when running the job
+            # come back to haunt us
+            self.job_dict[jobtype] = copy.copy(parameters)
+
+        if hostlist:
+            self.job_dict['hostlist'] = hostlist
         
     #------------- messages -----------------------------
 
