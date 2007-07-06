@@ -42,7 +42,7 @@ from filepunch import PunchIO
 from objects.file import *
 from objects.list import *
 #
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 from viewer.paths import find_exe
 
 MENU_ENER  = "Energy"
@@ -66,9 +66,9 @@ class GAMESSUKCalc(QMCalc):
         # the basis structure
         #
         self.set_parameter("default_basis","sv 3-21G")
-        self.set_parameter("basis",None)
+        self.set_parameter("basis",'')
         ####self.set_input("basis_atom",{})
-        self.set_parameter("ECP",None)
+        self.set_parameter("ECP",'')
 
         ####self.set_input("ECP_atom",{})
         self.set_parameter("dft_functional","BLYP")
@@ -123,7 +123,7 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter("dft_jbas","A1DGAUSS")
         self.set_parameter("dft_schwarz",6)
         
-        self.set_parameter("postscf_method","None")
+        self.set_parameter("postscf_method",'None')
         self.set_parameter("predirectives",
              "#file ed3 ed3 keep\n"+
              "#memory 20000000\n"+
@@ -132,10 +132,10 @@ class GAMESSUKCalc(QMCalc):
              "#restart new\n#super off nosym\n"+
              "#integral high\n#accuracy 30 15\n#bypass one two\n"+
              "#mfile memory\n")
-        self.set_parameter("predirectives","")
-        self.set_parameter("basisdirectives","")
-        self.set_parameter("classidirectives","")
-        self.set_parameter("classiidirectives","")
+        self.set_parameter("predirectives",'')
+        self.set_parameter("basisdirectives",'')
+        self.set_parameter("classidirectives",'')
+        self.set_parameter("classiidirectives",'')
 
         self.set_parameter("ana_homolumo",0)
         self.set_parameter("ana_homolumo1",0)
@@ -355,8 +355,6 @@ class GAMESSUKCalc(QMCalc):
         """
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
-        if not len(directory):
-            directory = paths['user']
         return directory+os.sep+job_name+'.in'
 
     def WriteInput(self,filename=None):
@@ -389,17 +387,24 @@ class GAMESSUKCalc(QMCalc):
         #  Need to decide what kind of job run
         # 
         job = self.get_job()
+        if not job:
+            job = self.create_job()
 
-        directory = job.get_parameter('directory')
-        if directory and len(directory):
+        # If the user specified a directory for the job, then use it
+        # else get the user path and use that, setting it for the job too
+        directory = job.get_parameter('local_directory')
+        if directory:
             self.set_parameter('directory',directory)
         else:
-            self.set_parameter('directory',paths['user'])
-            
+            directory = self.get_parameter('directory')
+
+        os.chdir(directory)
+        print "job running from directory: %s" % directory
+                        
         inputfile = self.getInputFilename()
         if writeinput:
 
-            if (rc_vars['guk_check_overwrite_input'] == 1) and os.access( inputfile, os.R_OK):
+            if defaults.get_value('guk_check_overwrite_input') and os.access( inputfile, os.R_OK):
                 result = ed.Query("An inputfile for this calculation appears to exist already:\n\n%s\n\n\
 Would you like to create a new input (Yes)\n\
 or use the existing file (No)?" % inputfile )
@@ -428,10 +433,6 @@ or use the existing file (No)?" % inputfile )
                          "Please make sure you have written an input file.")
                 return
 
-        # Run job from the specified directory
-        directory = self.get_parameter("directory")
-        os.chdir(directory)
-        print "job running from directory: %s" % directory
                 
         #print "gamessuk makejob job.paramters: "
         #print job.job_parameters
@@ -457,7 +458,23 @@ or use the existing file (No)?" % inputfile )
             remote_stdin  = stdin_file
             
             # Determine how we will be running GAMESS-UK
-            executable = self.get_executable( job=job)
+            executable = self.get_executable_from_job( job )
+            if not executable:
+                executable = self.find_executable()
+            if not executable:
+                if sys.platform[:3] == 'win':
+                    msg = "Cannot find a working gamess.exe binary!\n" + \
+                          "Please either set the path to the executable in the Job Tab using\n"+\
+                          "the Configure button set the environment variable GAMESS_BIN to point to\n"+\
+                          "the directory containing the binary, or put the gamess.exe binary in your path."
+                else:
+                    msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
+                          "Please either set the path to the executable in the Job Tab using\n"+\
+                          "the Configure button or put the rungamess script in your path\n"+\
+                          "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
+                          "the binary, or put the gamess binary in your path."
+                #ed.Error(msg)
+                raise CalcError,msg
             
             # See if we are keeping any files and set environment variables / get the rungamess string
             if self.rungamess:
@@ -486,6 +503,7 @@ or use the existing file (No)?" % inputfile )
             # For globus cannot currently specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
+            # jmht scarf hack
             #remote_stdin = 'datain'
             job_desc = 'Running GAMESS-UK with Globus'
             self.setup_globus_job( job )
@@ -522,32 +540,38 @@ or use the existing file (No)?" % inputfile )
         job.add_tidy(self.endjob)
 
         #jmht - hack
-        job.calc = self
+        #job.calc = self
         return job
 
     def set_job_defaults(self,job):
         """Set any default parameters for calculations with this type of job
            This method should be overwritten (if need be) in any derived class.
         """
-        global rc_vars
-
-        # set the type parameter so that we can query this in the jobeditor
-        #job.set_parameter('calctype','GAMESSUK')
-
+        
+        if self.debug:
+            print "calc set_job_defaults"
+        
+        # Always set the working directory to the current directory and see if we can find
+        # an excutable
         if job.jobtype == LOCALHOST:
-            pass
+            if not job.get_parameter( 'local_directory' ):
+                job.set_parameter( 'local_directory', self.get_parameter('directory') )
+            if not job.get_parameter( 'executable' ):
+                job.set_parameter( 'executable', self.find_executable() )
         elif job.jobtype == 'Nordugrid':
             # Assume running in parallel
-            job.job_parameters['count'] = 4
-            job.job_parameters['runTimeEnvironment'] = 'APPS/CHEM/GAMESS-UK-7.0-1.0'
-            job.job_parameters['executable'] = "/usr/bin/time"
+            if not job.get_parameter( 'runTimeEnvironment' ):
+                job.set_parameter( 'runTimeEnvironment', 'APPS/CHEM/GAMESS-UK-7.0-1.0')
+            if not job.get_parameter( 'executable' ):
+                job.set_parameter( 'executable', '/usr/bin/time')
         elif job.jobtype == 'Globus':
-            job.job_parameters['count'] = 4
-            job.job_parameters['jobtype'] = 'mpi'
-            job.job_parameters['executable'] = 'gamess-uk'
+            if not job.get_parameter( 'jobtype' ):
+                job.set_parameter( 'jobtype', 'mpi')
+            if not job.get_parameter( 'executable' ):
+                job.set_parameter( 'executable', 'gamess-uk')
         else:
             pass
-        return None
+        return job
 
 #     def endjob(self,graph):
 #         """This is executed in the slave thread when the job completes
@@ -568,7 +592,7 @@ or use the existing file (No)?" % inputfile )
             print 'endjob....'
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
-        file = open(directory+'/'+job_name+'.out','r')
+        file = open(directory+os.sep+job_name+'.out','r')
         self.ReadOutput(file)
         file.close()
 
@@ -598,7 +622,7 @@ or use the existing file (No)?" % inputfile )
         if code:
             return
         
-        code = self.__ReadPunch(directory+'/'+job_name+'.pun')
+        code = self.__ReadPunch(directory+os.sep+job_name+'.pun')
 
         if code < 0:
             raise JobError, "No molecular structure in Punchfile - check output"
@@ -636,7 +660,32 @@ or use the existing file (No)?" % inputfile )
         self.job = None
 
 
-    def get_executable(self,job=None,ErrorWidget=None):
+    def get_executable_from_job(self,job):
+        """
+        See if the job has an excutable and set things up depending on
+        whether we are using the rungamess script or a binary
+        """
+
+        self.rungamess=None
+        exe = job.get_parameter( 'executable' )
+        if exe:
+            # work out if script or binary
+            # Doesn't seem to be an easy way to do this bar checking bytes or the
+            # like, so we'll just use the name
+            name = os.path.basename( exe )
+            script_re = re.compile("rungamess.*")
+            bin_re = re.compile("gamess.*")
+            if script_re.match( name ):
+                self.rungamess = exe
+                print "get_executable using rungamess script from job: %s" % exe
+                return exe
+            elif bin_re.match( name ):
+                print "get_executable using gamess binary from job: %s" % exe
+                return exe
+            else:
+                print "get_executable could not find a suitable executable from the job: %s" % exe
+
+    def find_executable(self):
         """ Try and find an executable/rungamess script. We check if the user has
             selected an executable from the browser, if not we call various methods
             to try and find something we can run.
@@ -647,26 +696,6 @@ or use the existing file (No)?" % inputfile )
         global find_exe
         self.rungamess = None
 
-        if job:
-            if job.get_parameter( 'executable' ):
-                # work out if script or binary
-                # Doesn't seem to be an easy way to do this bar checking bytes or the
-                # like, so we'll just use the name
-                exe = job.get_parameter( 'executable' )
-                if len(exe):
-                    name = os.path.basename( exe )
-                    script_re = re.compile("rungamess.*")
-                    bin_re = re.compile("gamess.*")
-                    if script_re.match( name ):
-                        self.rungamess = exe
-                        print "get_executable using rungamess script from job: %s" % exe
-                        return exe
-                    elif bin_re.match( name ):
-                        print "get_executable using gamess binary from job: %s" % exe
-                        return exe
-                    else:
-                        print "get_executable could not find a suitable program: %s" % exe
-
         # Windows
         if sys.platform[:3] == 'win':
             # Use the binary directly under Windows
@@ -674,17 +703,10 @@ or use the existing file (No)?" % inputfile )
             if binary:
                 return binary
             else:
-                if ErrorWidget:
-                    msg = "Cannot find a working gamess.exe binary!\n" + \
-                          "Please either set the path to the executable in the Job Tab using\n"+\
-                          "the Configure button set the environment variable GAMESS_BIN to point to\n"+\
-                          "the directory containing the binary, or put the gamess.exe binary in your path."
-                    ErrorWidget(msg)
-                return None
+                return
         else:
             # Unix / MacOSX code
             rungamess =  self.find_rungamess()
-
             if rungamess:
                 return rungamess
             else:
@@ -692,12 +714,7 @@ or use the existing file (No)?" % inputfile )
                 if exe:
                     return exe
                 else:
-                    msg = "Cannot find a working rungamess script or gamess-uk binary!\n"+\
-                          "Please either set the path to the executable in the Job Tab using\n"+\
-                          "the Configure button or put the rungamess script in your path\n"+\
-                          "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
-                          "the binary, or put the gamess binary in your path."
-                    raise CalcError, msg
+                    return
 
     def find_rungamess(self):
         """ Return the path to the rungamess script and set self.rungamess"""
@@ -729,12 +746,12 @@ or use the existing file (No)?" % inputfile )
                     print "Error trying to check for rungamess!"
                     self.rungamess = None
                 else:
-                    print p.output
+                    #print p.output
                     for l in p.output:
                         w = l.split()
                         if len(w) == 2:
                             dict[w[0]]=w[1]
-                    print dict
+                    #print dict
                     try:
                         test = dict['GAMESS_LIB']
                         self.rungamess = script
@@ -811,7 +828,7 @@ or use the existing file (No)?" % inputfile )
             we set the runTimeEnvironment to look for GAMESS-UK
         """
 
-        # Check the rc_vars to see if we need to set any variables
+        # Check the defaults to see if we need to set any variables
         if job.job_parameters['count'] == '1':
             # On 1 proc therefore need to see if we have an executable to run on the machine
             # and if a gamessuk environment exists there. If not we copy out our own gamess-uk executable
@@ -869,10 +886,9 @@ or use the existing file (No)?" % inputfile )
     def get_theory(self):
         """Convenience function for ChemShell interface"""
         postscf_method = self.get_parameter("postscf_method")
-        print postscf_method
-        if postscf_method == "None":
+        #print 'postscfmethod ',postscf_method
+        if postscf_method == 'None':
             scf_method = self.get_parameter("scf_method")
-            print scf_method
             if scf_method == "Direct DFT" or scf_method == "Direct UDFT":
                 theory = self.get_parameter("dft_functional")
             else:
@@ -881,7 +897,6 @@ or use the existing file (No)?" % inputfile )
             #print 'else clause'
             theory = postscf_method
 
-        #print 'done',theory
         return theory
 
     def check_direct(self):
@@ -1019,7 +1034,9 @@ or use the existing file (No)?" % inputfile )
         else:
             dft=0
         
-        input_list.append(self.get_parameter("predirectives"))
+        if self.get_parameter("predirectives"):
+            input_list.append(self.get_parameter("predirectives"))
+            
         guess_method = self.get_parameter("guess_method")
         
         if self.get_parameter("ana_hessian"):
@@ -1053,7 +1070,7 @@ or use the existing file (No)?" % inputfile )
         # Get the list with the molecule directives in it
         geomtext = self.write_molecule( mol, request_z=request_z )
         input_list = input_list + geomtext
-        
+
         #
         #  BASIS directive
         #
@@ -1065,9 +1082,8 @@ or use the existing file (No)?" % inputfile )
 
         #  Replacement Class II
         classii = self.get_parameter("classiidirectives")
-        if classii != "":
+        if classii:
             input_list.append(classii)
-            return 0
         if self.get_parameter('find_ts') and self.get_parameter('pre_ts_hess'):
             input_list.append('runtype hessian\n')
             #  SCFTYPE directive to match main run
@@ -1557,7 +1573,6 @@ or use the existing file (No)?" % inputfile )
 
                     # check for variables
                     counts = molecule.counts()
-                    print 'counts',counts
                     if counts[2] == 0:
                         raise Exception,'Z-matrix has no variables'
 
@@ -1787,7 +1802,7 @@ or use the existing file (No)?" % inputfile )
     def __write_basis(self,input_list):
 
         basis = self.get_parameter("basisdirectives")
-        if basis != "":
+        if basis:
             input_list.append(basis)
         else:
             basis = self.get_parameter("basis")
@@ -1797,7 +1812,6 @@ or use the existing file (No)?" % inputfile )
                 input_list.append('basis\n')
                 for entry in basis:
                     (ass_type, tag, b) = entry
-                    print 'entry', ass_type, tag, b
                     if ass_type == 'TYPE.KEY':
                         #If b contains 2 fields, need to place element symbol between the two:
                         basis_keyword=string.split(b)
@@ -1811,14 +1825,13 @@ or use the existing file (No)?" % inputfile )
                         for shell in b.shells:
                             input_list.append('%s %s\n' % (shell.type, tag))
                             for p in shell.expansion:
-                                print 'expansion',p,len(p)
                                 if len(p) == 2:
                                     input_list.append( '%12.8f %8.4f\n' % (p[0],p[1]))
                                 elif len(p) == 3:
 
                                     input_list.append( '%12.8f %8.4f %8.4f\n' % (p[0],p[1],p[2]))
                                 else:
-                                    print 'ELSE'
+                                    pass
                 input_list.append('end\n')
 
             else:
@@ -1832,9 +1845,7 @@ or use the existing file (No)?" % inputfile )
         if ecp:
             input_list.append('pseudo ecp\n')
             for entry in ecp:
-                print 'entry:',entry
                 (ass_type, tag, b) = entry
-                print 'entry', ass_type, tag, b
                 if ass_type == 'TYPE.KEY':
                     #The form of the input for GAMESS is: 'el sym' ecp 'el tag'
                     #so just strip any numbers off 'el tag' to get the symbol
@@ -1849,10 +1860,9 @@ or use the existing file (No)?" % inputfile )
                     for shell in b.shells:
                         input_list.append('%d \n' % (len(shell.expansion)))
                         for p in shell.expansion:
-                            print 'expansion',p,len(p)
                             input_list.append( '%d %8.4f %8.4f\n' % (p[0],p[1],p[2]))
                         else:
-                            print 'ELSE'
+                            pass
                                 
     #End of functions used in createInput
 
@@ -2071,7 +2081,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.balloon.bind( self.task_tool.widget, 'Specify the type of calculation to run.' )
         
         #Used to specify task
-        self.tasktoolvalue = self.task_tool.widget.getvalue() 
+        self.tasktoolvalue = self.task_tool.widget.getvalue()
 
         self.checkspin_widget = Tkinter.Button(self.interior(),
                                              text = 'Check Spin',
@@ -2102,7 +2112,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.guessgetqblock2_tool = IntegerTool(self,'getq_block2','File Block b',0)
         self.guessgetqsection1_tool = IntegerTool(self,'getq_sect1','File Section a',0)
         self.guessgetqsection2_tool = IntegerTool(self,'getq_sect2','File Section b',0)
-        
+
         self.scfmethod_tool = SelectOptionTool(self,'scf_method',
                                                'SCF Method',
                                                self.scf_methods[self.tasktoolvalue],
@@ -2405,7 +2415,6 @@ class GAMESSUKCalcEd(QMCalcEd):
     def __dftradialgridpoints(self,choice):
         """Select the number of gridpoints dependant on the radial grid selected
         """
-        print "choice is: " + choice
         if (choice == 'Euler-MacLaurin' or choice == 'Mura-Knowles'):
             self.dftradial_tool.ShowCounter()
         else:
@@ -2964,7 +2973,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobEditor)
+                                                       command=self.open_jobsub_editor)
         self.submission_config_button.pack(side='left')
 #        self.executable_tool.widget.pack(in_=self.submission_frame,side='top')
 
@@ -3139,26 +3148,11 @@ if __name__ == "__main__":
     #button = Tkinter.Button(root,text='pickle',command=lambda obj=calc: pickler(obj))
     #button.pack()
 
-    if 0:
-        from viewer.rc_vars import rc_vars
-        rc_vars[ 'machine_list'] = ['lake.esc.cam.ac.uk']
-        rc_vars[ 'nproc'] = '1'
-        rc_vars['srb_config_file'] ='/home/jmht/srb.cfg'
-        rc_vars['srb_executable'] = 'gamess'
-        rc_vars['srb_executable_dir'] = '/home/jmht.eminerals/test/executables'
-        rc_vars['srb_input_dir'] = '/home/jmht.eminerals/test/test1'
-        rc_vars['srb_output_dir'] = '/home/jmht.eminerals/test/test1'
-        rc_vars['rmcs_user'] = 'jmht'
-        rc_vars['rmcs_password'] = '4235227b51436ad86d07c7cf5d69bda2644984de'
-        rc_vars['myproxy_user'] = 'jmht'
-        rc_vars['myproxy_password'] = 'pythonGr1d'
-        rc_vars['gamessuk_exe'] = '/home/jmht/GAMESS-UK/GAMESS-UK-7.0/bin/gamess'
-
     if 1:
         calc.set_input('mol_obj',model)
         jm = JobManager()
         je = JobEditor(root,jm)
         vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
-        vt.Run()
+        #vt.Run()
 
     root.mainloop()
