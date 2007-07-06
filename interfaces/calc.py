@@ -79,7 +79,7 @@ of any program using or generating them. The parameters however will be
         """Create a calculation object."""
         self.new()
 
-        self.debug = 0
+        self.debug = None
         self.debug_slave = 0
 
         user = getpass.getuser()
@@ -128,7 +128,7 @@ of any program using or generating them. The parameters however will be
 
         self.set_name(name)
         self.set_title(title)
-        self.job = None
+        self.set_job(None)
 
     def get_editor_class(self):
         """overload to return the editor class"""
@@ -254,88 +254,6 @@ of any program using or generating them. The parameters however will be
         else:
             return None
 
-    def get_job(self,create=1):
-        """If a job has already been created for this calculation and it is of the
-           correct type for the selected jobtype return it or None if there isn't one
-           if the create flag is set, create a job if one doesn't exist
-        """
-
-        if self.debug:
-            print "calc get_job"
-
-        # The selected submission policy
-        jobtype = self.get_parameter("submission")
-
-        if self.job:
-            # jobtype matches displayed type so return it
-            if self.debug:
-                print "calc get_job already has job: %s : %s " % (self.job,jobtype)
-            if self.job.jobtype == jobtype:
-                # Returning an old job:
-                # Sort of a hack - need to null out the home directory parameter if one
-                # exists as otherwise trying to run the same job on another machine causes
-                # the home directory for the previous machine to be lost (see GlobusJob get_homedir)
-                # same for self.host
-                if self.job.job_parameters:
-                    if self.job.job_parameters.has_key('remote_home'):
-                        self.job.job_parameters['remote_home'] = None
-                self.job.host = None
-                return self.job
-
-        if not create:
-            return None
-        
-        if self.debug:
-            print "get_job creating new job object"
-
-        return self.create_job( jobtype )
-
-    def create_job(self,jobtype):
-        """Create a job of the specified type
-        """
-
-        if self.debug:
-            print "calc create_job called with: %s" % jobtype
-            
-        if jobtype == self.LOCALHOST:
-            job =  jobmanager.LocalJob()            
-        elif jobtype == 'SSH':
-            host = 'login.hpcx.ac.uk'
-            user = 'psh'
-            job =  jobmanager.RemoteJob(host,user)
-        elif jobtype == 'RMCS':
-            job =  jobmanager.RMCSJob()
-        elif jobtype == 'Nordugrid':
-            job =  jobmanager.NordugridJob()
-        elif jobtype == 'Globus':
-            job =  jobmanager.GlobusJob()
-        else:
-            raise AttributeError,"create_job: unknown jobtype: %s" % jobtype
-
-        # Need to set the program/calc type so we know what sort of
-        # job this is
-        program = self.get_program()
-        job.set_parameter('calctype',program)
-
-        # First set any defaults for this type of job - this assumes we pass
-        # a pointer to the job so that this updates the job directly
-        self.set_job_defaults( job )
-
-        # Then update the defaults with any the user has in their rc_vars
-        job.update_parameters()
-
-        # Set this job to the calc job
-        self.job = job
-
-        return job
-
-    def set_job_defaults(self,job):
-        """Set any default parameters for calculations with this type of job
-           This method should be overwritten (if need be) in any derived class.
-        """
-        return None
-
-
     # program specification things
     def set_program(self,name):
         """Sets the program name."""
@@ -366,7 +284,8 @@ of any program using or generating them. The parameters however will be
 
     def get_parameter(self,name):
         """Returns the reference to the parameter."""
-        return self.parameter[name]
+        if self.parameter.has_key(name):
+            return self.parameter[name]
 
     # notes things
 
@@ -385,6 +304,99 @@ of any program using or generating them. The parameters however will be
     def get_jobstatus(self):
         """Return the current job status."""
         return self.jobstatus
+
+    def set_job(self,job):
+        """
+        Set the job for this calculation - this is expected to be called
+        by the calculation editor to set the job before running it
+        """
+        self.job = job
+
+    def get_job(self):
+        """If the job editor has a job that is being edited return that job
+        """
+
+        if self.debug:
+            print "calc get_job ",self.job
+
+        if self.job:
+            # Check that the jobtype matches the submission parameter
+            jobtype = self.job.jobtype
+            if not jobtype == self.get_parameter("submission"):
+                print "calc get_job jobtype does not match submission parameter"
+                return None
+        return self.job
+
+
+    def create_job( self, jobtype=None ):
+        """Create a job of the specified type
+        """
+
+        if self.debug:
+            print "calc create_job called with: %s" % jobtype
+            
+        if jobtype:
+            # Set the submission type to this sort of job
+            jobtype = self.set_parameter( "submission", jobtype )
+        else:
+            jobtype = self.get_parameter("submission")
+
+        print "jobtype is ",jobtype
+
+            
+        if jobtype == self.LOCALHOST:
+            job =  jobmanager.LocalJob()            
+        elif jobtype == 'SSH':
+            host = 'login.hpcx.ac.uk'
+            user = 'psh'
+            job =  jobmanager.RemoteJob(host,user)
+        elif jobtype == 'RMCS':
+            job =  jobmanager.RMCSJob()
+        elif jobtype == 'Nordugrid':
+            job =  jobmanager.NordugridJob()
+        elif jobtype == 'Globus':
+            job =  jobmanager.GlobusJob()
+        else:
+            raise AttributeError,"create_job: unknown jobtype: %s" % jobtype
+
+        # Need to set the program/calc type so we know what sort of
+        # job this is
+        program = self.get_program()
+        job.set_parameter('calctype',program)
+
+        # See if the user has any default settings for this type of job
+        job.update_parameters_from_defaults()
+
+        print "job b4 ",job
+        # Then update any that haven't been set already - this assumes we pass
+        # a pointer to the job so that this updates the job directly
+        self.set_job_defaults( job )
+        print "job after ",job
+
+        # Set this as the job for the calculation so that the editor can get at it
+        self.set_job( job )
+        
+        return self.job
+
+    def set_job_defaults(self,job):
+        """
+        Set any default parameters for calculations with this type of job
+
+        This is expected to be called after the job parameters for the job
+        have been updated from the users' defaults dictionary, so it should
+        only overwrite those parameters that are unset.
+         
+        This method should be overwritten (if need be) in any derived class.
+           
+        """
+        if self.debug:
+            print "calc set_job_defaults"
+
+        # Always set the working directory to the directory parameter of the calc
+        if job.jobtype == LOCALHOST:
+            if not job.get_parameter( 'directory' ):
+                job.set_parameter( 'directory', self.get_parameter('directory') )
+                return
 
     def OpenInit(self):
         """When loading the calculation from a file we need to send

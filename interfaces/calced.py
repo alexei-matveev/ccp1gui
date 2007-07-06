@@ -107,25 +107,19 @@ class CalcEd(Pmw.MegaToplevel):
         self.debug_slave = 0
         self.inputeditor = None
             
-
-        #HOST_HPCX  = "hpcx"
-        #HOST_LOCAL = "localhost"
-        #self.hostnames = [HOST_LOCAL,HOST_HPCX]
-        #LOCALHOST = socket.gethostname()
-        
-        #self.submissionpolicies = {}
-        #self.submissionpolicies[HOST_LOCAL] = ["Interactive"]
-        #self.submissionpolicies[HOST_HPCX] = ["Interactive","Batch"]
-
-        self.job_editor=job_editor
+        self.jobsub_editor=None
+        self.job_dict = {} # Keeps track of the parameters for jobs we have edited this session
+                           # maps jobtype -> dictionary of parameters for that job
+                           
         # Class associated with job manager thread
+        self.job_editor = job_editor
         self.job_thread = None
+        
         self.root = root
         self.pages = {}
 
         self.lock  = threading.RLock()
 
-        self.jobEditor = None
 
         # store the graph object 
         # - used to get/put structures, and also to process results
@@ -369,6 +363,7 @@ class CalcEd(Pmw.MegaToplevel):
         - show the job editor
         - create a new thread and start execution
         """
+
         if self.master != None:
             print 'cant run slave calculation'
             return
@@ -396,7 +391,7 @@ class CalcEd(Pmw.MegaToplevel):
         if not job:
             self.Error( "No job returned by the makejob routine!" )
             return
-            
+
         try:
             self.start_job( job )
         except Exception,e:
@@ -404,6 +399,14 @@ class CalcEd(Pmw.MegaToplevel):
             self.Error( "Error starting job: %s!\n%s" % (job.name,e) )
             return
 
+        # Job has been started so remove this job from the calculation object
+        # but save the old job dictionary so that we can resuse it
+
+        # Update the job_dict with the parameters from this job
+        jobtype = job.jobtype
+        parameters = job.get_parameters()
+        self.job_dict[ jobtype ] = parameters
+        self.set_job( None )
 
     def start_job(self,job):
         """Start a job running under control of the job manager"""
@@ -866,6 +869,141 @@ class CalcEd(Pmw.MegaToplevel):
         # Now handled by job manager
         # self.statusframe.l1.configure(text='Job '+status)
 
+    def get_job(self):
+        """
+        Return the job if this editor is already editing one
+        and it matches the submission type
+
+        """
+
+        if self.debug:
+            print "calced get_job"
+
+        # The selected submission policy
+        jobtype = self.calc.get_parameter("submission")
+        job = self.calc.get_job()
+        if job:
+            print "calced get_job already has job: %s : %s " % (job,job.jobtype)
+            if job.jobtype == jobtype:
+                # Returning an old job:
+                # Sort of a hack - need to null out the home directory parameter if one
+                # exists as otherwise trying to run the same job on another machine causes
+                # the home directory for the previous machine to be lost (see GlobusJob get_homedir)
+                # same for self.host
+                #if job.job_parameters:
+                #    if job.job_parameters.has_key('remote_home'):
+                #        job.job_parameters['remote_home'] = None
+                return job
+            else:
+                print "calced get_job we have a job but it is of the wrong type!"
+                return None
+        else:
+            print "calc get_job no existing job"
+            return None
+    
+    def set_job(self,job):
+        """
+        Set the job that is currently being edited by this calcualtion
+        and also set it for the calcultion
+
+        """
+        self.calc.set_job( job )
+
+    def create_job(self):
+        """
+        Create a job - we use the create_job method of the calc class
+        to create the job and then update it with any defaults
+
+        """
+
+        job = self.calc.create_job()
+        if not job:
+            print "calced create_job no job!"
+            return
+
+        # See if we have edited a job of this type this session - in which
+        # case we use the parameters from that to overwrite any parameters
+        # that the job may have either from the calculation or user defaults
+        if self.job_dict.has_key( job.jobtype ):
+            job.update_parameters( self.job_dict[ job.jobtype ] )
+
+        return job
+
+
+    def open_jobsub_editor(self):
+        """Fire up the appropriate widget to configure the job depending on
+           whether we are using RMCS, Globus, Nordugrid..."""
+
+        job = self.get_job()
+        if not job:
+            print "open_jobsub_editor got no job"
+            try:
+                job = self.create_job()
+            except Exception,e:
+                self.Error("Job submission editor - error creating job!\n%s" % e )
+                return
+
+        if not job:
+            self.Error("Job submission editor - error creating job: no job returned!\n%s")
+            return
+
+        # Determine which editor we are using
+        jobtype = job.jobtype
+        print "jobsub jobtype ",jobtype
+
+        if self.jobsub_editor:
+            edtype = self.jobsub_editor.jobtype
+            if edtype == jobtype:
+                print "using old job editor"
+                self.jobsub_editor.show()
+                return
+            else:
+                # Should we ask here first?
+                self.jobsub_editor.destroy()
+
+        # Creating a new editor
+        #print "creating new editor"
+        if jobtype == LOCALHOST:
+            self.jobsub_editor = LocalJobEditor(
+                                            self.interior(),
+                                            job,
+                                            onkill=self.kill_jobsub_editor,
+                                            dir_cmd=self.chdir_cmd,
+                                            update_cmd=self.update_job_dict
+                                            )
+        elif jobtype == 'RMCS':
+            self.jobsub_editor = RMCSEditor(
+                                        self.interior(),
+                                        job,
+                                        onkill=self.kill_jobsub_editor,
+                                        update_cmd=self.update_job_dict
+                                        )
+        elif jobtype == 'Nordugrid':
+            self.jobsub_editor = NordugridEditor(
+                                             self.interior(),
+                                             job,
+                                             onkill=self.kill_jobsub_editor,
+                                             update_cmd=self.update_job_dict
+                                             )
+        elif jobtype == 'Globus':
+            self.jobsub_editor = GlobusEditor(
+                                         self.interior(),
+                                         job,
+                                         onkill=self.kill_jobsub_editor,
+                                         update_cmd=self.update_job_dict,
+                                         debug=None
+                                         )
+        else:
+            self.Error("calced - unrecognised job editor: %s" % jobtype)
+            return None
+
+        self.jobsub_editor.show()
+
+    def kill_jobsub_editor(self):
+        """Set the job_editoritor variable to None"""
+        self.jobsub_editor = None
+        
+        
     def chdir_cmd(self,event):
         """
         Command that is passed to the jobeditor and is invoked each time the directory
@@ -890,61 +1028,21 @@ class CalcEd(Pmw.MegaToplevel):
         #    raise AttributeError,"gamessuk chdir_cmd no directory was set!"
 
         self.calc.set_parameter('directory',directory)
-
         print "chrdir_cmd set directory to ",directory
 
-    def configure_jobEditor(self):
-        """Fire up the appropriate widget to configure the job depending on
-           whether we are using RMCS, Globus, Nordugrid..."""
 
-        #print "jobsubed configure ",self.calc.get_parameter("submission")
-        # Get the job if the calculation has one or create a fresh one
-        try:
-            job = self.calc.get_job(create=1)
-        except Exception,e:
-            self.Error("Job submission editor - error creating job!\n%s" % e )
-            return
+    def update_job_dict( self, job ):
+        """
+        Job editor has saved changes to the job parameters so we
+        update the dictionary 
+        """
 
-        # Determine which editor we are using
-        #jobtype = self.submission_tool.ReadWidget()
         jobtype = job.jobtype
-        #print "jobsub jobtype ",jobtype
+        parameters = job.get_parameters()
 
-        if self.jobEditor:
-            edtype = self.jobEditor.jobtype
-            if edtype == jobtype:
-                print "using old job editor"
-                self.jobEditor.show()
-                return
-            else:
-                # Should we ask here first?
-                self.jobEditor.destroy()
-
-        # Creating a new editor
-        #print "creating new editor"
-        if jobtype == LOCALHOST:
-            self.jobEditor = LocalJobEditor(self.interior(),job, onkill=self.jobEditor_die,
-                                            dir_cmd=self.chdir_cmd)
-        elif jobtype == 'RMCS':
-            self.jobEditor = RMCSEditor(self.interior(),job, onkill=self.jobEditor_die)
-        elif jobtype == 'Nordugrid':
-            self.jobEditor = NordugridEditor(self.interior(), job, onkill=self.jobEditor_die)
-        elif jobtype == 'Globus':
-            self.jobEditor = GlobusEditor(self.interior(), job,
-                                        onkill=self.jobEditor_die,
-                                        title='GAMESS-UK Globus Job Submission Editor',
-                                        debug=None)
-        else:
-            self.Error("calced - unrecognised job editor: %s" % jobtype)
-            return None
-
-        self.jobEditor.show()
-
-    def jobEditor_die(self):
-        """Set the jobEditoritor variable to None"""
-        self.jobEditor = None
-
-
+        self.job_dict[jobtype] = parameters
+        print "calced updating job dict ..."
+        
     #------------- messages -----------------------------
 
     def Info(self,txt):
