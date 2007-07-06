@@ -23,7 +23,6 @@ from   filepunch import *
 import os
 import string
 from viewer.paths import root_path,find_exe
-from viewer.rc_vars import rc_vars
 homolumoa = 0
 
 class MopacCalc(QMCalc):
@@ -111,30 +110,10 @@ class MopacCalc(QMCalc):
                 file.write(a)
             file.close()
 
-#        hostname = self.get_parameter("hostname")
-#        hostname = 'localhost'
-#        username = self.get_parameter("username")
-#         if hostname == 'localhost':
-#             #job = jobmanager.BackgroundJob()
-#             # jmht Background job doesn't work currently so this is just a quick hack
-#             job = jobmanager.ForegroundJob()
-#         elif hostname == 'hpcx':
-#             job = jobmanager.RemoteForegroundJob('hpcx',username)
-#         elif hostname == 'tcsg7':
-#             job = jobmanager.RemoteForegroundJob('tcsg7',username)
-#         else:
-#             print 'unsupported host'
-#             return None
 
-        try:
-            job = self.get_job(create=1)
-        except Exception,e:
-            ed.Error("Problem initialising job!\n%s" % e)
-            return None
-
+        job = self.get_job()
         if not job:
-            ed.Error("mopac makejob no job returned!")
-            return None
+            job = self.create_job()
 
         job.name = job_name
 
@@ -198,11 +177,17 @@ class MopacCalc(QMCalc):
             
         return 0,txt
 
-    def endjob2(self):
+    def endjob2(self,code=None):
         '''
         This function is executed in the main thread if the job completes
         satisfactorily
         '''
+
+        # Code is 1 on job failure
+        if code == 1:
+            print "skipping mopac endjob2 as code is 1"
+            return
+        
         print 'endjob2'
         o = self.get_input("mol_obj")
         name = self.get_input("mol_name")
@@ -326,12 +311,9 @@ class MopacCalc(QMCalc):
         global find_exe
 
         mopac_exe = None
-        print "get_executable"
         # First see if the user has set an executable path for the job
-        # (also covers a value stored in the rc_vars)x
+        # (also covers a value stored in the defaults)
         if job:
-            print "got job"
-            print job.job_parameters
             mopac_exe = job.get_parameter("executable")
             if mopac_exe:
                 if self.debug:
@@ -462,7 +444,7 @@ class MopacCalcEd(QMCalcEd):
         self.submission_frame.pack()
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobEditor)
+                                                       command=self.open_jobsub_editor)
         self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
         self.submission_config_button.pack(side='left')#
         

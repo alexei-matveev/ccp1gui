@@ -37,7 +37,7 @@ from qmtools import *
 #from filepunch import *
 from jobmanager import *
 from viewer.paths import find_exe
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 
 from objects.periodic import *
 #from daltonoutputreader import DaltonOutputReader
@@ -284,15 +284,9 @@ class DALTONCalc(QMCalc):
                 return None
 
         #  Get/create job of type specified by the submission parameter
-        try:
-            job = self.get_job(create=1)
-        except Exception,e:
-            ed.Error("Problem initialising job!\n%s" % e)
-            return None
-
+        job = self.get_job()
         if not job:
-            ed.Error("dalton makejob no job returned!")
-            return None
+            job = self.create_job()
 
         jobtype = job.jobtype
         job.name = self.get_parameter( 'job_name' )
@@ -357,7 +351,7 @@ class DALTONCalc(QMCalc):
         """
 
         # This required so that can keep different calculation variables
-        # separate in the rc_vars
+        # separate in the defaults
         job.set_parameter('calctype','DALTON')
 
         script = self.get_parameter( 'dalton_script' )
@@ -1300,7 +1294,7 @@ class DALTONCalcEd(QMCalcEd):
                                                 self.submission_policies)
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobEditor)
+                                                       command=self.open_jobsub_editor)
         self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
         self.submission_config_button.pack(side='left')#
 
@@ -1380,17 +1374,17 @@ class DALTONCalcEd(QMCalcEd):
 
     def __get_script(self):
         """ Try and find a dalton script to use.
-            We first query the rc_vars dictionary to see if the user has
+            We first query the defaults dictionary to see if the user has
             set a script there, otherwise we use the find_exe method in paths.
             We either return the script or None if we can't find one
         """
 
-        global rc_vars,find_exe
+        global defaults,find_exe
 
         # Create a job and use this to get the script
-        if rc_vars.has_key( 'dalton_script' ) and rc_vars[ 'dalton_script' ]:
-            script = rc_vars[ 'dalton_script' ]
-            print "Using dalton script from ccp1guirc file: %s" % script
+        script = defaults.get_value('dalton_script')
+        if script:
+            print "Using dalton script from ccp1guirc file: %s" % dalton_script
             return script
         else:
             print "No dalton_script set in rc file - checking in environment"
@@ -1401,40 +1395,7 @@ class DALTONCalcEd(QMCalcEd):
             else:
                 print "Cannot find a dalton script!"
                 return None
-
-#         if rc_vars.has_key('dalton_script') and rc_vars['dalton_script']:
-#             script = rc_vars['dalton_script']
-#             print "Using dalton script from ccp1guirc file: %s" % script
-#             return script
-#         else:
-#             print "No dalton_script set in rc file - checking in environment"
-#             script = find_exe( 'dalton' )
-#             if script:
-#                 print "Found dalton script: %s" % script
-#                 return script
-#             else:
-#                 print "Cannot find a dalton script!"
-#                 return None
-
-#     def __update_script(self, event):
-#         """This is passed to the exe_tools widget and updates the variable in rc_vars
-#            whenever the user changes the executable location.
-#         """
-#         from viewer.main import rc_vars
-
-#         # This is a bit mucky because the FileTool can call this method
-#         # either as one of the events that has been bound to the Tkinter.Entry
-#         # field (in which case we get a Tkinter.Event) or when the 'Browse' tool
-#         # was used (in which case we get a string).
-#         etype = type(event)
-#         if etype is InstanceType:
-#             script = event.widget.get()
-#         else:
-#             script = event
-
-#         rc_vars['dalton_script'] = script
-        
-        
+                
     def __CheckSpin(self):
         for tool in self.tools:
             tool.ReadWidget()

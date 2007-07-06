@@ -5,7 +5,7 @@ import os
 from _libpyagentx import *
 
 # import internal modules
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 from fileio import FileIO
 from objects.zmatrix import *
 from objects.vibfreq import *
@@ -66,8 +66,8 @@ class XML_IO(FileIO):
                 return
             
             if self.debug:print "DEBUG: Read ontology from: %s " % self.filepath
-            # set the rc_vars so that we don't have to read this in each time
-            rc_vars['AgentX_ontology'] = self.filepath
+            # set the defaults so that we don't have to read this in each time
+            defaults.set_value('AgentX_ontology', self.filepath )
             return
                 
         elif self.ext == '.rdf':
@@ -78,8 +78,8 @@ class XML_IO(FileIO):
                 return
             
             if self.debug: print "Read mapping from: %s " % self.filepath
-            # set the rc_vars so that we don't have to read this in each time
-            rc_vars['AgentX_mapping'] = self.filepath
+            # set the defaults so that we don't have to read this in each time
+            defaults.set_value('AgentX_mapping', self.filepath )
             return
                 
         elif self.ext == '.xml':
@@ -140,40 +140,38 @@ class XML_IO(FileIO):
 
         if self.debug: print "DEBUG reading datafile from %s" % filepath
         
-        global rc_vars
+        global defaults
         
         # Can't check if we don't have ontology/mapping files as AgentX can get it's mappings and
         # ontologies from the working directory or a URL can be embedded in the actual xml file,
         # so not having a mapping or ontology cannot be considered an error
 
          # If the reader does not already have on owl or map file, we check to see if there
-         # is one in the rc_vars
+         # is one in the defaults
          
          
         #print "DEBUG: owl file is ",id(self.owl_file)
         #print "DEBUG: self is ",id(self)
         if not self.owl_file:
-            #print "checking rc_vars for an ontology file..."
-            # See if we've ontology/mapping files in the rc_vars and load then if so
-            if rc_vars.has_key('AgentX_ontology'):
-                ofile = rc_vars['AgentX_ontology']
-                if ofile and os.access( ofile, os.R_OK):
-                    err = self.read_ontology(ofile)
-                    if err == -1:
-                        print "Error reading in existing ontology from rc_vars: %s" % ofile
-                    else:
-                        print "Read in AgentX ontology file specified in rc_vars: %s" % ofile
+            #print "checking defaults for an ontology file..."
+            # See if we've ontology/mapping files in the defaults and load then if so
+            ofile = defaults.get_value( 'AgentX_ontology' )
+            if ofile and os.access( ofile, os.R_OK):
+                err = self.read_ontology(ofile)
+                if err == -1:
+                    print "Error reading in existing ontology from defaults: %s" % ofile
+                else:
+                    print "Read in AgentX ontology file specified in defaults: %s" % ofile
                         
         if not self.rdf_file:
-            #print "checking rc_vars for a mapping file..."
-            if rc_vars.has_key('AgentX_mapping'):
-                ofile = rc_vars['AgentX_mapping']
-                if ofile and os.access( ofile, os.R_OK):
-                    err = self.read_mappings(ofile)
-                    if err == -1:
-                        print "Error reading in AgentX mapping file specified in rc_vars: %s" % ofile
-                    else:
-                        print "Error eading AgentX mapping file from rc_vars: %s" % ofile
+            #print "checking defaults for a mapping file..."
+            ofile = defaults.get_value( 'AgentX_mapping' )
+            if ofile and os.access( ofile, os.R_OK):
+                err = self.read_mappings(ofile)
+                if err == -1:
+                    print "Error reading in AgentX mapping file specified in defaults: %s" % ofile
+                else:
+                    print "Error eading AgentX mapping file from defaults: %s" % ofile
 
         self._read_datafile(self.filepath)
         if(self.xml_error):

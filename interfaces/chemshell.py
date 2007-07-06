@@ -195,7 +195,7 @@ class ChemShellCalc(Calc):
             print 'DONT add_mon'            
         
 
-        from viewer.rc_vars import rc_vars
+        from viewer.defaults import defaults
 
         if sys.platform[:3] == 'win':
 
@@ -205,12 +205,15 @@ class ChemShellCalc(Calc):
             # this way, all the settings in cygwin chemsh and rungamess are
             # picked up
 
-            if rc_vars.has_key('gamessuk_script') and rc_vars['gamessuk_script']:
+            gamessuk_script = defaults.get_value( 'gamessuk_script' )
+            if gamessuk_script:
                 # Need to strip off the last field
-                extend_path(os.path.dirname(rc_vars['gamessuk_script']))
+                extend_path(os.path.dirname(gamessuk_script))
 
-            if rc_vars.has_key('chemsh_script_dir') and rc_vars['chemsh_script_dir']:
-                extend_path(rc_vars['chemsh_script_dir'])
+            chemsh_script_dir = defaults.get_value( 'chemsh_script_dir' )
+            if chemsh_script_dir:
+                # Need to strip off the last field
+                extend_path(chemsh_script_dir)
 
             use_bash=1
 

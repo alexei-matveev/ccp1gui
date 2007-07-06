@@ -6,7 +6,7 @@ assumes a somewhat doctored version of MOLDEN
 
 from objects.field import *
 from jobmanager import *
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 from viewer.paths import find_exe
 import sys, os
 
@@ -66,7 +66,7 @@ class MoldenDriver:
         # execute MOLDEN
         molden_exe = self.get_executable()
         if not molden_exe:
-            raise AttributeError,"Cannot find a molden_executable to run!"
+            raise CalcError,"Cannot find a molden_executable to run!"
 
         if sys.platform[:3] == 'win':
             # Windows/Cygwin
@@ -95,11 +95,10 @@ class MoldenDriver:
 
     def get_executable(self):
         """Find an executable to run"""
-        global rc_vars,find_exe
-        
-        if rc_vars.has_key('molden_exe'):
-            molden_exe = rc_vars['molden_exe']
-        else:
+        global defaults,find_exe
+
+        molden_exe = defaults.get_value('molden_exe')
+        if not molden_exe:
             if sys.platform[:3] == 'win':
                 molden_exe = find_exe( 'molden.exe')
             else:

@@ -36,7 +36,6 @@ from qmtools import *
 from filepunch import *
 from jobmanager import *
 from viewer.paths import paths,find_exe
-from viewer.rc_vars import rc_vars
 from objects.file import *
 
 # may need
@@ -407,16 +406,9 @@ class MOLPROCalc(QMCalc):
                 return
 
         #  Get/create job of type specified by the submission parameter
-        try:
-            job = self.get_job(create=1)
-        except Exception,e:
-            traceback.print_exc()
-            ed.Error("Problem initialising job!\n%s" % e)
-            return None
-
+        job = self.get_job()
         if not job:
-            ed.Error("molpro makejob no job returned!")
-            return None
+            job = self.create_job()
 
         jobtype = job.jobtype
         job.name = job_name
@@ -431,13 +423,12 @@ class MOLPROCalc(QMCalc):
         if jobtype == LOCALHOST:
             molpro_exe = self.get_executable( job )
             if not molpro_exe:
-                ed.Error('Cannot find an executable to run!\n'+
-                         'Please make sure an executable is in your path or use the\n'
-                         'the job tab to set the path to the executable.')
-                return
+                msg='Cannot find an executable to run!\n'+\
+                'Please make sure an executable is in your path or use the\n'+\
+                'the job tab to set the path to the executable.'
+                raise CalcError,msg
         else:
-            ed.Error("Runing Molpro currently only supported for remote resources!")
-            return
+            raise CalcError,"Runing Molpro currently only supported for local resources!"
         
         
         print 'Using MOLPRO path ' + molpro_exe
@@ -1886,11 +1877,14 @@ class MOLPROCalcEd(QMCalcEd):
         # Job submission
         self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
         self.submission_frame.pack()
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
-                                                self.submission_policies)
+        self.submission_tool = SelectOptionTool(self,
+                                                'submission',
+                                                'Job Submission',
+                                                self.submission_policies,
+                                                )
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
-                                                       command=self.configure_jobEditor)
+                                                       command=self.open_jobsub_editor)
         self.submission_tool.widget.pack(in_=self.submission_frame,side='left')
         self.submission_config_button.pack(side='left')#
         
