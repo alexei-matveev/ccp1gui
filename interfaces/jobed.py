@@ -86,6 +86,8 @@ class JobEditor(Pmw.MegaToplevel):
 
     def __init__(self, root,job,**kw):
 
+
+        self.root = root
         self.job = job
 
         # Check the keywords dictionary
@@ -115,10 +117,15 @@ class JobEditor(Pmw.MegaToplevel):
         if kw.has_key('update_cmd'): # see LayoutExecutableWidget
             self.update_cmd = kw['update_cmd']
 
-        viewer.initialisetk.initialiseTk(root)
+        self.hostlist = [] # To hold the list of hosts - this is different as it is not a
+                           # job parameter but applies to all jobs of a particular class
+        if kw.has_key('hostlist'):
+            self.hostlist = kw['hostlist']
+
+        viewer.initialisetk.initialiseTk(self.root)
 
         # Initialise base class (after defining options).
-        Pmw.MegaToplevel.__init__( self, root, title=title )
+        Pmw.MegaToplevel.__init__( self, self.root, title=title )
         
         # Ensure that when the user kills us with the window manager we behave as expected
         self.userdeletefunc( lambda s=self: s.Quit() )
@@ -143,8 +150,18 @@ class JobEditor(Pmw.MegaToplevel):
                          # These need to be set to default values in the classes that inherit
                          # from this one
 
-        self.hostlist = [] # To hold the list of hosts - this is different as it is not a
-                           # job parameter but applies to all jobs of a particular class
+
+        #
+        # Build the message dialogs
+        #
+        self.msg_dialog = Pmw.MessageDialog(self.root, 
+                                            title = 'Information',
+                                            iconpos='w',
+                                            icon_bitmap='info',
+                                            defaultbutton = 0)
+        self.msg_dialog.withdraw()
+
+
 
     def GetInitialValues(self):
         """ Set self.values and self.RSLValues to those specified in any
@@ -234,7 +251,6 @@ class JobEditor(Pmw.MegaToplevel):
             print "UpdateParmetersFromHost host no job_dict for host ",host
             return
 
-        print "got d"
         self.job.update_parameters( job_dict )
         job_dict = self.job.get_parameters()
 
@@ -271,7 +287,6 @@ class JobEditor(Pmw.MegaToplevel):
         jobtype = self.job.jobtype
 
         maind = defaults.get_value('job_dict')
-        print type(maind)
         if not maind:
             if self.debug: print "#### SetHostlistFromDefaults NO JOB DICT!"
             return
@@ -288,10 +303,15 @@ class JobEditor(Pmw.MegaToplevel):
         
         job_dict = calcd[jobtype]        
         if job_dict.has_key('hostlist'):
-            self.hostlist = job_dict['hostlist']
+            hostlist = job_dict['hostlist']
         else:
             if self.debug: print "#### SetHostlistFromDefaults no hostlist!"
 
+        # Now add any that may have been passed in when the job editor was created
+        # (from the calculation editor - this for remembering individual jobs in a session
+        if len(self.hostlist):
+            hostlist = hostlist + self.hostlist
+        self.hostlist = hostlist
 
     def UpdateHostlistWidget(self):
         """ Update the list of hosts from self.hostlist
@@ -299,7 +319,6 @@ class JobEditor(Pmw.MegaToplevel):
         #self.setValue['hostlist'] = self.machList.setlist
         # Need to check if we are using the hostlist widget
         if hasattr( self, 'machList' ):
-            print "updating hostlist widget"
             self.machList.setlist( self.hostlist )
 
     def SaveHostlistToDefaults(self):
@@ -311,7 +330,6 @@ class JobEditor(Pmw.MegaToplevel):
         # Get the values we use to key the dictionaries
         calctype = self.job.get_parameter('calctype')
         jobtype = self.job.jobtype
-        print "SetHostListAsDefault ",calctype,jobtype
 
         # Make sure we have the structure we need - this all relies
         # on the job_dict being a pointer to the dictinoary
@@ -373,13 +391,12 @@ class JobEditor(Pmw.MegaToplevel):
         #        if self.debug:
         #            print "SaveParameters setting: %s : %s" % (key,value)
 
-        print "jobed save parameters"
         self.job.update_parameters( jobdict )
 
         # Update command 
         if self.update_cmd:
             print "save Parameters  running update command"
-            self.update_cmd( self.job )
+            self.update_cmd( job=self.job, hostlist=self.hostlist )
                     
         if default:
             self.SaveHostlistToDefaults()
@@ -402,12 +419,14 @@ class JobEditor(Pmw.MegaToplevel):
         cancelButton.pack(side='left')
 
     def Quit(self,save=None,default=None):
-        """Update the rc_vars or the supplied calculation with the new values
-           If default keyword is supplied update the rc_vars with the values we are
-           have in this editor
+        """ call _quit ( which may be overloaded to implement any calc-specific stuff)
+            and then destroy the editor
+            _quit can generate an error code to state not to quit
         """
         
-        self._quit(save=save,default=default)
+        error = self._quit(save=save,default=default)
+        if error:
+            return
         self._destroy()
 
     def _quit(self,save=None,default=None):
@@ -425,7 +444,6 @@ class JobEditor(Pmw.MegaToplevel):
 
         if self.debug:
             if self.job:
-                print "jobed parameters"
                 print self.job.get_parameters()
             
     def __str__(self):
@@ -434,6 +452,23 @@ class JobEditor(Pmw.MegaToplevel):
            return self.title
        else:
            return 'JobEditor'
+
+    # Messages - display a dialog with an information or error message
+
+    def Info(self,txt):
+        dialog = self.msg_dialog
+        dialog.configure(message_text=txt)
+        dialog.component('icon').configure(bitmap='info')
+        dialog.configure(title="Calculation Information")
+        dialog.activate()
+
+    def Error(self,txt):
+        dialog = self.msg_dialog
+        dialog.configure(message_text=txt)
+        dialog.configure(title='Calculation Error')
+        dialog.component('icon').configure(bitmap='error')
+        dialog.activate()
+       
 
 ###################################################################################################
 ###################################################################################################
@@ -458,7 +493,9 @@ class JobEditor(Pmw.MegaToplevel):
         #self.setValue['hostlist'] = self.machList.setlist
         
         # For the host we only want one so take the first item in the list
-        self.getValue['host'] = lambda s=self: s.machList.getvalue()[0]
+        #self.getValue['host'] = lambda s=self: s.machList.getvalue()[0]
+        # Use all values but query the user in the _quit routine
+        self.getValue['host'] = lambda s=self: s.machList.getvalue()
         
         # Can't guarantee the list of hosts will have been set up before we
         # try and set the value of the desired host
@@ -622,7 +659,6 @@ class JobEditor(Pmw.MegaToplevel):
 
     def LayoutJobmanagerWidget(self):
         """ Lay out the widget to select the directory on the remote machine"""
-        print "Laid out jobmanager"
         self.jobmanagerWidget = Pmw.EntryField( self.interior(),
                                             labelpos = 'w',
                                             label_text = 'Globus Jobmanager:',
@@ -1092,7 +1128,7 @@ class GlobusEditor(RSLEditor):
 
         # Set up the defaults
         self.jobtype = 'Globus'
-        self.debug=1
+        self.debug=None
         
         self.LayoutWidgets()
         self.GetInitialValues()
@@ -1113,6 +1149,20 @@ class GlobusEditor(RSLEditor):
         self.LayoutQuitButtons()
 
         #Pmw.alignlabels( [self.executableWidget, self.directoryWidget] )
+
+    def _quit(self,save=None,default=None):
+        """ Need to make sure that the user has selected a single host"""
+
+        if save:
+            hosts = self.getValue['host']()
+            if not len(hosts) == 1:
+                self.Error("Please select a single host for the job to run on")
+                return 1
+
+            #Make sure we get the latest rsl variable if that was the last thing to be updated
+            self._SaveCurrentRSL()
+            self.SaveParameters( default=default )
+
 
 class NordugridEditor(RSLEditor):
 
