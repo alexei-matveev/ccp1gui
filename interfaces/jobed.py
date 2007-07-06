@@ -10,8 +10,7 @@ import viewer.initialisetk
 import os,getpass
 from viewer.paths import paths
 
-if __name__ != "__main__":
-    from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 
 class EntryPair( Tkinter.Frame ):
     """ A widget with two Pmw entry frames that has a singled
@@ -63,7 +62,7 @@ class JobEditor(Pmw.MegaToplevel):
     """ A baseclass widget to hold the Job Submission tools.
         The widget has a self.values dictionary that holds all of the
         parameters that are editable by this widget. The GetInitialValues
-        method queries the rc_vars to get any initial values that have been
+        method queries the defaults to get any initial values that have been
         set, otherwise, the init method is supposed to set any defaults.
 
         There are two dictionaries getValue and setValue. These are keyed by
@@ -87,11 +86,7 @@ class JobEditor(Pmw.MegaToplevel):
 
     def __init__(self, root,job,**kw):
 
-        self.debug = None
-        self.onkill = None
         self.job = job
-        #self.calc = None
-        title = None
 
         # Check the keywords dictionary
         if kw.has_key('title'):
@@ -99,19 +94,26 @@ class JobEditor(Pmw.MegaToplevel):
         else:
             title = self.jobtype+ ' JobEditor'
             
+        self.onkill = None
         if kw.has_key('onkill'):
             self.onkill = kw['onkill']
+            
+        self.debug = None
         if kw.has_key('debug'):
             self.debug = kw['debug']
+            
         # Commands that may be passed in and invoked when particular widgets are used
+        self.dir_cmd = None
         if kw.has_key('dir_cmd'): # see LayoutDirectoryWidget
             self.dir_cmd = kw['dir_cmd']
-        else:
-            self.dir_cmd = None
+            
+        self.exe_cmd = None
         if kw.has_key('exe_cmd'): # see LayoutExecutableWidget
             self.exe_cmd = kw['exe_cmd']
-        else:
-            self.exe_cmd = None
+
+        self.update_cmd = None
+        if kw.has_key('update_cmd'): # see LayoutExecutableWidget
+            self.update_cmd = kw['update_cmd']
 
         viewer.initialisetk.initialiseTk(root)
 
@@ -141,10 +143,8 @@ class JobEditor(Pmw.MegaToplevel):
                          # These need to be set to default values in the classes that inherit
                          # from this one
 
-
-    def GetJob(self):
-        """Return the job supplied to this editor"""
-        return self.job
+        self.hostlist = [] # To hold the list of hosts - this is different as it is not a
+                           # job parameter but applies to all jobs of a particular class
 
     def GetInitialValues(self):
         """ Set self.values and self.RSLValues to those specified in any
@@ -163,8 +163,10 @@ class JobEditor(Pmw.MegaToplevel):
 
         if self.debug:
             print "_getInitialJobParameters"
+
+        self.SetHostlistFromDefaults()
         
-        jobdict = self.job.job_parameters
+        jobdict = self.job.get_parameters()
         self.UpdateValues( jobdict )
 
 
@@ -185,6 +187,10 @@ class JobEditor(Pmw.MegaToplevel):
                 self.values[key] = value
                 if self.debug:
                     print "_UpdateValues setting: %s : %s" % (key,value)
+
+        #hostlist is different as this applies to all jobs of a given class
+        self.UpdateHostlistWidget()
+        
             
     def UpdateWidgets(self):
         """Set all the widgets to the value in self.values
@@ -210,24 +216,27 @@ class JobEditor(Pmw.MegaToplevel):
 
     def UpdateParametersFromHost(self):
         """ Update the job parameters for the machine selected
-            from the rc_vars dictionary
+            from the defaults dictionary
         """
 
         host = self.machList.getvalue()
-
         if len(host) != 1:
             print "UpdateParametersFromHost an only update vlaues for a single host!"
             return
 
         host = host[0]
-        assert type(host) == str,"jobed UpdateParameters - host must be a string!"
-
         if self.debug:
             print "UpdateParametersFromHost: %s" % host
-        
-        self.job.update_parameters( host=host )
+                
+        #self.job.update_parameters( host=host )
+        job_dict = self.job.get_parameters_from_defaults( host=host )
+        if not job_dict:
+            print "UpdateParmetersFromHost host no job_dict for host ",host
+            return
 
-        job_dict = self.job.job_parameters
+        print "got d"
+        self.job.update_parameters( job_dict )
+        job_dict = self.job.get_parameters()
 
         self.UpdateValues( job_dict )
         self.UpdateWidgets()
@@ -236,13 +245,9 @@ class JobEditor(Pmw.MegaToplevel):
     def AddMachine(self):
         """ Add a machine to the list and update the list widget"""
         
-        mach = self.machEntry.get()
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
-        machines.append( mach )
-        self.machList.setlist( machines )
+        toadd = self.machEntry.get()
+        self.hostlist.append( toadd )
+        self.UpdateHostlistWidget()
         self.machEntry.delete(0,'end')
 
     def DelMachine(self):
@@ -250,25 +255,79 @@ class JobEditor(Pmw.MegaToplevel):
             This gets a bit silly as we are returned a tuple and need to
             use a list.
         """
-        
         toRemove = self.machList.getcurselection()
-
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
         for mach in toRemove:
-            machines.remove( mach )
-        self.machList.setlist( machines )
+            self.hostlist.remove( mach )
+        self.UpdateHostlistWidget()
 
-    def GetMachines(self):
-        """Return a list of the machines"""
-        all = self.machList.get()
-        machines = []  # need to convert to a list
-        for m in all:
-            machines.append( m )
-        return machines
+    def SetHostlistFromDefaults(self):
+        global defaults
+        
+        if self.debug:
+            print "SetHostlistFromDefaults"
 
+        # Get the values we use to key the dictionaries
+        calctype = self.job.get_parameter('calctype')
+        jobtype = self.job.jobtype
+
+        maind = defaults.get_value('job_dict')
+        print type(maind)
+        if not maind:
+            if self.debug: print "#### SetHostlistFromDefaults NO JOB DICT!"
+            return
+
+        if not maind.has_key( calctype ):
+            if self.debug:
+                print "#### SetHostListFromDefaults No ctype dictionary!"
+            return
+        
+        calcd = maind[calctype]
+        if not calcd.has_key( jobtype ):
+            if self.debug: print "#### SetHostListFromDefaults no jtype dictionary!"
+            return
+        
+        job_dict = calcd[jobtype]        
+        if job_dict.has_key('hostlist'):
+            self.hostlist = job_dict['hostlist']
+        else:
+            if self.debug: print "#### SetHostlistFromDefaults no hostlist!"
+
+
+    def UpdateHostlistWidget(self):
+        """ Update the list of hosts from self.hostlist
+        """
+        #self.setValue['hostlist'] = self.machList.setlist
+        # Need to check if we are using the hostlist widget
+        if hasattr( self, 'machList' ):
+            print "updating hostlist widget"
+            self.machList.setlist( self.hostlist )
+
+    def SaveHostlistToDefaults(self):
+        """
+        Save the current hostlist to the rc_vars keyed by the calc/jobtype
+        """
+
+        global defaults
+        # Get the values we use to key the dictionaries
+        calctype = self.job.get_parameter('calctype')
+        jobtype = self.job.jobtype
+        print "SetHostListAsDefault ",calctype,jobtype
+
+        # Make sure we have the structure we need - this all relies
+        # on the job_dict being a pointer to the dictinoary
+        job_dict = defaults.get_value( 'job_dict' )
+        if not job_dict:
+            job_dict = {}
+            defaults.set_value( 'job_dict', job_dict )
+
+        if not job_dict.has_key( calctype ):
+            job_dict[calctype] = {}
+
+        if not job_dict[calctype].has_key( jobtype ):
+            job_dict[calctype][jobtype] = {}
+
+        # Don't think we need to explcitity set this?
+        job_dict[calctype][jobtype]['hostlist'] = self.hostlist
 
     def GetValues(self):
         """
@@ -299,42 +358,48 @@ class JobEditor(Pmw.MegaToplevel):
         #print "self.values is ",self.values
         return self.values
 
-    def saveParameters(self,default=None):
+    def SaveParameters(self,default=None):
         """ Save the job parameters from this widget into the job.job_parameters dictionary
             If the default flag is set we also save the values to the rc_vars dictionary
         """
 
-        global rc_vars
-        
         jobdict = self.GetValues()
-        
-        for key,value in jobdict.iteritems():
-            # Should save the values even if they are none.
-            #if key in self.job.job_parameters.keys() and value:
-            if key in self.job.job_parameters.keys():
-                self.job.job_parameters[key] = value
-                if self.debug:
-                    print "saveParameters setting: %s : %s" % (key,value)
+
+        #for key,value in jobdict.iteritems():
+        #    # Should save the values even if they are none.
+        #    #if key in self.job.job_parameters.keys() and value:
+        #    if key in self.job.get_parameters().keys():
+        #        self.job.set_parameter( key, value )
+        #        if self.debug:
+        #            print "SaveParameters setting: %s : %s" % (key,value)
+
+        print "jobed save parameters"
+        self.job.update_parameters( jobdict )
+
+        # Update command 
+        if self.update_cmd:
+            print "save Parameters  running update command"
+            self.update_cmd( self.job )
                     
         if default:
+            self.SaveHostlistToDefaults()
             self.job.save_parameters_as_default()
-        
 
     def LayoutQuitButtons(self):
         """ Layout the Buttons to quit"""
         # Buttons to save or quit
-        quitAndSaveButton = Tkinter.Button(self.interior(),
-                                text="Quit and Save",
+        acceptButton = Tkinter.Button(self.interior(),
+                                text="Accept",
                                 command=lambda s=self: s.Quit(save=1))
-        quitAndSaveButton.pack(side='left')
-        quitAndSaveAsDefaultButton = Tkinter.Button(self.interior(),
-                                text="Quit and Save as Defaults",
-                                command=lambda s=self: s.Quit(save=1,default=1) )
-        quitAndSaveAsDefaultButton.pack(side='left')
-        quitNoSaveButton = Tkinter.Button(self.interior(),
-                                text="Quit do not save",
+        acceptButton.pack(side='left')
+        saveAsDefaultButton = Tkinter.Button(self.interior(),
+                                text="Save as Defaults",
+                                command=lambda s=self: s.SaveParameters(default=1) )
+        saveAsDefaultButton.pack(side='left')
+        cancelButton = Tkinter.Button(self.interior(),
+                                text="Cancel",
                                 command=lambda s=self: s.Quit(save=None))
-        quitNoSaveButton.pack(side='left')
+        cancelButton.pack(side='left')
 
     def Quit(self,save=None,default=None):
         """Update the rc_vars or the supplied calculation with the new values
@@ -349,7 +414,7 @@ class JobEditor(Pmw.MegaToplevel):
         """ Default quit - should be overwritten"""
 
         if save:
-            self.saveParameters( default=default )
+            self.SaveParameters( default=default )
 
 
     def _destroy(self):
@@ -361,7 +426,7 @@ class JobEditor(Pmw.MegaToplevel):
         if self.debug:
             if self.job:
                 print "jobed parameters"
-                print self.job.job_parameters
+                print self.job.get_parameters()
             
     def __str__(self):
        """The string to return when we are asked what we are"""
@@ -377,7 +442,7 @@ class JobEditor(Pmw.MegaToplevel):
         """ Lay out the machine list widget"""
 
         # Create the widgets to edit the list of machines
-        self.values['hostlist'] = [] # set default value here
+        #self.values['hostlist'] = [] # set default value here
         self.values['host'] = [] # set default value here
         machListFrame = Pmw.Group( self.interior(), tag_text='Machines' )
         machListFrame.pack(fill='both',expand=1)
@@ -386,11 +451,15 @@ class JobEditor(Pmw.MegaToplevel):
         self.machList = Pmw.ScrolledListBox(
             machListFrame.interior(),
             listbox_selectmode='extended',
-            items=self.values['hostlist']
+            items=self.hostlist
+#            items=self.values['hostlist']
             )
-        self.getValue['hostlist'] = lambda s=self: s.machList.get()
-        self.setValue['hostlist'] = self.machList.setlist
-        self.getValue['host'] = lambda s=self: s.machList.getvalue()
+        #self.getValue['hostlist'] = lambda s=self: s.machList.get()
+        #self.setValue['hostlist'] = self.machList.setlist
+        
+        # For the host we only want one so take the first item in the list
+        self.getValue['host'] = lambda s=self: s.machList.getvalue()[0]
+        
         # Can't guarantee the list of hosts will have been set up before we
         # try and set the value of the desired host
         #self.setValue['host'] = self.machList.setvalue
@@ -476,89 +545,81 @@ class JobEditor(Pmw.MegaToplevel):
             button.pack(side="left", padx=10)
         else:
             self.executableWidget.pack(side='top')
-            
-
 
         self.values['executable'] = None
         self.getValue['executable'] = lambda s=self: s.executableWidget.getvalue()
         self.setValue['executable'] = self.executableWidget.setentry
 
 
-    def LayoutDirectoryWidget(self,browse=None):
+    def LayoutLocalDirectoryWidget( self ):
         """ Lay out the widget to select the directory"""
 
 
-        if browse:
-            dirFrame = Tkinter.Frame( self.interior() )
-            packParent = dirFrame
-            labelText = 'Directory:'
-        else:
-            packParent = self.interior()
-            labelText = 'Remote Directory:'
+        # Add this attribute to the values dictionary
+        self.values['local_directory'] = None
         
-        self.directoryWidget = Pmw.EntryField( packParent,
-                                            labelpos = 'w',
-                                            label_text = labelText,
-                                            validate = None
-                                            )
+        dirFrame = Tkinter.Frame( self.interior() )
+        packParent = dirFrame
+        labelText = 'Local Directory:'
+        
+        self.localDirectoryWidget = Pmw.EntryField( packParent,
+                                               labelpos = 'w',
+                                               label_text = labelText,
+                                               validate = None
+                                               )
         if self.dir_cmd:
-            self.directoryWidget.configure(command=self.dir_cmd)
-            self.directoryWidget.component('entry').bind("<Leave>",self.dir_cmd)
+            self.localDirectoryWidget.configure(command=self.dir_cmd)
+            #self.directoryWidget.component('entry').bind("<Leave>",self.dir_cmd)
         
+        def __findDirectory():
+
+            # Get a sensible default
+            directory = self.values['local_directory']
+            #if not directory:
+            #    # Get the user paths from the dict in viewer.paths
+            #    directory = paths['user']
+
+            path=tkFileDialog.askdirectory( initialdir=directory )
+            if len(path):
+                self.values['local_directory'] = path
+                self.localDirectoryWidget.setentry( path )
+                # Run any command we may have been passed
+                if self.dir_cmd:
+                    self.dir_cmd( directory )
+
+        button = Tkinter.Button(dirFrame,text="Browse...",command=__findDirectory)
+        self.localDirectoryWidget.pack(side='left')
+        dirFrame.pack(side='top')
+        button.pack(side="left", padx=10)
+
+        self.getValue['local_directory'] = lambda s=self: s.localDirectoryWidget.getvalue()
+        self.setValue['local_directory'] = self.localDirectoryWidget.setentry
         
-        if browse:
-            def __findDirectory():
-                # askdirectory() cant create new directories so use asksaveasfilename
-                # is used instead and the filename  is discarded - also fixes problem
-                # with no askdirectory in Python2.1
+    def LayoutRemoteDirectoryWidget( self ):
+        """ Lay out the widget to select the remote directory"""
 
-                directory = None
-                if self.values.has_key('directory'):
-                    val = self.values['directory']
-                    if val and len(val):
-                        directory = val
 
-                if not directory:
-                    # Get the user paths from the dict in viewer.paths
-                    directory = paths['user']
-                
-                dummyfile='<directory>'
-                lendummy=(len(dummyfile)+1)
-                path=tkFileDialog.asksaveasfilename(initialfile=dummyfile,
-                                                    initialdir=directory)
-                if len(path):
-                    directory=path[0:-lendummy]
-                    self.values['directory'] = directory
-                    self.directoryWidget.setentry( directory )
-                    # Run any command we may have been passed
-                    if self.dir_cmd:
-                        self.dir_cmd( directory )
-
-            button = Tkinter.Button(dirFrame,text="Browse...",command=__findDirectory)
-            self.directoryWidget.pack(side='left')
-            dirFrame.pack(side='top')
-            button.pack(side="left", padx=10)
-        else:
-            self.directoryWidget.pack(side='top')
-
-        self.values['directory'] = None
-        self.getValue['directory'] = lambda s=self: s.directoryWidget.getvalue()
-        self.setValue['directory'] = self.directoryWidget.setentry
+        # Add this attribute to the values dictionary
+        self.values['remote_directory'] = None
         
-#     def LayoutDirectoryWidget(self):
-#         """ Lay out the widget to select the directory on the remote machine"""
-#         print "Laid out directory"
-#         self.remoteDirWidget = Pmw.EntryField( self.interior(),
-#                                             labelpos = 'w',
-#                                             label_text = 'Remote Directory:',
-#                                             entry_width = '30',
-#                                             validate = None
-#                                             )
-#         self.remoteDirWidget.pack(side='top')
-#         self.values['directory'] = None
-#         self.getValue['directory'] = lambda s=self: s.remoteDirWidget.getvalue()
-#         self.setValue['directory'] = self.remoteDirWidget.setentry
-       
+        packParent = self.interior()
+        labelText = 'Remote Directory:'
+        
+        self.remoteDirectoryWidget = Pmw.EntryField( packParent,
+                                               labelpos = 'w',
+                                               label_text = labelText,
+                                               validate = None
+                                               )
+        if self.dir_cmd:
+            self.remoteDirectoryWidget.configure(command=self.dir_cmd)
+            #self.directoryWidget.component('entry').bind("<Leave>",self.dir_cmd)
+        
+        self.remoteDirectoryWidget.pack(side='top')
+
+        self.getValue['remote_directory'] = lambda s=self: s.remoteDirectoryWidget.getvalue()
+        self.setValue['remote_directory'] = self.remoteDirectoryWidget.setentry
+
+
     def LayoutJobmanagerWidget(self):
         """ Lay out the widget to select the directory on the remote machine"""
         print "Laid out jobmanager"
@@ -594,7 +655,7 @@ class LocalJobEditor(JobEditor):
 
     def LayoutWidgets(self):
         self.LayoutExecutableWidget(browse=1)
-        self.LayoutDirectoryWidget(browse=1)
+        self.LayoutLocalDirectoryWidget()
         self.LayoutQuitButtons()
 
 
@@ -616,19 +677,38 @@ class RSLEditor(JobEditor):
         #self.rsl_operations = ( '=' )
 
         # Dictionary mapping variable name to the type of the variable
+        # We list both rsl and xrsl (Nordugrid) parameters and then remove
+        # those that aren't valid
         self.rslVariables = {}
-        self.rslVariables['jobName']=str
-        self.rslVariables['cpuTime']=str
-        self.rslVariables['wallTime']=str
-        self.rslVariables['gridTime']=str
-        self.rslVariables['memory']=int
-        self.rslVariables['disk']=int
         self.rslVariables['architechture']=str
-        self.rslVariables['runTimeEnvironment']=str
-        self.rslVariables['opSys']=str
-#        self.rslVariables['executable']=str
         self.rslVariables['arguments']=str
+        self.rslVariables['cpuTime']=str
+        self.rslVariables['disk']=int
         self.rslVariables['environment']='entrypair'
+#        self.rslVariables['executable']=str
+        self.rslVariables['gridTime']=str
+        self.rslVariables['jobName']=str
+        self.rslVariables['maxCpuTime']=str
+        self.rslVariables['maxTime']=str
+        self.rslVariables['maxWallTime']=str
+        self.rslVariables['memory']=int
+        self.rslVariables['opSys']=str
+        self.rslVariables['project']=str
+        self.rslVariables['queue']=str
+        self.rslVariables['runTimeEnvironment']=str
+        self.rslVariables['wallTime']=str
+
+        # Check the job and remove any that aren't valid
+        if hasattr( self.job, 'rsl_parameters' ):
+            # Cant change size of dict during iteration
+            # so build up a list and then remove
+            to_remove = []
+            for parameter in self.rslVariables:
+                if not parameter in self.job.rsl_parameters :
+                    to_remove.append( parameter )
+            for parameter in to_remove:
+                del self.rslVariables[ parameter ]
+
         self.currentRSL = self.RSLNONE # Bit of a hack so we know the last selected RSL
         self.RSLValues = { self.currentRSL : ('=',None) } # dict of name : ( op,value ) - value could be a list
         self.chooseRSLWidget = None
@@ -935,7 +1015,7 @@ class RSLEditor(JobEditor):
             set in the rc_vars dictionary.
         """
         
-        jobdict = self.job.job_parameters
+        jobdict = self.job.get_parameters()
         self.SetRSL( jobdict )
 
 
@@ -996,7 +1076,7 @@ class RSLEditor(JobEditor):
         if save:
             #Make sure we get the latest rsl variable if that was the last thing to be updated
             self._SaveCurrentRSL()
-            self.saveParameters( default=default )
+            self.SaveParameters( default=default )
 
 
 class GlobusEditor(RSLEditor):
@@ -1026,14 +1106,15 @@ class GlobusEditor(RSLEditor):
         self.LayoutMachListWidget()
         self.LayoutNprocWidget()
         self.LayoutExecutableWidget(browse=0)
-        self.LayoutDirectoryWidget()
+        self.LayoutLocalDirectoryWidget()
+        self.LayoutRemoteDirectoryWidget()
         self.LayoutJobmanagerWidget()
         self.LayoutRSLWidget()
         self.LayoutQuitButtons()
 
         #Pmw.alignlabels( [self.executableWidget, self.directoryWidget] )
 
-class NordugridEditor(JobEditor):
+class NordugridEditor(RSLEditor):
 
     """ A widget to edit Nordugrid Jobs
     """
@@ -1046,7 +1127,7 @@ class NordugridEditor(JobEditor):
             kw['title'] = self.jobtype+ ' JobEditor'
 
         # Initialse everything in the base class
-        JobEditor.__init__(self,root,job,**kw)
+        RSLEditor.__init__(self,root,job,**kw)
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
