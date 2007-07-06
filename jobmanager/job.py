@@ -58,7 +58,7 @@ import shutil
 import tarfile
 import socket
 from viewer.paths import backup_dir
-from viewer.rc_vars import rc_vars
+from viewer.defaults import defaults
 
 # These are placeholders for modules that will be loaded as required
 SOAPpy = None
@@ -179,7 +179,7 @@ class Job:
                             # so that the run method can react accordingly on a restart
         self.thread = None
         
-        self.debug = 0
+        self.debug = None
         
     def __repr__(self):
         txt = self.jobtype + ':'
@@ -261,23 +261,30 @@ class Job:
             except Exception, e:
                 import traceback
                 traceback.print_exc()
-                if self.debug:
-                    print 'Fatal Exception in step: %s' % step.name
-                    print 'e=',e
-                    print 'type(e)=',type(e)
-                    try:
-                        print 'dict e=',e.__dict__
-                    except:
-                        print 'dict failed'
+                print 'Fatal Exception in step: %s' % step.name
+                #if self.debug:
+                    #print 'e=',e
+                    #print 'type(e)=',type(e)
+                    #try:
+                    #    print 'dict e=',e.__dict__
+                    #except:
+                    #    print 'dict failed'
+                    #
+                    #try:
+                    #    print 'str(e)',str(e)
+                    #except:
+                    #    print 'str failed'
 
-                    try:
-                        print 'str(e)',str(e)
-                    except:
-                        print 'str failed'
+                #self.code = -1    
+                #self.status = JOBSTATUS_FAILED
+                #self.msg = str(e)
+                code = -1    
+                message = str(e)
 
-                self.status = JOBSTATUS_FAILED
-                self.msg = str(e)
-                return 1
+                #jmht - don't return here as we may want to carry on if a particular
+                # step is allowed to fail - i.e. an exception is treated like
+                # any other failure
+                #return 1
                 
             self.msg = message
             if self.debug:
@@ -315,7 +322,7 @@ class Job:
             elif code == 2:
                 print "Job stopped while running step: %s : %s" %(self.step_number,step.name)
                 self.prepare_restart(in_step=1)
-                return None
+                return 0
             else:
                 #self.status = JOBSTATUS_OK
                 if self.debug:
@@ -326,6 +333,7 @@ class Job:
         self.status = JOBSTATUS_DONE
         if self.debug:
             print 'job run completed'
+        return 0
 
     def delete_file(self,step):
         if sys.platform[:3] == 'win':
@@ -452,6 +460,11 @@ class Job:
         """Return the current status of the job"""
         return self.status
 
+    def set_parameter(self,parameter,value):
+        """See if a job has a parameter - retrn the value if true or None if not"""
+
+        self.job_parameters[parameter] = value
+
     def get_parameter(self,parameter):
         """Get the parameter specified and return None if it does't exist"""
 
@@ -465,103 +478,113 @@ class Job:
         else:
             return None
 
-    def set_parameter(self,parameter,value):
-        """See if a job has a parameter - retrn the value if true or None if not"""
+    def get_parameters(self):
+        """ Return the dictionary of job parameters"""
 
-        self.job_parameters[parameter] = value
+        print "job get parameters returning parameters"
+        return self.job_parameters
 
-    def update_parameters(self, job_dict=None, host=None):
-        """Update the job parameters either from the rc_vars or from a
-           a dictionary if one is supplied with the job_dict key
+    def update_parameters(self, parameters ):
+        """Update the parameters for this job from the
+           supplied dictionary of parameters
 
-           If the host key is supplied, then it should be a host that
-           this calculation/job combination has been run on and will
-           update the parameters with the values from that job.
-
-           If the host is not supplied but there is a last_host key in the
-           dictionary for that calculation/job type, the parameters
-           for this last job are used.
-           
            Only updates for variables that already exist as keys in the
            job_parameters dictionary are permitted.
 
         """
 
-        if not job_dict:
-            global rc_vars
-            if self.debug:
-                print "updating job parameters from the rc_vars dictionary"
-
-            # Get the values we use to key the dictionaries
-            ctype = self.get_parameter('calctype')
-            jtype = self.jobtype
-
-            if not rc_vars.has_key('job_dict'):
-                if self.debug:
-                    print "#### update_parameters from rc_vars NO JOB DICT!"
-                return
-            maind = rc_vars['job_dict']
-
-            if not maind.has_key( ctype ):
-                if self.debug:
-                    print "#### update_parameters no ctype dictionary!"
-                return
-            calcd = maind[ctype]
+        print "update_parameters updating with parameters ",parameters
+        if not parameters:
+            raise Exception,"job.update_parameters called with no parameters!"
             
-            if not calcd.has_key( jtype ):
-                if self.debug:
-                    print "#### update_parameters no jtype dictionary!"
-                return
-            jobd = calcd[jtype]
-
-            # Have got a dictionary for a previous calculation run with
-            # this job type so now check if we are keyed by a host or, failing that, there
-            # is a default dictionary we can use instead
-
-            if host:
-                if self.debug:
-                    print "#### update_parameters got host: %s" % host
-
-                if jobd.has_key(host):
-                    job_dict = jobd[host]
-                else: 
-                    if self.debug:
-                        print "#### update_parameters no dictionary for host:",host
-                    job_dict = None
-
-            if not job_dict:
-                # Either no host or no valid job dict, so use the last host 
-                if jobd.has_key('last_host'):
-                    host = jobd['last_host']
-                    if host:
-                        job_dict = jobd[host]
-                else:
-                    # Use the default
-                    if jobd.has_key('job_dict'):
-                        job_dict = jobd['job_dict']
-            
-        if job_dict:
-            
-            # hostlist hack sling this in here so that it includes any hosts
-            # that may have been added in the meantime
-            if jobd.has_key('hostlist'):
-                hostlist = jobd['hostlist']
-                job_dict['hostlist'] = hostlist
-
-            for key,value in self.job_parameters.iteritems():
-                if job_dict.has_key( key ):
-                    self.job_parameters[key] = job_dict[key]
-        else:
-            print "#### update_parameters - failed entirely to find a dictionary!"
+        for key,value in parameters.iteritems():
+            if self.job_parameters.has_key( key ):
+                # Empty strings as None
+                if type(value) == str and len(value) == 0:
+                    value = None
+                self.job_parameters[key] = parameters[key]
+                print "updated job parametesr with ",key,value
                 
         if self.debug:
-            print "job update_parameters: parameters are now:"
-            print self.job_parameters
+            print "job update_parameters "
+
+    def update_parameters_from_defaults(self, host=None ):
+        """Update the job parameters from the defaults dictionary"""
+        parameters = self.get_parameters_from_defaults()
+        if parameters:
+            self.update_parameters( parameters )
+
+
+    def get_parameters_from_defaults(self, host=None ):
+        """ Return the default job parameters from the defaults dictionary for
+            this jobtype
+            
+            If the host keyword is supplied then this is a jobtype that supports running
+            on different hosts and we have a separate dictionary for each host that we
+            have had values saved for
+
+        """
+        global defaults
+        
+        if self.debug:
+            print "returning  job parameters from the defaults dictionary"
+
+        # Get the values we use to key the dictionaries
+        calctype = self.get_parameter('calctype')
+        jobtype = self.jobtype
+
+        job_dict = defaults.get_value( 'job_dict' )
+        if not job_dict:
+            if self.debug: print "#### get_parameters_from_defaults from defaults NO JOB DICT!"
+            return
+
+        if not job_dict.has_key( calctype ):
+            if self.debug:
+                print "#### get_parameters_from_defaults no ctype dictionary!"
+            return
+        
+        calcd = job_dict[calctype]
+        if not calcd.has_key( jobtype ):
+            if self.debug: print "#### get_parameters_from_defaults no jobtype dictionary! %s" % jobtype
+            return
+        
+        jobd = calcd[jobtype]
+        if not jobd:
+            if self.debug: print "#### get_parameters_from_defaults no jobd dictionary!"
+            return
+            
+        # This should be a dictionary for a particular calculation and job type
+        # There may be a key called 'default' which is the used when there either isn't
+        # a particular host for this jobtype. The default key is also set each time a job
+        # is run so that it serves to point at the 'last host'
+        if host:
+            if self.debug: print "#### get_parameters_from_defaults got host: %s" % host
+            if jobd.has_key( host ):
+                parameters = jobd[host]
+            else: 
+                if self.debug: print "#### get_parameters_from_defaults no dictionary for host:",host
+                return
+        else:
+            # Use the default dictionary - they last_host and job_dict keywords are relics
+            # only kept on to stop breaking old defaults - can probably be remove
+            if jobd.has_key('default'):
+                parameters = jobd['default']
+            elif jobd.has_key('last_host'):
+                parameters = jobd['last_host']
+            elif jobd.has_key('job_dict'):
+                parameters = jobd['job_dict']
+            else:
+                print "get_dcautlt param no dict to return"
+                return
+
+        print "parameters are ",parameters
+            
+        return parameters
 
     def save_parameters_as_default(self):
-        """ Save the current job parameters to the rc_vars.
+        """ Save the current job parameters to the defaults.
             The parameters are saved as a dictionary with the stucture:
-            rcvars['job_dict'] = { calculation_type = { job_type = jobd }}
+            self.defaults['job_dict'] = { calculation_type = { job_type = jobd }}
 
             calculation_type  - from the program name of the calc class
             (e.g. GAMESS-UK)
@@ -569,11 +592,13 @@ class Job:
 
             jobd is a dictionary of the form: { host: job_dict } and maps
             the job_parameters dictionary for a job onto a host. It is possible
-            to have an entry with the key 'job_dict' in this final dictionary,
+            to have an entry with the key 'default' in this final dictionary,
             which serves to hold default parameters (or for those job types that
-            don't have a single host). It may also contain the key 'lasthost'
-            which indicates the last host that was accessed (where hostnames
-            can identify jobs)
+            don't have a single host).
+
+            #####It may also contain the key 'lasthost'
+            ######which indicates the last host that was accessed (where hostnames
+            ######can identify jobs)
 
             ### HACK ###
             hostlist is different as it applies to all jobs of a given type. There
@@ -581,52 +606,43 @@ class Job:
             cleverer, but for the time being just this will be treated differently
         """
 
-
         # Get the values we use to key the dictionaries
-        ctype = self.get_parameter('calctype')
-        jtype = self.jobtype
-
+        calctype = self.get_parameter('calctype')
+        jobtype = self.jobtype
+        print "job save parameters as default ",calctype,jobtype
+        
         # Make sure we have the structure we need
-        if not rc_vars.has_key('job_dict'):
-            rc_vars['job_dict'] = {}
+        job_dict = defaults.get_value( 'job_dict' )
+        if not job_dict:
+            job_dict = {}
+            defaults.set_value( 'job_dict', job_dict )
 
-        if not rc_vars['job_dict'].has_key( ctype ):
-            rc_vars['job_dict'][ctype] = {}
+        if not job_dict.has_key( calctype ):
+            job_dict[calctype] = {}
 
-        if not rc_vars['job_dict'][ctype].has_key( jtype ):
-            rc_vars['job_dict'][ctype][jtype] = {}
+        if not job_dict[calctype].has_key( jobtype ):
+            job_dict[calctype][jobtype] = {}
 
-
-        #if self.host:
-        #    assert type(self.host) == str,"job.py save_parameters_as default - host must be a string!"
-        #    key = self.host
-        #    # Save this as the last host so we can pull it up if needed
-        #    rc_vars['job_dict'][ctype][jtype]['last_host'] = key
-
-        # hostlist hack
-        hostlist = self.get_parameter('hostlist')
-        if hostlist:
-            rc_vars['job_dict'][ctype][jtype]['hostlist'] = hostlist
-            
 
         host = self.get_parameter('host')
         if host:
             # Should only really be one for the time being...
             if len(host) > 1:
                 print "save_parameters_as_default - got more than one host!"
-            key = host[0] # dictionary is keyed by the hostname
+            host = host[0] # dictionary is keyed by the hostname
             
-            # Save this host as the last that we ran on for this jobtype
-            rc_vars['job_dict'][ctype][jtype]['last_host'] = key
-        else:
-            key = 'job_dict'
-
         # Now save the dictionary to this location
         # Need to save a copy NOT a pointer otherwise the references all point
         # at the same object until the dictionary is saved out to file.
         # Do not ask how long it took to debug that one...
-        rc_vars['job_dict'][ctype][jtype][key] = copy.deepcopy(self.job_parameters)
+        if host:
+            job_dict[calctype][jobtype][host] = copy.deepcopy(self.job_parameters)
 
+        # Always save the last one as the default
+        job_dict[calctype][jobtype]['default'] = copy.deepcopy(self.job_parameters)
+
+        # Now write the defaults to disk
+        defaults.write_to_file()
 
     def stop(self):
         """
@@ -693,7 +709,7 @@ class LocalJob(Job):
         self.jobtype=LOCALHOST
         #self.job_parameters['host'] = LOCALHOST
         self.job_parameters['executable'] = None
-        self.job_parameters['directory'] = None
+        self.job_parameters['local_directory'] = None
 
     def allocate_scratch(self,step):
         pass
@@ -1346,7 +1362,6 @@ class GridJob(Job):
         self.gsissh_port = '2222'
         
         self.job_parameters = {} # Dictionary of job parameters for Nordugrid, RMCS, Growl etc jobs
-        self.job_parameters['hostlist'] = None
         self.job_parameters['count'] = '1'
         self.job_parameters['executable'] = None
         self.job_parameters['jobName'] = None
@@ -1354,24 +1369,27 @@ class GridJob(Job):
         self.job_parameters['stdin'] = None
         self.job_parameters['stdout'] = None
         self.job_parameters['stderr'] = None
-        self.job_parameters['directory'] = None
+        self.job_parameters['arguments'] = []
+        self.job_parameters['remote_directory'] = None
         self.job_parameters['environment'] = {}
 
         # This is a list of all parameters that are usable in the CreateRSLString method
         # Only ones that are universally used should be added here, others should be added
         # by the relevant init method
-        self.xrsl_parameters = ['arguments',
-                                'count',
-                                'cpuTime',
-                                 'directory',
-                                 'executable',
-                                 'environment',
-                                 'jobName',
-                                 'jobtype',
-                                 'stdin',
-                                 'stdout',
-                                 'stderr',
-                                'wallTime'
+        self.rsl_parameters = ['arguments',
+                               'count',
+                               'directory',
+                               'executable',
+                               'environment',
+                               'jobtype',
+                               'stdin',
+                               'stdout',
+                               'stderr',
+                               'maxCpuTime',
+                               'maxTime',
+                               'maxWallTime',
+                               'queue',
+                               'project',
                                 ]
             
 
@@ -1386,7 +1404,6 @@ class GridJob(Job):
         else:
             if self.debug:
                 print "Proxy server is o.k."
-            return None
 
     def CreateRSLString(self):
         """ Create a suitable rsl string to run the job from the job_parameters and
@@ -1396,35 +1413,43 @@ class GridJob(Job):
         """
 
         # Not used as we build up the xrsl using the relevant tools instead
-        #xrsl_string = '&'
-        xrsl_string = ''
+        rsl_string = ''
         for rsl_name,value in self.job_parameters.iteritems():
             #rsl_name = key.replace('ngrid_','')
             #print "CreateRSL got: %s : %s" % (rsl_name,value)
-            if rsl_name not in self.xrsl_parameters:
+            
+            # NB: directory is different as we need to distinguish between local_directory
+            # and remote_directory
+            if rsl_name == 'remote_directory':
+                rsl_name = 'directory'
+                
+            if rsl_name not in self.rsl_parameters:
                 # Not a valid parameter so skip it
                 continue
             if value:
                 if type(value) == list:
-                    pass
+                    rsl_string += '(%s=' % rsl_name
+                    for arg in value:
+                        rsl_string += ' \"%s\" ' % arg
+                    rsl_string +=')'
                 elif type(value) == dict:
                     # Dictionaries currently for input & outputfiles and environment variables
                     # can all be handled in the same way
                     if len(value) > 0:
-                        xrsl_string += '(%s=' % rsl_name
+                        rsl_string += '(%s=' % rsl_name
                         for dkey,dvalue in value.iteritems():
                             if dvalue == None:
-                                xrsl_string += '(%s "")' % dkey
+                                rsl_string += '(%s "")' % dkey
                             else:
-                                xrsl_string += '(%s %s)' % ( dkey, dvalue )
-                        xrsl_string += ')'
+                                rsl_string += '(%s %s)' % ( dkey, dvalue )
+                        rsl_string += ')'
                 else:
                     #xrsl_string += '(%s=%s)' % (rsl_name,value)
-                    xrsl_string += '(%s="%s")' % (rsl_name,value)
+                    rsl_string += '(%s="%s")' % (rsl_name,value)
 
         if self.debug:
-            print "CreateRsl xrsl_string is: ",xrsl_string
-        return xrsl_string
+            print "CreateRsl rsl_string is: ",rsl_string
+        return rsl_string
 
 class GlobusJob(GridJob):
     """
@@ -1434,32 +1459,28 @@ class GlobusJob(GridJob):
 
         self.jobtype = 'Globus'
         self.job_parameters['remote_home'] = None
-        self.job_parameters['directory'] = None # The full path to the working directory on the
+        self.job_parameters['remote_directory'] = None # The full path to the working directory on the
         self.job_parameters['jobmanager'] = None
         self.job_parameters['count'] = 1
-        self.job_parameters['hostlist'] = []
         self.job_parameters['host'] = None
 
-        # Now make sure that we have a valid proxy
-        self.CheckProxy()
-        self.debug=1
+        self.debug=None
 
     def get_host(self):
         """Return the name of the host that we are running on """
 
         if self.host:
-            if len(self.host):
-                return self.host
+            # Have already been called so return what we've been set to
+            return self.host
 
+        # Not been called before so get the parameter
         host = self.get_parameter('host')
-        if not host or len( host) != 1:
+        if not host or type(host) != str:
             raise JobError, "GlobusJob needs a single hostname to run the job on!"
-        else:
-            self.host = host[0]
 
+        self.host=host
         if self.debug:
             print "get_host returning ",self.host
-            
         return self.host
 
     def get_homedir(self):
@@ -1468,13 +1489,12 @@ class GlobusJob(GridJob):
         if self.debug:
             print "Getting remote_home_dir"
 
-        if not self.job_parameters['remote_home']:
+        homedir = self.get_parameter( 'remote_home' )
+        if not homedir:
             host = self.get_host()
             #homedir = self.run_command( 'grid-pwd', args=[host] )
             homedir = self.grid_pwd( host )
-            self.job_parameters['remote_home'] = homedir
-        else:
-            homedir = self.job_parameters['remote_home']
+            self.set_parameter( 'remote_home',  homedir )
             
         if self.debug:
             print "Globus get_homedir returning: %s" %  homedir
@@ -1488,19 +1508,18 @@ class GlobusJob(GridJob):
           
         """
 
-        if not self.job_parameters['directory']:
+        remote_dir = self.get_parameter('remote_directory')
+        if not remote_dir:
             # Set path to the home directory
             homedir = self.get_homedir()
             if homedir[-1] != "/":
                 homedir+="/"
-            self.job_parameters['directory'] = homedir
+            self.set_parameter( 'remote_directory', homedir )
             if self.debug:
                 print "get_remote_dir returning: %s" % homedir
             return homedir
             
         # Got a directory so check if relative path, if so use homedir to turn into absolute
-        remote_dir = self.job_parameters['directory']
-        
         if remote_dir[0] != "/": # Relative path
             homedir = self.get_homedir()
             # Might need more logic for ".." etc.
@@ -1514,11 +1533,9 @@ class GlobusJob(GridJob):
         if remote_dir[-1] != "/":
             remote_dir+="/"
             
-        self.job_parameters['directory'] = remote_dir
-        
+        self.set_parameter( 'remote_directory', remote_dir )
         if self.debug:
-            print "get_remote_dir returning: %s" % remote_dir
-            
+            print "get_remote_dir returning: %s" % remote_dir            
         return remote_dir
 
     def grid_which(self,executable):
@@ -1543,7 +1560,6 @@ class GlobusJob(GridJob):
     def grid_pwd(self, host):
         """Return the full path to the default directory on the remote machine.
         """
-
         
         if self.debug:
             print "grid_pwd: %s" % host
@@ -1816,10 +1832,13 @@ class GlobusJob(GridJob):
            globus-job-submit <hostname>/<jobmanager> -x <xrsl_string> <executable_path>
         
         """
+
+        # Make sure that we have a valid proxy
+        self.CheckProxy()
+
         if not self.restart:
             self.submit(step)
 
-        print "run_app Globus"
 
         # Loop to check status
         code = 0
@@ -1939,9 +1958,13 @@ class GlobusJob(GridJob):
         cmd_string= command 
         if args:
             cmd_string += ' ' + ' '.join(args)
-            
-        if self.debug:
-            print "GlobusJob _run_command running: %s" % (cmd_string)
+
+        # Always print what command we are running
+        #if self.debug:
+        print "GlobusJob: %s" % (cmd_string)
+
+        # Make sure that we have a valid proxy
+        self.CheckProxy()
             
         p = subprocess.Spawn( command, args=args ,debug=None)
         p.run()
@@ -2038,9 +2061,20 @@ class NordugridJob(GridJob):
         self.job_parameters['architechture'] = None
         self.job_parameters['environment'] = {}
 
-        xrsl_parameters = ['inputfiles','outputfiles','arguments','memory','disk','runTimeEnvironment',
-                           'opsys','architechture','environment','gmlog']
-        self.xrsl_parameters = self.xrsl_parameters + xrsl_parameters
+        # Add the Nordugrid extended rsl paramters
+        xrsl_parameters = [
+            'inputfiles',
+            'outputfiles',
+            'arguments',
+            'memory',
+            'disk',
+            'runTimeEnvironment',
+            'opsys',
+            'architechture',
+            'environment',
+            'gmlog'
+            ]
+        self.rsl_parameters = self.rsl_parameters + xrsl_parameters
 
         # Update the defaults with anything that is in the rc_vars dict
         #self.update_parameters()
@@ -2277,7 +2311,6 @@ class NordugridJob(GridJob):
            
         """
 
-        print "Nordugrid run_app"
         if self.restart:
             self.init_arclib()
         else:
@@ -2660,7 +2693,7 @@ if __name__ == "__main__":
         job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun')
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small2.in')
         gamess_exe = "c:\\python_dev\\ccp1gui\\exe\\gamess.exe"
-        job.add_step(RUN_APP,'run gamess',local_command=gamess_exe,stdin_file='small2.in',stdout_file='small2.out')
+        job.add_step(RUN_APP,'run gamess',local_command=gamess_exe,stdi_nfile='small2.in',stdout_file='small2.out')
         job.add_step(COPY_BACK_FILE,'fetch log',remote_filename='small2.out')
         job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
@@ -2682,17 +2715,6 @@ if __name__ == "__main__":
 
     if 0:
         print 'testing rmcs job'
-        rc_vars[ 'hostlist'] = ['lake.esc.cam.ac.uk']
-        rc_vars[ 'count'] = '1'
-        rc_vars['srb_config_file'] ='/home/jmht/srb.cfg'
-        rc_vars['srb_executable'] = 'gamess'
-        rc_vars['srb_executable_dir'] = '/home/jmht.eminerals/test/executables'
-        rc_vars['srb_input_dir'] = '/home/jmht.eminerals/test/test1'
-        rc_vars['srb_output_dir'] = '/home/jmht.eminerals/test/test1'
-        rc_vars['rmcs_user'] = 'jmht'
-        rc_vars['rmcs_password'] = '4235227b51436ad86d07c7cf5d69bda2644984de'
-        rc_vars['myproxy_user'] = 'jmht'
-        rc_vars['myproxy_password'] = 'pythonGr1d'
         
         job = RMCSJob()
         #job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun',kill_on_error=0)
@@ -2728,7 +2750,6 @@ if __name__ == "__main__":
     if 0:
         print 'testing Globus job'
         job = GlobusJob()
-        job.job_parameters['hostlist'] = ['grid-compute.leeds.ac.uk']
         job.job_parameters['count'] = 2
         job.job_parameters['jobtype'] = 'mpi'
         
@@ -2765,7 +2786,7 @@ if __name__ == "__main__":
         print 'testing Globus job'
         job = GlobusJob()
         job.debug = 1
-        job.job_parameters['directory'] = "smeagol/test"
+        job.job_parameters['remote_directory'] = "smeagol/test"
         job.job_parameters['host'] = ["lancs1.nw-grid.ac.uk"]
         job.add_step(COPY_BACK_DIRECTORY,'Globus Copy Back Directory',remote_directory='smeagol/test')
         job.run()
