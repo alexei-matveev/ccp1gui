@@ -56,11 +56,8 @@ class IOTestCase(unittest.TestCase):
             atom.name = d[3]
             atom.symbol = d[4]
             molecule.add_atom( atom )
-        
             
         return molecule
-            
-            
         
 class testCHARMM_CRD(IOTestCase):
     """Test whether we deal with CHARMM crd files"""
@@ -83,7 +80,8 @@ class testCHARMM_CRD(IOTestCase):
         self.assertEqual( len(molecules[0].atom),24876)
 
     def testWrite(self):
-        """"""
+
+        """CHARMM CRD Write"""
 
         mol = self.getMolecule()
 
@@ -95,22 +93,27 @@ class testCHARMM_CRD(IOTestCase):
         os.remove( filepath )
 
 class testCML(IOTestCase):
+
     """Test whether we deal with a CML file"""
 
     def setUp(self):
         """Set the reader for all these filetypes"""
-        
         getIO = GetFileIO()
+        self.reader = getIO.GetReader( format='Chemical Markup Language' )
         self.writer = getIO.GetWriter( format='Chemical Markup Language' )
 
+    def testRead(self):
+        """CML Reader Test"""
+        from viewer.paths import gui_path
+        fil=gui_path+os.sep+'examples'+os.sep+'caffeine.cml'
+        molecules = self.reader.GetObjects(filepath=fil,otype = 'molecules')
+        self.assertEqual( len(molecules[0].atom),14)
+
     def testWrite(self):
-        """"""
-
+        """CML Writer Test"""
         mol = self.getMolecule()
-
         filepath = os.getcwd()+'/test.cml'
         self.writer.WriteFile( mol, filepath=filepath )
-
         statinfo = os.stat( filepath )
         self.assertEqual( statinfo.st_size,1141)
         os.remove( filepath )
@@ -274,31 +277,37 @@ class testPunch_IO(IOTestCase):
         """Set the reader for all these filetypes"""
         
         getIO = GetFileIO()
-        self.reader = getIO.GetReader( format='GAMESS-UK punchfile' )
+        self.reader = getIO.GetReader(format='GAMESS-UK punchfile')
+        self.writer = getIO.GetWriter(format='GAMESS-UK punchfile')
+
+    def testWrite(self):
+        """Punch format IO for a molecule"""
+        mol = self.getMolecule()
+        filepath = os.getcwd()+'/test.pun'
+        self.writer.WriteFile(mol, filepath=filepath)
+        statinfo = os.stat(filepath)
+        #self.assertEqual(statinfo.st_size,1099)
+        #os.remove(filepath)
 
     def test3DVectorRead(self):
         """ Read in a punch file that has a molecule, scalar and vector data
         """
 
-        molecules = self.reader.GetObjects(
-            filepath='/home/jmht/ccp1gui/examples/gamess_vect3d.pun',
-            otype = 'molecules'
-            )
-        self.assertEqual( len(molecules[0].atom) , 4)
+        from viewer.paths import gui_path
+        fil=gui_path+os.sep+'examples'+os.sep+'gamess_vect3d.pun'
 
+        molecules = self.reader.GetObjects(filepath=fil,otype = 'molecules')
+        self.assertEqual(len(molecules[0].atom), 4)
 
-        fields = self.reader.GetObjects(
-            filepath='/home/jmht/ccp1gui/examples/gamess_vect3d.pun',
-            otype = 'fields'
-            )
+        fields = self.reader.GetObjects(filepath=fil, otype = 'fields')
          
         # First field is vector (ndd=3) with 89373 points
-        self.assertEqual( fields[0].ndd , 3)
-        self.assertEqual( len(fields[0].data),89373)
+        self.assertEqual(fields[0].ndd , 3)
+        self.assertEqual(len(fields[0].data),89373)
 
         # Second field is scalar field with 29791 points
-        self.assertEqual( fields[1].ndd , 1)
-        self.assertEqual( len(fields[1].data),29791)
+        self.assertEqual(fields[1].ndd , 1)
+        self.assertEqual(len(fields[1].data),29791)
 
 class testSHELXTL_IO(IOTestCase):
     """Test whether we deal with a shelxtl .res file"""
@@ -454,7 +463,7 @@ if openbabel:
 
 if __name__ == "__main__":
 
-    if 1:
+    if 0:
         # Run all tests automatically
         unittest.main()
     else:
@@ -462,7 +471,8 @@ if __name__ == "__main__":
 
         myTestSuite = unittest.TestSuite()
 
-        myTestSuite.addTest(testOpenBabel_IO("testReadPDB"))
+        myTestSuite.addTest(testPunch_IO("test3DVectorRead"))
+        myTestSuite.addTest(testPunch_IO("testWrite"))
 
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
