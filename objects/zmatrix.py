@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -40,7 +40,9 @@ import exceptions
 import string
 import re
 import symdet
+import os
 import Numeric,LinearAlgebra
+
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
 
@@ -3749,6 +3751,31 @@ class Zmatrix(Indexed):
         """log txt as an error message"""
         print "warning:",txt
 
+    def rdcml(self,file):
+        from interfaces.cmlatominfo import CmlAtomInfo
+        atomDict=CmlAtomInfo(file)
+        root = os.path.split(file)[1].split('.')[0]
+        self.title = root
+        self.name = self.title
+        self.atom = []
+        for i in range(0,len(atomDict)):
+            try:
+                x = float(atomDict[i]['x3'])
+                y = float(atomDict[i]['y3'])
+                z = float(atomDict[i]['z3'])
+            except KeyError:
+                x = float(atomDict[i]['x2'])
+                y = float(atomDict[i]['y2'])
+                z = 0.0
+                                  
+            a = ZAtom()
+            a.coord = [x,y,z]
+            trans = string.maketrans('a','a')
+            a.symbol = string.capitalize(atomDict[i]['elementType'])
+            #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
+            a.name = a.symbol 
+            self.atom.append(a)
+        
     def wrtmsi(self,file):
         """Write the MSI format file"""
         from objects.periodic import z_to_el
@@ -4614,7 +4641,6 @@ init_x="""
 
 if __name__ == "__main__":
 
-    from interfaces.filepunch import PunchReader
     from viewer.paths import gui_path
 
     if 0:
@@ -4627,7 +4653,7 @@ if __name__ == "__main__":
         model2.connect()
         model2.add_fragment(model2.atom[1],'Me')
         
-    if 1:
+    if 0:
         # debug import geometry
         model1=Zmatrix(file=gui_path+"/old.zmt",debug=0)
         print "###### LIST1 #########"
@@ -4641,3 +4667,8 @@ if __name__ == "__main__":
         print "###### LIST1 #########"
         model1.list()
         
+    if 1:
+        model = Zmatrix()
+        model.rdcml(gui_path+"/examples/caffeine.xml")
+        model.list()
+    
