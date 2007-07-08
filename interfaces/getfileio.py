@@ -55,7 +55,6 @@ class GetFileIO:
     def __init__(self,debug=None):
         """ Set up the supported Readers """
 
-
         self.debug=None
         if debug:
             self.debug = 1
@@ -94,7 +93,7 @@ class GetFileIO:
         # 5. a list of the types of objects this IO Object can write
 
         self.format_info = {
-            'Chemical Markup Language'  : [ CML_IO, ['.cml'], None,False, ['Zmatrix','Indexed']  ],
+            'Chemical Markup Language'  : [ CML_IO, ['.cml'], None, True, ['Zmatrix','Indexed']  ],
             'ChemShell punchfile'  : [ PunchIO, ['.c'], None, True, None ],
             'Dalton output' : [ DaltonIO, ['.out','.log'],
                                 re.compile('\s*\*{11}  DALTON - An electronic structure program  \*{11}'), True, None ],                                
@@ -104,7 +103,7 @@ class GetFileIO:
             'GAMESS-UK input' : [ GUKInputIO, ['.in'], None, True, None ],
             'GAMESS-UK output' : [ GUKOutputIO, ['.out'],
                                    re.compile('\s*\*\s*===  G A M E S S - U K    ===\s*\*'), True, None ],
-            'GAMESS-UK punchfile'  : [ PunchIO, ['.pun'], re.compile('\s*block =.*=.*'), True, None ],
+            'GAMESS-UK punchfile'  : [ PunchIO, ['.pun'], re.compile('\s*block\s*=.*=.*'), True, ['Zmatrix','Indexed'] ],
             'Gaussian cubefile'  : [ CubeIO, ['.cube'], None, True, None ],
             'MDL MOL format' : [ MDL_IO, ['.mol','.mdl'], None, True, None ],
             'MSI Cerius II' : [ MSICeriusII_IO, ['.car'], None, False, ['Zmatrix','Indexed'] ],
@@ -274,7 +273,7 @@ class GetFileIO:
 
         if not format:
             format = self.FormatFromFile( filepath )
-            
+
         # Can't work out what sort of file this is
         if not format:
             print "GetIO cannot determine an IO object for the file: %s" % filepath
@@ -293,7 +292,7 @@ class GetFileIO:
                     return None
 
             if write:
-                if not len(self.format_info[ format ][4]):
+                if not self.format_info[ format ][4]:
                     if self.debug:print "GetIO cannot write files for: %s" % format
                     return None
                 
