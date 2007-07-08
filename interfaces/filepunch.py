@@ -31,10 +31,12 @@ from objects.field import *
 from objects.matrix import *
 from objects.vibfreq import *
 from objects.list import *
-from objects.units import *
+
 from fileio import FileIO
 
-###from tkmolview.vtkgraph import VtkColourMap
+#from objects.units import *
+au_to_angstrom = 0.529177
+angstrom_to_au = 1.0/au_to_angstrom
 
 # From Konrad Hinsens scientific python
 from Scientific.Geometry.VectorModule import *
@@ -58,7 +60,7 @@ class PunchIO(FileIO):
         FileIO.__init__(self,**kw)
 
         self.canRead = True
-        self.canWrite = [Zmatrix]
+        self.canWrite = ['Zmatrix', 'Indexed']
 
         global frame_count
         frame_count = 0
