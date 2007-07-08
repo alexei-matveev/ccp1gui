@@ -31,6 +31,7 @@ from Scientific.Geometry import VectorModule
 # import internal modules
 import objects.zmatrix
 from objects.periodic import z_to_el, sym2no, name_to_element
+from objects.zmatrix import Zmatrix
 
 # import external modules
 from Scientific.IO import PDB
@@ -282,9 +283,14 @@ class CML_IO(FileIO):
         FileIO.__init__(self,**kw)
 
         # capapbilties
-        self.canRead = False
+        self.canRead = True
         self.canWrite = [ 'Zmatrix','Indexed' ]
 
+    def _ReadFile(self,format=None):
+        """ Read the file and return the molecule(s)"""
+        model = Zmatrix()
+        model.rdcml(self.filepath)
+        self.molecules.append(model)
 
     def _WriteMolecule(self,molecule,**kw):
         """
