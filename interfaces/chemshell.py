@@ -30,17 +30,17 @@ import tkFileDialog
 from   calc       import *
 from   filepunch  import *
 from   gamessuk   import *
-from   mopac      import *
+from   molpro     import *
 from   mndo       import *
 from   dl_poly    import *
 
 def extend_path(arg):
     """Add an element to the path if not already present"""
     t = os.environ['PATH']
-    t2 = t.split(';')
+    t2 = t.split(os.pathsep)
     #print t2
     if arg not in t2:
-        os.environ['PATH'] = t + ';' + arg
+        os.environ['PATH'] = t + os.pathsep + arg
 
 class ChemShellCalc(Calc):
 
@@ -148,9 +148,7 @@ class ChemShellCalc(Calc):
         if writeinput:
             mol_obj  = self.get_input("mol_obj")
             self.WriteInput(self.infile)
-            #self.__WrtChemShellInput(mol_obj,file)
-            #file.close()
-            #
+
             # load contents of input for viewing/editing
             file = open(self.infile,'r')
             input = file.readlines()
@@ -165,21 +163,11 @@ class ChemShellCalc(Calc):
         #
         #  Need to decide what kind of job run
         # 
-        hostname = self.get_parameter("hostname")
-        username = self.get_parameter("username")
-
+        #hostname = self.get_parameter("hostname")
+        #username = self.get_parameter("username")
 
         job = jobmanager.LocalJob()
-#            else:
-#                # Haven't implemented UNIX fork interface yet
-#                job = jobmanager.ForegroundJob()
-#        elif hostname == 'hpcx':
-#            job = jobmanager.RemoteForegroundJob('hpcx',username)
-#        elif hostname == 'tcsg7':
-#            job = jobmanager.RemoteForegroundJob('tcsg7',username)
-#        else:
-#            print 'unsupported host'
-#            return None
+
         job.name = job_name
 
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
@@ -245,6 +233,13 @@ class ChemShellCalc(Calc):
             # running with an argument (rather than stdin redirection)
             # takes advantage of Tcls handling of errors, this way the
             # script will return on error without writing the punchfile 
+
+            if rc_vars.has_key('chemsh_script_dir') and rc_vars['chemsh_script_dir']:
+                extend_path(rc_vars['chemsh_script_dir'])
+
+            t = os.environ['PATH']
+            print t
+
             job.add_step(RUN_APP,'run ChemShell',
                          local_command='chemsh',
                          local_command_args=[self.infile],
@@ -319,6 +314,8 @@ class ChemShellCalc(Calc):
             self.qmcalc = MopacCalc()
         elif code == "mndo":
             self.qmcalc = MNDOCalc()
+        elif code == "molpro":
+            self.qmcalc = MOLPROCalc()
         else:
             print 'cant start '+code
 
@@ -341,8 +338,8 @@ class ChemShellCalc(Calc):
     def __RdChemShellPunch(self,file):
 
         # the punchfile format is used
-        p = PunchReader()
-        p.scan(file)
+        p = PunchIO()
+        p.ReadFile(filepath=file)
 
         if not p.title:
             p.title = self.get_title()
@@ -352,7 +349,8 @@ class ChemShellCalc(Calc):
         self.results = []
 
         # construct the results list for visualisation
-        for o in p.objects:
+        warn=0
+        for o in p.GetObjects():
 
             # take the last field of the class specification
             t1 = string.split(str(o.__class__),'.')
@@ -372,10 +370,19 @@ class ChemShellCalc(Calc):
                 # will need to organise together with other results
                 # assume overwrite for now
                 # 
-                print 'Copying contents'
                 oldo = self.get_input("mol_obj")
-                copycontents(oldo,o)
-                print 'Copying contents done'
+                if self.debug:
+                    print 'NEW GEOMETRY'
+                    o.connect()
+                    print o.bonds_and_angles()
+                try:
+                    oldo.import_geometry(o,update_constants=0)
+                except ImportGeometryError:
+                    warn=1
+                    copycontents(oldo,o)
+
+                if warn:
+                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
 
             elif myclass == 'Brick':
                 self.results.append(o)
@@ -674,8 +681,10 @@ class ChemShellCalc(Calc):
                 self.write_embed(file)
             else:
                 self.write_hybrid(file)
-        self.write_save_final_structure(file)
 
+        file.write("# \n")
+        self.write_save_final_structure(file)
+        file.write("# \n")
 
         if self.get_parameter('task') == 'energy':
 
@@ -1777,7 +1786,7 @@ class ChemShellCalcEd(CalcEd):
         self.calctype_tool = SelectOptionTool(
             self,"calctype","Calculation Type",items,command=self.__set_calctype)
 
-        valid_qm_codes = [ "gamess", "gaussian", "mndo", "mopac" ]
+        valid_qm_codes = [ "gamess", "gaussian", "mndo", "molpro" ]
         self.qmcode_tool = SelectOptionTool(self,"qmcode","QM Code",valid_qm_codes)
         valid_mm_codes = [ "dlpoly" , "gulp", "charmm" ]
         self.mmcode_tool = SelectOptionTool(self,"mmcode","MM Code",valid_mm_codes)
@@ -2241,37 +2250,37 @@ def chemshell_c_modes():
 
 if __name__ == "__main__":
 
-    import sys
-#    print sys.path
-    
+    import sys,os
     from interfaces.chemshell import *
     from objects.zmatrix import *
+    from viewer.paths import gui_path
+    exdir=gui_path+os.sep+'examples'+os.sep
 
-    from jobmanager import *
-    model = Zmatrix()
-    model.title = "chemshell test"
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'Cl'
-    atom.name = 'Cl'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
+    if 0:
+        calc = ChemShellCalc()
+        f = gui_path + os.sep + 'examples' + os.sep + 'water.zmt'
+        m = Zmatrix(file=f)
+        calc.set_input('mol_obj',m)
+        for t in  m.bonds_and_angles():
+            print t
+        calc.set_parameter('qmcode','molpro')
+        calc.set_parameter('task','optimise')
+        job = calc.makejob()
+        job.run()
+        job.tidy()
+        for t in  m.bonds_and_angles():
+            print t
 
-    root=Tk()
-    calc = ChemShellCalc()
-    calc.set_input('mol_obj',model)
-    jm = JobManager()
-    je = JobEditor(root,jm)
-    vt = ChemShellCalcEd(root,calc,None,job_editor=je)
-
-    vt.Run()
-#    vt.WriteInput()
-    root.mainloop()
+    else:
+        root=Tk()
+        jm = JobManager()
+        je = JobEditor(root,jm)
+        calc = ChemShellCalc()
+        f = exdir + os.sep + 'water.zmt'
+        model = Zmatrix(file=f)
+        calc.set_input('mol_obj',model)
+        calc.set_parameter('qmcode','molpro')
+        vt = ChemShellCalcEd(root,calc,None,job_editor=je)
+        #vt.Run()
+        #    vt.WriteInput()
+        root.mainloop()
