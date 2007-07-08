@@ -3501,42 +3501,6 @@ class TkMolView(Pmw.MegaToplevel):
         # add to any open dialogs
         self.__update_data_list()
             
-
-
-#     def rdcml(self,file,root):
-#         import cml
-
-#         atomDict=cml.atomInfo(file)
-#         model = Zmatrix()
-#         model.title = root
-#         model.name = self.make_unique_name(root)
-
-#         for i in range(0,len(atomDict)):
-
-#             try:
-#                 x = float(atomDict[i]['x3'])
-#                 y = float(atomDict[i]['y3'])
-#                 z = float(atomDict[i]['z3'])
-#             except KeyError:
-#                 x = float(atomDict[i]['x2'])
-#                 y = float(atomDict[i]['y2'])
-#                 z = 0.0
-                                   
-#             a = ZAtom()
-#             a.coord = [x,y,z]
-#             trans = string.maketrans('a','a')
-#             a.symbol = string.capitalize(atomDict[i]['elementType'])
-#             #a.name = a.symbol + string.zfill(len(atomDict.keys())+1,2)
-#             a.name = a.symbol 
-
-#             model.atom.append(a)
-#         self.quick_mol_view([model])
-#         self.append_data(model)
-
-#         ###self.connect_model(model)
-
-#         return [model]
-        
     def append_data(self, data):
         self.data_list.append(data)
         # Initially the callback list is empty
