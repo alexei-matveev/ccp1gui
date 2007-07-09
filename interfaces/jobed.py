@@ -105,9 +105,9 @@ class JobEditor(Pmw.MegaToplevel):
             self.debug = kw['debug']
             
         # Commands that may be passed in and invoked when particular widgets are used
-        self.dir_cmd = None
-        if kw.has_key('dir_cmd'): # see LayoutDirectoryWidget
-            self.dir_cmd = kw['dir_cmd']
+        self.chdir_cmd = None
+        if kw.has_key('chdir_cmd'): # see LayoutDirectoryWidget
+            self.chdir_cmd = kw['chdir_cmd']
             
         self.exe_cmd = None
         if kw.has_key('exe_cmd'): # see LayoutExecutableWidget
@@ -542,8 +542,10 @@ class JobEditor(Pmw.MegaToplevel):
         self.nProc.pack(side='top')
 
     def LayoutExecutableWidget(self,browse=None):
-        """ Lay out the widget to select the executable"""
+        """
+        Lay out the widget to select the executable
 
+        """
 
         if browse:
             exeFrame = Tkinter.Frame( self.interior() )
@@ -589,7 +591,14 @@ class JobEditor(Pmw.MegaToplevel):
 
 
     def LayoutLocalDirectoryWidget( self ):
-        """ Lay out the widget to select the directory"""
+        """
+        Lay out the widget to select the directory
+
+        If the job editor has been called with a chdir_cmd form the calced object
+        this is run each time the user changes the directory to ensure that
+        the calculation directory parameter is up to date
+
+        """
 
 
         # Add this attribute to the values dictionary
@@ -604,8 +613,8 @@ class JobEditor(Pmw.MegaToplevel):
                                                label_text = labelText,
                                                validate = None
                                                )
-        if self.dir_cmd:
-            self.localDirectoryWidget.configure(command=self.dir_cmd)
+        if self.chdir_cmd:
+            self.localDirectoryWidget.configure(command=self.chdir_cmd)
             #self.directoryWidget.component('entry').bind("<Leave>",self.dir_cmd)
         
         def __findDirectory():
@@ -621,8 +630,8 @@ class JobEditor(Pmw.MegaToplevel):
                 self.values['local_directory'] = path
                 self.localDirectoryWidget.setentry( path )
                 # Run any command we may have been passed
-                if self.dir_cmd:
-                    self.dir_cmd( directory )
+                if self.chdir_cmd:
+                    self.chdir_cmd( directory )
 
         button = Tkinter.Button(dirFrame,text="Browse...",command=__findDirectory)
         self.localDirectoryWidget.pack(side='left')
@@ -647,10 +656,6 @@ class JobEditor(Pmw.MegaToplevel):
                                                label_text = labelText,
                                                validate = None
                                                )
-        if self.dir_cmd:
-            self.remoteDirectoryWidget.configure(command=self.dir_cmd)
-            #self.directoryWidget.component('entry').bind("<Leave>",self.dir_cmd)
-        
         self.remoteDirectoryWidget.pack(side='top')
 
         self.getValue['remote_directory'] = lambda s=self: s.remoteDirectoryWidget.getvalue()
@@ -1363,7 +1368,7 @@ if __name__ == "__main__":
     root=Tkinter.Tk()
     def test_cmd():
         print "ran test command"
-    #ed = LocalJobEditor( root, job, dir_cmd=test_cmd )
+    #ed = LocalJobEditor( root, job, chdir_cmd=test_cmd )
     job = jobmanager.job.GlobusJob()
     job.set_parameter('calctype','GAMESS-UK')
     ed = GlobusEditor( root, job )
