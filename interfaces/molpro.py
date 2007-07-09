@@ -345,9 +345,17 @@ class MOLPROCalc(QMCalc):
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
         job_name = self.get_parameter("job_name")
-        directory = self.get_parameter("directory")
-        if not directory:
-            directory = paths['user']
+
+        # see if there is a job object we can query to
+        # get any parameters
+        job = self.get_job()
+        if job:
+            directory = job.get_parameter("local_directory")
+        else:
+            directory = self.get_parameter("directory")
+            if not directory:
+                directory = paths['user']
+                
         filename = directory+os.sep+job_name+'.com'
        
         writeinput_err = self.__WriteInput(mol_obj,filename)
