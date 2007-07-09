@@ -36,7 +36,7 @@ from tools import *
 from qmtools import *
 #from filepunch import *
 from jobmanager import *
-from viewer.paths import find_exe
+from viewer.paths import paths,find_exe
 from viewer.defaults import defaults
 
 from objects.periodic import *
@@ -81,7 +81,7 @@ class DALTONCalc(QMCalc):
         self.set_parameter('dalton_script',None)
         self.set_parameter('comment','No comment...')
         self.set_parameter('job_name','untitled')
-        self.set_parameter('workdir',".")
+        self.set_parameter('directory',paths['user'])
         self.set_parameter('setscratch',0)
         self.set_parameter('scratchdir','UNSET')
         self.set_parameter('setbasis',0)
@@ -168,7 +168,13 @@ class DALTONCalc(QMCalc):
         self.GetModel()
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
-        workdir = self.get_parameter( 'workdir' )
+
+        # See if the user had edited a job and changed any parameters
+        job = self.get_job()
+        if job:
+            workdir = job.get_parameter("local_directory")
+        else:
+            workdir = self.get_parameter('directory')
 
         # Check the spin of the molecule is o.k. before we do owt else.
         # ( don't do this if we are just updating the input displayed in the job tab as it gets v.annoying... )
@@ -289,24 +295,28 @@ class DALTONCalc(QMCalc):
             job = self.create_job()
 
         jobtype = job.jobtype
-        job.name = self.get_parameter( 'job_name' )
-        workdir = self.get_parameter( 'workdir' )
-        dalfilename = self.get_parameter( 'dalfilename' )
-        molfilename = self.get_parameter( 'molfilename' )
+        job.name = self.get_parameter('job_name')
+
+        if job.get_parameter("local_directory"):
+            workdir = job.get_parameter('local_directory')
+            self.set_parameter('directory',workdir)
+        else:
+            workdir = self.get_parameter('directory')
+            
+        dalfilename = self.get_parameter('dalfilename')
+        molfilename = self.get_parameter('molfilename')
 
         dalton_script = job.get_parameter('executable')
         print "got script from job: ",dalton_script
         # Get the script to run the job
         if not dalton_script:
-            ed.Error( "Cannot run the calculation as you have not set the path to the Dalton script!" )
-            return None
+            raise CalcError,"Cannot run the calculation as no executable!\nPleas either put the dalton script in your path or use the job tab to set the path"
 
         try:
             os.chdir(workdir) #Run job in the specified directory
             print "job running from ",workdir
         except Exception,e:
-            ed.Error("Cannot cd to working directory: %s\n%s" % (workdir,e))
-            return
+            raise CalcError,"Cannot cd to working directory: %s\n%s" % (workdir,e)
 
         if jobtype == LOCALHOST:
             # We purge Windows here and assume that all other platforms are o.k.
@@ -314,15 +324,13 @@ class DALTONCalc(QMCalc):
                 ed.Error("Dalton on Windows?!? - I think not... :-)")
                 return None
         else:
-            ed.Error("dalton makejob - unsupported jobtype: %s" % jobtype)
-            return
-
+            raise CalcError,"dalton makejob - unsupported jobtype: %s" % jobtype
         
         # Now need to build up the arguments to the dalton script depending on what
         # options the user has chosen. These are built up as a list
         
         # workdir always gets set
-        workdir = self.get_parameter( 'workdir' )
+        workdir = self.get_parameter('directory')
         args = [ '-w', workdir ]
         
         # Optional parameters
@@ -350,14 +358,19 @@ class DALTONCalc(QMCalc):
            This method should be overwritten (if need be) in any derived class.
         """
 
-        # This required so that can keep different calculation variables
-        # separate in the defaults
-        job.set_parameter('calctype','DALTON')
+        script = job.get_parameter( 'executable' )
+        if not script:
+            script = find_exe( 'dalton' )
+            if script:
+                job.set_parameter( 'executable',script )
 
-        script = self.get_parameter( 'dalton_script' )
-        if script:
-            job.set_parameter( 'executable',script )
+        if self.debug:
+            print "calc set_job_defaults"
 
+        # Always set the working directory to the directory parameter of the calc
+        if job.jobtype == LOCALHOST:
+            if not job.get_parameter( 'local_directory' ):
+                job.set_parameter( 'local_directory', self.get_parameter('directory') )
 
     def endjob(self,code=0):
         """This function is executed in the main thread"""
@@ -375,7 +388,7 @@ class DALTONCalc(QMCalc):
         # Jens - need to think about a ReadOutput and ReadInput
         # this just for testing purposes
         job_name = self.get_parameter("job_name")
-        workdir = self.get_parameter("workdir")
+        workdir = self.get_parameter("directory")
 
         # Get the stdout
         try:
@@ -1128,8 +1141,8 @@ class DALTONCalcEd(QMCalcEd):
 
         if ( output == None ):
             # No output from calc, so we need to ask the users for an output file
-            jobname = self.calc.get_parameter( 'job_name' )
-            workdir = self.calc.get_parameter( 'workdir' )
+            jobname = self.calc.get_parameter('job_name')
+            workdir = self.calc.get_parameter('directory')
             fname = tkFileDialog.askopenfilename( initialdir = workdir,
                                                  filetypes=[ ( "Dalton output Files","*.out"),("All Files","*.*") ] )
             if len(fname) == 0:
@@ -1350,8 +1363,8 @@ class DALTONCalcEd(QMCalcEd):
         """
 
         # Set the current directory as the work directory
-        cwd = os.getcwd()
-        self.calc.set_parameter('workdir',str(cwd))
+#        cwd = os.getcwd()
+#        self.calc.set_parameter('workdir',str(cwd))
 #        self.workdir_tool.UpdateWidget()
 
 #         # Try and find the dalton script
