@@ -354,7 +354,17 @@ class GAMESSUKCalc(QMCalc):
         """
         """
         job_name = self.get_parameter("job_name")
-        directory = self.get_parameter("directory")
+        
+        # see if there is a job object we can query to
+        # get any parameters that may have changed
+        job = self.get_job()
+        if job:
+            directory = job.get_parameter("local_directory")
+        else:
+            directory = self.get_parameter("directory")
+            if not directory:
+                directory = paths['user']
+
         return directory+os.sep+job_name+'.in'
 
     def WriteInput(self,filename=None):
