@@ -33,6 +33,9 @@ from   gamessuk   import *
 from   molpro     import *
 from   mndo       import *
 from   dl_poly    import *
+from viewer.defaults import defaults
+
+
 
 def extend_path(arg):
     """Add an element to the path if not already present"""
@@ -182,9 +185,6 @@ class ChemShellCalc(Calc):
         else:
             print 'DONT add_mon'            
         
-
-        from viewer.defaults import defaults
-
         if sys.platform[:3] == 'win':
 
             # This is for the cygwin1.dll
@@ -234,8 +234,9 @@ class ChemShellCalc(Calc):
             # takes advantage of Tcls handling of errors, this way the
             # script will return on error without writing the punchfile 
 
-            if rc_vars.has_key('chemsh_script_dir') and rc_vars['chemsh_script_dir']:
-                extend_path(rc_vars['chemsh_script_dir'])
+            chemsh_script_dir = defaults.get_value('chemsh_script_dir')
+            if chemsh_script_dir:
+                extend_path(chemsh_script_dir)
 
             t = os.environ['PATH']
             print t
@@ -398,9 +399,15 @@ class ChemShellCalc(Calc):
         """
         """
         job_name = self.get_parameter("job_name")
-        directory = self.get_parameter("directory")
-        if not len(directory):
-            directory = paths['user']
+        
+        # see if there is a job object we can query to
+        # get any parameters that may have changed
+        job = self.get_job()
+        if job:
+            directory = job.get_parameter("local_directory")
+        else:
+            directory = self.get_parameter("directory")
+            
         return directory+os.sep+job_name+'.chm'
 
     def WriteInput(self,filename=None):
