@@ -367,11 +367,9 @@ of any program using or generating them. The parameters however will be
         # See if the user has any default settings for this type of job
         job.update_parameters_from_defaults()
 
-        print "job b4 ",job
         # Then update any that haven't been set already - this assumes we pass
         # a pointer to the job so that this updates the job directly
         self.set_job_defaults( job )
-        print "job after ",job
 
         # Set this as the job for the calculation so that the editor can get at it
         self.set_job( job )
@@ -385,17 +383,14 @@ of any program using or generating them. The parameters however will be
         This is expected to be called after the job parameters for the job
         have been updated from the users' defaults dictionary, so it should
         only overwrite those parameters that are unset.
-         
-        This method should be overwritten (if need be) in any derived class.
-           
         """
         if self.debug:
             print "calc set_job_defaults"
 
         # Always set the working directory to the directory parameter of the calc
         if job.jobtype == LOCALHOST:
-            if not job.get_parameter( 'directory' ):
-                job.set_parameter( 'directory', self.get_parameter('directory') )
+            if not job.get_parameter( 'local_directory' ):
+                job.set_parameter( 'local_directory', self.get_parameter('directory') )
                 return
 
     def OpenInit(self):
