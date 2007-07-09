@@ -67,6 +67,44 @@ class Defaults:
         Read the users rc file from disk and populate the defaults dictionary
         """
 
+        
+        # First define raw function we use further down
+        def raw(text):
+            """Returns a raw string representation of text
+               Credit where it's due: this function was written by Brett Cannon and was
+               found on the Python Cookbook website:
+               http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65211
+
+            """
+
+            escape_dict={'\a':r'\a',
+                   '\b':r'\b',
+                   '\c':r'\c',
+                   '\f':r'\f',
+                   '\n':r'\n',
+                   '\r':r'\r',
+                   '\t':r'\t',
+                   '\v':r'\v',
+                   '\'':r'\'',
+                   '\"':r'\"',
+                   '\0':r'\0',
+                   '\1':r'\1',
+                   '\2':r'\2',
+                   '\3':r'\3',
+                   '\4':r'\4',
+                   '\5':r'\5',
+                   '\6':r'\6',
+                   '\7':r'\7',
+                   '\8':r'\8',
+                   '\9':r'\9'}
+
+            new_string=''
+            for char in text:
+                try: new_string+=escape_dict[char]
+                except KeyError: new_string+=char
+            return new_string
+        
+
         if not os.path.isfile( self.rcfile ):
             # No ccp1guirc file so we can return
             if self.debug:print "No user preferences file: %s found" % self.rcfile
@@ -89,12 +127,19 @@ class Defaults:
                 split = line.split('=')
                 key = split[0].strip()
                 value = split[1].strip()
-
                 # Need to instantiate each value as otherwise it is just a string and we need an object
                 value = eval(value)
 
+                # Need to check if this is a string. Under windows a path could contain the
+                # \b character (backspace). If the string is interpreted as a normal string
+                # this causes the \b and the preceding character to be deleted. We therefore
+                # need to convert the variable to a raw string.
+                if type(value) is str:
+                    value = raw( value )
+                    
                 # Set as an attribute of defaults
                 self.defaults[key] = value
+                
 
     def write_to_file(self):
         """ Write the update default values to file"""
