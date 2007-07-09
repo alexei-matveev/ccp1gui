@@ -972,15 +972,14 @@ class CalcEd(Pmw.MegaToplevel):
                                             self.interior(),
                                             job,
                                             onkill=self.kill_jobsub_editor,
-                                            dir_cmd=self.chdir_cmd,
-                                            update_cmd=self.update_job_dict
+                                            update_cmd=self.update_job_dict,
                                             )
         elif jobtype == 'RMCS':
             self.jobsub_editor = RMCSEditor(
                                         self.interior(),
                                         job,
                                         onkill=self.kill_jobsub_editor,
-                                        update_cmd=self.update_job_dict
+                                        update_cmd=self.update_job_dict,
                                         )
         elif jobtype == 'Nordugrid':
             self.jobsub_editor = NordugridEditor(
@@ -988,7 +987,7 @@ class CalcEd(Pmw.MegaToplevel):
                                              job,
                                              onkill=self.kill_jobsub_editor,
                                              update_cmd=self.update_job_dict,
-                                             hostlist=hostlist
+                                             hostlist=hostlist,
                                              )
         elif jobtype == 'Globus':
             self.jobsub_editor = GlobusEditor(
@@ -996,8 +995,8 @@ class CalcEd(Pmw.MegaToplevel):
                                          job,
                                          onkill=self.kill_jobsub_editor,
                                          update_cmd=self.update_job_dict,
+                                         hostlist=hostlist,
                                          debug=None,
-                                         hostlist=hostlist
                                          )
         else:
             self.Error("calced - unrecognised job editor: %s" % jobtype)
@@ -1010,31 +1009,28 @@ class CalcEd(Pmw.MegaToplevel):
         self.jobsub_editor = None
         
         
-    def chdir_cmd(self,event):
-        """
-        Command that is passed to the jobeditor and is invoked each time the directory
-        is changed with the change directory tool  
-        """
+#     def chdir_cmd(self,event):
+#         """
+#         Command that is passed to the jobeditor and is invoked each time the directory
+#         is changed with the change directory tool  
+#         """
 
-        # This is a bit mucky because the FileTool can call this method
-        # either as one of the events that has been bound to the Tkinter.Entry
-        # field (in which case we get a Tkinter.Event) or when the 'Browse' tool
-        # was used (in which case we get a string).
-        etype = type(event)
-        if etype is InstanceType:
-            directory = event.widget.get()
-        else:
-            directory = event
+#         # This is a bit mucky because the FileTool can call this method
+#         # either as one of the events that has been bound to the Tkinter.Entry
+#         # field (in which case we get a Tkinter.Event) or when the 'Browse' tool
+#         # was used (in which case we get a string).
+#         print "event is ",event
+#         print "type(event) ",type(event)
+#         etype = type(event)
+#         if etype is InstanceType:
+#             print "got instance"
+#             directory = event.widget.get()
+#         else:
+#             print "got string"
+#             directory = event
 
-        #job = self.calc.get_job(create=None)
-        #if not job:
-        #    raise AttributeError,"gamessuk chdir_cmd no job to get directory from!"
-        #directory = job.get_parameter('directory')
-        #if not directory:
-        #    raise AttributeError,"gamessuk chdir_cmd no directory was set!"
-
-        self.calc.set_parameter('directory',directory)
-        print "chrdir_cmd set directory to ",directory
+#         self.calc.set_parameter('directory',directory)
+#         print "chrdir_cmd set directory to ",directory
 
 
     def update_job_dict( self, job=None, hostlist=None ):
