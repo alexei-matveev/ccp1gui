@@ -1594,6 +1594,32 @@ class GlobusJob(GridJob):
         self.check_common_errors( output, error, command='grid-cp' )
         # Need to add more specific error checking
 
+    def check_exe(self,filepath,host=None):
+        """
+        See if the file is excutable on the remote machine
+        """
+        if not host:
+            host = self.get_host()
+
+        assert type(host) == str,"Globus check_exe: host must be a string, got! %s" % host
+
+        # Below just returns the humna readable format string e.g. '-rwxr-xr-x'
+        cmd = 'stat --format="%A" '+filepath
+        args = ['-p',self.gsissh_port,'-q',] + [host,cmd]
+        output,error = self._run_command( 'gsissh',args = args )
+        self.check_common_errors( output, error, command='check_exe' )
+
+        # If no errors detected at this poitn, check the 3rd character of the first line
+        # (user execute) - could do more and check the owner, work out if it's us and
+        # then check the relevant permissions. Maybe later...
+        if output[0][3] == 'x':
+            if self.debug: print "Globus: check_exe %s on %s is executable" %(host,filepath)
+            return
+        else:
+            msg="Cannot execute file %s on host %s!\n%s" % (filepath,host,str(error))
+            raise JobError,msg
+        
+
     def grid_rm(self,host,file):
         """Remove a remote file"""
 
@@ -1652,6 +1678,9 @@ class GlobusJob(GridJob):
         """
         if jobmanager:
             host = host + "/" + jobmanager
+
+        # Check the executable is executable
+        self.check_exe( executable )
 
         args = [ host, '-x', rsl_string, executable ]
         #print "running: globus-job-submit %s" % args
@@ -1863,7 +1892,7 @@ class GlobusJob(GridJob):
                     code = -1
                 break
             else:
-                print "GrowlJob job setting status to ",ret
+                #print "GlobusJob job setting status to ",ret
                 self.status = ret
                 time.sleep( self.poll_interval )
                 continue
@@ -2750,48 +2779,20 @@ if __name__ == "__main__":
 #         job.clean()
         print 'end jens job'
 
-    if 0:
-        print 'testing Globus job'
-        job = GlobusJob()
-        job.job_parameters['count'] = 2
-        job.job_parameters['jobtype'] = 'mpi'
-        
-        #job.job_parameters['executable'] = "hostname"
-        #job.job_parameters['executable'] = "env"
-        job.job_parameters['executable'] = "gamess-uk"
-        #job.job_parameters['environment']['ftn058'] = 'untitled.pun'
-        #job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='untitled.out',kill_on_error=0)
-        #job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='ftn058',kill_on_error=0)
-        #job.add_step(DELETE_FILE,'Growl Delete File',remote_filename='untitled.in',kill_on_error=0)
-        #job.add_step(COPY_OUT_FILE,'Growl Copy Out File',local_filename='untitled.in')
-        #job.add_step(RUN_APP,'Run Growl Job',stdout_file='untitled.out',stderr_file='untitled.err')
-        #job.add_step(RUN_APP,'Run Growl Job',stdin_file='untitled.in',stdout_file='untitled.out',stderr_file='untitled.err')
-        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.out')
-        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='ftn058')
-        #job.add_step(COPY_BACK_FILE,'Growl Copy Back File',local_filename='untitled.err')
-        #job.run()
-        #job.grid_pwd( 'scarf.rl.ac.uk' )
-        #path = job.grid_which( 'scarf.rl.ac.uk','hostname' )
-        #print "path is ",path
-        #jm = job.grid_get_jobmanager( 'scarf.rl.ac.uk')
-        #print "jm is ",jm
-        #url = job.grid_submit( 'scarf.rl.ac.uk','(stdout="out.txt")',path,jobmanager=jm)
-        #print "url is ",url
-
-        #home = job.get_homedir()
-        #print "home is ",home
-        #which = job.grid_which("grid-proxy-init")
-        #print "which  is ",which
-
-        raise JobError,'This is a string'
-
     if 1:
         print 'testing Globus job'
         job = GlobusJob()
         job.debug = 1
-        job.job_parameters['remote_directory'] = "smeagol/test"
-        job.job_parameters['host'] = ["lancs1.nw-grid.ac.uk"]
-        job.add_step(COPY_BACK_DIRECTORY,'Globus Copy Back Directory',remote_directory='smeagol/test')
-        job.run()
+        executable='/bi/hostname'
+        host="dl1.nw-grid.ac.uk"
+        #job.job_parameters['remote_directory'] = "smeagol/test"
+        job.set_parameter('host',host)
+        job.set_parameter('count','1')
+        job.set_parameter('jobmanager',"jobmanager-fork")
+        job.set_parameter('executable',executable)
+
+        #job.check_exe( executable,host='lv1.nw-grid.ac.uk' )
+        job.check_exe( executable )
+        #job.run()
         
 
