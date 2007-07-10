@@ -349,9 +349,10 @@ class MOLPROCalc(QMCalc):
         # see if there is a job object we can query to
         # get any parameters
         job = self.get_job()
+        directory=None
         if job:
             directory = job.get_parameter("local_directory")
-        else:
+        if not directory:
             directory = self.get_parameter("directory")
             if not directory:
                 directory = paths['user']

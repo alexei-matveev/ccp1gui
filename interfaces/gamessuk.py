@@ -358,9 +358,10 @@ class GAMESSUKCalc(QMCalc):
         # see if there is a job object we can query to
         # get any parameters that may have changed
         job = self.get_job()
+        directory=None
         if job:
             directory = job.get_parameter("local_directory")
-        else:
+        if not directory:
             directory = self.get_parameter("directory")
             if not directory:
                 directory = paths['user']
@@ -455,6 +456,7 @@ or use the existing file (No)?" % inputfile )
         job_name = self.get_parameter("job_name")
         job.name    = job_name
         stdin_file  = inputfile
+        stderr_file=None
         remote_stdin  = os.path.basename( inputfile )
         stdout_file = job_name+'.out'
         local_punch = remote_punch  = job_name+'.pun'
@@ -513,6 +515,7 @@ or use the existing file (No)?" % inputfile )
             # For globus cannot currently specify environment variables so punch file is default
             remote_punch  = 'ftn058'
             local_punch  = job_name+'.pun'
+            stderr_file='gamess.err'
             # jmht scarf hack
             #remote_stdin = 'datain'
             job_desc = 'Running GAMESS-UK with Globus'
@@ -540,9 +543,11 @@ or use the existing file (No)?" % inputfile )
                       job_desc,
                       stdin_file = stdin_file,
                       stdout_file = stdout_file,
+                      stderr_file=stderr_file,
                       local_command = local_command,
                       local_command_args = local_command_args)
 
+        job.add_step(COPY_BACK_FILE,'recover stderr',local_filename=stderr_file,remote_filename=stderr_file)
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=stdout_file)
         job.add_step(COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
         # jmht - is this needed?

@@ -171,9 +171,10 @@ class DALTONCalc(QMCalc):
 
         # See if the user had edited a job and changed any parameters
         job = self.get_job()
+        workdir=None
         if job:
             workdir = job.get_parameter("local_directory")
-        else:
+        if not workdir:
             workdir = self.get_parameter('directory')
 
         # Check the spin of the molecule is o.k. before we do owt else.
