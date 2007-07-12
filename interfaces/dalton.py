@@ -311,7 +311,7 @@ class DALTONCalc(QMCalc):
         print "got script from job: ",dalton_script
         # Get the script to run the job
         if not dalton_script:
-            raise CalcError,"Cannot run the calculation as no executable!\nPleas either put the dalton script in your path or use the job tab to set the path"
+            raise CalcError,"Cannot run the calculation as no executable!\nPlease either put the dalton script in your path or use the job tab to set the path"
 
         try:
             os.chdir(workdir) #Run job in the specified directory
@@ -388,6 +388,7 @@ class DALTONCalc(QMCalc):
         workdir = self.get_parameter("directory")
 
         # Get the stdout
+        stdout=[]
         try:
             stdoutfile = open("daltonstd.out")
             stdout = stdoutfile.readlines()
@@ -399,6 +400,7 @@ class DALTONCalc(QMCalc):
         self.set_output( "script_stdout",  stdout )        
 
         # Get the output file
+        readout=[]
         try:
             outputfile = open( workdir + os.sep + job_name + ".out" )
             readout = outputfile.readlines()
@@ -415,17 +417,15 @@ class DALTONCalc(QMCalc):
 
         self.set_output( "log_file",all_output )
 
-        # Bit of a hack - if we are running a geometry optimisation, get the structures
-        geomopt = self.get_parameter( 'geomopt' )
-        if ( geomopt ):
-            d = DaltonIO(olist=copy.copy(all_output),debug=None)
-            objects = d.GetObjects()
-            if objects:
-                ed.graph.import_view_objects( objects )
-        # Parsing the ouput files to get structures, orbitals would be called from here
-        ed.Info( "Dalton calculation has completed. Please check the output to see if \n" +
-                 "what you thought should happen actually has..." )
-        return
+
+        d = DaltonIO(olist=copy.copy(all_output),debug=None)
+        objects = d.GetObjects()
+        if objects:
+            for o in objects:
+                self.results.append(o)
+                
+            # Load the results up - will present a dialog
+            code = self.store_results_to_gui()
 
 
     def __writemolfile(self,molecule):
