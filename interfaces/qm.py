@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -27,15 +27,15 @@ from calc    import *
 from calced  import *
 
 class QMCalc(Calc):
-    '''Quantum chemistry specifics.'''
+    """Quantum chemistry specifics."""
     def __init__(self,**kw):
         apply(Calc.__init__,(self,),kw)
 
 class QMCalcEd(CalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        '''Initialise a QM calculation editor. First initialise the base 
-           class and then do our own stuff.'''
+        """Initialise a QM calculation editor. First initialise the base 
+           class and then do our own stuff."""
         apply(CalcEd.__init__, (self,root,calc,graph), kw)
         
         self.CreateEditMenu(self.menu)
@@ -48,10 +48,8 @@ class QMCalcEd(CalcEd):
         self.charge_tool = IntegerTool(self,'charge','Charge')
         self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
         
-
-
     def __CreateStatusFrame(self,parent):
-        '''Create a small frame to present status unformation '''
+        """Create a small frame to present status unformation """
         frame = Tkinter.Frame(parent)
         frame.pack(expand=1, fill='x')
         frame.l1 = Tkinter.Label(frame,text='No job status to report')
@@ -76,9 +74,9 @@ class QMCalcEd(CalcEd):
         print 'texteditbutton pressed ',self.texteditbutton
 
     def AddPage(self,pagename,pagelabel=""):
-        '''Add entries for all the pages you require. The actual creation of
+        """Add entries for all the pages you require. The actual creation of
             the pages is handled by the CreatePage method and the methods it
-            calls.'''
+            calls."""
         if pagelabel=="":
             pagelabel=pagename
         self.notebook.add(pagename,tab_text=pagelabel)
@@ -88,9 +86,9 @@ class QMCalcEd(CalcEd):
         pass
 
     def TaskPage2(self,page,action):
-        '''The task page aims to specify the objective of the calculation 
+        """The task page aims to specify the objective of the calculation 
         In the QM case we overload to include basis set and theory on this page
-        '''
+        """
         labels = []
 
         # Sort out RUNTYPE

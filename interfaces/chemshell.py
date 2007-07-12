@@ -49,9 +49,10 @@ class ChemShellCalc(Calc):
 
     def __init__(self,**kw):
 
-        apply(Calc.__init__,(self,),kw)
+        Calc.__init__(self,**kw)
 
         self.set_program('ChemShell')
+        self.set_name('ChemShell Calculation')
 
         self.qmcalc = None
         self.mmcalc = None
@@ -118,31 +119,28 @@ class ChemShellCalc(Calc):
         """
 
         # make sure we are using the current model
-        print 'getmodel from chemshell object'
+        if self.debug:
+            print 'getmodel from chemshell object'
         self.GetModel()
 
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
 
-        print 'ID',id(mol_obj)
-        print mol_obj.atom
+        if self.debug:
+            print 'ID',id(mol_obj)
+            print mol_obj.atom
 
-        job_name = self.get_name()
-        
+        job_name = self.get_parameter("job_name")
 
-        # backup copy
-        #cmd.load_model(mol_obj,job_name+'_0')
+        print 'JOB_NAME',job_name
 
         file = open(job_name+'.c','w')
         wrcon = self.get_parameter('export_connectivity')
 
         txt = mol_obj.output_coords_block(write_connect=wrcon,write_dummies=0)
-        print 'check geom', txt
-
         for line in txt:
             file.write(line+'\n')
         file.close
-        print 'file done'
     
         self.infile = job_name+'.chm'
         self.outfile = job_name+'.log'
@@ -157,6 +155,7 @@ class ChemShellCalc(Calc):
             input = file.readlines()
             self.set_input("input_file",input)
             file.close()
+
         else:
             input = self.get_input("input_file")
             for a in input:
@@ -164,15 +163,11 @@ class ChemShellCalc(Calc):
             file.close()
 
         #
-        #  Need to decide what kind of job run
-        # 
-        #hostname = self.get_parameter("hostname")
-        #username = self.get_parameter("username")
-
+        #  Need to decide what kind of job run - hardwire to
+        #  LocalJob for now
+        #
         job = jobmanager.LocalJob()
-
         job.name = job_name
-
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.chm')
@@ -193,12 +188,12 @@ class ChemShellCalc(Calc):
             # this way, all the settings in cygwin chemsh and rungamess are
             # picked up
 
-            gamessuk_script = defaults.get_value( 'gamessuk_script' )
+            gamessuk_script = defaults.get_value('gamessuk_script')
             if gamessuk_script:
                 # Need to strip off the last field
                 extend_path(os.path.dirname(gamessuk_script))
 
-            chemsh_script_dir = defaults.get_value( 'chemsh_script_dir' )
+            chemsh_script_dir = defaults.get_value('chemsh_script_dir')
             if chemsh_script_dir:
                 # Need to strip off the last field
                 extend_path(chemsh_script_dir)
@@ -248,54 +243,36 @@ class ChemShellCalc(Calc):
 
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
         job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
-        job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
-        job.add_tidy(self.endjob2)
+        job.add_tidy(self.endjob)
         return job
 
-    def endjob(self,graph):
-        """This is executed when the job completes successfully"""
-        # load contents of listing for viewing
-        return 0,""
-    
-    def endjob2(self,code=0):
+    def endjob(self,job_status_code):
         """
-        This function is executed in the main thread if the job completes
-        satisfactorily
+        This function is executed in the main thread if the job
+        completes satisfactorily
         """
-        print 'endjob2 code=',code
+        print 'endjob code=',job_status_code
 
-        job_name = self.get_name()
+        job_name = self.get_parameter("job_name")
+
+        print 'self.outfile is',self.outfile
         file = open(self.outfile,'r')
         self.ReadOutput(file)
         file.close()
 
-        if code:
+        if job_status_code:
+            print 'RETURNING'
             return
 
-        self.__RdChemShellPunch(job_name+'.pun')
+        fil = job_name+'.pun'
+        code = self._ReadChemShellPunch(fil)
+        if code != 0:
+            raise JobError, "Could not process punch file "+fil
 
-        # scan the punchfile
-        #if self.__ReadPunch(job_name+'.pun') != 1:
-        #    raise JobError, "No molecular structure in Punchfile - check output"
-        # problem here as that as we are running in a slave thread
-        # we cannot use Tk .. so this is silent
-
-        ed = self.get_editor()
-        if ed:
-            if ed.graph:
-                ed.graph.import_objects(self.results)
-            
-                txt = "Objects loaded from punchfile:"
-                txt = txt  + "Structure update" + '\n'
-                for r in self.results:
-                    txt = txt + r.title + '\n'
-                ed.Info(txt)
-
-            o = self.get_input("mol_obj")
-            name = self.get_input("mol_name")
-            o.list()
-            if ed.update_func:
-                ed.update_func(o)
+        # Load the results up - will present a dialog
+        code = self.store_results_to_gui()
+        if code:
+            raise JobError, "No molecular structure in Punchfile - check output"
 
     def set_qm_code(self,code):
         print code,  self.get_parameter("qmcode")
@@ -333,67 +310,24 @@ class ChemShellCalc(Calc):
         #mol_obj  = self.get_input("mol_obj")
         #job_name = self.get_name()
         file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
-        job_name = self.get_name()
-        self.__RdChemShellPunch(file)
+        job_name = self.get_parameter("job_name")
+        self._ReadChemShellPunch(file)
+        # PAUL - need to add more code here
 
-    def __RdChemShellPunch(self,file):
+    def _ReadChemShellPunch(self,file):
+        """Read the ChemShell punchfile
 
-        # the punchfile format is used
+        All resulting objects are are stored as self.results
+        but they are not processed in any way.
+        """
+        if self.debug:
+            print "_ReadChemShellPunch..."
+            
         p = PunchIO()
-        p.ReadFile(filepath=file)
-
-        if not p.title:
-            p.title = self.get_title()
-        if p.title == "untitled":
-            p.title = self.get_input("mol_name")
-
-        self.results = []
-
-        # construct the results list for visualisation
-        warn=0
-        for o in p.GetObjects():
-
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-
-            if myclass == 'VibFreq' :
-                # create a vibration visualiser
-                self.results.append(o)
-
-            if myclass == 'VibFreqSet' :
-                # create a vibration set visualiser
-                self.results.append(o)
-
-            elif myclass == 'Indexed' or myclass == 'Zmatrix':
-                #
-                # We expect a single molecule to be returned
-                # will need to organise together with other results
-                # assume overwrite for now
-                # 
-                oldo = self.get_input("mol_obj")
-                if self.debug:
-                    print 'NEW GEOMETRY'
-                    o.connect()
-                    print o.bonds_and_angles()
-                try:
-                    oldo.import_geometry(o,update_constants=0)
-                except ImportGeometryError:
-                    warn=1
-                    copycontents(oldo,o)
-
-                if warn:
-                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
-
-            elif myclass == 'Brick':
-                self.results.append(o)
-
-    def __RunChemShell(self,jobname):
-        f = os.popen('chemsh '+jobname+'.chm | tee '+jobname+'.log','w')
-        status = f.close()
-        if status == None:
-            status = 0
-        return status
+        if p.ReadFile( filepath=file ):
+            return 1
+        self.results = p.GetObjects()
+        return 0
 
     def getInputFilename(self):
         """
@@ -471,7 +405,7 @@ class ChemShellCalc(Calc):
         file.write("set ecpfile        undefined\n")
         file.write("set basisspec      undefined\n")
 
-        file.write("set root       " + self.get_name() + '\n')
+        file.write("set root       " + self.get_parameter("job_name") + '\n')
         file.write('set chemsh_default_connectivity_toler ' + str(self.get_parameter('conn_toler')) + '\n')
         file.write('set chemsh_default_connectivity_scale ' + str(self.get_parameter('conn_scale')) + '\n')
         file.write("set c2_conn    " + str(self.get_parameter('export_connectivity')) + '\n')
@@ -1988,12 +1922,11 @@ class ChemShellCalcEd(CalcEd):
                                               reload_func=self.reload_func)
         self.qmeditor.Show()
 
-
-
     def monitor(self):
         """Transfer partially completed structure to GUI and update the graph widget
         """
-        print 'monitor'
+        if self.debug:
+            print 'monitor'
         # Update displayed structure if a new geometry has arrived
         if os.path.exists('FRAME.stamp'):
             p=PunchReader()
@@ -2001,7 +1934,7 @@ class ChemShellCalcEd(CalcEd):
             p.scan('FRAME')
             mol = self.calc.get_input('mol_obj')
             print 'UPDATE GEOM'
-            mol.import_geometry(p.objects[0] )
+            mol.import_geometry(p.objects[0])
             if self.graph:
                 print 'UPDATE GRAPH'
                 self.graph.update_from_object(mol)
@@ -2051,18 +1984,6 @@ class ChemShellCalcEd(CalcEd):
         if self.mmeditor:
             self.mmeditor.ReadWidgets()
         CalcEd.Run(self,writeinput)
-
-def copycontents(to,fro):
-    """Used to update an object by copying in the contents from another"""
-    c = to.__class__
-    d1 = c.__dict__
-    try:
-        d2 = fro.__dict__
-    except AttributeError:
-        d2 = {}
-    for k in d2.keys():
-        to.__dict__[k] = fro.__dict__[k]
-
 
 # helper routine for sorting normal modes by frequency
 def fcomp(a,b):

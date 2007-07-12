@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ of any program using or generating them. The parameters however will be
  In addition there must be operations to access the various data attributes.
 
     """
-    def __init__(self,program="untitled",name="untitled",title="untitled",mol=None):
+    def __init__(self,program="Unknown",name="unnamed",title="untitled",mol=None):
 
         """Create a calculation object."""
         self.new()
@@ -127,6 +127,9 @@ of any program using or generating them. The parameters however will be
         self.set_parameter("inp_file",None)
 
         self.set_name(name)
+
+        print 'NEW CALC',program, name
+
         self.set_title(title)
         self.set_job(None)
 
@@ -388,7 +391,7 @@ of any program using or generating them. The parameters however will be
             print "calc set_job_defaults"
 
         # Always set the working directory to the directory parameter of the calc
-        if job.jobtype == LOCALHOST:
+        if job.jobtype == self.LOCALHOST:
             if not job.get_parameter( 'local_directory' ):
                 job.set_parameter( 'local_directory', self.get_parameter('directory') )
                 return
@@ -549,6 +552,121 @@ of any program using or generating them. The parameters however will be
         field.axis[1] = Vector(0.,maxy-miny,0.)
         field.axis[2] = Vector(0.,0.,maxz-minz)
         
+    def store_results_to_gui(self):
+        """This procedure scans the results of the calculation,
+        assumed kept in self.results, where possible loads them up
+        into GUI and also replaces the molecule
+        from self.get_input("mol_obj") with the LAST structure
+        in the sequence.
+        Lists are assumed to be charges and are added to the molecule
+        Returns 0 if the structure was updated,
+        1 if the structure was found to me missing
+        """
+        # construct the results list for visualisation
+        warn=0
+        mols = []
+        loadables = []
+        for o in self.results:
+
+            # take the last field of the class specification
+            t1 = string.split(str(o.__class__),'.')
+            myclass = t1[len(t1)-1]
+
+            print 'LOADING up',myclass
+
+            if myclass == 'VibFreq' or \
+                   myclass == 'VibFreqSet' or \
+                   myclass == 'Brick' or \
+                   myclass == 'Field' or \
+                   myclass == 'File' :
+                loadables.append(o)
+
+            elif myclass == 'Indexed' or myclass == 'Zmatrix':
+                # will need to organise together with other results
+                # assume overwrite using last structure for now
+                mols.append(o)
+
+            elif myclass == 'ZmatrixSequence':
+                o.connect()
+                loadables.append(o)
+
+            # list class is just used for atomic charge data at present
+            elif myclass == 'List':
+                mol_obj  = self.get_input("mol_obj")
+                mol_obj.charge_sets.append((o.type,o.data))
+
+        upd = 0
+        if len(mols):
+
+            # Take the last structure and over-write the current structure
+            # with it
+            # use import_geometry to try and keep all elements of old structure
+            # including internal coordinates
+
+            # Dont try and update structure sequences here, instead
+            # we return all structures for use
+            
+            oldo = self.get_input("mol_obj")
+
+            for o in mols[:-1]:
+                self.results.append(o)
+            o = mols[-1]
+
+            if self.debug:
+                print 'NEW GEOMETRY'
+                o.connect()
+                print o.bonds_and_angles()
+            try:
+                oldo.import_geometry(o,update_constants=0)
+            except ImportGeometryError:
+                warn=1
+                copycontents(oldo,o)
+
+            if self.debug:
+                print 'UPDATED GEOMETRY'
+                oldo.zlist()
+                print oldo.bonds_and_angles()
+
+            if warn:
+                print ' Warning: could not retain old zmatrix, so imported as cartesians'
+            upd = 1
+
+        ed = self.get_editor()
+        if ed:
+            if ed.graph:
+                # Import
+                ed.graph.import_objects(loadables)
+                # Dialog
+                txt = "Objects loaded from punchfile:"
+                if upd:
+                    txt = txt  + "Structure update" + '\n'
+                else:
+                    txt = txt  + '\n'
+                
+                for r in loadables:
+                    txt = txt + r.title + '\n'
+                ed.Info(txt)
+
+            # Update anything dependent on the new structure, e.g. coordinate editors
+            if ed.update_func and upd:
+                o = self.get_input("mol_obj")
+                if self.debug:
+                    print 'calling update_func on new structure'
+                ed.update_func(o)
+
+        return not upd
+
+def copycontents(to,fro):
+    """Used to update an object by copying in the contents from another"""
+    c = to.__class__
+    d1 = c.__dict__
+    try:
+        d2 = fro.__dict__
+    except AttributeError:
+        d2 = {}
+    for k in d2.keys():
+        to.__dict__[k] = fro.__dict__[k]
+
 class CalcError(RuntimeError):
     def __init__(self,message):
         

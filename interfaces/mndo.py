@@ -299,6 +299,8 @@ class MNDOCalc(QMCalc):
             file.close()
 
         job = self.get_job()
+        if not job:
+            job = self.create_job()            
         job.name = job_name
 
         # Delete old vectors
@@ -950,7 +952,7 @@ class MNDOCalcEd(QMCalcEd):
 
 if __name__ == "__main__":
     from mndo import *
-    from zmatrix import *
+    from objects.zmatrix import *
     from jobmanager import *
     model = Zmatrix()
     atom = ZAtom()

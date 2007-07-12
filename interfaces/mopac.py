@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@ from viewer.paths import root_path,find_exe
 homolumoa = 0
 
 class MopacCalc(QMCalc):
-    '''Mopac specifics.'''
+    """Mopac specifics"""
 
     def __init__(self,**kw):
         apply(QMCalc.__init__,(self,),kw)
 
-        self.debug=1
+        #self.debug=1
         self.set_program('MOPAC')
         self.set_parameter('job_name','untitled')
         self.set_parameter("task","energy")
@@ -52,14 +52,9 @@ class MopacCalc(QMCalc):
         self.GetModel()
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
-        #job_name = self.get_name()
         job_name = self.get_parameter('job_name')
-        if sys.platform[:3] == 'win':
-            self.infile='FOR005'
-            self.outfile='FOR006'
-        else:
-            self.infile=job_name+'.dat'
-            self.outfile=job_name+'.out'
+        self.infile=job_name+'.dat'
+        self.outfile=job_name+'.out'
 
         directory = self.get_parameter("directory")
        
@@ -81,16 +76,10 @@ class MopacCalc(QMCalc):
         ed = self.get_editor()
 
         self.GetModel()
-        mol_obj  = self.get_input("mol_obj")
-        #job_name = self.get_name()
+        mol_obj = self.get_input("mol_obj")
         job_name = self.get_parameter('job_name')
-
-        if sys.platform[:3] == 'win':
-            self.infile='FOR005'
-            self.outfile='FOR006'
-        else:
-            self.infile=job_name+'.dat'
-            self.outfile=job_name+'.out'
+        self.infile=job_name+'.dat'
+        self.outfile=job_name+'.out'
 
         if writeinput:
             # maybe this should be moved elsewhere
@@ -120,100 +109,80 @@ class MopacCalc(QMCalc):
         job.add_step(DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename=self.infile,kill_on_error=0)
 
-
         mopac_exe = self.get_executable(job=job)
         if not mopac_exe:
             ed.Error('Cannot find a mopac executable!')
             return None
 
-
-        # Clear out steps if we are reusing the job
+        # Clear out steps in case we are reusing the job
         job.clear_steps()
         
-        # Local windows job, search for local executable
-        if sys.platform[:3] == 'win':
-            job.add_step(RUN_APP,'run mopac',local_command=mopac_exe)
-        else:
-            job.add_step(RUN_APP,
-                         'run mopac',
-                         local_command=mopac_exe,
-                         local_command_args=[job_name],
-                         )
-#                         stdout_file=self.outfile)
-
+        job.add_step(RUN_APP,
+                     'run mopac',
+                     local_command=mopac_exe,
+                     local_command_args=[job_name])
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
-        job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
-        job.add_tidy(self.endjob2)
+        job.add_tidy(self.endjob)
         return job
 
-    def endjob(self,graph):
+    def endjob(self,job_status_code):
         """
-        This is executed when the job completes successfully
-        """
-        # load contents of listing for viewing
-        print 'endjob....'
-        job_name = self.get_name()
+        Load results from MOPAC run
+        
+        This function is executed in the main thread when 
+        the job completes.
 
+        """
+
+        if self.debug:
+            print 'endjob'
+
+        # this just load into the output viewer widget
         file = open(self.outfile,'r')
-        # this just load into the browser
         self.ReadOutput(file)
         file.close()
         
-        # load contents of listing for viewing
-        file = open(self.outfile,'r')
-        self.__ReadOutput(file)
-        file.close()
-
-        self.results = []
-        # problem here as that as we are running in a slave thread
-        # we cannot use Tk .. so this is silent
-        if graph:
-            graph.import_objects(self.results)
-
-        txt = "Objects loaded from punchfile:"
-        txt = txt  + "Structure update" + '\n'
-        for r in self.results:
-            txt = txt + r.title + '\n'
-            
-        return 0,txt
-
-    def endjob2(self,code=None):
-        '''
-        This function is executed in the main thread if the job completes
-        satisfactorily
-        '''
-
         # Code is 1 on job failure
-        if code == 1:
-            print "skipping mopac endjob2 as code is 1"
+        if job_status_code == 1:
+            print "skipping rest of mopac endjob as job failed 1"
             return
-        
-        print 'endjob2'
-        o = self.get_input("mol_obj")
-        name = self.get_input("mol_name")
-        o.list()
-        calced = self.get_editor()
-        if calced:
-            if calced.update_func:
-                calced.update_func(o)
 
-    def old_endjob(self):
+        # extract the structure (updates molecule)
+        mol = self.get_input("mol_obj")
+        self.results = [ self.ReadMopacOutput(self.outfile,mol) ]
+        self.store_results_to_gui()
+
+    def ReadMopacOutput(self,file,oldmol):
+        """Loading of results from Mopac output file
+
+        This approach is a bit heavy handed as we only
+        load a molecule, but it we use the same machinery
+        as the other codes so it can be extended in future
+
         """
-        This is executed when the job completes successfully
-        """
-
-        #if self.__ReadPunch(job_name+'.pun') != 1:
-        #    raise JobError, "No molecular structure in Punchfile - check output"
-
-    def scan(self):
-        '''Extract and Store results from a punchfile'''
-        raise RuntimeError,"scan mopac not supported"
-        #mol_name = self.get_input("mol_name")
-        #mol_obj  = self.get_input("mol_obj")
-        #job_name = self.get_name()
-        file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
-        job_name = self.get_name()
-        self.__RdMopacPunch(file)
+        fp = open(file,'r')
+        mol = copy.deepcopy(oldmol)
+        out = fp.readlines()
+        res = 0
+        while len(out):
+            a = out.pop(0)
+            a = string.lstrip(a)
+            a = string.rstrip(a)
+            if a[0:10] == 'FINAL HEAT':
+                res = 1
+            if res and a == 'CARTESIAN COORDINATES':
+                for i in range(3):
+                    out.pop(0)
+                fac = 1.0
+                for i in range(len(mol.atom)):
+                    rec= string.split(out.pop(0))
+                    print rec
+                    mol.atom[i].coord[0] = fac*float(rec[2])
+                    mol.atom[i].coord[1] = fac*float(rec[3])
+                    mol.atom[i].coord[2] = fac*float(rec[4])
+                break
+        fp.close()
+        return mol
 
     def get_theory(self):
         return self.get_parameter("theory")
@@ -272,43 +241,8 @@ class MopacCalc(QMCalc):
                        (a.get_number(), fac*a.coord[0],oflag,fac*a.coord[1],oflag,fac*a.coord[2],oflag))
         file.write('0  0 0   0 0   0 0\n')
 
-    def __ReadOutput(self,file):
-        '''Loading of results from Mopac output file
-        - need to use a more sensible routing of results
-        '''
-        mol  = self.get_input("mol_obj")
-        name  = self.get_input("mol_name")
-
-        out = file.readlines()
-        res = 0
-
-        ed = self.get_editor()
-
-        while len(out):
-            a = out.pop(0)
-            a = string.lstrip(a)
-            a = string.rstrip(a)
-            #print 'XX'+a+'XX'
-            if a[0:10] == 'FINAL HEAT':
-                res = 1
-            if res and a == 'CARTESIAN COORDINATES':
-                for i in range(3):
-                    out.pop(0)
-                fac = 1.0
-                for i in range(len(mol.atom)):
-                    rec= string.split(out.pop(0))
-                    print rec
-                    mol.atom[i].coord[0] = fac*float(rec[2])
-                    mol.atom[i].coord[1] = fac*float(rec[3])
-                    mol.atom[i].coord[2] = fac*float(rec[4])
-
-                break
-            
     def get_executable(self,job=None):
-        """
-           Try to work out the location of the executable/runmopac script
-        """
-        global find_exe
+        """Try to work out the location of the executable"""
 
         mopac_exe = None
         # First see if the user has set an executable path for the job
@@ -320,16 +254,15 @@ class MopacCalc(QMCalc):
                     print "Using mopac_exe from job: %s" % mopac_exe
             else:
                 mopac_exe = None
-                    
                 
         if not mopac_exe:
             if sys.platform[:3] == 'win':
-                # Name of executable, assume install of exe into exe subdirectory
+                # Name of executable, assume MOPAC 2007 standard Install
                 try:
                     install_dir = os.environ['MOPAC_BIN']
                     mopac_exe=install_dir+'\mopac.exe'
                 except KeyError:
-                    mopac_exe=root_path+'/exe/mopac.exe'
+                    mopac_exe="C:\Program Files\MOPAC\MOPAC2007.exe"
             else:
                 # Unix case - check default path and gui directories
                 for path in ['/opt/mopac/mopac','/opt/mopac/MOPAC2007.out']:
@@ -450,7 +383,7 @@ class MopacCalcEd(QMCalcEd):
         
 
     def LaunchCalcEd(self,calc):
-        '''Create a new calculation editor.'''
+        """Create a new calculation editor."""
         a = MopacCalcEd(calc)
         a.Show()
 
@@ -463,12 +396,12 @@ class MopacCalcEd(QMCalcEd):
             page.group.pack(expand='yes',fill='x')
 
     def SCFPage(self,page,action):
-        '''Maintain the SCF page.'''
+        """Maintain the SCF page."""
         labels = []
 
     def KeywordsPage(self,page,action):
-        '''Entry for various directives not covered by GUI yet:
-            In this case just offers additional keywords '''
+        """Entry for various directives not covered by GUI yet:
+        In this case just offers additional keywords """
 
         if action == Create:
             page.panes = Pmw.PanedWidget(page)

@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -373,15 +373,11 @@ class DALTONCalc(QMCalc):
             if not job.get_parameter( 'local_directory' ):
                 job.set_parameter( 'local_directory', self.get_parameter('directory') )
 
-    def endjob(self,code=0):
+    def endjob(self,job_status_code):
         """This function is executed in the main thread"""
 
         if self.debug:
-            print 'running endjob2 code=',code
-
-        # load contents of listing for viewing
-        if self.debug_slave:
-            print 'endjob....'
+            print 'running endjob code=',job_status_code
 
         # Get an editor so we can display messages and access the main graph object
         ed = self.get_editor()

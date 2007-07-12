@@ -457,27 +457,23 @@ class MOLPROCalc(QMCalc):
                      stdout_file=stdout_file)
         
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
-
-        #if sys.platform[:3] == 'win':
-        #    job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
-        #else:
-        #    job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
-        #job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob)
         return job
 
-    def endjob(self,code=0):
+    def endjob(self,job_status_code):
 
-        """This function is executed in the main thread (not the job thread)
-        This is so that it can perform GUI update operations and output
+        """Load results from Molpro job
+
+        This function is executed in the main thread (rather than the
+        job thread) so that it can perform GUI update operations and
+        output
+
         """
 
-        #if self.debug:
-        print 'running endjob2 code=',code
+        if self.debug:
+            print 'running endjob2 code=',job_status_code
 
         # load contents of listing for viewing
-        if self.debug_slave:
-            print 'endjob....'
         job_name = self.get_parameter("job_name")
         directory = self.get_parameter("directory")
         filename=directory+'/'+job_name+'.out'
@@ -485,83 +481,26 @@ class MOLPROCalc(QMCalc):
         self.ReadOutput(file)
         file.close()
 
+        # Parse XML output
         xmlfilename=directory+'/'+job_name+'.xml'
-        results = []
+        self.results = []
         parser = xml.sax.make_parser()
         parser.setFeature( xml.sax.handler.feature_namespaces, 0 )
-        ch = MolproXMLContentHandler(results)
+        ch = MolproXMLContentHandler(self.results)
         parser.setContentHandler(ch)
         if self.debug:
             print 'Parsing Molpro XML FILE',xmlfilename
         parser.parse(xmlfilename)
-        print  'Parsed %s objects' % ( len(results) )
+        print  'Parsed %s objects' % ( len(self.results) )
 
-        mols = []
-        self.results = []
-        r = None
-        for r in results:
-            t2 = string.split(str(r.__class__),'.')
-            myclass2 = t2[len(t2)-1]
-            if myclass2 == 'Zmatrix':
-                lastmol=r
-                mols.append(r)
-            elif myclass2 == 'VibFreqSet':
-                r.reference = lastmol
-                self.results.append(r)
-
-        if len(mols):       
-            oldo = self.get_input("mol_obj")
-            t2 = string.split(str(oldo.__class__),'.')
-            myclass2 = t2[len(t2)-1]
-            if myclass2 == 'Zmatrix':
-
-                for o in mols[:-1]:
-                    self.results.append(o)
-                o = mols[-1]
-
-                if self.debug:
-                    print 'NEW GEOMETRY'
-                    o.connect()
-                    print o.bonds_and_angles()
-
-                # patch up atom symbols
-                for i in range(len(o.atom)):
-                    o.atom[i].symbol = oldo.atom[i].symbol
-
-                warn=0
-                try:
-                    oldo.import_geometry(o,update_constants=0)
-                except ImportGeometryError:
-                    warn=1
-                    copycontents(oldo,o)
-
-                if self.debug:
-                    print 'UPDATED GEOMETRY'
-                    oldo.zlist()
-                    print oldo.bonds_and_angles()
-
-                if warn:
-                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
-
-                structure_loaded=1
-
+        # Add the molden file to the results for orbital viewing
         o = File(job_name+'.molden',type=MOLDEN_WFN)
         self.results.append(o)
 
-        ed = self.get_editor()
-        if ed:
-            if ed.graph:
-                ed.graph.import_objects(self.results)
-                txt = "Objects loaded from Molpro XML:"
-                txt = txt  + "Structure update" + '\n'
-                for r in self.results:
-                    txt = txt + r.title + '\n'
-                ed.Info(txt)
-            # Update 
-            if ed.update_func:
-                o = self.get_input("mol_obj")
-                #name = self.get_input("mol_name")
-                ed.update_func(o)
+        # Load the results into the gui
+        code = self.store_results_to_gui()
+        if code:
+            raise JobError, "No molecular structure in Punchfile - check output"
 
     def get_executable(self,job):
         """Return the path to the Molpro Executable"""

@@ -3,7 +3,7 @@
 # 
 #   (C) 2002-2007 CCLRC Daresbury Laboratory
 # 
-#   This program is free software; you can redistribute it and/or modify
+#   This program is free software; you can redistribute git and/or modify
 #   it under the terms of the GNU General Public License as published by
 #   the Free Software Foundation; either version 2 of the License, or
 #   (at your option) any later version.
@@ -29,21 +29,18 @@ import shutil
 import Tkinter
 import Pmw
 import tkFileDialog
-import viewer.help
 
-from qm import *
-from tools import *
-from qmtools import *
-#from filepunch import *
 from jobmanager import *
-#from interfaces.gamessoutputreader import GamessOutputReader
-#from gamessoutputreader import GamessOutputReader
-from filepunch import PunchIO
+from interfaces.qm import *
+from interfaces.tools import *
+from interfaces.qmtools import *
+from interfaces.gamessukio import GUKOutputIO
+from interfaces.filepunch import PunchIO
 from objects.file import *
 from objects.list import *
-#
 from viewer.defaults import defaults
 from viewer.paths import find_exe
+import viewer.help
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -522,7 +519,6 @@ or use the existing file (No)?" % inputfile )
             self.setup_globus_job( job )
             #stdin_file = None
 
-
         job.clear_steps()
         job.add_step( DELETE_FILE,
                       'remove old output',
@@ -532,13 +528,10 @@ or use the existing file (No)?" % inputfile )
                       'remove old punch',
                       remote_filename=remote_punch,
                       kill_on_error=0)
-
         job.add_step( COPY_OUT_FILE,
                       'transfer input',
                       local_filename=stdin_file,
                       remote_filename=remote_stdin)
-        
-
         job.add_step( RUN_APP,
                       job_desc,
                       stdin_file = stdin_file,
@@ -546,16 +539,11 @@ or use the existing file (No)?" % inputfile )
                       stderr_file=stderr_file,
                       local_command = local_command,
                       local_command_args = local_command_args)
-
         job.add_step(COPY_BACK_FILE,'recover stderr',local_filename=stderr_file,remote_filename=stderr_file)
         job.add_step(COPY_BACK_FILE,'recover log',remote_filename=stdout_file)
         job.add_step(COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
-        # jmht - is this needed?
-        # job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob)
 
-        #jmht - hack
-        #job.calc = self
         return job
 
     def set_job_defaults(self,job):
@@ -588,19 +576,11 @@ or use the existing file (No)?" % inputfile )
             pass
         return job
 
-#     def endjob(self,graph):
-#         """This is executed in the slave thread when the job completes
-#         successfully.
-#         There should be no output from slaves unless activated from
-#         using the debug_slave flag.
-#         """
-#         return 0,""
-
-    def endjob(self,code=0):
+    def endjob(self,job_status_code):
         """This function is executed in the main thread"""
 
         if self.debug:
-            print 'running endjob2 code=',code
+            print 'running endjob code=',job_status_code
 
         # load contents of listing for viewing
         if self.debug_slave:
@@ -634,46 +614,24 @@ or use the existing file (No)?" % inputfile )
                 print 'scan output failed'
 
         # scan the punchfile ... only in case of success
-        if code:
+        if job_status_code:
             return
         
-        code = self.__ReadPunch(directory+os.sep+job_name+'.pun')
+        fil = directory+os.sep+job_name+'.pun'
+        code = self._ReadPunch(fil)
+        if code != 0:
+            raise JobError, "Could not process punch file "+fil
 
-        if code < 0:
-            raise JobError, "No molecular structure in Punchfile - check output"
-
-        # problem here as that as we are running in a slave thread
-        # we cannot use Tk .. so this is silent
-
-        #o = File(directory+'/'+job_name+'.out',type=GAMESSUK_OUTPUT)
+        # Include a reference to the output file itself, for use by Molden
         # relative path should work here (better on windows, molden doesnt
         # tolerate embedded spaces)
         o = File(job_name+'.out',type=GAMESSUK_OUTPUT)
         self.results.append(o)
 
-        ed = self.get_editor()
-        if ed:
-            if ed.graph:
-                ed.graph.import_objects(self.results)
-                txt = "Objects loaded from punchfile:"
-                if code > 1:
-                    txt = txt  + "Structure update" + '\n'
-                else:
-                    txt = txt  + '\n'
-                
-                    for r in self.results:
-                        txt = txt + r.title + '\n'
-                ed.Info(txt)
-            # Update 
-            if ed.update_func and code > 0:
-                o = self.get_input("mol_obj")
-                #name = self.get_input("mol_name")
-                print 'calling update_func from gamess'
-                ed.update_func(o)
-                
-        # jmht - is this a hack?
-        self.job = None
-
+        # Load the results up - will present a dialog
+        code = self.store_results_to_gui()
+        if code:
+            raise JobError, "No molecular structure in Punchfile - check output"
 
     def get_executable_from_job(self,job):
         """
@@ -1890,114 +1848,25 @@ or use the existing file (No)?" % inputfile )
         if self.editor():
             self.editor().UpdateOpenPage()
 
-    def __ReadPunch(self,file):
-        """Read the GAMESS-UK punchfile and store all resulting objects
+    def _ReadPunch(self,file):
+        """Read the GAMESS-UK punchfile and store all resulting
+        objects in the self.results list.
         """
 
         if self.debug:
             print "gamessuk.py: __ReadPunch..."
             
-        #p = filepunch.PunchReader()
-        #p = GetReader( file, format="GAMESS-UK.pun")
         p = PunchIO()
-        p.ReadFile( filepath=file )
-        #p.scan(file)
+        if p.ReadFile( filepath=file ):
+            return 1
+        self.results = p.GetObjects()
+        return 0
 
-        if not p.name:
-            p.name = self.get_title()
-        if p.title == "untitled":
-            p.title = self.get_input("mol_name")
-
-        self.results = []
-        mols = []
-        # construct the results list for visualisation
-
-        structure_loaded=-1
-        warn=0
-        for o in p.GetObjects():
-
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-
-            print 'LOADING up',myclass
-
-            if myclass == 'VibFreq' :
-                # create a vibration visualiser
-                self.results.append(o)
-
-            if myclass == 'VibFreqSet' :
-                # create a vibration set visualiser
-                self.results.append(o)
-
-            elif myclass == 'Indexed' or myclass == 'Zmatrix':
-                # will need to organise together with other results
-                # assume overwrite using last structure for now
-                mols.append(o)
-
-            elif myclass == 'ZmatrixSequence':
-                o.connect()
-                self.results.append(o)
-
-            elif myclass == 'Brick':
-                self.results.append(o)
-
-            elif myclass == 'Field':
-                self.results.append(o)
-
-            # list class is just used for atomic charge data at present
-            elif myclass == 'List':
-                mol_obj  = self.get_input("mol_obj")
-                mol_obj.charge_sets.append((o.type,o.data))
-
-        if len(mols):
-
-            #
-            # Take the last structure and over-write the current structure
-            # with it
-            # use import_geometry to try and keep all elements of old structure
-            # including internal coordinates
-
-            # Dont try and update structure sequences here, instead
-            # we return all structures for use
-            
-            oldo = self.get_input("mol_obj")
-            t2 = string.split(str(oldo.__class__),'.')
-            myclass2 = t2[len(t2)-1]
-            if myclass2 == 'Zmatrix':
-
-                for o in mols[:-1]:
-                    self.results.append(o)
-                o = mols[-1]
-
-
-                if self.debug:
-                    print 'NEW GEOMETRY'
-                    o.connect()
-                    print o.bonds_and_angles()
-                try:
-                    oldo.import_geometry(o,update_constants=0)
-                except ImportGeometryError:
-                    warn=1
-                    copycontents(oldo,o)
-
-                if self.debug:
-                    print 'UPDATED GEOMETRY'
-                    oldo.zlist()
-                    print oldo.bonds_and_angles()
-
-                if warn:
-                    print ' Warning: could not retain old zmatrix, so imported as cartesians'
-
-                structure_loaded=1
-
-            else:
-                self.results = self.results + mols
-                # This should allow the code to continue but warn that
-                # a new structure has been imported
-                structure_loaded=0
-
-        return structure_loaded
+        # PAUL
+        #if not p.name:
+        #    p.name = self.get_title()
+        #if p.title == "untitled":
+        #    p.title = self.get_input("mol_name")
 
 homolumoa = 0
 
@@ -3078,19 +2947,6 @@ class GAMESSUKCalcEd(QMCalcEd):
                            reload_func=self.reload_for_zme,
                            update_func=self.update_for_zme,
                            v_key=1)
-
-
-def copycontents(to,fro):
-    """Used to update an object by copying in the contents from another"""
-    c = to.__class__
-    d1 = c.__dict__
-    try:
-        d2 = fro.__dict__
-    except AttributeError:
-        d2 = {}
-    for k in d2.keys():
-        to.__dict__[k] = fro.__dict__[k]
-
 
 def prdict(obj,name,depth):
 
