@@ -107,8 +107,6 @@ class CalcEd(Pmw.MegaToplevel):
         self.inputeditor = None
             
         self.jobsub_editor=None
-        self.job_dict = {} # Keeps track of the parameters for jobs we have edited this session
-                           # maps jobtype -> dictionary of parameters for that job
                            
         # Class associated with job manager thread
         self.job_editor = job_editor
@@ -403,7 +401,7 @@ class CalcEd(Pmw.MegaToplevel):
         # Update the job_dict with the parameters from this job
         jobtype = job.jobtype
         parameters = job.get_parameters()
-        self.job_dict[ jobtype ] = copy.copy(parameters)
+        self.calc.job_dict[ jobtype ] = copy.copy(parameters)
         self.set_job( None )
 
     def start_job(self,job):
@@ -919,12 +917,6 @@ class CalcEd(Pmw.MegaToplevel):
             print "calced create_job no job!"
             return
 
-        # See if we have edited a job of this type this session - in which
-        # case we use the parameters from that to overwrite any parameters
-        # that the job may have either from the calculation or user defaults
-        if self.job_dict.has_key( job.jobtype ):
-            job.update_parameters( self.job_dict[ job.jobtype ] )
-
         return job
 
 
@@ -962,8 +954,8 @@ class CalcEd(Pmw.MegaToplevel):
         #print "creating new editor"
 
         # See if we have a hostlist from this session
-        if self.job_dict.has_key('hostlist'):
-            hostlist = self.job_dict['hostlist']
+        if self.calc.job_dict.has_key('hostlist'):
+            hostlist = self.calc.job_dict['hostlist']
         else:
             hostlist=[]
             
@@ -1045,10 +1037,10 @@ class CalcEd(Pmw.MegaToplevel):
             parameters = job.get_parameters()
             # Need to use a copy or else any changes when running the job
             # come back to haunt us
-            self.job_dict[jobtype] = copy.copy(parameters)
+            self.calc.job_dict[jobtype] = copy.copy(parameters)
 
         if hostlist:
-            self.job_dict['hostlist'] = hostlist
+            self.calc.job_dict['hostlist'] = hostlist
         
     #------------- messages -----------------------------
 

@@ -132,6 +132,10 @@ of any program using or generating them. The parameters however will be
 
         self.set_title(title)
         self.set_job(None)
+        self.job_dict = {} # Keeps track of the parameters for jobs we have edited
+                           # this session maps jobtype -> dictionary of parameters
+                           # for that job
+
 
     def get_editor_class(self):
         """overload to return the editor class"""
@@ -374,6 +378,12 @@ of any program using or generating them. The parameters however will be
         # a pointer to the job so that this updates the job directly
         self.set_job_defaults( job )
 
+        # If we've run a previous calculation this session, update the dictionary
+        # with those parameters
+        if self.job_dict.has_key( job.jobtype ):
+            job.update_parameters( self.job_dict[ job.jobtype ] )
+        
+
         # Set this as the job for the calculation so that the editor can get at it
         self.set_job( job )
         
@@ -562,6 +572,7 @@ of any program using or generating them. The parameters however will be
         Returns 0 if the structure was updated,
         1 if the structure was found to me missing
         """
+
         # construct the results list for visualisation
         warn=0
         mols = []
