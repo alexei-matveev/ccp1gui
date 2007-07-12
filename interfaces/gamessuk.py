@@ -598,21 +598,6 @@ or use the existing file (No)?" % inputfile )
 #  potential problem here with pickling the calculation
 # ... all sorts of stuff inder there
 #
-        fname = job_name+'.out'
-        try:
-            g = GamessOutputReader(fname)
-            #self.g = g
-
-            # Hack
-            self.final_energy = g.finalTotalEnergy
-
-            if self.debug_slave:
-                print 'scan output done'
-        except:
-            self.g = None
-            if self.debug_slave:
-                print 'scan output failed'
-
         # scan the punchfile ... only in case of success
         if job_status_code:
             return
@@ -2587,7 +2572,10 @@ class GAMESSUKCalcEd(QMCalcEd):
                     print "Missing summary editor!"
             else:
                 data = []
-                output_summary = GamessOutputReader(fname)
+                
+                output_summary = GUKOutputIO()
+                output_summary.ReadFile(filepath=fname)
+                
                 data.append('Title = %s\n' % output_summary.title)
                 data.append('Date = %s\n' % output_summary.date)
                 data.append('Time = %s\n' % output_summary.time)
@@ -2622,6 +2610,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                 self.summaryeditor = Editor(self.interior(),title="summary",data=data)
                 return 
         except AttributeError:
+            traceback.print_exc()
             print 'No results to summarise'
 
 
