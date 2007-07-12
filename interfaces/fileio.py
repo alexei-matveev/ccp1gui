@@ -1,7 +1,7 @@
 #
 #    This file is part of the CCP1 Graphical User Interface (ccp1gui)
 # 
-#   (C) 2002-2005 CCLRC Daresbury Laboratory
+#   (C) 2002-2007 STFC Daresbury Laboratory
 # 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -26,7 +26,9 @@ import re
 import os
 
 # import external modules
-from Scientific.Geometry import VectorModule
+# the following line fails on linux, reason unclear at the moment
+#from Scientific.Geometry import VectorModule
+from Scientific.Geometry import *
 
 # import internal modules
 import objects.zmatrix
