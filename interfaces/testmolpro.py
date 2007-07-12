@@ -17,16 +17,10 @@ class MolproTestCase(unittest.TestCase):
         job = calc.makejob()
         #job.debug = 1
         job.run()
-        calc.endjob()
+        calc.endjob(0)
         print calc.results
-        self.assertEqual(len(calc.results),2,"Failed to return Structure+Vibrations")
+        self.assertEqual(len(calc.results),3,"Failed to return Structure+Vibrations+MoldenFile")
 
-        #if os.access('3dgridfile', os.R_OK):
-        #    os.unlink('3dgridfile')
-        #t=MoldenDriver(out)
-        #t.ComputePlot((1,2,3))
-        #check = os.access('3dgridfile', os.R_OK)
-        #self.assertEqual(check,1,"No 3dgridfile generated")
 
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(MolproTestCase)
