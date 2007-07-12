@@ -247,7 +247,7 @@ class JobEditor(Pmw.MegaToplevel):
                 if job.tidy:
                     print 'Executing tidy function (on Failure)'
                     try:
-                        job.tidy(code=1)
+                        job.tidy(1)
                     except Exception, e:  
                         #info_messages.append(str(e))
                         #items.append(str(e))
@@ -256,6 +256,7 @@ class JobEditor(Pmw.MegaToplevel):
                         # delete to stop execution again
                         print "job tidy error"
                         print e
+                        import traceback;traceback.print_exc()
                         pass
                     job.tidy = None
 
@@ -278,10 +279,9 @@ class JobEditor(Pmw.MegaToplevel):
                     job.popup=0
 
                 if job.tidy:
-                    print 'Executing tidy function'
-                    #job.tidy()
+                    print 'Executing tidy function after successful completion'
                     try:
-                        job.tidy()
+                        job.tidy(0)
                     except Exception, e:
                         print "Exception executing job tidy"
                         import traceback;traceback.print_exc()
