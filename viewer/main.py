@@ -753,7 +753,7 @@ class TkMolView(Pmw.MegaToplevel):
             try:
                 os.remove( jfile )
             except IOError:
-                self.Error("Error removing job file: %s" % jfile )
+                self.error("Error removing job file: %s" % jfile )
                 
         return
 
@@ -1587,14 +1587,40 @@ class TkMolView(Pmw.MegaToplevel):
     def extract_frame(self,seq):
         """Load a single frame from a sequence (eg a trajectory)
         """
-        ex = Zmatrix()
-        for x in seq.__dict__:
-            if x not in ['frames','nframes','title','name','tidy']:
-                ex.__dict__[x] = copy.deepcopy(seq.__dict__[x])
+        
+        # We need to return the visualiser for this object so that
+        # we can determine which is the current frame
 
-        ex.title = 'Frame '+str(seq.current_frame+1)+' of '+ seq.title
-        #jmht
-        #ex.name = self.make_unique_name('Frame_'+str(seq.current_frame+1))
+        # Work out the visualiser for this object
+        t = id(seq)
+        if not self.vis_dict.has_key(t):
+            self.error("No active visuliser for object in extract_frame!")
+            #print "### Error returning visuliser for object in extract_frame! ###"
+            return
+
+        visl = self.vis_dict[t]
+        # Should only be one active visualiser
+        active_vis = None
+        for v in visl:
+            if v.is_showing:
+                if active_vis:
+                    active_vis = -1
+                else:
+                    active_vis = v
+                    
+        if active_vis ==  -1:
+            self.error(
+"""You have more than one trajectory
+visualiser active for this object.
+Please hide all those bar the one
+you would like to extract the frame from."""
+)
+            return
+        
+        current_frame = active_vis.current_frame
+
+        ex = seq.extract_frame()
+        ex.title = 'Frame '+str(current_frame+1)+' of '+ seq.title
         ex.name = self.make_unique_name( ex.title )
         self.append_data(ex);
         self.quick_mol_view([ex])
@@ -4246,7 +4272,7 @@ class TkMolView(Pmw.MegaToplevel):
 
     def choose_mol(self):
         """ Select a single molecule (i.e of class zmatrix). If more than
-            one is present in the structures, choose teh one that is selected,
+            one is present in the structures, choose the one that is selected,
             or if none are selected, get the user to choose one from a list.
         """
 

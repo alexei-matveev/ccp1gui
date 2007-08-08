@@ -4385,7 +4385,7 @@ class ZmatrixSequence(Zmatrix):
         Zmatrix.__init__(self,**kw)
         self.frames=[]
         self.title="Sequence of Structures"
-        ####self.current_frame=0
+        ###self.current_frame=0
         self.name="Unnamed"
 
     def add_molecule(self,molecule):
@@ -4399,6 +4399,19 @@ class ZmatrixSequence(Zmatrix):
 
         if len(self.atom) == 0:
             self.atom = molecule.atom
+
+    def extract_frame(self):
+        """
+        Return the current molecule. The visualiser updates the atom coordinates
+        from the molecule for a frame when it shows a frame, so we just need to remove
+        any "sequence" attributes from ourselves to create a suitable Zmatrix
+            
+        """
+        zmat = Zmatrix()
+        for x in self.__dict__:
+            if x not in ['frames','nframes','title','name','tidy']:
+                zmat.__dict__[x] = copy.deepcopy(self.__dict__[x])
+        return zmat
 
 class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information
