@@ -157,8 +157,6 @@ class GetFileIO:
             informats = pybel.informats
             #formats.update(pybel.outformats)
             outformats = pybel.outformats
-            #print outformats
-
         else:
             # Use a static dictionary of formats we know OB supports
             informats = {'res': 'ShelX format', 'pqs': 'Parallel Quantum Solutions format', 'mdl': 'MDL MOL format', 'c3d2': 'Chem3D Cartesian 2 format', 'pcm': 'PCModel Format', 'xyz': 'XYZ cartesian coordinates format', 'c3d1': 'Chem3D Cartesian 1 format', 'gpr': 'Ghemical format', 'alc': 'Alchemy format', 'outmol': 'DMol3 coordinates format', 'ins': 'ShelX format', 'gamout': 'GAMESS Output', 'arc': 'Accelrys/MSI Biosym/Insight II CAR format', 'therm': 'Thermo format', 'mpqc': 'MPQC output format', 'cdx': 'ChemDraw binary format', 'ct': 'ChemDraw Connection Table format', 'unixyz': 'UniChem XYZ format', 'jout': 'Jaguar output format', 'nwo': 'NWChem output format', 'pc': 'PubChem format', 'feat': 'Feature format', 'mol': 'MDL MOL format', 'dmol': 'DMol3 coordinates format', 'yob': 'YASARA.org YOB format', 'ml2': 'Sybyl Mol2 format', 'fract': 'Free Form Fractional format', 'mmod': 'MacroModel format', 'ent': 'Protein Data Bank format', 'crk3d': 'Chemical Resource Kit 3D format', 'mopout': 'MOPAC Output format', 'mopin': 'MOPAC Internal', 'cdxml': 'ChemDraw CDXML format', 'mopcrt': 'MOPAC Cartesian format', 'xml': 'General XML format', 'prep': 'Amber Prep format', 'fchk': 'Gaussian formatted checkpoint file format', 'crk2d': 'Chemical Resource Kit diagram format (2D)', 'smiles': 'SMILES format', 'mop': 'MOPAC Cartesian format', 'fs': 'FastSearching', 'mpc': 'MOPAC Cartesian format', 'sy2': 'Sybyl Mol2 format', 'inp': 'GAMESS Input', 'mol2': 'Sybyl Mol2 format', 'gamin': 'GAMESS Input', 'txt': 'Title format', 'tdd': 'Thermo format', 'inchi': 'InChI format', 'gam': 'GAMESS Output', 'g94': 'Gaussian98/03 Output', 'moo': 'MOPAC Output format', 'g92': 'Gaussian98/03 Output', 'cmlr': 'CML Reaction format', 'bs': 'Ball and Stick format', 'fch': 'Gaussian formatted checkpoint file format', 'mmd': 'MacroModel format', 'fck': 'Gaussian formatted checkpoint file format', 'tmol': 'TurboMole Coordinate format', 'hin': 'HyperChem HIN format', 'g98': 'Gaussian98/03 Output', 'box': 'Dock 3.5 Box format', 'cml': 'Chemical Markup Language', 'cif': 'Crystallographic Information File', 'bgf': 'MSI BGF format', 'rxn': 'MDL RXN format', 'car': 'Accelrys/MSI Biosym/Insight II CAR format', 'sdf': 'MDL MOL format', 'vmol': 'ViewMol format', 'smi': 'SMILES format', 'acr': 'ACR format', 'gal': 'Gaussian98/03 Output', 'caccrt': 'Cacao Cartesian format', 'qcout': 'Q-Chem output format', 'g03': 'Gaussian98/03 Output', 'pdb': 'Protein Data Bank format', 'ccc': 'CCC format', 'sd': 'MDL MOL format'}
@@ -185,7 +183,7 @@ class GetFileIO:
 
         # First readers
         for format,ext in informats.iteritems():
-            #print "Adding %s from OpenBabel to self.format_keys",format
+            #print "Adding reader %s from OpenBabel to self.format_keys" % format
 
             if self.format_info.has_key( format ):
                 # We have an existing IO object so we need to overwrite it
@@ -208,14 +206,24 @@ class GetFileIO:
 
         # Now Writers
         for format,ext in outformats.iteritems():
-            #print "Adding %s from OpenBabel to self.format_keys",format
+            #print "Adding writer  %s from OpenBabel to self.format_keys" % format
 
             if self.format_info.has_key( format ):
                 # We have an existing IO object so we need to overwrite it
                 self.format_info[format][0] = OpenBabelIO
-
+                
                 # Set write flag to indiate we can deal with molecules
                 self.format_info[format][4] = ['Zmatrix','Indexed']
+                
+            else:
+                # No existing format so create new entry from scratch
+                self.format_info[format] = [ OpenBabelIO,
+                                             [ext],
+                                             None,
+                                             False,
+                                             ['Zmatrix','Indexed'] ]
+
+            
 
     def GetReader( self, filepath=None, format=None, debug=None ):
         """Return an IO object that can read this type of file"""
@@ -253,10 +261,10 @@ class GetFileIO:
 
         if dataobj:
             if fio.CanWrite( dataobj ):
-                print "GetWriter can write "
+                #print "GetWriter can write "
                 return fio
             else:
-                print "GetWriter no write "
+                #print "GetWriter no write "
                 return None
         else:
             # Have to assume that we can write
