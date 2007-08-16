@@ -1,0 +1,195 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>The CCP1 GUI Project - Interfaces</title>
+  </head>
+
+<body>
+
+<h1>The CCP1 GUI Project - Interfaces</h1>
+
+<h2> Introduction</h2>
+
+<p>From it's inception, the CCP1GUI has been designed to work with a
+range of different underlying computational codes. For many of the
+supported codes, provided the code is already installed on the target
+system, using them should be as simple as using the <b>Job
+Submission</b> tool in the <b>Job</b> tab of the relevant editor to
+point the ccp1gui at the binary that should be used.</p>
+
+<p>For some of the codes however, various hoops have to be jumped
+through to get them working properly. Often these are just the
+standard issues around getting the code to work on a particular
+platform, but in some cases they may be slightly more involved.</p>
+
+<p>The following sections describe what needs to be done for each of
+the codes.</p>
+
+<ul>
+<li><a href="#molden">Molden</a></li>
+<li><a href="#molpro">Molpro</a></li>
+</ul>
+
+<a name="molden"></a><h3>Molden</h3>
+
+<h4>Intro</h4>
+
+<p>Molden is a package for displaying Molecular Density from the Ab
+Initio packages GAMESS-UK , GAMESS-US and GAUSSIAN and the
+Semi-Empirical packages Mopac/Ampac, it also supports a number of
+other programs via the Molden Format.</p>
+
+<p>The CCP1GUI can use Molden to generate the data required to
+visualise molecular orbitals from the data in a GAMESS-UK output
+file. This functionality is useful for when the orbital in question
+was not explicitly written out to the GAMESS-UK punch file as part of
+the calcualtion (which is where the CCP1GUI usually expects to find
+the information about the orbitals).</p>
+
+<p>To access this functionality within the CCP1GUI, use the
+<b>File</b> option that will appear under the main <b>Views</b> menu
+when a GAMESS-UK calculation has been completed from within the
+CCP1GUI.</p>
+
+<h4>Installation</h4>
+
+<p>Molden is available from the website at <a
+href="http://www.cmbi.ru.nl/molden/molden.html">http://www.cmbi.ru.nl/molden/molden.html</a>.</p>
+
+<p>For use by the CCP1GUI, however, the standard Molden is not
+suitable and a couple of small changes need to be made to the source
+code before Molden is compiled.</p>
+
+<p>The changes need to be made to the file <b><tt>wrinfo.f</tt></b>
+ and are required to:</p>
+
+<ul>
+<li>to allow output of fields other than densities</li>
+<li>to output in a formatted file that the GUI can read</li>
+</ul>
+
+<p>A diff out put showing the changes as made to a copy of version 4.6 of
+Molden is below:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>
+<pre>
+<b>software/molden></b> diff molden4.6/wrinfo.f molden4.6.ccp1gui/wrinfo.f
+<b>62,63c62,64</b>
+<           call inferr('Only Normal Density Can be Written!',0)
+<           return
+---
+> > cc          call inferr('Only Normal Density Can be Written!',0)
+> > cc          return
+> >           write(6,*)'Writing 3d field (not normal density)'
+
+
+
+<b>66c67</b>
+<       open(unit=21,form='unformatted',file='3dgridfile',
+---
+> >       open(unit=21,form='formatted',file='3dgridfile',
+
+<b>69,71c70,72</b>
+<       write(21) natoms
+<       write(21) (nat(i),i=1,natoms)
+<       write(21) adjus
+---
+> >       write(21,*) natoms
+> >       write(21,*) (nat(i),i=1,natoms)
+> >       write(21,*) adjus
+
+<b>73c74</b>
+<          write(21)(xyz(j,i),j=1,3)
+---
+> >          write(21,*)(xyz(j,i),j=1,3)
+
+<b>75,76c76,82</b>
+<       write(21) px, py, pz, cx, cy, cz, r(1),r(2),r(3),
+<      &          npts1,npts2,npts3,iplat
+---
+> >  100  format(a5,3f20.5)
+> >       write(21,100) 'p', px, py, pz
+> >       write(21,100) 'c', cx, cy, cz
+> >       write(21,100) 'v1', v1
+> >       write(21,100) 'v2', v2
+> >       write(21,100) 'r',r(1),r(2),r(3)
+> >       write(21,*) npts1,npts2,npts3,iplat
+
+<b>78c84</b>
+<          write(21)(denn((i-1)*mx3d2 + j),j=1,npts1*npts2)
+---
+> >          write(21,*)(denn((i-1)*mx3d2 + j),j=1,npts1*npts2)
+</pre>
+</tt>
+</td></tr>
+</table>
+
+<br/>
+<p>Once these changes have been made, Molden should be compiled and
+installed as usual.</p>
+
+<p>The CCP1GUI will look for a file called <tt><b>molden.exe</b></tt>
+(under Windows) or <tt><b>molden</b></tt> (under Linux/Mac) in the
+system path, so you will need to make sure that the folder where this
+file lives in in your system path.</p>
+
+
+<a name="molpro"></a><h3>Molpro</h3>
+
+<h4>Intro</h4>
+
+<p>Molpro is a complete system of ab initio programs for molecular
+electronic structure calculations, designed and maintained by
+H.-J. Werner and P. J. Knowles, and containing contributions from a
+number of other authors. As distinct from other commonly used quantum
+chemistry packages, the emphasis is on highly accurate computations,
+with extensive treatment of the electron correlation problem through
+the multiconfiguration-reference CI, coupled cluster and associated
+methods. Using recently developed integral-direct local electron
+correlation methods, which significantly reduce the increase of the
+computational cost with molecular size, accurate ab initio
+calculations can be performed for much larger molecules than with most
+other programs.</p>
+
+<p>The Molpro website can be found at: <a
+href="http://www.molpro.net/">http://www.molpro.net/</a> and a copy
+can be obtained by contacting the developers.</p>
+
+<h4>Using Molpro with the CCP1GUI</h4>
+
+<p>The CCP1GUI expects to find an executable called
+<tt><b>molpro</b></tt> in the system path. Alternatively, the tools in
+the <b>Job Submission</b> tool in the <b>Job</b> tab can be used to
+point the CCP1GUI at the desired binary.</p>
+
+<h4>Problems</h4>
+
+<p>Unfortunately, the visualisation toolkit used by the CCP1GUI (<a
+href="http://www.vtk.org/">VTK</a>) provides a version of the library
+<tt><b>libexpat.so</b></tt> that is not compatible with the python XML
+tools used by the CCP1GUI to read the Molpro XML output. This
+incompatiblity causes the CCP1GUI to throw a segmentation violation on
+Linux systems on starting.</p>
+
+<p>The work-around for this is to force the CCP1GUI to load the system
+<tt><b>libexpat.so</b></tt> before the VTK one. This is accomplished
+by setting the LD_PRELOAD environment variable as shown below:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>export LD_PRELOAD=/usr/lib/libexpat.so</b></tt>
+</td></tr>
+</table>
+
+<p><small><b>NB:</b> the above is bash-shell syntax and should be changed if
+you use t/csh</small></p>
+
+<p>This command should either be executed before the CCP1GUI is
+started, or should be placed in the <tt><b>ccp1gui.sh</b></tt> script
+usd to start the CCP1GUI.</p>
+
+
+</body>
+</html>
