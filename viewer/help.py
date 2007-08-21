@@ -47,13 +47,17 @@ nametofile = {"Introduction":["index.html","viewer.intro.txt"],
 "Edit Options":["menus.html#EditOptions","viewer.editoptions.txt"],
 "Python Shell":["menus.html#IdleShell","viewer.pythonshell.txt"],
 "Editing Tools":["menus.html#EditTools","viewer.edittools.txt"],
- "MoleculeTab":["gamessuk_menus.html#MolTab","gamessuk.moltab.txt"],
+"MoleculeTab":["gamessuk_menus.html#MolTab","gamessuk.moltab.txt"],
 "Theory Tab":["gamessuk_menus.html#TheoryTab","gamessuk.theorytab.txt"],
 "DFT Tab":["gamessuk_menus.html#DFTTab","gamessuk.dfttab.txt"],
 "Properties Tab":["gamessuk_menus.html#PropTab","gamessuk.proptab.txt"],
 "Optimisation Tab":["gamessuk_menus.html#GeomoptTab","gamessuk.opttab.txt"],
 "Job Tab":["gamessuk_menus.html#JobTab","gamessuk.jobtab.txt"],
-"Grid Editor":["gamessuk_menus.html#editgrid","grideditor.txt"]}
+"Grid Editor":["gamessuk_menus.html#editgrid","grideditor.txt"],
+"Job Editor":["job_submission.html","jobeditor.txt"],
+"Job Editor Local":["job_submission.html#localhost","jobeditor.txt"],
+"Job Editor Globus":["job_submission.html#globus","jobeditor.txt"]
+}
 
 global idtoname # maps widget ids to the names for lookup in nametofile
 idtoname = {}
@@ -70,8 +74,11 @@ def get_tkmolview(tkmolview):
 def sethelp(widget,name):
     """Associate a widget with a helpfile.
     """
+    #print "sethelp: %s : %s" %( str(widget), name )
+    # Can't use id as the event we use in widgettofiles returns
+    # the __str__ of the widget as the widget NOT the widget's id
+    #idtoname[str(id(widget))]=name
     idtoname[str(widget)]=name
-
 
 def helpall(event):
     """Open a browser or text file depending on the widget.
@@ -140,36 +147,34 @@ def widgettofiles(event):
     """
     global idtoname
     global nametofile
-    widget_id = str(event.widget)
-
-    #Check to see if widget id matches a known widget. Otherwise
-    #keep lopping off the end of the widget id until a match 
-    while widget_id is not None and not idtoname.has_key(widget_id):
-        widget_id = rmlast(widget_id)
-
+    widget_id = key_from_widget_id(str(event.widget))
     if widget_id: #ie we can identify the widget
         helpname = idtoname[widget_id]
         htmlfile = nametofile[helpname][0]
         txtfile = nametofile[helpname][1]
         
     else: #Cant identify widget
+        helpname = None
         htmlfile = "index.html"
         txtfile = "viewer.intro.txt"
 
     return htmlfile, txtfile, helpname
 
-def rmlast(s):
-    """Trim the last object id from a string representation of a widget
+def key_from_widget_id(widget_id):
+    """Get the string that links the widget to its documentation
+       or return None if we can't find it
     """
-    c=' '
-    l = len(s)
-    if l < 1:
-        return None
-    while c != '.':
-        l=l-1
-        c = s[l]
-    return s[:l]
+    global idtoname
 
+    new = widget_id
+    while new:
+        if idtoname.has_key(new):
+            return new
+        ids = new.split('.')
+        if len(ids) == 1:
+            return None
+        new = '.'.join(ids[0:-1])
+        
 def validpath(link):
     """Get the filename from an html link and return true if we can find it
     """
