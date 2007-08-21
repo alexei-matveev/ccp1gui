@@ -28,6 +28,7 @@ the codes.</p>
 <ul>
 <li><a href="#molden">Molden</a></li>
 <li><a href="#molpro">Molpro</a></li>
+<li><a href="#openbabel">OpenBabel</a></li>
 </ul>
 
 <a name="molden"></a><h3>Molden</h3>
@@ -190,6 +191,85 @@ you use t/csh</small></p>
 started, or should be placed in the <tt><b>ccp1gui.sh</b></tt> script
 usd to start the CCP1GUI.</p>
 
+
+<a name="openbabel"></a><h3>OpenBabel</h3>
+
+<h4>Intro</h4>
+
+<p><a
+href="http://openbabel.sourceforge.net/wiki/Main_Page">OpenBabel<a/>
+is a chemical toolbox designed to speak the many languages of chemical
+data. It's an open, collaborative project allowing anyone to search,
+convert, analyze, or store data from molecular modeling, chemistry,
+solid-state materials, biochemistry, or related areas. The CCP1GUI can
+use OpenBabel to extend the number of different file formats that it
+supports for reading and writing.</p>
+
+<p>The <a
+href="http://openbabel.sourceforge.net/wiki/Get_Open_Babel">Installation</a>
+page of the OpenBabel Wiki has instructions on how to download or
+build OpenBabel on Windows, Macintosh and Linux platforms. Whichever
+platform you are installing on, make sure that you also install the
+Python bindings. There are brief notes for the different platforms below:</p>
+
+<table>
+<tr valign="top">
+<td><b>Windows</b></td>
+<td>
+There is a separate download of the Python bindings for Windows. This
+is labelled as the <b>Python Module</b> on the website, so make sure
+that you download this (whether or not you also download the Windows
+OpenBabel GUI).
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+<tr>
+<td valign="top"><b>Mac OSX</b></td>
+<td>
+<p>There are various options for installing on Mac OSX listed on the
+OpenBabel website. You can test whether the route you've used has
+installed the Python bindings by firing up the python interpreter and
+importing openbabel, as shown below.</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt>
+<b>fred:~ foo$ python<br/>
+Python 2.5 (r25:51918, Sep 19 2006, 08:49:13)<br/>
+[GCC 4.0.1 (Apple Computer, Inc. build 5341) on darwin<br/>
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;licence&quot; for more information.<br/>
+>>> import openbabel
+</b>
+</tt>
+</td></tr>
+</table>
+
+<p>If this completes without an error then your Python bindings are
+installed. If some form of import error is generated, then you may
+need to install OpenBabel from source as described in the Linux/Unix
+section below.</p>
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+<tr>
+<td valign="top"><b>Linux/Unix</b></td>
+<td>
+<p>There are often RPMs available for OpenBabel, and sometimes, it's
+also possible to find RPM files for the Python bindings (e.g. under
+Fedora/Redhat, there is an RPM called <b>openbabel-python</b> that
+provides this functionality).</p>
+<p>In cases where this is not available, you will need to compile
+OpenBabel from source (instructions <a
+href="http://openbabel.sourceforge.net/wiki/Install_%28source_code%29">here</a>),
+however make sure that you also follow the section titled <b> Install
+the Python bindings globally</b>, as this is required in order for the
+CCP1GUI to be able to access OpenBabel.</p>
+</td>
+</tr>
+
+</table>
 
 </body>
 </html>

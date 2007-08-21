@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>The CCP1 GUI Project - Job Submission</title>
+  </head>
+
+<body>
+
+<h1>The CCP1 GUI Project - Job Submission</h1>
+
+<h2> Introduction</h2>
+
+<p>The Job Submission tools appear in the <b>Job Tab</b> of the
+Calculation Editors, which generally appears as the right-most of the
+Tabs. Clicking on the button labelled <b>Job Submission</b>, will
+bring up a list of the supported job submission types, allowing one to
+be selected. This is shown below for the GAMESS-UK job tab. </p>
+
+<p align="center"><img src="images/job_sub1.jpg"></p>
+
+<p>The different items in the list are the different job submission
+types that are supported. Pushing the <b>Configure...</b> button when a
+particular job submission type is selected will then bring up a job
+editor that can be used to configure the job in question.</p>
+
+<p>The different types currently supported are listed below, together
+with links that point at more detailed documentaion for that job type.</p>
+
+<ul>
+<li><a href="#localhost"><b>csevig6.dl.ac.uk:</b></a> this the name
+of the machine that the CCP1GUI is running on and will be different
+depending on the name of the machine being used. This job type is
+default setting and causes the job to be run on the local
+machine.</li>
+<li><a href="#ssh"><b>SSH:</b></a> Run the job on a remote machine via ssh.</li>
+<li><a href="#rmcs"><b>RMCS:</b></a> Run the job remotely using the <a
+href="http://www.eminerals.org/tools/mcs.html">My Condor Submit</a>
+technology developed by the eMinerals project</li>
+<li><a href="#nordugrid"><b>Nordugrid:</b></a> Run the job on remote machine that is running
+the <a href="http://www.nordugrid.org/">Nordugrid Arc</a> software stack.</li>
+<li><a href="#globus"><b>Globus:</b></a> Run the job on remote machine that is running
+the <a href="http://www.globus.org/">Globus</a> software stack.</li>
+</ul>
+
+
+<a name="localhost"></a><h2>Running Locally</h2>
+<p>When running locally, the job editor displayed below is used.</p>
+
+<p align="center"><img src="images/job_sub2.jpg"></p>
+
+<p>The <b>Executable</b> tools can be used to select the location of the
+binary that is to be run, and the <b>Local Directory</b> tool can be
+used to select the local directory that the job should run
+in. In both cases the path can be typed in directly or the
+<b>Browse:</b> tool can be used to browse to the file/directory.</p>
+
+<p>If the <b>Accept</b> button is clicked, then the job editor will close and
+the selected values will be used for all jobs in this session.</p>
+
+<p>If the <b>Save As Defaults</b> button is clicked, then the selected values
+will be saved by the CCP1GUI and will be used as the default settings
+for any new jobs when the CCP1GUI is next restarted.</p>
+
+<p>If the <b>Cancel</b> button is clicked, then the job editor will
+close but none of the changes made will be saved.</p>
+
+<a name="nordugrid"></a><h2>Nordugrid</h2>
+
+
+<a name="globus"></a><h2>Globus</h2>
+
+<p>Globus can be used to run jobs on remote machines that have the
+Globus middleware stack running on them. The CCP1GUI relies on the
+Globus client libraries to manage the submission and movement of data,
+and although the CCP1GUI only uses a small section of the Globus
+client library, it can still be rather awkward to get this installed
+on the Client machine. For when the CCP1GUI is runing on Linux/Mac
+OSX systems, the <a href="http://www.growl.org.uk/">GROWL</a> toolkit
+is the recommended way to install the relevant Globus libraries on the
+system.</p>
+
+<p>When running via Globus, the job editor displayed below is used.</p>
+
+<p align="center"><img src="images/job_sub3.jpg" usemap="#js3map"></p>
+<map name="js3map">
+<!-- #$-:Image Map file created by GIMP Imagemap Plugin -->
+<!-- #$-:GIMP Imagemap Plugin by Maurits Rijk -->
+<!-- #$-:Please do not edit lines starting with "#$" -->
+<!-- #$VERSION:2.0 -->
+<!-- #$AUTHOR:Jens Thomas -->
+<area shape="rect" coords="0,25,561,302" alt="Select the target
+machine" href="#machselect" title="Select the machine to run on" />
+<area shape="rect" coords="0,305,561,429" alt="Setup the job
+parameters" href="#jobsetup"  title="Configure basic job parameters"/>
+<area shape="rect" coords="1,431,561,508" alt="RSL Parameters"
+href="#rslparam" title="Fine-tune the job parameters"/>
+</map>
+
+
+<a name="machselect"></a><h3>Selecting the machine to run on</h3>
+<p>The machines section of the editor is used to select the machine to
+run the job on. To add a machine to the list of available ones, type
+the name of the machine in the box to the right of the list and click
+<b>Add</b>. To delete a machine from the list of available ones,
+select the machine from the list with the mouse and then click the
+<b>Del</b> button.
+
+<p>The machines that are highlighted are the ones that have been
+selected from the list. For Globus jobs, one, and only one machine
+should be selected as the target machine.</p>
+
+<p>If a machine is selected and the <b>Save As Defaults</b> button at
+the bottom of the editor is clicked, all the values (number of
+processors, directory path etc.)  are saved for that machine. Clicking
+the <b>Update parameters from host</b> when a machine is selected will
+fill out the different widgets with any values that were saved for
+that particular machine.</p>
+
+<a name="jobsetup"></a><h3>Setting up the job on the remote machine</h3>
+<p>The remaining widgets set up various attributes of the job on the
+remote machine as described below.</p>
+
+<table>
+<tr valign="top">
+<td><b>Number of processors</b></td>
+<td>
+The number of processors to execute the job on. This sets the
+<b>count</b> RSL value. If count &gt; 1, then the <b>jobtype</b> RSL
+is set to &quot;mpi&quot;, otherwise it is set to &quot;single&quot;.
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+<tr valign="top">
+<td><b>Executable Name</b></td>
+<td>
+This is the path to executable on the remote machine. If the path
+begins with a slash (/), then the path is expected to be a full
+path. If the path starts without a slash then the path is expected to
+be relative to the user's home directory on the machine
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+
+<tr valign="top">
+<td><b>Local Directory</b></td>
+<td>
+The directory on the local machine (i.e. the one where the CCP1GUI is
+being run from) where the CCP1GUI should write out the input files and
+copy back the data from the remote machine.
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+<tr valign="top">
+<td><b>Remote Directory</b></td>
+<td>
+This is the path to directory on the remote machine where the job will
+be run. If the path begins with a slash (/), then the path is expected
+to be a full path. If the path starts without a slash then the path is
+expected to be relative to the user's home directory on the machine
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+
+
+<tr valign="top">
+<td><b>Globus Jobmanager</b></td>
+<td>
+Unfortunately, when running with Globus, one needs to specify the
+jobmanager that the job is to be submitted to. By default Globus
+submits to to <b>jobmanager-fork</b>, which just forks a new process
+on the remote machine. For most parallel clusters , you will probably want to submit
+your job to the queuing system on the machine (e.g. LSF, Loadleveller, Sun
+GridEngine, etc). In these cases you should selected
+<b>jobmanger-sge</b> (for GridEngine) or <b>jobmanager-lsf</b> (for
+LSF), etc.
+</td>
+</tr>
+<tr><!-- spacer row --!></tr>
+</table>
+
+
+<a name="rslparam"></a><h3>Setting additional job parameters with RSL</h3>
+
+<p>In addition to the tools described above, it is possible to further
+fine-tune the job on the remote machine by setting various <b>RSL
+Parameters</b>. RSL is the Globus Resource Specification Languge,
+which specifies how the job should be executed on the remote
+resource. You can read all about it <a
+href="http://www.globus.org/toolkit/docs/2.4/gram/rsl_spec1.html">here</a>.</p>
+
+<p>The tools here allow a user to add supported RSL parameters to the job
+description. This can be used to set environment variables on the
+remote machine, specify the maximum runtime etc. To add a new RSL
+parameter, click the <b>Add</b> button to bring up a list of supported
+RSL parameters. To delete an RSL parameter, select the one in question
+from the menu on the far left and then click the <b>Del</b> button on
+the far right.</p>
+
+</body>
+</html>
