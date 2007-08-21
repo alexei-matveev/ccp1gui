@@ -14,12 +14,12 @@ various computational chemistry codes developed by the worldwide
 academic community, with an emphasis on ab initio Quantum Chemistry
 codes. The CCP1GUI is still at the prototype stage, but is certainly
 usable for running and visualising simple calculations with GAMESS-UK,
-ChemShell and Dalton.
+ChemShell, Molpro and Dalton.
 
 For more information on the CCP1GUI, please visit the GUI's homepage
 at:
 
-	http://www.cse.clrc.ac.uk/qcg/ccp1gui/index.shtml
+	http://www.cse.clrc.ac.uk/ccg/software/ccp1gui
 
 The CCP1GUI is hosted on Sourceforge, and you can access the project's
 homepage on Sourceforge at:
@@ -59,8 +59,7 @@ These are all freely available, and often available as RPM packages
 for Linux machines. There are detailed instructions on how to install
 these packages on the CCP1GUI website at:
 
-      http://www.cse.clrc.ac.uk/qcg/ccp1gui/install.shtml
-
+       http://www.cse.scitech.ac.uk/ccg/software/ccp1gui/install.shtml
 
 Once you have these packages installed, you should be able to run the
 CCP1GUI on Unix/Linux/MacOSX machines, by executing the ccp1gui.sh
