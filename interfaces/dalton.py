@@ -407,7 +407,7 @@ class DALTONCalc(QMCalc):
             outputfile.close()
             self.set_output( "dalton_output", readout )
         except Exception,e:
-            raise Exception,"Error getting Dalton output in endjob: %e" % e
+            raise Exception,"Error getting Dalton output in endjob: %s" % e
 
 
         # Merge the stdout and output to give a full output
