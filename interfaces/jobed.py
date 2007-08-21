@@ -140,6 +140,10 @@ class JobEditor(Pmw.MegaToplevel):
             self.balloon = kw['balloon']
         else:
             self.balloon = Pmw.Balloon(self.interior())
+            
+        # Associate helpfile with widget (geneeral - overidden for specific ones)
+        viewer.help.sethelp(self,'Job Editor')
+            
 
         self.getValue = {} # maps the name of the variable to the function to call to query
                            # the widget and return its value
@@ -310,7 +314,9 @@ class JobEditor(Pmw.MegaToplevel):
         # Now add any that may have been passed in when the job editor was created
         # (from the calculation editor - this for remembering individual jobs in a session
         if len(self.hostlist):
-            hostlist = hostlist + self.hostlist
+            for host in self.hostlist:
+                if host not in hostlist:
+                    hostlist.append( host )
         self.hostlist = hostlist
 
     def UpdateHostlistWidget(self):
@@ -446,12 +452,12 @@ class JobEditor(Pmw.MegaToplevel):
             if self.job:
                 print self.job.get_parameters()
             
-    def __str__(self):
-       """The string to return when we are asked what we are"""
-       if self.title:
-           return self.title
-       else:
-           return 'JobEditor'
+#     def __str__(self):
+#        """The string to return when we are asked what we are"""
+#        if self.title:
+#            return str(self.title)
+#        else:
+#            return 'JobEditor'
 
     # Messages - display a dialog with an information or error message
 
@@ -684,11 +690,14 @@ class LocalJobEditor(JobEditor):
     def __init__(self, root,job,**kw):
 
         # Set up the defaults
-        self.jobtype = 'LocalJobEditor'
+        self.jobtype = 'LocalJob'
         
         # Initialse everything in the base class
         JobEditor.__init__(self,root,job,**kw)
 
+        # Associate helpfile with widget
+        viewer.help.sethelp(self,'Job Editor Local')
+        
         self.LayoutWidgets()
         self.GetInitialValues()
         self.UpdateWidgets()
@@ -707,7 +716,7 @@ class RSLEditor(JobEditor):
     
     def __init__(self, root,job,**kw):
 
-        self.jobtype = 'RSLEditor'
+        #self.jobtype = 'RSL'
 
         # Initialse everything in the base class
         JobEditor.__init__(self,root,job,**kw)
@@ -1128,12 +1137,16 @@ class GlobusEditor(RSLEditor):
     def __init__(self, root,job,**kw):
 
 
+        self.jobtype = 'Globus'
+        
         # Initialse everything in the base class
         RSLEditor.__init__(self,root,job,**kw)
 
         # Set up the defaults
-        self.jobtype = 'Globus'
         self.debug=None
+        
+        # Associate helpfile with widget
+        viewer.help.sethelp(self,'Job Editor Globus')
         
         self.LayoutWidgets()
         self.GetInitialValues()
@@ -1176,13 +1189,17 @@ class NordugridEditor(RSLEditor):
 
     def __init__(self, root,job,**kw):
 
-        # Set up the defaults
         self.jobtype = 'Nordugrid'
-        if not kw.has_key('title'):
-            kw['title'] = self.jobtype+ ' JobEditor'
-
         # Initialse everything in the base class
         RSLEditor.__init__(self,root,job,**kw)
+
+        # Set up the defaults
+        self.debug=None
+        
+        self.LayoutWidgets()
+        self.GetInitialValues()
+        self.UpdateWidgets()
+
 
     def LayoutWidgets(self):
         """ Create and lay out all of the widgets"""
@@ -1203,8 +1220,6 @@ class RMCSEditor(JobEditor):
 
         # Set up the defaults
         self.jobtype = 'RMCS'
-        title = self.jobtype+ ' JobEditor'
-        
         # Initialse everything in the base class
         JobEditor.__init__(self,root,job,**kw)
 
