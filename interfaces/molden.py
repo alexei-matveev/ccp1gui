@@ -66,7 +66,7 @@ class MoldenDriver:
         # execute MOLDEN
         molden_exe = self.get_executable()
         if not molden_exe:
-            raise CalcError,"Cannot find a molden_executable to run!"
+            raise AttributeError,"Cannot find a molden_executable to run!"
 
         if sys.platform[:3] == 'win':
             # Windows/Cygwin
