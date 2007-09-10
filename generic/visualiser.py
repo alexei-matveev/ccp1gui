@@ -1574,15 +1574,28 @@ class VectorVisualiser(Visualiser):
 
         self.hedgehog_scale=1.0
         self.orientedglyph_scale=1.0
+        
         self.streamline_propagation_time=5.0
         self.streamline_integration_step_length=0.2
         self.streamline_step_length=0.05
         self.streamline_display = STREAM_LINES
         self.streamline_integration_direction = STREAM_FORWARD
+        self.streamline_thin_points=1
 
-        self.show_hedgehog = 1
+        self.streamarrow_propagation_time=5.0
+        self.streamarrow_integration_step_length=0.2
+        self.streamarrow_time_increment=10
+        self.streamarrow_integration_direction = STREAM_FORWARD
+        self.streamarrow_size=0.3
+        self.streamarrow_thin_points=1
+        self.streamarrow_scale=0
+        self.streamarrow_colourmap=0
+
+
+        self.show_hedgehog = 0
         self.show_orientedglyphs = 0
         self.show_streamlines = 0
+        self.show_streamarrows = 0
 
         if self.regular3:
             self.sample_grid = self.cut_plane
@@ -1613,7 +1626,6 @@ class VectorVisualiser(Visualiser):
             self.w_hedgehog.config(variable=self.hedgehog_var)
             self.w_hedgehog.config(command=lambda s=self: s.__read_buttons() )
             self.w_hedgehog.pack(side='top')
-
             self.w_hedgehog_lab.pack(side='left')
 
             self.w_hedgehog_scale = Pmw.Counter(
@@ -1664,26 +1676,34 @@ class VectorVisualiser(Visualiser):
 
         self.streamlines_var = Tkinter.BooleanVar()
         self.streamlines_var.set(self.show_streamlines)
+        self.streamarrows_var = Tkinter.BooleanVar()
+        self.streamarrows_var.set(self.show_streamarrows)
 
-        if self.regular3:
+#jmht        if self.regular3:
+        if 1:
 
             if self.graph.check_capability('streamlines'):
 
                 self.streamlines_group = Pmw.Group(
                     self.dialog.topframe ,tag_text='Streamlines')
-                f = self.streamlines_group.interior()
-                f1 = Tkinter.Frame(f)
-                f2 = Tkinter.Frame(f)
-                f3 = Tkinter.Frame(f)
 
-                self.w_streamlines_lab = Pmw.LabeledWidget(
-                    f1,labelpos='w',label_text='Display')
-                self.w_streamlines = Tkinter.Checkbutton(self.w_streamlines_lab.interior())
+                # Create a widget to show/hide the rest of the tools in this group
+                # The rest of the tools are all packed in self.streamlines_frame
+                # so that we can just show or hide that one frame
+                self.w_streamlines_show = Pmw.LabeledWidget(
+                    self.streamlines_group.interior(),labelpos='w',label_text='Display')
+                self.w_streamlines = Tkinter.Checkbutton(self.w_streamlines_show.interior())
                 self.w_streamlines.config(variable=self.streamlines_var)
-                self.w_streamlines.config(command=lambda s=self: s.__read_buttons() )
+                self.w_streamlines.config(command=lambda s=self: s.show_streamline_widgets() )
                 self.w_streamlines.pack(side='top')
+                self.w_streamlines_show.pack(side='top')
 
-                self.w_streamlines_lab.pack(side='left')
+                
+                self.streamlines_frame = Tkinter.Frame( self.streamlines_group.interior() )
+                f1 = Tkinter.Frame(self.streamlines_frame)
+                f2 = Tkinter.Frame(self.streamlines_frame)
+                f3 = Tkinter.Frame(self.streamlines_frame)
+                f4 = Tkinter.Frame(self.streamlines_frame)
 
                 self.w_streamline_propagation_time = Pmw.Counter(
                     f1,
@@ -1747,11 +1767,154 @@ class VectorVisualiser(Visualiser):
                 self.w_streamline_integration_direction.pack(side='left')
     #           labels.append(self.w_streamline_integration_direction)
 
+                self.w_streamline_thin_points = Pmw.Counter(
+                    f4,
+                    labelpos = 'w', label_text = 'Thin Points',
+                    entryfield_value = self.streamline_thin_points,
+                    entryfield_entry_width = 2,
+                    increment=1,
+                    datatype = {'counter' : 'integer' },
+                    entryfield_validate = { 'validator' : 'integer',
+                                            'min' : '1',
+                                            })
+
+                self.w_streamline_thin_points.pack(side='left')
+                labels.append(self.w_streamline_thin_points)
+
                 f1.pack(side='top')
                 f2.pack(side='top')
                 f3.pack(side='top')
+                f4.pack(side='top')
                 self.streamlines_group.pack(side='top',fill='x')
-            
+
+                # Decide whether we need to be packed or not
+                self.show_streamline_widgets()
+
+                
+            if self.graph.check_capability('streamarrows'):
+
+                self.streamarrows_group = Pmw.Group(
+                    self.dialog.topframe ,tag_text='StreamArrows')
+
+                self.w_streamarrows_lab = Pmw.LabeledWidget(
+                    self.streamarrows_group.interior(),labelpos='w',label_text='Display')
+                self.w_streamarrows = Tkinter.Checkbutton(self.w_streamarrows_lab.interior())
+                self.w_streamarrows.config(variable=self.streamarrows_var)
+                self.w_streamarrows.config(command=lambda s=self: s.show_streamarrow_widgets() )
+                self.w_streamarrows.pack(side='top')
+                self.w_streamarrows_lab.pack(side='top')
+
+                self.streamarrows_frame = Tkinter.Frame( self.streamarrows_group.interior() )
+                f1 = Tkinter.Frame(self.streamarrows_frame)
+                f2 = Tkinter.Frame(self.streamarrows_frame)
+                f3 = Tkinter.Frame(self.streamarrows_frame)
+                f4 = Tkinter.Frame(self.streamarrows_frame)
+
+                self.w_streamarrow_propagation_time = Pmw.Counter(
+                    f1,
+                    labelpos = 'w', label_text = 'Propagation Time',
+                    entryfield_value = self.streamarrow_propagation_time,
+                    entryfield_entry_width = 5,
+                    increment=0.1,
+                    datatype = {'counter' : 'real' },
+                    entryfield_validate = { 'validator' : 'real' })
+                self.w_streamarrow_propagation_time.pack(side='left')
+                labels.append(self.w_streamarrow_propagation_time)
+
+                self.w_streamarrow_integration_step_length = Pmw.Counter(
+                    f2,
+                    labelpos = 'w', label_text = 'Integ Step Length',
+                    entryfield_value = self.streamarrow_integration_step_length,
+                    entryfield_entry_width = 5,
+                    increment=0.1,
+                    datatype = {'counter' : 'real' },
+                    entryfield_validate = { 'validator' : 'real' })
+                self.w_streamarrow_integration_step_length.pack(side='left')
+                labels.append(self.w_streamarrow_integration_step_length)
+
+                self.w_streamarrow_time_increment = Pmw.Counter(
+                    f2,
+                    labelpos = 'w', label_text = 'Time Increment',
+                    entryfield_value = self.streamarrow_time_increment,
+                    entryfield_entry_width = 5,
+                    increment=0.1,
+                    datatype = {'counter' : 'real' },
+                    entryfield_validate = { 'validator' : 'real' })
+                self.w_streamarrow_time_increment.pack(side='left')
+                labels.append(self.w_streamarrow_time_increment)
+
+                self.streamarrow_integration_direction_var = Tkinter.StringVar()
+                self.w_streamarrow_integration_direction = Pmw.OptionMenu(
+                    f3,
+                    labelpos = 'w',
+                    label_text = 'Integrate ',
+                    menubutton_textvariable = self.streamarrow_integration_direction_var,
+                    items = ['forward','backward','both directions'],
+                    initialitem='both directions',
+                    menubutton_width = 10)
+                self.w_streamarrow_integration_direction.pack(side='left')
+    #           labels.append(self.w_streamarrow_integration_direction)
+
+                # Widget for selecting whether to reduce the number of points
+                # that the streamarrow integration starts from
+                self.w_streamarrow_thin_points = Pmw.Counter(
+                    f3,
+                    labelpos = 'w', label_text = 'Thin Points',
+                    entryfield_value = self.streamarrow_thin_points,
+                    entryfield_entry_width = 2,
+                    increment=1,
+                    datatype = {'counter' : 'integer' },
+                    entryfield_validate = { 'validator' : 'integer',
+                                            'min' : '1',
+                                            })
+
+                self.w_streamarrow_thin_points.pack(side='left')
+                labels.append(self.w_streamarrow_thin_points)
+
+                # Size of the arrows
+                self.w_streamarrow_size = Pmw.Counter(
+                    f4,
+                    labelpos = 'w', label_text = 'Size',
+                    entryfield_value = self.streamarrow_size,
+                    entryfield_entry_width = 5,
+                    increment=0.1,
+                    datatype = {'counter' : 'real' },
+                    entryfield_validate = { 'validator' : 'real',
+                                            'min' : '0.0',
+                                            })
+
+                self.w_streamarrow_size.pack(side='left')
+                labels.append(self.w_streamarrow_size)
+
+
+                # Select whether to colour the arrows
+                self.streamarrows_cmap_var = Tkinter.BooleanVar()
+                self.w_streamarrows_cmapl = Pmw.LabeledWidget(
+                    f4,labelpos='w',label_text='Use Colourmap')
+                self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
+                self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
+                self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
+                self.w_streamarrows_cmap.pack(side='top')
+                self.w_streamarrows_cmapl.pack(side='left')
+
+                # Select whether to scale the arrows by the vector
+                self.streamarrows_scale_var = Tkinter.BooleanVar()
+                self.w_streamarrows_scalel = Pmw.LabeledWidget(
+                    f4,labelpos='w',label_text='Scale')
+                self.w_streamarrows_scale = Tkinter.Checkbutton(self.w_streamarrows_scalel.interior())
+                self.w_streamarrows_scale.config(variable=self.streamarrows_scale_var)
+                self.w_streamarrows_scale.config(command=lambda s=self: s.__read_buttons() )
+                self.w_streamarrows_scale.pack(side='top')
+                self.w_streamarrows_scalel.pack(side='left')
+
+
+                f1.pack(side='top')
+                f2.pack(side='top')
+                f3.pack(side='top')
+                f4.pack(side='top')
+                self.streamarrows_group.pack(side='top',fill='x')
+                #Decide whether to pack the frame or no
+                self.show_streamarrow_widgets()            
 ##            Pmw.alignlabels(labels)
 
         # Colourmaps
@@ -1770,8 +1933,22 @@ class VectorVisualiser(Visualiser):
 
             self.sample_group = Pmw.Group(self.dialog.topframe ,tag_text='Sampling Grid')
 
+            # Checkbox to decide whether we display the grid editor
+            self.grideditor_show_var = Tkinter.BooleanVar()
+            self.grideditor_show_var.set(1) # Show by default - only hide if requested
+            self.w_grid_lab = Pmw.LabeledWidget(self.sample_group.interior(),labelpos='w',label_text='Display')
+            self.w_grid = Tkinter.Checkbutton(self.w_grid_lab.interior())
+            self.w_grid.config(variable=self.grideditor_show_var)
+            self.w_grid.config(command=lambda s=self: s.grideditor_show() )
+            self.w_grid.pack(side='top')
+            self.w_grid_lab.pack(side='top')
+
+            # The Frame that hold the grid editor widgets
+            self.grideditor_frame = Tkinter.Frame( self.sample_group.interior() )
+            
             self.sample_var = Tkinter.StringVar()
-            self.sample_grid_menu = Pmw.OptionMenu(self.sample_group.interior(),
+            #self.sample_grid_menu = Pmw.OptionMenu(self.sample_group.interior(),
+            self.sample_grid_menu = Pmw.OptionMenu(self.grideditor_frame,
                                                    labelpos = 'w',
                                                    label_text = 'Sample at:',
                                                    menubutton_textvariable = self.sample_var,
@@ -1782,13 +1959,38 @@ class VectorVisualiser(Visualiser):
             self.update_sample_grid_choice()
 
             print ' creating grid editor'
-            self.grid_editor = GridEditorWidget(self.sample_group.interior(), self.cut_plane, command = self.__reslice,close_ok=0)
+            #self.grid_editor = GridEditorWidget(self.sample_group.interior(), self.cut_plane, command = self.__reslice,close_ok=0)
+            self.grid_editor = GridEditorWidget(self.grideditor_frame, self.cut_plane, command = self.__reslice,close_ok=0)
             print ' packing grid editor'
             self.grid_editor.pack(side='top')
-            self.sample_group.pack(side='top')
+            self.sample_group.pack(side='top',fill='x')
             print ' grid editor make_dialog done'
+            self.grideditor_show()
         else:
             self.sample_var.set('All Field Points')
+
+    def show_streamline_widgets(self):
+        s = self.streamlines_var.get()
+        if s:
+            self.streamlines_frame.pack(side='top') 
+        else:
+            self.streamlines_frame.forget()
+
+    def show_streamarrow_widgets(self):
+        s = self.streamarrows_var.get()
+        if s:
+            self.streamarrows_frame.pack(side='top') 
+        else:
+            self.streamarrows_frame.forget()
+
+    def grideditor_show(self):
+        print "show_grideditor"
+        s = self.grideditor_show_var.get()
+        if s:
+            self.grideditor_frame.pack()
+        else:
+            self.grideditor_frame.forget()
+
 
     def enable_dialog(self):
         if self.regular3:
@@ -1833,24 +2035,62 @@ class VectorVisualiser(Visualiser):
         # free up old objects?
         self.Build()
 
+#     def __read_buttons(self):
+#         if self.graph.check_capability('hedgehog'):
+#             self.show_hedgehog = self.hedgehog_var.get()
+#         if self.graph.check_capability('orientedglyphs'):
+#             self.show_orientedglyphs = self.orientedglyphs_var.get()
+#         self.show_streamlines = self.streamlines_var.get()
+#         self.show_streamarrows = self.streamarrows_var.get()
+#         self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
+#         self.streamarrow_scale = self.streamarrows_scale_var.get()
+#         print "set scale to ",self.streamarrow_scale
+#         if self.is_showing:
+#             print "self._show from __read_buttons"
+#             self._show()
+
     def __read_buttons(self):
-        self.show_hedgehog = self.hedgehog_var.get()
-        self.show_orientedglyphs = self.orientedglyphs_var.get()
-        self.show_streamlines = self.streamlines_var.get()
-        if self.is_showing:
-            self._show()
+        print "__read_buttons"
 
     def read_widgets(self):
 
+        # Below was previously in __read_buttons
+        if self.graph.check_capability('hedgehog'):
+            self.show_hedgehog = self.hedgehog_var.get()
+        if self.graph.check_capability('orientedglyphs'):
+            self.show_orientedglyphs = self.orientedglyphs_var.get()
+        if self.graph.check_capability('streamlines'):
+            self.show_streamlines = self.streamlines_var.get()
+            self.show_streamarrows = self.streamarrows_var.get()
+        if self.graph.check_capability('streamarrows'):
+            self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
+            self.streamarrow_scale = self.streamarrows_scale_var.get()
+        #if self.is_showing:
+        #    print "self._show from __read_buttons"
+        #    self._show()
+
+
         ####apply(SliceVisualiser.read_widgets, (self,))
+        if self.graph.check_capability('hedgehog'):
+            self.hedgehog_scale = float(self.w_hedgehog_scale.get())
+        if self.graph.check_capability('orientedglyphs'):
+            self.orientedglyph_scale = float(self.w_orientedglyph_scale.get())
 
-        self.hedgehog_scale = float(self.w_hedgehog_scale.get())
-        self.orientedglyph_scale = float(self.w_orientedglyph_scale.get())
-
-        if self.regular3:
+        #jmht if self.regular3:
+        #if 1:
+        if self.graph.check_capability('streamlines'):
             self.streamline_propagation_time=float(self.w_streamline_propagation_time.get())
             self.streamline_integration_step_length=float(self.w_streamline_integration_step_length.get())
             self.streamline_step_length=float(self.w_streamline_step_length.get())
+            self.streamline_thin_points=int(self.w_streamline_thin_points.get())
+            
+        if self.graph.check_capability('streamarrows'):
+            self.streamarrow_propagation_time=float(self.w_streamarrow_propagation_time.get())
+            self.streamarrow_time_increment=float(self.w_streamarrow_time_increment.get())
+            self.streamarrow_integration_step_length=float(self.w_streamarrow_integration_step_length.get())
+            self.streamarrow_size=float(self.w_streamarrow_size.get())
+            self.streamarrow_thin_points=int(self.w_streamarrow_thin_points.get())
+
 
         #print 'READW'
         self.cmap_obj, self.cmap_name, self.cmap_low, self.cmap_high = \
@@ -1874,7 +2114,8 @@ class VectorVisualiser(Visualiser):
             if self.sample_grid is None:
                 print 'Problem locating sampling grid'
 
-        if self.regular3:
+        #jmht if self.regular3:
+        if self.graph.check_capability('streamlines'):
             v = self.streamline_integration_direction_var.get()
             if v == 'forward':
                 self.streamline_integration_direction = STREAM_FORWARD
@@ -1890,6 +2131,15 @@ class VectorVisualiser(Visualiser):
                 self.streamline_display = STREAM_TUBES
             if v == 'surfaces':
                 self.streamline_display = STREAM_SURFACE
+
+        if self.graph.check_capability('streamarrows'):
+            v = self.streamarrow_integration_direction_var.get()
+            if v == 'forward':
+                self.streamarrow_integration_direction = STREAM_FORWARD
+            elif v == 'backward':
+                self.streamarrow_integration_direction = STREAM_BACKWARD
+            elif v == 'both directions':
+                self.streamlarrow_integration_direction = STREAM_BOTH
 
         if self.grid_editor is not None:
             # transform the grid, but do not trigger the the build that

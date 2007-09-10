@@ -107,6 +107,7 @@ class VtkGraph(TkMolView,Graph):
         self.capabilities['hedgehog']=1
         self.capabilities['orientedglyphs']=1
         self.capabilities['streamlines']=1
+        self.capabilities['streamarrows']=1
 
         # Initialise Tk viewer window and menus etc
         # This will source the users ccp1guirc, maybe overwriting
@@ -1826,7 +1827,6 @@ class VtkIsoSurf:
             # use the Field get_grid method to generate an explicit
             # representation of the point array, render as vtkStructuredGrid
             #
-            print 'isov vis init'
             nx = self.field.dim[0]
             if len(self.field.dim) > 1:
                 ny = self.field.dim[1]
@@ -2811,10 +2811,12 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         self.hedgehog_visible = 0
         self.orientedglyphs_visible = 0
         self.streamlines_visible = 0
+        self.streamarrows_visible = 0
 
         self.hedgehog_actors = []
         self.orientedglyphs_actors = []
         self.streamlines_actors = []
+        self.streamarrow_actors = []
 
         self.debug = 0
 
@@ -2969,12 +2971,84 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
             self.vtkgrid3d = data
 
+
+    def thin_grid(self,refGrid,factor=2):
+        """Thin a vtkgrid by sampling a subset of it's points
+        return a new vtkgrid
+        Currently rather crude
+        """
+
+        gridType = refGrid.GetClassName()
+        if gridType == 'vtkStructuredGrid':
+            print "reducing resolution for vtkStructuredGrid by %d" % factor
+            dim = refGrid.GetDimensions()
+            eg = vtkExtractGrid()
+            eg.SetSampleRate(factor,factor,factor)
+            eg.SetInput(refGrid)
+            newGrid = eg.GetOutput()
+        elif gridType == 'vtkUnstructuredGrid':
+            print "reducing resolution for vtkUnstructuredGrid by %d" % factor
+
+            # This feels like taking a sledgehammer to a nut, but while I don't know
+            # any better, for unstructured grids, we manually go through the points and
+            # data and pull out every 'factor' value
+
+            # Is also a bit cludgy as we use the InsertNext method to add data/points
+            # instead of working out the size and them setting the values
+            # no idea if this has much of an impact on performance
+            newGrid = vtkUnstructuredGrid()
+
+            # Thin the points
+            newpoints = vtkPoints()
+            oldpoints = refGrid.GetPoints()
+            npoints = oldpoints.GetNumberOfPoints()
+            for i in range( 0, npoints, factor ):
+                point = oldpoints.GetPoint( i )
+                newpoints.InsertNextPoint( point )
+            newGrid.SetPoints( newpoints )
+
+            # Thin the Data
+            pointData = refGrid.GetPointData()
+            #Scalar data
+            oldScalars = pointData.GetScalars()
+            if oldScalars:
+                print "copying scalars"
+                dtype =  oldScalars.GetDataType()
+                if dtype == VTK_FLOAT:
+                    newScalars = vtkFloatArray()
+                else:
+                    raise Exception,"NEED TO ADD MORE DATA TYPES"
+                newScalars.SetNumberOfComponents(1)
+                for i in range(0,npoints,factor):
+                    newScalars.InsertNextValue(oldScalars.GetValue(i))
+                newGrid.GetPointData().SetScalars( newScalars )
+
+            # Vector data
+            oldVectors = pointData.GetVectors()
+            if oldVectors:
+                print "copying vectors"
+                dtype =  oldVectors.GetDataType()
+                if dtype == VTK_FLOAT:
+                    newVectors = vtkFloatArray()
+                else:
+                    raise Exception,"NEED TO ADD MORE DATA TYPES"
+                newVectors.SetNumberOfComponents(3)
+                for i in range(0,npoints,factor):
+                    v =  oldVectors.GetTuple3(i)
+                    newVectors.InsertNextTuple3( v[0],v[1],v[2] )
+                newGrid.GetPointData().SetVectors( newVectors )
+        else:
+            raise Exception,"thin_grid unknown gridType: %s" % gridType
+
+        return newGrid
+            
     def _build(self,object=None):
 
         if self.debug:
             print 'show_hedgehog',self.show_hedgehog
             print 'show_orientedglyphs',self.show_orientedglyphs
             print 'show_streamlines',self.show_streamlines
+            print 'show_streamarrows',self.show_streamarrows
             print 'sample_grid',self.sample_grid
             print 'hedgehog_scale',self.hedgehog_scale
             print 'orientedglyph_scale',self.orientedglyph_scale
@@ -2990,7 +3064,6 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             data_array.SetNumberOfValues(bigsize)
             for offset in range(bigsize):
                 data_array.SetValue(offset,self.cmap_obj.data[offset])
-            #print 'set colour scalars'
             self.vtkgrid3d.GetPointData().SetScalars(data_array)
         else:
             self.vtkgrid3d.GetPointData().SetScalars(None)
@@ -3057,7 +3130,6 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             source = self.vtkgrid3d
 
         # Now display the vector fields using a variety of methods
-
         if self.show_hedgehog:
             # We create a simple pipeline to display the data.
             # we could do with applying the truncation at some stage
@@ -3089,15 +3161,15 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
             cone = vtkConeSource()
             cone.SetResolution(10)
+
             arrow = vtkGlyph3D()
             arrow.SetInput(source)
             arrow.SetSource(cone.GetOutput())
             arrow.SetScaleFactor(self.orientedglyph_scale)
-            ##arrow.ScalingOff()
+            ###arrow.ScalingOff()
             arrow.SetScaleModeToScaleByVector()
             #make range current 
             arrow.Update() 
-            #print arrow
 
             m=vtkPolyDataMapper()
             m.SetInput(arrow.GetOutput())
@@ -3111,6 +3183,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             vectorActor.SetMapper(m)
             self.orientedglyphs_actors.append(vectorActor)
 
+            
         if self.show_streamlines:
 
             # We use a rake to generate a series of streamline starting points
@@ -3126,13 +3199,22 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 rakeActor.SetMapper(rakeMapper)
 
             integ=vtkRungeKutta4()
+            #integ=vtkRungeKutta2()
             sl=vtkStreamLine()
             sl.SetInput(self.vtkgrid3d)
-            sl.SetSource(source)
+            
+            # Thin the grid
+            if self.streamline_thin_points > 1:
+                grid = self.thin_grid(source,factor=self.streamline_thin_points)
+            else:
+                grid=source
+            sl.SetSource(grid)
+
             #sl.SetSource(rake.GetOutput())
             sl.SetIntegrator(integ)
             sl.SetMaximumPropagationTime(self.streamline_propagation_time)
             sl.SetIntegrationStepLength(self.streamline_integration_step_length)
+            sl.SetStepLength(self.streamline_step_length)
 
             if self.streamline_integration_direction == STREAM_BOTH:
                 sl.SetIntegrationDirectionToIntegrateBothDirections()
@@ -3140,7 +3222,6 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 sl.SetIntegrationDirectionToForward()
             elif self.streamline_integration_direction == STREAM_BACKWARD:
                 sl.SetIntegrationDirectionToBackward()
-            sl.SetStepLength(self.streamline_step_length)
 
             if self.streamline_display == STREAM_LINES:
                 m=vtkPolyDataMapper()
@@ -3207,6 +3288,88 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             self.streamlines_actors.append(streamlineActor)
             ##  eval mapper SetScalarRange [[pl3d GetOutput] GetScalarRange]
 
+        if self.show_streamarrows:
+            # Place glyphs on the points calculated by the streamer
+
+            if not self.streamarrow_colourmap:
+                print "copying grid"
+                # Need to copy the grid as the colour-mapping for the other vis
+                # work by changing the scalar values of point data and it seems
+                # that this automatically set the colour of the arrows. As I can't
+                # work out how to turn this off we need to copy the original grid but
+                # set the scalar data to Null
+                inputGrid = vtkStructuredGrid()
+                #gridCopy.DeepCopy( self.vtkgrid3d ) # DeepCopy segfaults?!?
+                inputGrid.ShallowCopy( self.vtkgrid3d )
+                inputGrid.GetPointData().SetScalars(None)
+            else:
+                inputGrid = self.vtkgrid3d
+
+            #write = vtkStructuredGridWriter()
+            #write.SetFileName('jens.vtk')
+            #write.SetInput( self.vtkgrid3d )
+            #write.Write()
+
+            integ=vtkRungeKutta4()
+            sa=vtkStreamPoints()
+
+            # Thin the grid
+            if self.streamarrow_thin_points > 1:
+                print "thining streamarrows grid by ",self.streamarrow_thin_points
+                grid = self.thin_grid(source,factor=self.streamarrow_thin_points)
+            else:
+                grid = source
+            #sa.SetInput(self.vtkgrid3d) #- cant use this else colours change
+            #sa.SetSource(source)
+            sa.SetInput(inputGrid)
+            sa.SetSource(grid)
+
+            sa.SetIntegrator(integ)
+            sa.SetMaximumPropagationTime(self.streamarrow_propagation_time)
+            sa.SetIntegrationStepLength(self.streamarrow_integration_step_length)
+            sa.SetTimeIncrement(self.streamarrow_time_increment)
+            if self.streamarrow_integration_direction == STREAM_BOTH:
+                sa.SetIntegrationDirectionToIntegrateBothDirections()
+            elif self.streamarrow_integration_direction == STREAM_FORWARD:
+                sa.SetIntegrationDirectionToForward()
+            elif self.streamarrow_integration_direction == STREAM_BACKWARD:
+                sa.SetIntegrationDirectionToBackward()
+            
+            #arrow = vtkConeSource()
+            #arrow.SetResolution(20)
+            arrow = vtkArrowSource()
+            arrow.SetTipResolution(20)
+            arrow.SetShaftResolution(20)
+            #arrow.SetTipRadius(0.2) #0.1
+            #arrow.SetTipLength(0.7) #0.35
+            #arrow.SetShaftRadius(0.06) #0.03
+            
+            glyph = vtkGlyph3D()
+            glyph.SetInput(sa.GetOutput())
+            glyph.SetSource(arrow.GetOutput())
+            
+            #glyph.SetVectorModeToUseNormal()
+            glyph.SetVectorModeToUseVector()
+            if self.streamarrow_scale:
+                glyph.SetScaleModeToScaleByVector()
+            else:
+                glyph.SetScaleModeToDataScalingOff()
+                
+            glyph.SetScaleFactor(self.streamarrow_size)
+            #glyph.SetColorModeToColorByVector()
+            #glyph.SetColorModeToColorByScale()
+
+            m=vtkPolyDataMapper()
+            m.SetInput(glyph.GetOutput())
+            lut = self.graph.get_cmap_lut(self.cmap_name)
+            if lut:
+                m.SetLookupTable(lut)
+                m.SetScalarRange(self.cmap_low,self.cmap_high)
+
+            streamArrowActor=vtkActor()
+            streamArrowActor.SetMapper(m) 
+            self.streamarrow_actors.append(streamArrowActor)
+            
         self.status = BUILT
 
     def _delete(self):
@@ -3221,6 +3384,8 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             self.graph.ren.RemoveActor(a)
         for a in self.streamlines_actors:
             self.graph.ren.RemoveActor(a)
+        for a in self.streamarrow_actors:
+            self.graph.ren.RemoveActor(a)
 
         # Reset dictionary for selection actors
         self.atom_to_selection_actors = {}
@@ -3228,10 +3393,12 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         self.hedgehog_actors = []
         self.orientedglyphs_actors = []
         self.streamlines_actors = []
+        self.streamarrow_actors = []
 
         self.hedgehog_visible = 0
         self.orientedglyphs_visible = 0
         self.streamlines_visible = 0
+        self.streamarrows_visible = 0
     
     def _hide(self):
         """remove all actors from the renderer"""
@@ -3242,20 +3409,23 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         if self.show_hedgehog and self.hedgehog_visible:
             for a in self.hedgehog_actors:
                 self.graph.ren.RemoveActor(a)
-                print 'rem hedgehog'
             self.hedgehog_visible = 0
 
         if self.show_orientedglyphs and self.orientedglyphs_visible:
             for a in self.orientedglyphs_actors:
                 self.graph.ren.RemoveActor(a)
-                print 'rem glyphs'
             self.orientedglyphs_visible = 0
 
         if self.show_streamlines and self.streamlines_visible:
             for a in self.streamlines_actors:
                 self.graph.ren.RemoveActor(a)
-                print 'rem streamline'
             self.streamlines_visible = 0
+
+
+        if self.show_streamarrows and self.streamarrows_visible:
+            for a in self.streamarrow_actors:
+                self.graph.ren.RemoveActor(a)
+            self.streamarrows_visible = 0
 
 
     def _show(self):
@@ -3302,6 +3472,20 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                     self.graph.ren.RemoveActor(a)
                     #print 'rem stream'
                 self.streamlines_visible = 0
+
+        if self.show_streamarrows:
+            if not self.streamarrows_visible:
+                for a in self.streamarrow_actors:
+                    #print 'add stream'
+                    self.graph.ren.AddActor(a)
+                self.streamarrows_visible = 1
+        else:
+            if self.streamarrows_visible:
+                for a in self.streamarrow_actors:
+                    self.graph.ren.RemoveActor(a)
+                    #print 'rem stream'
+                self.streamarrows_visible = 0
+
 
 class VtkVibrationVisualiser(VibrationVisualiser,VtkMoleculeVisualiser):
 
