@@ -3290,8 +3290,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
         if self.show_streamarrows:
             # Place glyphs on the points calculated by the streamer
-
-            if not self.streamarrow_colourmap:
+            if self.streamarrow_colourmap == STREAMARROW_CMAP_NONE or self.streamarrow_colourmap == STREAMARROW_CMAP_VECTOR:
                 print "copying grid"
                 # Need to copy the grid as the colour-mapping for the other vis
                 # work by changing the scalar values of point data and it seems
@@ -3302,8 +3301,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 #gridCopy.DeepCopy( self.vtkgrid3d ) # DeepCopy segfaults?!?
                 inputGrid.ShallowCopy( self.vtkgrid3d )
                 inputGrid.GetPointData().SetScalars(None)
-            else:
+            elif self.streamarrow_colourmap == STREAMARROW_CMAP_SCALAR:
                 inputGrid = self.vtkgrid3d
+            else:
+                raise Exception,"streamarrow bad cmap"
 
             #write = vtkStructuredGridWriter()
             #write.SetFileName('jens.vtk')
@@ -3356,7 +3357,9 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 glyph.SetScaleModeToDataScalingOff()
                 
             glyph.SetScaleFactor(self.streamarrow_size)
-            #glyph.SetColorModeToColorByVector()
+            # If we are colouring by the vector values alone
+            if self.streamarrow_colourmap == STREAMARROW_CMAP_VECTOR:
+                glyph.SetColorModeToColorByVector()
             #glyph.SetColorModeToColorByScale()
 
             m=vtkPolyDataMapper()

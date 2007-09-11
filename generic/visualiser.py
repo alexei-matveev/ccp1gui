@@ -1531,6 +1531,9 @@ STREAM_FORWARD=11
 STREAM_BACKWARD=12
 STREAM_BOTH=13
 VECTOR_SAMPLE_ALL = 10
+STREAMARROW_CMAP_NONE=20
+STREAMARROW_CMAP_SCALAR=21
+STREAMARROW_CMAP_VECTOR=22
 
 class VectorVisualiser(Visualiser):
     """visualise a vector field
@@ -1589,7 +1592,7 @@ class VectorVisualiser(Visualiser):
         self.streamarrow_size=0.3
         self.streamarrow_thin_points=1
         self.streamarrow_scale=0
-        self.streamarrow_colourmap=0
+        self.streamarrow_colourmap=STREAMARROW_CMAP_NONE
 
 
         self.show_hedgehog = 0
@@ -1822,7 +1825,7 @@ class VectorVisualiser(Visualiser):
                 labels.append(self.w_streamarrow_propagation_time)
 
                 self.w_streamarrow_integration_step_length = Pmw.Counter(
-                    f2,
+                    f1,
                     labelpos = 'w', label_text = 'Integ Step Length',
                     entryfield_value = self.streamarrow_integration_step_length,
                     entryfield_entry_width = 5,
@@ -1831,6 +1834,18 @@ class VectorVisualiser(Visualiser):
                     entryfield_validate = { 'validator' : 'real' })
                 self.w_streamarrow_integration_step_length.pack(side='left')
                 labels.append(self.w_streamarrow_integration_step_length)
+
+                self.streamarrow_integration_direction_var = Tkinter.StringVar()
+                self.w_streamarrow_integration_direction = Pmw.OptionMenu(
+                    f2,
+                    labelpos = 'w',
+                    label_text = 'Integrate ',
+                    menubutton_textvariable = self.streamarrow_integration_direction_var,
+                    items = ['forward','backward','both directions'],
+                    initialitem='both directions',
+                    menubutton_width = 10)
+                self.w_streamarrow_integration_direction.pack(side='left')
+    #           labels.append(self.w_streamarrow_integration_direction)
 
                 self.w_streamarrow_time_increment = Pmw.Counter(
                     f2,
@@ -1842,19 +1857,7 @@ class VectorVisualiser(Visualiser):
                     entryfield_validate = { 'validator' : 'real' })
                 self.w_streamarrow_time_increment.pack(side='left')
                 labels.append(self.w_streamarrow_time_increment)
-
-                self.streamarrow_integration_direction_var = Tkinter.StringVar()
-                self.w_streamarrow_integration_direction = Pmw.OptionMenu(
-                    f3,
-                    labelpos = 'w',
-                    label_text = 'Integrate ',
-                    menubutton_textvariable = self.streamarrow_integration_direction_var,
-                    items = ['forward','backward','both directions'],
-                    initialitem='both directions',
-                    menubutton_width = 10)
-                self.w_streamarrow_integration_direction.pack(side='left')
-    #           labels.append(self.w_streamarrow_integration_direction)
-
+                
                 # Widget for selecting whether to reduce the number of points
                 # that the streamarrow integration starts from
                 self.w_streamarrow_thin_points = Pmw.Counter(
@@ -1867,13 +1870,12 @@ class VectorVisualiser(Visualiser):
                     entryfield_validate = { 'validator' : 'integer',
                                             'min' : '1',
                                             })
-
                 self.w_streamarrow_thin_points.pack(side='left')
                 labels.append(self.w_streamarrow_thin_points)
 
                 # Size of the arrows
                 self.w_streamarrow_size = Pmw.Counter(
-                    f4,
+                    f3,
                     labelpos = 'w', label_text = 'Size',
                     entryfield_value = self.streamarrow_size,
                     entryfield_entry_width = 5,
@@ -1882,20 +1884,8 @@ class VectorVisualiser(Visualiser):
                     entryfield_validate = { 'validator' : 'real',
                                             'min' : '0.0',
                                             })
-
                 self.w_streamarrow_size.pack(side='left')
                 labels.append(self.w_streamarrow_size)
-
-
-                # Select whether to colour the arrows
-                self.streamarrows_cmap_var = Tkinter.BooleanVar()
-                self.w_streamarrows_cmapl = Pmw.LabeledWidget(
-                    f4,labelpos='w',label_text='Use Colourmap')
-                self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
-                self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
-                self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
-                self.w_streamarrows_cmap.pack(side='top')
-                self.w_streamarrows_cmapl.pack(side='left')
 
                 # Select whether to scale the arrows by the vector
                 self.streamarrows_scale_var = Tkinter.BooleanVar()
@@ -1906,6 +1896,49 @@ class VectorVisualiser(Visualiser):
                 self.w_streamarrows_scale.config(command=lambda s=self: s.__read_buttons() )
                 self.w_streamarrows_scale.pack(side='top')
                 self.w_streamarrows_scalel.pack(side='left')
+
+                # Select whether to colour the arrows by the Vector or scalar or not to colour
+                self.streamarrows_cmap_var = Tkinter.IntVar()
+                self.streamarrow_cmap_label = Tkinter.Label(f4,text='Colourmap:',bd=5)
+                self.streamarrow_cmap_radio1 = Tkinter.Radiobutton(f4,
+                                                                   text='None',
+                                                                   variable=self.streamarrows_cmap_var,
+                                                                   value=STREAMARROW_CMAP_NONE)
+                self.streamarrow_cmap_radio2 = Tkinter.Radiobutton(f4,
+                                                                   text='Scalar',
+                                                                   variable=self.streamarrows_cmap_var,
+                                                                   value=STREAMARROW_CMAP_SCALAR)
+                self.streamarrow_cmap_radio3 = Tkinter.Radiobutton(f4,
+                                                                   text='Vector',
+                                                                   variable=self.streamarrows_cmap_var,
+                                                                   value=STREAMARROW_CMAP_VECTOR)
+                
+                self.streamarrow_cmap_label.pack(side='left')
+                self.streamarrow_cmap_radio1.pack(side='left')
+                self.streamarrow_cmap_radio1.select()
+                self.streamarrow_cmap_radio2.pack(side='left')
+                self.streamarrow_cmap_radio3.pack(side='left')
+
+
+                
+#                 self.streamarrows_cmap_var = Tkinter.BooleanVar()
+#                 self.w_streamarrows_cmapl = Pmw.LabeledWidget(
+#                     f4,labelpos='w',label_text='Use Colourmap')
+#                 self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
+#                 self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
+#                 self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
+#                 self.w_streamarrows_cmap.pack(side='top')
+#                 self.w_streamarrows_cmapl.pack(side='left')
+
+#                 # Select whether to colour the arrows by the associated scalar
+#                 self.streamarrows_cmap_var = Tkinter.BooleanVar()
+#                 self.w_streamarrows_cmapl = Pmw.LabeledWidget(
+#                     f4,labelpos='w',label_text='Use Colourmap')
+#                 self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
+#                 self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
+#                 self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
+#                 self.w_streamarrows_cmap.pack(side='top')
+#                 self.w_streamarrows_cmapl.pack(side='left')
 
 
                 f1.pack(side='top')
