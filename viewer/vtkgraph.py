@@ -76,6 +76,7 @@ class VtkGraph(TkMolView,Graph):
         self.line_type = 2
         self.label_type = 0
         self.stick_type = 2
+        self.streamarrow_type=0 # 0=arrows,1=cones
         self.show_selection_by_colour = 1
         # Set stereo visualiser options.
         self.stereo = None
@@ -591,7 +592,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         # ---- Contacts ----------
         # 2 = celldata array
         self.contact_type = 2
-
+        
         if self.debug:
             print 'making sphere list of ', len(self.molecule.atom),' atoms'
 
@@ -698,64 +699,62 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
 
         # LABELS
-        if self.show_labels:
-            if self.label_type == 0:
-                # 3D version
-                for a in self.molecule.atom:
+        if self.show_labels:            
+            for a in self.molecule.atom:
+                if self.selection_key:
+                    draw = a.visible[self.selection_key]
+                else:
+                    draw = 1
+                if draw:
+                    # Try and work out the label
+                    try:
+                        if self.label_with == 'symbol':
+                            txt = a.symbol
+                        elif self.label_with == 'name':
+                            txt = a.name
 
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-
-                    if draw:
-
-                        s = vtkVectorText()
-
-                        try:
-                            if self.label_with == 'symbol':
-                                txt = a.symbol
-                            elif self.label_with == 'name':
-                                txt = a.name
-
-                            elif self.label_with == 'mulliken charge':
-                                val = self.molecule.get_atom_charge(a.get_index(),'Mulliken')
-                                if val:
-                                    txt = "%f" % (val,)
-                                    while txt[-1:] == '0':
-                                        txt = txt[:-1]
-                                else:
-                                    txt = '---'
-
-                            elif self.label_with == 'lowdin charge':
-                                val = self.molecule.get_atom_charge(a.get_index(),'Lowdin')
-                                if val:
-                                    txt = "%f" % (val,)
-                                    while txt[-1:] == '0':
-                                        txt = txt[:-1]
-                                else:
-                                    txt = '---'
-
-                            elif self.label_with == 'potential derived charge':
-                                val = self.molecule.get_atom_charge(a.get_index(),'PDC')
-                                if val:
-                                    txt = "%f" % (val,)
-                                    while txt[-1:] == '0':
-                                        txt = txt[:-1]
-                                else:
-                                    txt = '---'
-
-                            elif self.label_with == 'charge':
-                                txt = "%f" % (a.partial_charge,)
+                        elif self.label_with == 'mulliken charge':
+                            val = self.molecule.get_atom_charge(a.get_index(),'Mulliken')
+                            if val:
+                                txt = "%f" % (val,)
                                 while txt[-1:] == '0':
                                     txt = txt[:-1]
-                            elif self.label_with == 'atom no.':
-                                txt = "%d" % (a.get_index()+1,)
                             else:
-                                txt = a.name + '(' + str(a.get_index() + 1) + ')'
-                        except AttributeError:
-                            txt = '--'
+                                txt = '---'
 
+                        elif self.label_with == 'lowdin charge':
+                            val = self.molecule.get_atom_charge(a.get_index(),'Lowdin')
+                            if val:
+                                txt = "%f" % (val,)
+                                while txt[-1:] == '0':
+                                    txt = txt[:-1]
+                            else:
+                                txt = '---'
+
+                        elif self.label_with == 'potential derived charge':
+                            val = self.molecule.get_atom_charge(a.get_index(),'PDC')
+                            if val:
+                                txt = "%f" % (val,)
+                                while txt[-1:] == '0':
+                                    txt = txt[:-1]
+                            else:
+                                txt = '---'
+
+                        elif self.label_with == 'charge':
+                            txt = "%f" % (a.partial_charge,)
+                            while txt[-1:] == '0':
+                                txt = txt[:-1]
+                        elif self.label_with == 'atom no.':
+                            txt = "%d" % (a.get_index()+1,)
+                        else:
+                            txt = a.name + '(' + str(a.get_index() + 1) + ')'
+                    except AttributeError:
+                        txt = '--'
+                        
+                    # Now got the label as txt
+                    if self.label_type == 0:
+                        # 3D Actors
+                        s = vtkVectorText()
                         s.SetText(txt)
 
                         m = vtkPolyDataMapper()
@@ -779,29 +778,19 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         act.AddObserver(
                             'PickEvent', \
                             lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-
-            elif self.label_type == 1:
-
-                # 2D annotation
-
-                for a in self.molecule.atom:
-
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-
-                    if draw:
+                    elif self.label_type == 1:
+                        # 2D Actors
                         # create the mapper
                         m = vtkTextMapper()
-                        txt = a.name + str(a.get_index() + 1)
                         m.SetInput(txt)
                         #print 'label scale',self.label_scale
                         #size = int(20.0*self.label_scale)
                         #m.SetFontSize(size)
 
                         # create the actor
-                        act = vtkScaledTextActor()
+                        #act = vtkScaledTextActor() # deprecated
+                        act = vtkTextActor()
+                        act.ScaledTextOn()
                         self.label_actors.append(act)
                         act.SetMapper(m)
                         act.GetPositionCoordinate().SetCoordinateSystemToWorld();
@@ -815,6 +804,16 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         # act.AddObserver(
                         #    'PickEvent', \
                         #    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+
+                        # Set the width - width & height different as otherwise the text
+                        # seems distorted
+                        h = act.SetHeight(self.label_scale/5) #Defaults seems to be 0.5
+                        w = act.SetWidth(self.label_scale/3)#Defaults seems to be 0.5
+
+                        red = self.label_rgb[0] / 255.0
+                        green = self.label_rgb[1] / 255.0
+                        blue = self.label_rgb[2] / 255.0
+                        act.GetTextProperty().SetColor(red,green,blue)
 
         if self.show_wire:
             # Lines
@@ -2818,6 +2817,11 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         self.streamlines_actors = []
         self.streamarrow_actors = []
 
+        # ---- Streamarrows ----------
+        # 0 = arrows
+        # 1 = cones
+        self.streamarrow_type = self.graph.streamarrow_type
+
         self.debug = 0
 
     def convert_3d_data(self):
@@ -2825,6 +2829,8 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         # Policy here should depend on whether data is axis aligned or not
         axis_aligned = 0
 
+        #print "convert_3d_data vector "
+        #print self.field
         if axis_aligned:
             #
             # Use structured points (alias vtkImageData) if data is 
@@ -2929,7 +2935,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
                 data  = vtkPolyData()
 
-                print "getting grid",self.field
+                #print "getting grid",self.field
                 self.field.list()
 
                 gridpts = self.field.get_grid()
@@ -2970,6 +2976,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             #data.GetPointData().SetVectors(data_array)
 
             self.vtkgrid3d = data
+            #print "self.vtkgrid3d = ",self.vtkgrid3d
 
 
     def thin_grid(self,refGrid,factor=2):
@@ -3040,8 +3047,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         else:
             raise Exception,"thin_grid unknown gridType: %s" % gridType
 
+        newGrid.Update() # This appears to be needed in some cases
+        #print "returning newGrid ",newGrid
         return newGrid
-            
+    
     def _build(self,object=None):
 
         if self.debug:
@@ -3335,15 +3344,17 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 sa.SetIntegrationDirectionToForward()
             elif self.streamarrow_integration_direction == STREAM_BACKWARD:
                 sa.SetIntegrationDirectionToBackward()
-            
-            #arrow = vtkConeSource()
-            #arrow.SetResolution(20)
-            arrow = vtkArrowSource()
-            arrow.SetTipResolution(20)
-            arrow.SetShaftResolution(20)
-            #arrow.SetTipRadius(0.2) #0.1
-            #arrow.SetTipLength(0.7) #0.35
-            #arrow.SetShaftRadius(0.06) #0.03
+
+            if self.streamarrow_type==0:
+                arrow = vtkArrowSource()
+                arrow.SetTipResolution(30)
+                arrow.SetShaftResolution(30)
+                arrow.SetTipRadius(0.2) #0.1
+                arrow.SetTipLength(0.7) #0.35
+                arrow.SetShaftRadius(0.06) #0.03
+            else:
+                arrow = vtkConeSource()
+                arrow.SetResolution(30)
             
             glyph = vtkGlyph3D()
             glyph.SetInput(sa.GetOutput())

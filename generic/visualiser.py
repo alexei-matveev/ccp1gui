@@ -429,7 +429,7 @@ class MoleculeVisualiser(Visualiser):
         self.show_contacts = 0
         self.sphere_scale = 0.5
         self.sphere_table = COV_RADII
-        self.label_scale = 0.2
+        self.label_scale = 0.5
         self.cyl_width = 0.1
         self.label_colour = '#ffffff'
         self.label_rgb = [255,255,255]

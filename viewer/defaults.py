@@ -50,6 +50,9 @@ class Defaults:
         self.defaults['mol_cylinder_diffuse'] = 0.7
         self.defaults['mol_cylinder_ambient'] = 0.4
         self.defaults['mol_cylinder_specular_power'] = 10
+        # Visualiser defaults
+        self.defaults['label_type']  =  0
+        self.defaults['streamarrow_type']  =  0
         # Executable, script and directory locations
         self.defaults['am1'] = None
         self.defaults['chemsh_script_dir'] = None
