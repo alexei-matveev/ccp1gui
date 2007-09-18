@@ -5422,6 +5422,12 @@ you would like to extract the frame from."""
 
 
     def define_colourmaps(self):
+        """colourmap_func is defined in the visualisation class
+           that this inherits from.
+           The function itself is inherited from the ColourMap class
+           that is found in generic/colourmap.py - this is where the
+           various set_title etc. methods are defined
+        """
         self.colourmaps = []
 
         c = self.colourmap_func()

@@ -54,6 +54,13 @@ BUILT = 1
 class ColourMapChooser:
     """Implements widgets to select a colourmap and optionally
     a vector field to colour by
+
+    The read_widgets method (which is called internally by the widgets
+    that implement a ColourMapChooser) returns 4 objects:
+    1. The Field to colour the object by (may be None)
+    2. The Title for the field (again, may be None)
+    3. The lower bound of the colourmap
+    4. The upper bound of the colourmap
     """
     def __init__(self, parent, key, graph=None,choose_field=0,low=-1,high=1):
         self.parent = parent
@@ -1531,9 +1538,6 @@ STREAM_FORWARD=11
 STREAM_BACKWARD=12
 STREAM_BOTH=13
 VECTOR_SAMPLE_ALL = 10
-STREAMARROW_CMAP_NONE=20
-STREAMARROW_CMAP_SCALAR=21
-STREAMARROW_CMAP_VECTOR=22
 
 class VectorVisualiser(Visualiser):
     """visualise a vector field
@@ -1584,6 +1588,7 @@ class VectorVisualiser(Visualiser):
         self.streamline_display = STREAM_LINES
         self.streamline_integration_direction = STREAM_FORWARD
         self.streamline_thin_points=1
+        self.streamline_colourmap="None"
 
         self.streamarrow_propagation_time=5.0
         self.streamarrow_integration_step_length=0.2
@@ -1592,7 +1597,7 @@ class VectorVisualiser(Visualiser):
         self.streamarrow_size=0.3
         self.streamarrow_thin_points=1
         self.streamarrow_scale=0
-        self.streamarrow_colourmap=STREAMARROW_CMAP_NONE
+        self.streamarrow_colourmap="None"
 
 
         self.show_hedgehog = 0
@@ -1720,6 +1725,21 @@ class VectorVisualiser(Visualiser):
                 self.w_streamline_propagation_time.pack(side='left')
                 labels.append(self.w_streamline_propagation_time)
 
+                # Thin the number of starting points
+                self.w_streamline_thin_points = Pmw.Counter(
+                    f1,
+                    labelpos = 'w', label_text = 'Thin Points',
+                    entryfield_value = self.streamline_thin_points,
+                    entryfield_entry_width = 2,
+                    increment=1,
+                    datatype = {'counter' : 'integer' },
+                    entryfield_validate = { 'validator' : 'integer',
+                                            'min' : '1',
+                                            })
+                self.w_streamline_thin_points.pack(side='left')
+                labels.append(self.w_streamline_thin_points)
+                
+
                 self.w_streamline_integration_step_length = Pmw.Counter(
                     f2,
                     labelpos = 'w', label_text = 'Integ Step Length',
@@ -1770,19 +1790,18 @@ class VectorVisualiser(Visualiser):
                 self.w_streamline_integration_direction.pack(side='left')
     #           labels.append(self.w_streamline_integration_direction)
 
-                self.w_streamline_thin_points = Pmw.Counter(
+                # Select whether to colour the lines by the Speed, a scalar
+                # or not to colour
+                self.streamlines_cmap_var = Tkinter.StringVar()
+                self.w_streamline_cmap = Pmw.OptionMenu(
                     f4,
-                    labelpos = 'w', label_text = 'Thin Points',
-                    entryfield_value = self.streamline_thin_points,
-                    entryfield_entry_width = 2,
-                    increment=1,
-                    datatype = {'counter' : 'integer' },
-                    entryfield_validate = { 'validator' : 'integer',
-                                            'min' : '1',
-                                            })
-
-                self.w_streamline_thin_points.pack(side='left')
-                labels.append(self.w_streamline_thin_points)
+                    labelpos = 'w',
+                    label_text = 'Colour ',
+                    menubutton_textvariable = self.streamlines_cmap_var,
+                    items = ['None','Speed','Scalar'],
+                    initialitem='None',
+                    menubutton_width = 10)
+                self.w_streamline_cmap.pack(side='left')
 
                 f1.pack(side='top')
                 f2.pack(side='top')
@@ -1898,49 +1917,17 @@ class VectorVisualiser(Visualiser):
                 self.w_streamarrows_scalel.pack(side='left')
 
                 # Select whether to colour the arrows by the Vector or scalar or not to colour
-                self.streamarrows_cmap_var = Tkinter.IntVar()
-                self.streamarrow_cmap_label = Tkinter.Label(f4,text='Colourmap:',bd=5)
-                self.streamarrow_cmap_radio1 = Tkinter.Radiobutton(f4,
-                                                                   text='None',
-                                                                   variable=self.streamarrows_cmap_var,
-                                                                   value=STREAMARROW_CMAP_NONE)
-                self.streamarrow_cmap_radio2 = Tkinter.Radiobutton(f4,
-                                                                   text='Scalar',
-                                                                   variable=self.streamarrows_cmap_var,
-                                                                   value=STREAMARROW_CMAP_SCALAR)
-                self.streamarrow_cmap_radio3 = Tkinter.Radiobutton(f4,
-                                                                   text='Vector',
-                                                                   variable=self.streamarrows_cmap_var,
-                                                                   value=STREAMARROW_CMAP_VECTOR)
+                self.streamarrows_cmap_var = Tkinter.StringVar()
+                self.w_streamarrow_cmap = Pmw.OptionMenu(
+                    f4,
+                    labelpos = 'w',
+                    label_text = 'Colour ',
+                    menubutton_textvariable = self.streamarrows_cmap_var,
+                    items = ['None','Vector','Scalar'],
+                    initialitem='None',
+                    menubutton_width = 10)
+                self.w_streamarrow_cmap.pack(side='left')
                 
-                self.streamarrow_cmap_label.pack(side='left')
-                self.streamarrow_cmap_radio1.pack(side='left')
-                self.streamarrow_cmap_radio1.select()
-                self.streamarrow_cmap_radio2.pack(side='left')
-                self.streamarrow_cmap_radio3.pack(side='left')
-
-
-                
-#                 self.streamarrows_cmap_var = Tkinter.BooleanVar()
-#                 self.w_streamarrows_cmapl = Pmw.LabeledWidget(
-#                     f4,labelpos='w',label_text='Use Colourmap')
-#                 self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
-#                 self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
-#                 self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
-#                 self.w_streamarrows_cmap.pack(side='top')
-#                 self.w_streamarrows_cmapl.pack(side='left')
-
-#                 # Select whether to colour the arrows by the associated scalar
-#                 self.streamarrows_cmap_var = Tkinter.BooleanVar()
-#                 self.w_streamarrows_cmapl = Pmw.LabeledWidget(
-#                     f4,labelpos='w',label_text='Use Colourmap')
-#                 self.w_streamarrows_cmap = Tkinter.Checkbutton(self.w_streamarrows_cmapl.interior())
-#                 self.w_streamarrows_cmap.config(variable=self.streamarrows_cmap_var)
-#                 self.w_streamarrows_cmap.config(command=lambda s=self: s.__read_buttons() )
-#                 self.w_streamarrows_cmap.pack(side='top')
-#                 self.w_streamarrows_cmapl.pack(side='left')
-
-
                 f1.pack(side='top')
                 f2.pack(side='top')
                 f3.pack(side='top')
@@ -2094,8 +2081,9 @@ class VectorVisualiser(Visualiser):
             self.show_orientedglyphs = self.orientedglyphs_var.get()
         if self.graph.check_capability('streamlines'):
             self.show_streamlines = self.streamlines_var.get()
-            self.show_streamarrows = self.streamarrows_var.get()
+            self.streamline_colourmap = self.streamlines_cmap_var.get()
         if self.graph.check_capability('streamarrows'):
+            self.show_streamarrows = self.streamarrows_var.get()
             self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
             self.streamarrow_scale = self.streamarrows_scale_var.get()
         #if self.is_showing:

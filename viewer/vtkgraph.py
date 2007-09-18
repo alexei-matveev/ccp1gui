@@ -795,20 +795,26 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         act.SetMapper(m)
                         act.GetPositionCoordinate().SetCoordinateSystemToWorld();
 
+                        # Set the label size
+                        h = self.label_scale/3
+                        w = self.label_scale/3
+                        act.SetHeight(h) #Defaults seems to be 0.5
+                        act.SetWidth(w)#Defaults seems to be 0.5
+
+                        # Try and centre the labels
+                        #act.SetAlignmentPoint(2)
+                        #x = a.coord[0] - w
+                        #y = a.coord[1] - h
                         x = a.coord[0]
                         y = a.coord[1]
                         zz = a.coord[2]
+
                         act.GetPositionCoordinate().SetValue(x,y,zz);
                         #act.SetScale(self.label_scale,self.label_scale,self.label_scale)
                         act.PickableOff()
                         # act.AddObserver(
                         #    'PickEvent', \
                         #    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-
-                        # Set the width - width & height different as otherwise the text
-                        # seems distorted
-                        h = act.SetHeight(self.label_scale/5) #Defaults seems to be 0.5
-                        w = act.SetWidth(self.label_scale/3)#Defaults seems to be 0.5
 
                         red = self.label_rgb[0] / 255.0
                         green = self.label_rgb[1] / 255.0
@@ -3074,7 +3080,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             for offset in range(bigsize):
                 data_array.SetValue(offset,self.cmap_obj.data[offset])
             self.vtkgrid3d.GetPointData().SetScalars(data_array)
+            #self.vtkgrid3d.GetPointData().AddArray(data_array)
+            #self.vtkgrid3d.GetPointData().SetActiveScalars("MapScalarj")
         else:
+            #pass
             self.vtkgrid3d.GetPointData().SetScalars(None)
 
         # set up the sampling grid in vtk form
@@ -3232,16 +3241,29 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             elif self.streamline_integration_direction == STREAM_BACKWARD:
                 sl.SetIntegrationDirectionToBackward()
 
+
+            streamlineMapper=vtkPolyDataMapper()
+            
+            # Determine how to colour the streamwotsits
+            if self.streamline_colourmap == "None":
+                streamlineMapper.ScalarVisibilityOff()
+            elif self.streamline_colourmap == "Speed":
+                sl.SpeedScalarsOn()
+            elif self.streamline_colourmap == "Scalar":
+                pass
+                
             if self.streamline_display == STREAM_LINES:
-                m=vtkPolyDataMapper()
-                m.SetInput(sl.GetOutput())
+                
+                streamlineMapper.SetInput(sl.GetOutput())
                 lut = self.graph.get_cmap_lut(self.cmap_name)
                 if lut:
-                    m.SetLookupTable(lut)
-                m.SetScalarRange(self.cmap_low,self.cmap_high)
-                ###m.SetScalarRange(self.vtkgrid3d.GetScalarRange())
+                    streamlineMapper.SetLookupTable(lut)
+                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
+                #streamlineMapper.UseLookupTableScalarRangeOn()
+                
+                ###streamlineMapper.SetScalarRange(self.vtkgrid3d.GetScalarRange())
                 streamlineActor=vtkActor()
-                streamlineActor.SetMapper(m)
+                streamlineActor.SetMapper(streamlineMapper)
 
             elif self.streamline_display == STREAM_TUBES:
 
@@ -3253,18 +3275,17 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 streamTube.SetRadius(0.02)
                 streamTube.SetNumberOfSides(12)
                 #streamTube.SetVaryRadiusToVaryRadiusByVector()
-                m = vtkPolyDataMapper()
-                m.SetInput(streamTube.GetOutput())
+                streamlineMapper.SetInput(streamTube.GetOutput())
 
                 #if self.cmap_obj:
-                #    m.SetScalarRange(self.vtkgrid3d.GetPointData().GetScalars().GetRange())
+                #    streamlineMapper.SetScalarRange(self.vtkgrid3d.GetPointData().GetScalars().GetRange())
                 lut = self.graph.get_cmap_lut(self.cmap_name)
                 if lut:
-                    m.SetLookupTable(lut)
-                m.SetScalarRange(self.cmap_low,self.cmap_high)
+                    streamlineMapper.SetLookupTable(lut)
+                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
 
                 streamlineActor = vtkActor()
-                streamlineActor.SetMapper(m)
+                streamlineActor.SetMapper(streamlineMapper)
                 streamlineActor.GetProperty().BackfaceCullingOn()
 
             elif self.streamline_display == STREAM_SURFACE:            
@@ -3282,15 +3303,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 scalarSurface.SetRuledModeToPointWalk()
                 scalarSurface.SetDistanceFactor(30)
 
-                m=vtkPolyDataMapper()
-                m.SetInput(scalarSurface.GetOutput())
-                #m.SetScalarRange(self.vtkgrid3d.GetScalarRange())
+                streamlineMapper.SetInput(scalarSurface.GetOutput())
+                #streamlineMapper.SetScalarRange(self.vtkgrid3d.GetScalarRange())
                 lut = self.graph.get_cmap_lut(self.cmap_name)
                 if lut:
-                    m.SetLookupTable(lut)
-                m.SetScalarRange(self.cmap_low,self.cmap_high)
+                    streamlineMapper.SetLookupTable(lut)
+                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
                 streamlineActor=vtkActor()
-                streamlineActor.SetMapper(m)
+                streamlineActor.SetMapper(streamlineMapper)
             else:
                 print 'BAD DISPLAY FLAG'
 
@@ -3299,7 +3319,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
         if self.show_streamarrows:
             # Place glyphs on the points calculated by the streamer
-            if self.streamarrow_colourmap == STREAMARROW_CMAP_NONE or self.streamarrow_colourmap == STREAMARROW_CMAP_VECTOR:
+            if self.streamarrow_colourmap == "Vector":
                 print "copying grid"
                 # Need to copy the grid as the colour-mapping for the other vis
                 # work by changing the scalar values of point data and it seems
@@ -3307,10 +3327,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 # work out how to turn this off we need to copy the original grid but
                 # set the scalar data to Null
                 inputGrid = vtkStructuredGrid()
-                #gridCopy.DeepCopy( self.vtkgrid3d ) # DeepCopy segfaults?!?
+                #inputGrid.DeepCopy( self.vtkgrid3d ) # DeepCopy segfaults?!?
                 inputGrid.ShallowCopy( self.vtkgrid3d )
                 inputGrid.GetPointData().SetScalars(None)
-            elif self.streamarrow_colourmap == STREAMARROW_CMAP_SCALAR:
+            elif self.streamarrow_colourmap == "None" or \
+                     self.streamarrow_colourmap == "Scalar":
+                # If we're colouring by the scalars we don't need to copy
+                # the grid. If we're not colouring the glyphs, we can turn off
+                # colouring with the mapper (see below)
                 inputGrid = self.vtkgrid3d
             else:
                 raise Exception,"streamarrow bad cmap"
@@ -3368,17 +3392,20 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 glyph.SetScaleModeToDataScalingOff()
                 
             glyph.SetScaleFactor(self.streamarrow_size)
-            # If we are colouring by the vector values alone
-            if self.streamarrow_colourmap == STREAMARROW_CMAP_VECTOR:
-                glyph.SetColorModeToColorByVector()
-            #glyph.SetColorModeToColorByScale()
-
+            
             m=vtkPolyDataMapper()
+            if self.streamarrow_colourmap == "None":
+                # No colouring
+                m.ScalarVisibilityOff()
+            elif self.streamarrow_colourmap == "Vector":
+                # If we are colouring by the vector values alone
+                glyph.SetColorModeToColorByVector()
+
             m.SetInput(glyph.GetOutput())
             lut = self.graph.get_cmap_lut(self.cmap_name)
             if lut:
                 m.SetLookupTable(lut)
-                m.SetScalarRange(self.cmap_low,self.cmap_high)
+            m.SetScalarRange(self.cmap_low,self.cmap_high)
 
             streamArrowActor=vtkActor()
             streamArrowActor.SetMapper(m) 
