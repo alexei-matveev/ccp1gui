@@ -208,44 +208,56 @@ class Visualiser:
         self.debug = 0
 
 
+    def make_dialog(self):
+        """Create the dialogs. The base dialog may have been created
+        already if we are inheriting from the DataVisualiser class so
+        we check this before calling _make_dialog"""
+        if not self.dialog:
+            self.make_base_dialog()
+        self._make_dialog()
+
+    def _make_dialog(self):
+        """This should be overloaded in any derived class"""
+        print "generic/visualiser.py Visualiser._make_dialog should be overloaded"
+        
+    def make_base_dialog(self):
+        """Build the base Widgets"""
+        # delete final arg as we will use kw
+
+        self.dialog = Pmw.MegaToplevel(self.root)
+        #Associate widget with its help file
+        viewer.help.sethelp(self.dialog,"AdjMolView")
+
+        self.dialog.userdeletefunc(lambda s=self: s.dialog.withdraw())
+        self.dialog.title(self.title)
+        self.dialog.topframe = Tkinter.Frame(self.dialog.component('hull'))
+        self.dialog.topframe.pack(side='top',fill='x')
+        self.dialog.botframe = Tkinter.Frame(self.dialog.component('hull'))
+        self.dialog.botframe.pack(side='top',fill='x')
+
+        if self.allvis:
+            self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update All',command=self.__view)
+            self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show All',command=self.__show )
+            self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide All',command=self.__hide)
+            self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy All',command=self.__delete)
+            self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
+        else:
+            self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update',command=self.__view)
+            self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show',command=self.__show)
+            self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide',command=self.__hide)
+            self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy',command=self.__delete)
+            self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
+
+        self.dialog.b1.pack(side='left',fill='x')
+        self.dialog.b2.pack(side='left',fill='x')
+        self.dialog.b3.pack(side='left',fill='x')
+        self.dialog.b4.pack(side='left',fill='x')
+        self.dialog.b5.pack(side='left',fill='x')
+
     def Open(self):
         """ Open the widget for editing/actions """
         print 'Open'
-        if not self.dialog:
-            # delete final arg as we will use kw
-            self.dialog = Pmw.MegaToplevel(self.root)
-            #Associate widget with its help file
-            viewer.help.sethelp(self.dialog,"AdjMolView")
-
-            self.dialog.userdeletefunc(lambda s=self: s.dialog.withdraw())
-            self.dialog.title(self.title)
-            self.dialog.topframe = Tkinter.Frame(self.dialog.component('hull'))
-            self.dialog.topframe.pack(side='top',fill='x')
-            self.dialog.botframe = Tkinter.Frame(self.dialog.component('hull'))
-            self.dialog.botframe.pack(side='top',fill='x')
-
-            if self.allvis:
-                self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update All',command=self.__view)
-                self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show All',command=self.__show )
-                self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide All',command=self.__hide)
-                self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy All',command=self.__delete)
-                self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
-            else:
-                self.dialog.b1 = Tkinter.Button(self.dialog.botframe,text='Update',command=self.__view)
-                self.dialog.b2 = Tkinter.Button(self.dialog.botframe,text='Show',command=self.__show)
-                self.dialog.b3 = Tkinter.Button(self.dialog.botframe,text='Hide',command=self.__hide)
-                self.dialog.b4 = Tkinter.Button(self.dialog.botframe,text='Destroy',command=self.__delete)
-                self.dialog.b5 = Tkinter.Button(self.dialog.botframe,text='Close',command=self.__close)
-
-            self.dialog.b1.pack(side='left',fill='x')
-            self.dialog.b2.pack(side='left',fill='x')
-            self.dialog.b3.pack(side='left',fill='x')
-            self.dialog.b4.pack(side='left',fill='x')
-            self.dialog.b5.pack(side='left',fill='x')
-
-            # build specific elements
-            self.make_dialog()
-
+        self.make_dialog()
         print 'reposition'
         self.reposition()
         print 'disable'
@@ -416,6 +428,55 @@ class Visualiser:
 ##        print 'overload me _build'        
 
 
+class DataVisualiser(Visualiser):
+    """Generic class to hold stuff that is common to all the visualisers that visualise
+    fields. Currently this just includes the widget that lists the min and max
+    values"""
+
+    def __init__(self, root, graph, obj, **kw):
+        Visualiser.__init__(self, root, graph, obj, **kw)
+
+        #Make the base dialog that creates the widgets
+        if not self.dialog:
+            self.make_base_dialog()
+
+        # Frame to hold textwidget and button to show/hide it
+        self.data_summary_group = Pmw.Group( self.dialog.topframe, tag_text="Data Summary" )
+
+        # Button & control to show/hide summary
+        self.data_summary_show_var = Tkinter.BooleanVar()
+        self.data_summary_show_var.set(0) # Turn it off by default
+        self.data_summary_show_widget = Pmw.LabeledWidget(
+            self.data_summary_group.interior()
+            ,labelpos='w',
+            label_text='Show Summary')
+        self.data_summary_show_button = Tkinter.Checkbutton(self.data_summary_show_widget.interior())
+        self.data_summary_show_button.config(variable=self.data_summary_show_var)
+        self.data_summary_show_button.config(command=lambda s=self: s.data_summary_show_toggle() )
+        self.data_summary_show_button.pack(side='left')
+        self.data_summary_show_widget.pack(side='top')
+        self.data_summary_group.pack(side='top',fill='x')
+
+        # Text widget to hold data field information
+        #summary = obj.data_summary()
+        summary = obj.summary()
+        self.data_summary_text_widget = Pmw.ScrolledText(
+            self.data_summary_group.interior(),
+            hull_width = 400,
+            hull_height = 150,
+            usehullsize=1,
+            borderframe=1
+            
+            )
+        self.data_summary_text_widget.settext(summary)
+
+    def data_summary_show_toggle(self):
+        """Show or hide the data summary"""
+        show = self.data_summary_show_var.get()
+        if show:
+            self.data_summary_text_widget.pack(side='top')
+        else:
+            self.data_summary_text_widget.forget()
 
 class MoleculeVisualiser(Visualiser):
 
@@ -459,7 +520,7 @@ class MoleculeVisualiser(Visualiser):
 
         #print 'Mol Title',self.title
 
-    def make_dialog(self):
+    def _make_dialog(self):
 
         labels=[]
         labels2=[]
@@ -743,9 +804,9 @@ class VibrationVisualiser(MoleculeVisualiser):
         # derived classes will run their moleculevisualiser methods
         # after this 
         
-    def make_dialog(self, **kw):
+    def _make_dialog(self, **kw):
         print 'Dialog'
-        apply(MoleculeVisualiser.make_dialog, (self,), kw)
+        apply(MoleculeVisualiser._make_dialog, (self,), kw)
 
         self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Animation")
 
@@ -891,8 +952,8 @@ class VibrationSetVisualiser(VibrationVisualiser):
         self.mode = 0
         self.vs = obj
         self.vib = obj.vibs[0]
-    def make_dialog(self, **kw):
-        VibrationVisualiser.make_dialog(self, **kw)
+    def _make_dialog(self, **kw):
+        VibrationVisualiser._make_dialog(self, **kw)
 
 
 STRUCTURE_SEQ = 1
@@ -937,11 +998,11 @@ class TrajectoryVisualiser(MoleculeVisualiser):
             for f in self.sequence.frames:
                 f.zlist()
 
-    def make_dialog(self, **kw):
+    def _make_dialog(self, **kw):
 
         self.title='Trajectory Viewer'
 
-        MoleculeVisualiser.make_dialog(self, **kw)
+        MoleculeVisualiser._make_dialog(self, **kw)
 
         self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Play Trajectory")
 
@@ -1138,10 +1199,10 @@ class OutlineVisualiser:
         self.show_outline = self.outline_var.get()
 
 
-class IsoSurfaceVisualiser(Visualiser,OutlineVisualiser):
+class IsoSurfaceVisualiser(DataVisualiser,OutlineVisualiser):
     """Base class for isosurfaces"""
     def __init__(self, root, graph, obj, **kw):
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        DataVisualiser.__init__(self, root, graph, obj, **kw)
         apply(OutlineVisualiser.__init__, (self,), kw)
         self.field=obj
         self.opacity = 1.0
@@ -1164,7 +1225,7 @@ class OrbitalVisualiser(IsoSurfaceVisualiser):
         self.minus_rgb = [ 0, 0, 255]
         self.title='Orbital view: ' + self.field.title
         
-    def make_dialog(self):
+    def _make_dialog(self):
 
         surface_group  = Pmw.Group(self.dialog.topframe, tag_text="Surfaces")
         f = surface_group.interior()
@@ -1240,7 +1301,7 @@ class DensityVisualiser(IsoSurfaceVisualiser):
         self.field = obj
         self.title = 'Density Isosurface: ' + self.field.title
 
-    def make_dialog(self):
+    def _make_dialog(self):
 
         surface_group  = Pmw.Group(self.dialog.topframe, tag_text="Surfaces")
         f = surface_group.interior()
@@ -1321,7 +1382,7 @@ class VolumeVisualiser(Visualiser,OutlineVisualiser):
         self.opacity = [0.1, 0.3, 0.5, 0.7, 0.9 ]
         self.sfac = 100.0
 
-    def make_dialog(self):
+    def _make_dialog(self):
 
         transfer_group  = Pmw.Group(self.dialog.topframe, tag_text="Transfer Function")
         f = transfer_group.interior()
@@ -1464,7 +1525,7 @@ class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
         self.cmap_high = 50
         self.title = 'Coloured Isosurface of ' + self.field.title
 
-    def make_dialog(self):
+    def _make_dialog(self):
 
         surface_group  = Pmw.Group(self.dialog.topframe, tag_text="Surfaces")
         f = surface_group.interior()
@@ -1539,7 +1600,7 @@ STREAM_BACKWARD=12
 STREAM_BOTH=13
 VECTOR_SAMPLE_ALL = 10
 
-class VectorVisualiser(Visualiser):
+class VectorVisualiser(DataVisualiser):
     """visualise a vector field
     Display a slice through a 3D dataset
     Relies on SliceVisualiser for most of the code, uses
@@ -1547,7 +1608,7 @@ class VectorVisualiser(Visualiser):
     """
 
     def __init__(self, root, graph, obj, colour_obj_choice=None, colour_obj_list=None, **kw):
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        DataVisualiser.__init__(self, root, graph, obj, **kw)
         self.grid_editor=None
 
         #jmht - hack
@@ -1612,7 +1673,7 @@ class VectorVisualiser(Visualiser):
 
         self.cmap_obj = None
 
-    def make_dialog(self, **kw):
+    def _make_dialog(self, **kw):
 
         print 'vectorvis.make_dialog'
 
@@ -2167,28 +2228,35 @@ class VectorVisualiser(Visualiser):
             # normally results
             self.grid_editor.transform(callback=0)
 
-class SliceVisualiser(Visualiser):
+class SliceVisualiser(DataVisualiser):
     """Represent a regular 2D grid using contour and colourmap
     representations and an outline. Can optionally render to the 2D
     window for preparation of printed plots.
     """
     def __init__(self, root, graph, obj, colour_obj_choice=None, colour_obj_list=None, **kw):
 
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        DataVisualiser.__init__(self, root, graph, obj, **kw)
+
+        # Try and work out sensible starting values
+        mymin = -50
+        mymax =  50
+                
+        # Get max and min from the field
+        #mymin,mymax = obj.minmax()
 
         # Default settings
-        self.min = -50
-        self.max =  50
+        self.min = mymin
+        self.max = mymax
         self.ncont = 21
         self.opacity = 1.0
 
         self.contour_cmap_name = 'Default'
-        self.contour_cmap_low = -50
-        self.contour_cmap_high = 50
+        self.contour_cmap_low = mymin
+        self.contour_cmap_high = mymax
 
         self.pcmap_cmap_name = 'Default'
-        self.pcmap_cmap_low = -50
-        self.pcmap_cmap_high = 50
+        self.pcmap_cmap_low = mymin
+        self.pcmap_cmap_high = mymax
 
         # switches for parts of image
         self.show_cont = 1
@@ -2204,7 +2272,7 @@ class SliceVisualiser(Visualiser):
         self.field = obj
         self.title = '2D View: ' + self.field.title
         
-    def make_dialog(self):
+    def _make_dialog(self):
 
         self.cont_var                = Tkinter.BooleanVar()
         self.plane_var               = Tkinter.BooleanVar()
@@ -2215,6 +2283,7 @@ class SliceVisualiser(Visualiser):
         self.plane_var.set(self.show_plane)
         self.outline_var.set(self.show_outline)
         self.var2d.set(self.show_2d)
+
 
         self.w_min = Pmw.Counter(self.dialog.topframe,
                                  labelpos = 'w',
@@ -2367,8 +2436,8 @@ class CutSliceVisualiser(SliceVisualiser):
 
         self.title = 'Cut Slice View: ' + self.field.title
 
-    def make_dialog(self, **kw):
-        apply(SliceVisualiser.make_dialog, (self,), kw)
+    def _make_dialog(self, **kw):
+        apply(SliceVisualiser._make_dialog, (self,), kw)
         self.grid_editor = GridEditorWidget(self.dialog.topframe, self.cut_plane, command = self.__reslice, close_ok=0)
         self.grid_editor.pack(side='top')
 
@@ -2406,7 +2475,7 @@ class IrregularDataVisualiser(Visualiser):
         self.opacity = 1.0
         self.title = "Grid View: " + obj.title
 
-    def make_dialog(self):
+    def _make_dialog(self):
         self.w_point_size = Pmw.Counter(
             self.dialog.topframe,
             labelpos = 'w', label_text = 'Point Size',
@@ -2439,7 +2508,6 @@ class IrregularDataVisualiser(Visualiser):
 
 class AllMoleculeVisualiser( MoleculeVisualiser ):
 
-#    def __init__(self, root, graph, **kw):
     def __init__( self, root, graph ):
 
         # Pass an empty object to the base classes as we operate on multiple objects
@@ -2619,7 +2687,7 @@ class MoldenWfnVisualiser(OrbitalVisualiser,Visualiser):
         self.last_edge = -1.0
         self.last_npts = -1
 
-    def make_dialog(self, **kw):
+    def _make_dialog(self, **kw):
 
         f = self.dialog.topframe
         #
@@ -2685,7 +2753,7 @@ class MoldenWfnVisualiser(OrbitalVisualiser,Visualiser):
 
         self.w_edge.pack(side='top')
 
-        apply(OrbitalVisualiser.make_dialog, (self, ), kw)
+        apply(OrbitalVisualiser._make_dialog, (self, ), kw)
 
     def compute_grid(self):
         """ Compute the data via a call to Molden """
