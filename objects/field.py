@@ -88,6 +88,12 @@ class Field:
         self.vtkdata=None
         self.mapping = None
 
+        # Used for keeping track of the minimum & maxiumum
+        # values that the data has
+        self.data = None
+        self.data_min = None
+        self.data_max = None
+
     def dimensions(self):
         try:
             return len(self.dim)
@@ -271,34 +277,31 @@ class Field:
 
         return result
 
-    def list(self):
-        print 'Field Object ' + self.title
-        if self.data:
-            print 'Data shape', self.shape()
-            print 'Axis aligned:', self.axis_aligned()
-
-        if self.vtkdata:
-            print "vtkdata is true"
-
-
-        #if self.grid:
-        #    print 'Grid shape',shape(self.grid)
-
-
+    def summary(self):
+        """Build up a string with a summary of the field"""
+        summary = """"""
+        summary+='Field Object: %s\n' % self.get_name()
+        summary+='Axis aligned: %s\n' % self.axis_aligned()
         try:
             ddd = len(self.dim)
-            print 'self.dim = ',ddd
-
-            print 'Origin:', self.origin
-            print 'Axis vectors:'
+            summary+= 'Origin: %s\n' % self.origin 
+            summary+= 'Grid Dimensions = %s\n' % ddd 
+            axist =      'Axis vectors:\n'
             for k in self.axis:
-                print k
-
+                axist += '             %s\n' % str(k)
+            summary+=axist
         except AttributeError:
-            print 'Irregular grid'
-
-
-        print '------------------------------------------------------------'
+            summary += 'Irregular grid\n'
+        
+        summary+='Data:\n'
+        imin,imax = self.minmax()
+        summary+='     min: %s\n' % imin
+        summary+='     min: %s\n' % imax
+        return summary
+    
+    def list(self):
+        """Print out a summary of the data"""
+        print self.summary()
 
     def axis_aligned(self):
         """ establish if the axis vectors point along the x,y,z axes """
@@ -545,11 +548,59 @@ class Field:
         return s1*to[0] + s2*to[1] + s3*to[2]
 
     def minmax(self):
-        maxi = -1.0e10
-        mini = 1.0e10
-        for i in range(len(self.data)):
-            maxi = max(maxi,self.data[i])
-            mini = min(mini,self.data[i])
+        """Return the maximum and minium values of the data"""
+
+        # Set to None so we can trap any errors
+        mini=None;maxi=None
+        
+        # First see if this was computed when the data was imported
+        if (self.data_min != None and self.data_max != None):
+            mini = self.data_min
+            maxi = self.data_max
+            
+        # If we are using a vtk data structure, use that to work it out
+        # using their functions
+        elif self.vtkdata:
+            print "vtkdata"
+            scalars = self.vtkdata.GetPointData().GetScalars()
+            if scalars:
+                print "vtk got scalars"
+                # Get the range of the 0th componebt
+                mini,maxi = scalars.GetRange()
+            else:
+                vectors = self.vtkdata.GetPointData().GetVectors()
+                if vectors:
+                    print "got vectors"
+                    # Get the min and max of each component
+                    min1,max1 =  vectors.GetRange(0)
+                    min2,max2 =  vectors.GetRange(1)
+                    min3,max3 =  vectors.GetRange(2)
+                    
+                    mini = min(min1,min2)
+                    mini = min(mini,min3)
+                    maxi = max(max1,max2)
+                    maxi = max(maxi,max3)
+                else:
+                    print "field minmax error gettig vtk min max!"
+
+        # Brute force - trundle through and try and work it out
+        else:
+            maxi = -1.0e10
+            mini = 1.0e10
+            for i in range(len(self.data)):
+                maxi = max(maxi,self.data[i])
+                mini = min(mini,self.data[i])
+                
+            # Remember these values
+            self.data_min = mini
+            self.data_max = maxi
+
+        # Trap errors here as otherwise errors might arise when we intialise
+        # the widgets which is much harder to debug
+        if mini == None or maxi == None:
+            raise AttributeError,"field minmax - could not work out max or min!"
+        
+        print "field minmax returning min: %s max: %s" % (mini,maxi)
         return (mini,maxi)
 
     def integral(self,fac=1.0):
