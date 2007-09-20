@@ -692,6 +692,8 @@ class PunchIO(FileIO):
       
         brik.data = []
         brik.ndd = self.elements
+        data_min = 0
+        data_max = 0
         try:
             # Temporary simple implementation avoiding numerical python
             # pending resolution of the conflict in ordering conventions
@@ -717,7 +719,10 @@ class PunchIO(FileIO):
                     line = line.split()
                     for e in range(self.elements):
                         try:
-                            brik.data.append(float(line[e]))
+                            d = float(line[e])
+                            data_min = min(data_min,d)
+                            data_max = max(data_max,d)
+                            brik.data.append(d)
                         except ValueError:
                             print 'Warning ... Bad numeric data in punchfile, replaced with 999'
                             brik.data.append(999.0)
@@ -731,7 +736,10 @@ class PunchIO(FileIO):
                         line = line.split()
                         for e in range(self.elements):
                             try:
-                                brik.data.append(float(line[e]))
+                                d = float(line[e])
+                                data_min = min(data_min,d)
+                                data_max = max(data_max,d)
+                                brik.data.append(d)
                             except ValueError:
                                 print 'Warning ... Bad numeric data in punchfile, replaced with 999'
                                 brik.data.append(999.0)
@@ -747,7 +755,10 @@ class PunchIO(FileIO):
                             line = line.split()
                             for e in range(self.elements):
                                 try:
-                                    brik.data.append(float(line[e]))
+                                    d = float(line[e])
+                                    data_min = min(data_min,d)
+                                    data_max = max(data_max,d)
+                                    brik.data.append(d)
                                 except ValueError:
                                     print 'Warning ... Bad numeric data in punchfile, replaced with 999'
                                     brik.data.append(999.0)
@@ -793,13 +804,22 @@ class PunchIO(FileIO):
                     line = line.split()
                     for e in range(self.elements):
                         try:
-                            brik.data.append(float(line[e]))
+                            d = float(line[e])
+                            data_min = min(data_min,d)
+                            data_max = max(data_max,d)
+                            brik.data.append(d)
                         except ValueError:
                             print 'Warning ... Bad numeric data in punchfile, replaced with 999'
                             brik.data.append(999.0)
             else:
                 brik.data = None
 
+        # Add min and max values - will only both be zero if nothing was found
+        if not ( data_min == 0 and data_max == 0 ):
+            print "Got field data with min: %s max: %s" % (data_min,data_max)
+            brik.data_min = data_min
+            brik.data_max = data_max
+            
     def read_grid_points(self,f,brik):
 
         if not brik:
