@@ -82,7 +82,7 @@ class GUKInputIO(FileIO):
 
         # root is the default filename, file is the filename, not the file handle
         file  = open(self.filepath,'r')        #The file descriptor
-        
+
         # loop to find where the coordinate specification starts
         finished = 0
         while not finished:
@@ -93,8 +93,8 @@ class GUKInputIO(FileIO):
                 break
 
             # Remove space and convert to lower case
-            line.strip()
-            line.lower()
+            line=line.strip()
+            line=line.lower()
             
             if line:
                 #fields = string.split( line )
@@ -154,9 +154,9 @@ class GUKInputIO(FileIO):
                 break
         
             #line = string.strip( line )
-            line.strip()
+            line=line.strip()
             #line = string.lower( line )
-            line.lower()
+            line=line.lower()
             
             if line:
                 # See if the line has commas in it, as GAMESS-UK supports this as a
