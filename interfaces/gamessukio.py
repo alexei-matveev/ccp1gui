@@ -102,19 +102,21 @@ class GUKInputIO(FileIO):
             else:
                 # ignore empty lines
                 continue
-            if ( fields[0][0:4] == "zmat" ):
-                mode = 'z'
-                finished = 1
-            elif ( fields[0][0:4] == "cart" ):
-                mode = 'x'
-                finished = 1
-            elif ( fields[0][0:4] == "geom"):
-                # Check for NWChem input style
-                if ( len(fields) == 3 and fields[2][0:4] == 'nwch'):
-                    mode = 'n'
-                else:
+
+            if len(fields) and len(fields[0])>=4:
+                if ( fields[0][0:4] == "zmat" ):
+                    mode = 'z'
+                    finished = 1
+                elif ( fields[0][0:4] == "cart" ):
                     mode = 'x'
-                finished = 1
+                    finished = 1
+                elif ( fields[0][0:4] == "geom"):
+                    # Check for NWChem input style
+                    if ( len(fields) == 3 and fields[2][0:4] == 'nwch'):
+                        mode = 'n'
+                    else:
+                        mode = 'x'
+                    finished = 1
 
         zmat_buffer = []
 
