@@ -585,20 +585,21 @@ class Field:
 
         # Brute force - trundle through and try and work it out
         else:
-            maxi = -1.0e10
-            mini = 1.0e10
-            for i in range(len(self.data)):
-                maxi = max(maxi,self.data[i])
-                mini = min(mini,self.data[i])
+            if self.data:
+                maxi = -1.0e10
+                mini = 1.0e10
+                for i in range(len(self.data)):
+                    maxi = max(maxi,self.data[i])
+                    mini = min(mini,self.data[i])
                 
-            # Remember these values
-            self.data_min = mini
-            self.data_max = maxi
+                # Remember these values
+                self.data_min = mini
+                self.data_max = maxi
 
         # Trap errors here as otherwise errors might arise when we intialise
         # the widgets which is much harder to debug
         if mini == None or maxi == None:
-            raise AttributeError,"field minmax - could not work out max or min!"
+            print "WARNING!!!: field minmax - could not work out max or min!"
         
         print "field minmax returning min: %s max: %s" % (mini,maxi)
         return (mini,maxi)
