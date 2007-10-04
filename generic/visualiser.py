@@ -37,7 +37,8 @@ import time
 from Scientific.Geometry.VectorModule import *
 
 from SimpleDialog import SimpleDialog
-from tkColorChooser import *
+#from tkColorChooser import *
+import tkColorChooser
 from tkFileDialog import *
 from objects.field import Field
 from objects.grideditor import GridEditorWidget
@@ -51,123 +52,488 @@ COV_RADII = 11
 NULL  = 0
 BUILT = 1
 
-class ColourMapChooser:
-    """Implements widgets to select a colourmap and optionally
-    a vector field to colour by
 
-    The read_widgets method (which is called internally by the widgets
-    that implement a ColourMapChooser) returns 4 objects:
-    1. The Field to colour the object by (may be None)
-    2. The Title for the field (again, may be None)
-    3. The lower bound of the colourmap
-    4. The upper bound of the colourmap
+class Colourer:
+    """A class to hold information about how to colour an object
+    Vaild schemes are:
+    Uniform : a single colour
+    +ve -ve : two colours for positive & negative values
+    ????    : Any object that we can colour by
     """
-    def __init__(self, parent, key, graph=None,choose_field=0,low=-1,high=1):
-        self.parent = parent
-        self.key = key
+    def __init__(self,graph):
+
+        # Need the graph object
         self.graph = graph
-        self.low = low
-        self.high = high
-        self.choose_field = choose_field
 
-    def widget(self):
-        """ add a colourmap selector, includes
-        colour map choice,
-        Scalar field for colouring
-        Mapping range
-        """
+        # The colouring scheme in opreation - this could be
+        # Uniform, "+ve -ve", or the name of a scheme/object to colour by
+        self.scheme = None
+        
+        # The name of the colouring scheme in operation
+        self.cmap_name=None
+        
+        # For uniform colouring we use the plus_colour
+        self.plus_colour   =  None
+        self.plus_rgb = None
 
-        self.cmap_frame = Pmw.Group(self.parent, tag_text=self.key + "Colour Mapping")
-        self.cmap_name_var = Tkinter.StringVar()
+        # For orbital colouring need a -ve colour
+        self.minus_colour=None
+        self.minus_rgb=None
+
+        # The lookup table we are using
+        self.lut=None
+
+        # An object that we want to colour by
+        self.cmap_obj=None
+
+        # The min and max values that the colouring will be
+        # mapped between
+        self.cmap_low = None
+        self.cmap_high = None
+
+        # Determine whether to display a scalar bar of the colourmap
+        self.show_colourmap_actor = None
+
+
+    def get_lut(self):
+        """Return the lookuptable"""
+        
+        self.lut = self.graph.get_cmap_lut(self.cmap_name)
+        return self.lut
+
+    def get_value(self,value):
+        """Return an attribute of the object if it exists"""
+        if hasattr(self,value):
+            return getattr(self,value)
+        else:
+            return None
+        
+    def set_value(self,vtype,value):
+        """Set an attribute of the colourobject"""
+        setattr(self,vtype,value)
+
+    def cmap_by_object(self):
+        """Convenience function - return True if colourmapping by
+        an object (checks if the object can be found)"""
+
+        # Can only check if not uniform or +ve-ve & that there is
+        # an object
+        if ( self.scheme != 'Uniform' and self.scheme != '+ve -ve' ):
+            if self.cmap_obj:
+                return True
+        return False
+
+
+class ColourChooser:
+    """Implements widgets to colour an object.
+    It acts on a colourer object that holds the various parameters
+    requried for colouring the object.
+    The colourchooser takes a list of colour schemes in the 'schemes'
+    keyword argument to init that defines which capabilities the widget
+    will have. They are:
+    Uniform: colour a field uniformly
+    +ve -ve: binary colour scheme (e.g. for orbitals)
+    Anything else is currently considered to be some form of colourmap
+    """
+    def __init__(self,
+                 parent,
+                 colourer,
+                 schemes,
+                 graph=None,
+                 choose_field=None,
+                 title=None
+                 ):
+
+
+        self.debug=1
+        self.parent = parent
+        self.colourer = colourer # object to hold colour info
+        self.schemes = schemes # which schemes this widget supports
+        self.graph = graph # graph object - for getting field objects
+        self.choose_field=choose_field # If we are query for fields
+        if title:
+            self.title=title # this is what the group will be called
+        else:
+            self.title = "Colours" # Default title of Colours
+
+        # If we're choosing fields, Append them here
+        if self.choose_field:
+            fields = self.get_all_fields()
+            self.schemes+=fields
+        
+        # Build the base widgets
+        self.build_base()
+
+        # Build the widgets for all schemes
+        builtcmap=None # Don't build the cmap widgts more than once
+        for scheme in self.schemes:
+            if scheme == 'Uniform':
+                self.build_uniform()
+            elif scheme == '+ve -ve':
+                self.build_plusminus()
+            else:
+                # Assume anything else is a colourmap
+                if not builtcmap:
+                    self.build_colourmap()
+                    builtcmap=1
+
+
+        # Now pack them - preference is uniform > +ve-ve > colourmap
+        if 'Uniform' in self.schemes:
+            self.pack_uniform()
+        elif '+ve -ve' in self.schemes:
+            self.pack_plusminus()
+        else:
+            self.pack_colourmap()
+
+        # Need to initialise the scheme in use
+        scheme = self.w_scheme_options.getvalue()
+        self.colourer.set_value("scheme",scheme)
+
+
+    ###############################################################
+    ### get_colourmaps, get_all_fields and get_field_from_name
+    ### are here as they are a little different in requiring the graph object
+    ###
+    def get_colourmaps(self):
+        """Return a list of the available colourmaps that
+        is stored in the graph object"""
 
         t = ['Default']
-
         if self.graph:
             for c in self.graph.colourmaps:
                 t.append(c.title)
+        return t
 
-        f1 = Tkinter.Frame(self.cmap_frame.interior())
-        f2 = Tkinter.Frame(self.cmap_frame.interior())
-        f1.pack(side='top')
-        f2.pack(side='top')
-        self.w_cmap_name_menu = Pmw.OptionMenu(f1,
-                                               labelpos = 'w',
-                                               label_text = 'Scheme :',
-                                               menubutton_textvariable = self.cmap_name_var,
-                                               items = t,
-                                               menubutton_width = 10)
-
-        self.w_cmap_name_menu.setvalue('Default')
-
-        self.w_cmap_low = Pmw.Counter(f2,
-                                   labelpos = 'w', label_text = 'Lo',
-                                   entryfield_value = self.low,
-                                   entryfield_entry_width = 5,
-                                   increment=1.0,
-                                   datatype = {'counter' : 'real' },
-                                   entryfield_validate = { 'validator' : 'real' })
-
-        self.w_cmap_high = Pmw.Counter(f2,
-                                   labelpos = 'w', label_text = 'Hi',
-                                   entryfield_value = self.high,
-                                   entryfield_entry_width = 5,
-                                   increment=1.0,
-                                   datatype = {'counter' : 'real' },
-                                   entryfield_validate = { 'validator' : 'real' })
-
-        self.w_cmap_name_menu.pack(side='left')
-        self.w_cmap_low.pack(side='left')
-        self.w_cmap_high.pack(side='left')
-
-        if self.choose_field:
-            self.colour_field_var = Tkinter.StringVar()
-            self.w_colour_field_obj = Pmw.OptionMenu(f1,
-                                                     labelpos = 'w',
-                                                     label_text = 'Colour by',
-                                                     menubutton_textvariable = self.colour_field_var,
-                                                     items = ['dum'],
-                                                     menubutton_width = 10)
-            self.w_colour_field_obj.pack(side='top')
-            self.update_colour_field_obj()
-
-        return self.cmap_frame
-
-    def update_colour_field_obj(self):
+    def get_all_fields(self):
+        """Return a list of the fields held by the CCP1GUI so that
+        we can use their data values to colourmap other objects"""
         items = []
-        print 'update_colour_field'
-        items.append('None')
+        #items=['foo','bar']
+        #return items
         for o in self.graph.data_list:
-            print o
             t1 = string.split(str(o.__class__),'.')
-            print t1
             myclass = t1[len(t1)-1]
             if myclass == 'Field':
                 if o.ndd == 1:
                     items.append(o.name)
 
-        self.w_colour_field_obj.setitems(items)
-        self.w_colour_field_obj.setvalue('None')
+        return items
+
+    def get_field_from_name(self,name):
+        """Get the field object that the user has selected to colour
+        things by"""
+                    
+        colour_obj = None
+        for o in self.graph.data_list:
+            t1 = string.split(str(o.__class__),'.')
+            myclass = t1[len(t1)-1]
+            if myclass == 'Field':
+                if o.ndd == 1:
+                    if o.name == name:
+                        colour_obj = o
+        return colour_obj
+
+    ###############################################################
+
+    def build_base(self):
+        """Consists of two Pmw.Labelled Widgets side by side in topframe.
+        The first is used to select the scheme to be used. The second is
+        used to hold the tools to manipulate that scheme.
+        """
+
+        # Build the main group
+        self.widget = Pmw.Group(
+            self.parent,
+            tag_text=self.title,
+            #tag_foreground="blue"
+            #tagindent=100 # default is 10
+            )
+        #self.widget.pack(fill = 'x', expand = 1)
+
+        self.topframe = Tkinter.Frame(self.widget.interior())
+        self.topframe.pack(side='top')
+
+        # Scheme Chooser
+        self.w_scheme = Pmw.LabeledWidget(
+            self.topframe,
+            labelpos = 'w',
+            label_text='Scheme')
+        self.w_scheme.pack(side='left')
+
+        # Option menu to choose between the different schemes
+        # calls change_scheme to update the widget with any
+        # required changes
+        self.w_scheme_options = Pmw.OptionMenu(
+            self.w_scheme.interior(),
+            labelpos = None,
+            items=self.schemes,
+            initialitem=self.colourer.get_value("scheme"),
+            command=self.change_scheme
+            )
+
+        # Disable if only 1 option
+        if len(self.schemes)==1:
+            self.w_scheme_options.configure(menubutton_state='disabled')
+        self.w_scheme_options.pack()
+
+        # Labelled widget to configure the chosen scheme
+        self.w_config = Pmw.LabeledWidget(
+            self.topframe,
+            labelpos = 'w',
+            label_text='Colour')
+        self.w_config.pack(side='left')
+
+
+    def build_plus(self):
+        """Build the widgets to configure the plus colour (also
+        used for the uniform scheme
+        label is used to change the text label)
+        """
+        label='+ve'
+        colour = self.colourer.get_value('plus_colour')
+        self.plus_button = Tkinter.Button(self.w_config.interior(),
+                                       text = label,
+                                       foreground = colour,
+                                       command= self.choose_plus_colour)
+
+    def pack_plus(self):
+        """Pack the plus widget
+        Need to change the text as this is also used by the uniform widget
+        """
+        self.plus_button.config(text='+ve')
+        self.plus_button.pack(side='left')
+
+    def choose_plus_colour(self):
+        """Get the selected clour, set the colourer and then
+        colour the button"""
+        colour = self.colourer.get_value('plus_colour')
+        plus_rgb, plus_colour = tkColorChooser.askcolor(initialcolor=colour)
+        #print "plus_rgb ",plus_rgb
+        #print "plus_colour ",plus_colour
+        self.colourer.set_value('plus_colour',plus_colour)
+        self.colourer.set_value('plus_rgb',plus_rgb)
+        self.plus_button.configure(foreground = plus_colour)
+
+
+    def build_minus(self):
+        """Build the widgets to configure the negative colour
+        """
+        colour = self.colourer.get_value('minus_colour')
+        self.minus_button = Tkinter.Button(self.w_config.interior(),
+                                       text = '-ve',
+                                       foreground = colour,
+                                       command= self.choose_minus_colour)
+
+    def pack_minus(self):
+        """Pack the uniform widget"""
+        self.minus_button.pack(side='left')
+
+    def choose_minus_colour(self):
+        """Get the selected clour, set the colourer and then
+        colour the button"""
+        colour = self.colourer.get_value('minus_colour')
+        minus_rgb, minus_colour = tkColorChooser.askcolor(initialcolor=colour)
+        self.colourer.set_value('minus_colour',minus_colour)
+        self.colourer.set_value('minus_rgb',minus_rgb)
+        self.minus_button.configure(foreground = minus_colour)
+
+    def build_uniform(self):
+        """Build the widgets for the uniform configuration (this
+        just uses the plus widget)"""
+        self.build_plus()
+
+    def pack_uniform(self):
+        """Pack the widgets for the uniform configuration
+        Also need to change the label"""
+        self.plus_button.config(text='oOo')
+        self.plus_button.pack(side='left')
+        
+    def forget_uniform(self):
+        """Pack the widgets for the uniform configuration
+        Also need to change the label"""
+        if hasattr(self,'plus_button'):
+            self.plus_button.forget()
+        
+    def build_plusminus(self):
+        """Build the widgets for the plusminus configuration"""
+        self.build_plus()
+        self.build_minus()
+
+    def pack_plusminus(self):
+        """Pack the widgets for the plusminus configuration"""
+        self.pack_plus()
+        self.pack_minus()
+                           
+    def forget_plusminus(self):
+        """Hide the plusminus widgets
+        Checks if they exist so we can just call this regardles
+        of whether we have built them or not
+        """
+        if hasattr(self,'minus_button'):
+            self.minus_button.forget()
+        if hasattr(self,'plus_button'):
+            self.plus_button.forget()
+
+    def build_colourmap(self):
+        """A Pmw.OptionMenu to choose the colourmapping to apply
+        In addition a frame is created below the other widgets
+        to hold the cmap high & low tools as well as the one to toggle
+        if we show the colourmap_actor
+        
+        """
+
+
+        # The menu to configure the colourmaps - packs in self.w_config
+        # like the other configuration widgets
+        cmaps = self.get_colourmaps()
+        self.colourmap_options = Pmw.OptionMenu(
+            self.w_config.interior(),
+            labelpos = None,
+            items=cmaps,
+            initialitem=cmaps[0],
+            command=self.change_colourmap
+            )
+
+
+        # Frame to hold the other widgets (sits below them)
+        self.bottomframe = Tkinter.Frame(self.widget.interior())
+        
+        # Counter to configure the lower bound
+        low=self.colourer.get_value("cmap_low")
+        if not low:
+            # Trap this here cos it's a bugger to work out why it's crashing otherwise...
+            raise AttributeError,"visualiser.py:ColourChooser need a cmap_low value!"
+        self.w_cmap_low = Pmw.Counter(
+            self.bottomframe,
+            labelpos = 'w',
+            label_text = 'Lo',
+            entryfield_value = low,
+            entryfield_entry_width = 5,
+            increment=1.0,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' },
+            )
+
+        self.w_cmap_low.pack(side='left')
+
+        # Counter to configure the upper bound
+        high=self.colourer.get_value("cmap_high")
+        if not high:
+            # Trap this here cos it's a bugger to work out why it's crashing otherwise...
+            raise AttributeError,"visualiser.py:ColourChooser need a cmap_high value!"
+        self.w_cmap_high = Pmw.Counter(
+            self.bottomframe,
+            labelpos = 'w',
+            label_text = 'Hi',
+            entryfield_value = high,
+            entryfield_entry_width = 5,
+            increment=1.0,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+        self.w_cmap_high.pack(side='left')
+
+
+        # Checkbox to decide if to show the colourmap actor
+        self.w_cmap_show_var = Tkinter.BooleanVar()
+        self.w_cmap_show_var.set(0) # Turn it off by default
+        self.w_cmap_show = Pmw.LabeledWidget(
+            self.bottomframe,
+            labelpos='w',
+            label_text='Display'
+            )
+        self.w_cmap_show_button = Tkinter.Checkbutton(
+            self.w_cmap_show.interior()
+            )
+        self.w_cmap_show_button.config(variable=self.w_cmap_show_var)
+        self.w_cmap_show_button.config(
+            command=lambda s=self: s.toggle_colourmap()
+            )
+        self.w_cmap_show_button.pack(side='left')
+        self.w_cmap_show.pack(side='left')
+
+    def toggle_colourmap(self):
+        """Update the colourer to show or hide the scalarbar"""
+        show = self.w_cmap_show_var.get()
+        #print "setting show_colourmap_actor to ",show
+        self.colourer.set_value("show_colourmap_actor",show)
+
+#     def set_cmap_low(self,low):
+#         """Set the cmap_low variable"""
+#         #low='foo'
+#         print "setting cmap low ",low
+#         self.colourer.set_value("cmap_low",low)
+
+    def change_colourmap(self,colourmap):
+        """The colourmap has been changed to update the colourer object"""
+        #print "updating colourmap to ",colourmap
+        self.colourer.set_value("cmap_name",colourmap)
+
+    def pack_colourmap(self):
+        """Pack the colourmap widgets"""
+        self.colourmap_options.pack(side='left')
+        self.bottomframe.pack(side='bottom',pady='5')
+        
+    def forget_colourmap(self):
+        if hasattr(self,"colourmap_options"):
+            self.colourmap_options.forget()
+        if hasattr(self,"bottomframe"):
+            self.bottomframe.forget()
+
+        
+    def change_scheme(self,scheme):
+        """The user has changed the colourscheme so we forget/pack
+        the relevant widgets."""
+        
+        # Forget all the widgets
+        self.forget_uniform()
+        self.forget_plusminus()
+        self.forget_colourmap()
+        
+        if scheme == 'Uniform':
+            self.pack_uniform()
+        elif scheme == '+ve -ve':
+            self.pack_plusminus()
+        else:
+            self.pack_colourmap()
+
+        # Update the colourer object with the new scheme
+        self.colourer.set_value("scheme",scheme)
+        
+        self.read_widgets()
 
     def read_widgets(self):
+        """ Update the colourer with the widget options.
+        """
 
-        colour_obj = None
+        if self.debug:print "ColourChooser read_widgets"
+
+        # This is required for the Pmw.Counters as I can't work out
+        # how to get them to call a command whenever they are updated (they
+        # can be configured with a command, but it's only invoked when "Enter"
+        # is pressed).
+        if hasattr(self,"w_cmap_low"):
+            cmap_low=float(self.w_cmap_low.get())
+            self.colourer.set_value("cmap_low",cmap_low)
+        if hasattr(self,"w_cmap_high"):
+            cmap_high=float(self.w_cmap_high.get())
+            self.colourer.set_value("cmap_high",cmap_high)
+            
+
+        # Colourmap name is updated automatically
+
+        # Scheme updated automatically but set again just to be sure
+        #scheme = self.w_scheme_options.getvalue()
+        #self.colourer.set_value("scheme",scheme)
+        scheme = self.colourer.get_value("scheme")
+        
+        
+        # Now get the field object if requried
         if self.choose_field:
-            field_name = self.colour_field_var.get()
-            if field_name == 'None':
-                pass
-            else:
-                for o in self.graph.data_list:
-                    t1 = string.split(str(o.__class__),'.')
-                    myclass = t1[len(t1)-1]
-                    if myclass == 'Field':
-                        if o.ndd == 1:
-                            if o.name == field_name:
-                                colour_obj = o
+            field = self.get_field_from_name(scheme)
+            if field:
+                self.colourer.set_value("cmap_obj",field)
 
-        return ( colour_obj,
-                 self.cmap_name_var.get(),
-                 float(self.w_cmap_low.get()),
-                 float(self.w_cmap_high.get()) )
 
 class Visualiser:
 
@@ -433,13 +799,19 @@ class DataVisualiser(Visualiser):
     fields. Currently this just includes the widget that lists the min and max
     values"""
 
-    def __init__(self, root, graph, obj, **kw):
+    def __init__(self, root, graph, obj, data_summary=None,**kw):
+        
         Visualiser.__init__(self, root, graph, obj, **kw)
 
         #Make the base dialog that creates the widgets
         if not self.dialog:
             self.make_base_dialog()
 
+        if data_summary:
+            self.make_data_summary_dialog(obj)
+
+
+    def make_data_summary_dialog(self,obj):
         # Frame to hold textwidget and button to show/hide it
         self.data_summary_group = Pmw.Group( self.dialog.topframe, tag_text="Data Summary" )
 
@@ -1203,27 +1575,30 @@ class IsoSurfaceVisualiser(DataVisualiser,OutlineVisualiser):
     """Base class for isosurfaces"""
     def __init__(self, root, graph, obj, **kw):
         DataVisualiser.__init__(self, root, graph, obj, **kw)
-        apply(OutlineVisualiser.__init__, (self,), kw)
+        OutlineVisualiser.__init__(self, **kw)
         self.field=obj
         self.opacity = 1.0
+        self.colourer = Colourer(graph)
+        
 
 class OrbitalVisualiser(IsoSurfaceVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(IsoSurfaceVisualiser.__init__, (self, root, graph, obj), kw)
+        IsoSurfaceVisualiser.__init__(self, root, graph, obj,data_summary=1,**kw)
         #
         # Create the required controls (how many frames)
         #
 
-        self.cmap_obj = None
+        self.title='Orbital view: ' + self.field.title
         self.height = 0.05
 
-        self.plus_colour   =  '#ff0000'
-        self.minus_colour  =  '#0000ff'
-        self.plus_rgb = [ 255, 0, 0]
-        self.minus_rgb = [ 0, 0, 255]
-        self.title='Orbital view: ' + self.field.title
+        # Set the default colours
+        self.colourer.set_value("plus_colour",'#ff0000')
+        self.colourer.set_value("minus_colour",'#0000ff')
+        self.colourer.set_value("plus_rgb",[ 255, 0, 0])
+        self.colourer.set_value("minus_rgb",[ 0, 0, 255])
+        
         
     def _make_dialog(self):
 
@@ -1239,67 +1614,45 @@ class OrbitalVisualiser(IsoSurfaceVisualiser):
                                     datatype = {'counter' : 'real' },
                                     entryfield_validate = { 'validator' : 'real' })
 
-        self.cframe = Tkinter.Frame(f)
-
-        self.w_colorlab = Tkinter.Label(self.cframe,text='Edit Colours:      ')
-
-        self.w_pcolor = Tkinter.Button(self.cframe,
-                               text = '+ve',
-                               foreground = self.plus_colour,
-                               command= self.__choose_plus_colour)
-
-        self.w_mcolor = Tkinter.Button(self.cframe,
-                               text = '-ve',
-                               foreground = self.minus_colour,
-                               command= self.__choose_minus_colour)
-
-        self.w_colorlab.pack(side='left')
-        self.w_pcolor.pack(side='left')
-        self.w_mcolor.pack(side='left')
-
-        self.cframe.pack(side='top',fill='x')
         self.w_height.pack(side='top')
-
         self.opacity_widget(frame=f)
 
+        # Pack the colour chooser frame
+        self.colourchooser = ColourChooser(
+            f,
+            self.colourer,
+            schemes=['+ve -ve'],
+            graph=self.graph,
+            choose_field=0
+            )
+        self.colourchooser.widget.pack(side='top',fill='x',expand=1)
+        
         surface_group.pack(side='top',fill='x')
-
+        
         self.add_outline_widget()
         
-    def __choose_plus_colour(self):
-        self.plus_rgb, self.plus_colour = askcolor(initialcolor=self.plus_colour)
-        self.w_pcolor.configure(foreground = self.plus_colour)
-
-    def __choose_minus_colour(self):
-        self.minus_rgb, self.minus_colour = askcolor(initialcolor=self.minus_colour)
-        self.w_mcolor.configure(foreground = self.minus_colour)
 
     def read_widgets(self):
         self.height =  float(self.w_height.get())
         self.opacity =  float(self.w_opacity.get())
-        # convert color format
-        r, g, b = self.dialog.winfo_rgb(self.plus_colour)
-        self.plus_rgb = [r/256, g/256, b/256]
-        r, g, b = self.dialog.winfo_rgb(self.minus_colour)
-        self.minus_rgb = [r/256, g/256, b/256]
+        self.colourchooser.read_widgets()
 
 
 class DensityVisualiser(IsoSurfaceVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(IsoSurfaceVisualiser.__init__, (self, root, graph, obj), kw)
+        IsoSurfaceVisualiser.__init__(self, root, graph, obj,data_summary=1,**kw)
 
-        self.cmap_obj = None
 
         # Default settings
         self.height = 0.05
-
-        self.plus_colour   =  '#00ff00'
-        self.plus_rgb = [0, 255, 0]
         self.opacity = 1.0
         self.field = obj
         self.title = 'Density Isosurface: ' + self.field.title
+        # Colours
+        self.colourer.set_value("plus_colour",'#00ff00')
+        self.colourer.set_value("plus_rgb",[0, 255, 0])
 
     def _make_dialog(self):
 
@@ -1307,15 +1660,6 @@ class DensityVisualiser(IsoSurfaceVisualiser):
         f = surface_group.interior()
 
         labs = []
-
-        self.w_colour_lab = Pmw.LabeledWidget(f,labelpos='w',label_text='Colour')
-        self.w_pcolor = Tkinter.Button(self.w_colour_lab.interior(),
-                                       text = 'oOo',
-                                       foreground = self.plus_colour,
-                                       command= self.__choose_plus_colour)
-
-        self.w_pcolor.pack(side='left')
-        self.w_colour_lab.pack(side='top')
 
         self.w_height = Pmw.Counter(f,
                                     labelpos = 'w',
@@ -1325,17 +1669,25 @@ class DensityVisualiser(IsoSurfaceVisualiser):
                                     increment=0.005,
                                     datatype = {'counter' : 'real' },
                                     entryfield_validate = { 'validator' : 'real' })
-
         labs.append(self.w_height)
         self.w_height.pack(side='top')
 
-        labs.append(self.w_colour_lab)
+        #labs.append(self.w_colour_lab)
 
         self.opacity_widget(frame=f)
         labs.append(self.w_opacity)
 
-        surface_group.pack(side='top',fill='x')
+        self.colourchooser = ColourChooser(
+            f,
+            self.colourer,
+            schemes=['Uniform'],
+            graph=self.graph,
+            choose_field=0
+            )
+        self.colourchooser.widget.pack(side='top',fill='x',expand=1)
+        
 
+        surface_group.pack(side='top',fill='x')
         Pmw.alignlabels(labs)
 
         self.add_outline_widget()
@@ -1347,9 +1699,6 @@ class DensityVisualiser(IsoSurfaceVisualiser):
 
     def read_widgets(self):
         self.height =  float(self.w_height.get())
-        # convert color format
-        r, g, b = self.dialog.winfo_rgb(self.plus_colour)
-        self.plus_rgb = [r/256, g/256, b/256]
         self.opacity =  float(self.w_opacity.get())
 
 class VolumeVisualiser(Visualiser,OutlineVisualiser):
@@ -1363,7 +1712,7 @@ class VolumeVisualiser(Visualiser,OutlineVisualiser):
         # Default settings
         #self.height = 0.05
         #self.plus_colour   =  '#00ff00'
-        self.plus_rgb = [0, 255, 0]
+        #self.plus_rgb = [0, 255, 0]
         #self.opacity = 1.0
 
         # Need editor for this
@@ -1508,21 +1857,19 @@ class VolumeOrbitalVisualiser(VolumeVisualiser):
 
 class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
 
-    def __init__(self, root, graph, obj, colour_obj=None, **kw):
+    def __init__(self, root, graph, obj, colour_obj=None,**kw):
 
-        apply(IsoSurfaceVisualiser.__init__, (self, root, graph, obj), kw)
+        IsoSurfaceVisualiser.__init__(self, root, graph, obj, data_summary=1,**kw)
         # Default settings
         self.height = 0.05
-        self.plus_colour   =  '#00ff00'
-        self.plus_rgb = [0, 255, 0]
-
         self.opacity = 1.0
-
         self.field = obj
-        self.cmap_obj = colour_obj
-        self.cmap_obj = None
-        self.cmap_low = -50
-        self.cmap_high = 50
+        
+        self.colourer.set_value('plus_colour','#00ff00')
+        self.colourer.set_value('plus_rgb',[0, 255, 0])
+        self.colourer.set_value('cmap_obj',None)
+        self.colourer.set_value('cmap_low',-50)
+        self.colourer.set_value('cmap_high',50)
         self.title = 'Coloured Isosurface of ' + self.field.title
 
     def _make_dialog(self):
@@ -1539,51 +1886,27 @@ class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
                                     datatype = {'counter' : 'real' },
                                     entryfield_validate = { 'validator' : 'real' })
 
-        self.cframe = Tkinter.Frame(f)
-
-        self.w_colorlab = Tkinter.Label(self.cframe,text='Edit Colours:    ')
-
-        self.w_pcolor = Tkinter.Button(self.cframe,
-                                       text = 'oOo',
-                                       foreground = self.plus_colour,
-                                       command= self.__choose_plus_colour)
-
-        self.w_colorlab.pack(side='left')
-        self.w_pcolor.pack(side='left')
-        self.cframe.pack(side='top',fill='x')
-        self.w_height.pack(side='top')
-
         self.opacity_widget(frame=f)
-
         surface_group.pack(side='top',fill='x')
 
-        self.cmap_chooser = ColourMapChooser(self.dialog.topframe,"",
-                                             self.graph,
-                                             choose_field=1,
-                                             low=self.cmap_low,
-                                             high=self.cmap_high)
-
-        self.cmap_chooser.widget().pack(side='top',fill='x')
+        self.colourchooser = ColourChooser(
+            f,
+            self.colourer,
+            schemes=['Uniform'],
+            graph=self.graph,
+            choose_field=1
+            )
+        self.colourchooser.widget.pack(side='top',fill='x',expand=1)
 
         self.add_outline_widget()
 
         Pmw.alignlabels([ self.w_height, self.w_opacity ] )
 
-    def __choose_plus_colour(self):
-        self.plus_rgb, self.plus_colour = askcolor(initialcolor=self.plus_colour)
-        self.w_pcolor.configure(foreground = self.plus_colour)
-
     def read_widgets(self):
         self.height =  float(self.w_height.get())
 
-        # convert color format
-        r, g, b = self.dialog.winfo_rgb(self.plus_colour)
-        self.plus_rgb = [r/256, g/256, b/256]
-
-        self.cmap_obj, self.cmap_name, \
-                       self.cmap_low, self.cmap_high = \
-                       self.cmap_chooser.read_widgets()
-
+        self.colourchooser.read_widgets()
+        
         self.read_opacity_widgets()
         
 class GridVisualiser(Visualiser):
@@ -1636,12 +1959,34 @@ class VectorVisualiser(DataVisualiser):
             self.regular3 = 0            
 
         # Seem to need this (no read_widgets before first build?)
-        self.cmap_name = 'Default'
-        self.cmap_low = -1
-        self.cmap_high = 1
 
+        # Heddgehog
         self.hedgehog_scale=1.0
+        self.show_hedgehog = 0
+        self.hedgehog_colourer = Colourer(graph)
+        self.hedgehog_colourer.set_value("plus_colour", '#ffffff' )
+        self.hedgehog_colourer.set_value("plus_rgb", [255,255,255] )
+        self.hedgehog_colourer.set_value("cmap_low", -1 )
+        self.hedgehog_colourer.set_value("cmap_high", 1 )
+
+        
+        # Oriented glyphs
         self.orientedglyph_scale=1.0
+        self.show_orientedglyphs = 0
+        self.orientedglyphs_colourer = Colourer(graph)
+        self.orientedglyphs_colourer.set_value("plus_colour", '#646464' )
+        self.orientedglyphs_colourer.set_value("plus_rgb", [100,100,100] )
+        self.orientedglyphs_colourer.set_value("cmap_low", -1 )
+        self.orientedglyphs_colourer.set_value("cmap_high", 1 )
+
+        # Streamlines
+        self.show_streamlines = 0
+        
+        self.streamlines_colourer = Colourer(graph)
+        self.streamlines_colourer.set_value("cmap_low", -1 )
+        self.streamlines_colourer.set_value("cmap_high", 1 )
+        self.streamlines_colourer.set_value("plus_colour", '#ffffff' )
+        self.streamlines_colourer.set_value("plus_rgb", [255,255,255] )
         
         self.streamline_propagation_time=5.0
         self.streamline_integration_step_length=0.2
@@ -1649,8 +1994,16 @@ class VectorVisualiser(DataVisualiser):
         self.streamline_display = STREAM_LINES
         self.streamline_integration_direction = STREAM_FORWARD
         self.streamline_thin_points=1
-        self.streamline_colourmap="None"
 
+        # Streamarrows
+        self.show_streamarrows = 0
+        
+        self.streamarrows_colourer = Colourer(graph)
+        self.streamarrows_colourer.set_value("cmap_low", -1 )
+        self.streamarrows_colourer.set_value("cmap_high", 1 )
+        self.streamarrows_colourer.set_value("plus_colour", '#646464' )
+        self.streamarrows_colourer.set_value("plus_rgb", [100,100,100] )
+        
         self.streamarrow_propagation_time=5.0
         self.streamarrow_integration_step_length=0.2
         self.streamarrow_time_increment=10
@@ -1658,357 +2011,38 @@ class VectorVisualiser(DataVisualiser):
         self.streamarrow_size=0.3
         self.streamarrow_thin_points=1
         self.streamarrow_scale=0
-        self.streamarrow_colourmap="None"
-
-
-        self.show_hedgehog = 0
-        self.show_orientedglyphs = 0
-        self.show_streamlines = 0
-        self.show_streamarrows = 0
+        self.streamarrow_type="Arrow"
 
         if self.regular3:
             self.sample_grid = self.cut_plane
         else:
             self.sample_grid = VECTOR_SAMPLE_ALL
 
-        self.cmap_obj = None
 
     def _make_dialog(self, **kw):
 
         print 'vectorvis.make_dialog'
+        #labels = []
 
-        labels = []
-        # selector for whether the 
-
-        self.hedgehog_var = Tkinter.BooleanVar()
-        self.hedgehog_var.set(self.show_hedgehog)
-
+        # Hedgehog widget group
         if self.graph.check_capability('hedgehog'):
-
-            self.hedgehog_group = Pmw.Group(
-                self.dialog.topframe ,tag_text='Hedgehog')
-
-            f = self.hedgehog_group.interior()
-
-            self.w_hedgehog_lab = Pmw.LabeledWidget(f,labelpos='w',label_text='Display')
-            self.w_hedgehog = Tkinter.Checkbutton(self.w_hedgehog_lab.interior())
-            self.w_hedgehog.config(variable=self.hedgehog_var)
-            self.w_hedgehog.config(command=lambda s=self: s.__read_buttons() )
-            self.w_hedgehog.pack(side='top')
-            self.w_hedgehog_lab.pack(side='left')
-
-            self.w_hedgehog_scale = Pmw.Counter(
-                f, labelpos = 'w',
-                label_text = 'Scale vectors by',
-                entryfield_value = self.hedgehog_scale,
-                entryfield_entry_width = 5,
-                increment=0.1,
-                datatype = {'counter' : 'real' },
-                entryfield_validate = { 'validator' : 'real' })
-
-            self.w_hedgehog_scale.pack(side='left')
-            labels.append(self.w_hedgehog_scale)            
-
-            self.hedgehog_group.pack(side='top',fill='x')
-
-        self.orientedglyphs_var = Tkinter.BooleanVar()
-        self.orientedglyphs_var.set(self.show_orientedglyphs)
-
+            self._make_hedgehog_dialog()
+            
+        # Oriented glyph widget group
         if self.graph.check_capability('orientedglyphs'):
+            self._make_orientedglyphs_dialog()
 
-            self.orientedglyphs_group = Pmw.Group(
-                self.dialog.topframe ,tag_text='Oriented Glyphs')
-            f = self.orientedglyphs_group.interior()
+        # Streamlines
+        if self.graph.check_capability('streamlines'):
+            self._make_streamlines_dialog()
 
-            self.w_orientedglyphs_lab = Pmw.LabeledWidget(
-                f,labelpos='w',label_text='Display')
-
-            self.w_orientedglyphs = Tkinter.Checkbutton(self.w_orientedglyphs_lab.interior())
-            self.w_orientedglyphs.config(variable=self.orientedglyphs_var)
-            self.w_orientedglyphs.config(command=lambda s=self: s.__read_buttons() )
-            self.w_orientedglyphs.pack(side='left')
-
-            self.w_orientedglyphs_lab.pack(side='left')
-
-            self.w_orientedglyph_scale = Pmw.Counter(
-                f,
-                labelpos = 'w', label_text = 'Scale glyphs by',
-                entryfield_value = self.orientedglyph_scale,
-                entryfield_entry_width = 5,
-                increment=0.1,
-                datatype = {'counter' : 'real' },
-                entryfield_validate = { 'validator' : 'real' })
-            self.w_orientedglyph_scale.pack(side='left')
-            labels.append(self.w_orientedglyph_scale)
-
-            self.orientedglyphs_group.pack(side='top',fill='x')
-
-        self.streamlines_var = Tkinter.BooleanVar()
-        self.streamlines_var.set(self.show_streamlines)
-        self.streamarrows_var = Tkinter.BooleanVar()
-        self.streamarrows_var.set(self.show_streamarrows)
-
-#jmht        if self.regular3:
-        if 1:
-
-            if self.graph.check_capability('streamlines'):
-
-                self.streamlines_group = Pmw.Group(
-                    self.dialog.topframe ,tag_text='Streamlines')
-
-                # Create a widget to show/hide the rest of the tools in this group
-                # The rest of the tools are all packed in self.streamlines_frame
-                # so that we can just show or hide that one frame
-                self.w_streamlines_show = Pmw.LabeledWidget(
-                    self.streamlines_group.interior(),labelpos='w',label_text='Display')
-                self.w_streamlines = Tkinter.Checkbutton(self.w_streamlines_show.interior())
-                self.w_streamlines.config(variable=self.streamlines_var)
-                self.w_streamlines.config(command=lambda s=self: s.show_streamline_widgets() )
-                self.w_streamlines.pack(side='top')
-                self.w_streamlines_show.pack(side='top')
-
-                
-                self.streamlines_frame = Tkinter.Frame( self.streamlines_group.interior() )
-                f1 = Tkinter.Frame(self.streamlines_frame)
-                f2 = Tkinter.Frame(self.streamlines_frame)
-                f3 = Tkinter.Frame(self.streamlines_frame)
-                f4 = Tkinter.Frame(self.streamlines_frame)
-
-                self.w_streamline_propagation_time = Pmw.Counter(
-                    f1,
-                    labelpos = 'w', label_text = 'Propagation Time',
-                    entryfield_value = self.streamline_propagation_time,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-
-                self.w_streamline_propagation_time.pack(side='left')
-                labels.append(self.w_streamline_propagation_time)
-
-                # Thin the number of starting points
-                self.w_streamline_thin_points = Pmw.Counter(
-                    f1,
-                    labelpos = 'w', label_text = 'Thin Points',
-                    entryfield_value = self.streamline_thin_points,
-                    entryfield_entry_width = 2,
-                    increment=1,
-                    datatype = {'counter' : 'integer' },
-                    entryfield_validate = { 'validator' : 'integer',
-                                            'min' : '1',
-                                            })
-                self.w_streamline_thin_points.pack(side='left')
-                labels.append(self.w_streamline_thin_points)
-                
-
-                self.w_streamline_integration_step_length = Pmw.Counter(
-                    f2,
-                    labelpos = 'w', label_text = 'Integ Step Length',
-                    entryfield_value = self.streamline_integration_step_length,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-
-                self.w_streamline_integration_step_length.pack(side='left')
-                labels.append(self.w_streamline_integration_step_length)
-
-                self.w_streamline_step_length = Pmw.Counter(
-                    f2,
-                    labelpos = 'w', label_text = 'Step Length',
-                    entryfield_value = self.streamline_step_length,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-
-                self.w_streamline_step_length.pack(side='left')
-                labels.append(self.w_streamline_step_length)
-
-                self.streamline_display_mode_var = Tkinter.StringVar()
-                self.w_streamline_display_mode = Pmw.OptionMenu(
-                    f3,
-                    labelpos = 'w',
-                    label_text = 'Display:',
-                    menubutton_textvariable = self.streamline_display_mode_var,
-                    items = ['lines','tubes','surfaces'],
-                    initialitem='lines',
-                    menubutton_width = 8)
-
-                self.w_streamline_display_mode.pack(side='left')
-    #            labels.append(self.w_streamline_display_mode)
-
-                self.streamline_integration_direction_var = Tkinter.StringVar()
-                self.w_streamline_integration_direction = Pmw.OptionMenu(
-                    f3,
-                    labelpos = 'w',
-                    label_text = 'Integrate ',
-                    menubutton_textvariable = self.streamline_integration_direction_var,
-                    items = ['forward','backward','both directions'],
-                    initialitem='both directions',
-                    menubutton_width = 10)
-
-                self.w_streamline_integration_direction.pack(side='left')
-    #           labels.append(self.w_streamline_integration_direction)
-
-                # Select whether to colour the lines by the Speed, a scalar
-                # or not to colour
-                self.streamlines_cmap_var = Tkinter.StringVar()
-                self.w_streamline_cmap = Pmw.OptionMenu(
-                    f4,
-                    labelpos = 'w',
-                    label_text = 'Colour ',
-                    menubutton_textvariable = self.streamlines_cmap_var,
-                    items = ['None','Speed','Scalar'],
-                    initialitem='None',
-                    menubutton_width = 10)
-                self.w_streamline_cmap.pack(side='left')
-
-                f1.pack(side='top')
-                f2.pack(side='top')
-                f3.pack(side='top')
-                f4.pack(side='top')
-                self.streamlines_group.pack(side='top',fill='x')
-
-                # Decide whether we need to be packed or not
-                self.show_streamline_widgets()
-
-                
-            if self.graph.check_capability('streamarrows'):
-
-                self.streamarrows_group = Pmw.Group(
-                    self.dialog.topframe ,tag_text='StreamArrows')
-
-                self.w_streamarrows_lab = Pmw.LabeledWidget(
-                    self.streamarrows_group.interior(),labelpos='w',label_text='Display')
-                self.w_streamarrows = Tkinter.Checkbutton(self.w_streamarrows_lab.interior())
-                self.w_streamarrows.config(variable=self.streamarrows_var)
-                self.w_streamarrows.config(command=lambda s=self: s.show_streamarrow_widgets() )
-                self.w_streamarrows.pack(side='top')
-                self.w_streamarrows_lab.pack(side='top')
-
-                self.streamarrows_frame = Tkinter.Frame( self.streamarrows_group.interior() )
-                f1 = Tkinter.Frame(self.streamarrows_frame)
-                f2 = Tkinter.Frame(self.streamarrows_frame)
-                f3 = Tkinter.Frame(self.streamarrows_frame)
-                f4 = Tkinter.Frame(self.streamarrows_frame)
-
-                self.w_streamarrow_propagation_time = Pmw.Counter(
-                    f1,
-                    labelpos = 'w', label_text = 'Propagation Time',
-                    entryfield_value = self.streamarrow_propagation_time,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-                self.w_streamarrow_propagation_time.pack(side='left')
-                labels.append(self.w_streamarrow_propagation_time)
-
-                self.w_streamarrow_integration_step_length = Pmw.Counter(
-                    f1,
-                    labelpos = 'w', label_text = 'Integ Step Length',
-                    entryfield_value = self.streamarrow_integration_step_length,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-                self.w_streamarrow_integration_step_length.pack(side='left')
-                labels.append(self.w_streamarrow_integration_step_length)
-
-                self.streamarrow_integration_direction_var = Tkinter.StringVar()
-                self.w_streamarrow_integration_direction = Pmw.OptionMenu(
-                    f2,
-                    labelpos = 'w',
-                    label_text = 'Integrate ',
-                    menubutton_textvariable = self.streamarrow_integration_direction_var,
-                    items = ['forward','backward','both directions'],
-                    initialitem='both directions',
-                    menubutton_width = 10)
-                self.w_streamarrow_integration_direction.pack(side='left')
-    #           labels.append(self.w_streamarrow_integration_direction)
-
-                self.w_streamarrow_time_increment = Pmw.Counter(
-                    f2,
-                    labelpos = 'w', label_text = 'Time Increment',
-                    entryfield_value = self.streamarrow_time_increment,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real' })
-                self.w_streamarrow_time_increment.pack(side='left')
-                labels.append(self.w_streamarrow_time_increment)
-                
-                # Widget for selecting whether to reduce the number of points
-                # that the streamarrow integration starts from
-                self.w_streamarrow_thin_points = Pmw.Counter(
-                    f3,
-                    labelpos = 'w', label_text = 'Thin Points',
-                    entryfield_value = self.streamarrow_thin_points,
-                    entryfield_entry_width = 2,
-                    increment=1,
-                    datatype = {'counter' : 'integer' },
-                    entryfield_validate = { 'validator' : 'integer',
-                                            'min' : '1',
-                                            })
-                self.w_streamarrow_thin_points.pack(side='left')
-                labels.append(self.w_streamarrow_thin_points)
-
-                # Size of the arrows
-                self.w_streamarrow_size = Pmw.Counter(
-                    f3,
-                    labelpos = 'w', label_text = 'Size',
-                    entryfield_value = self.streamarrow_size,
-                    entryfield_entry_width = 5,
-                    increment=0.1,
-                    datatype = {'counter' : 'real' },
-                    entryfield_validate = { 'validator' : 'real',
-                                            'min' : '0.0',
-                                            })
-                self.w_streamarrow_size.pack(side='left')
-                labels.append(self.w_streamarrow_size)
-
-                # Select whether to scale the arrows by the vector
-                self.streamarrows_scale_var = Tkinter.BooleanVar()
-                self.w_streamarrows_scalel = Pmw.LabeledWidget(
-                    f4,labelpos='w',label_text='Scale')
-                self.w_streamarrows_scale = Tkinter.Checkbutton(self.w_streamarrows_scalel.interior())
-                self.w_streamarrows_scale.config(variable=self.streamarrows_scale_var)
-                self.w_streamarrows_scale.config(command=lambda s=self: s.__read_buttons() )
-                self.w_streamarrows_scale.pack(side='top')
-                self.w_streamarrows_scalel.pack(side='left')
-
-                # Select whether to colour the arrows by the Vector or scalar or not to colour
-                self.streamarrows_cmap_var = Tkinter.StringVar()
-                self.w_streamarrow_cmap = Pmw.OptionMenu(
-                    f4,
-                    labelpos = 'w',
-                    label_text = 'Colour ',
-                    menubutton_textvariable = self.streamarrows_cmap_var,
-                    items = ['None','Vector','Scalar'],
-                    initialitem='None',
-                    menubutton_width = 10)
-                self.w_streamarrow_cmap.pack(side='left')
-                
-                f1.pack(side='top')
-                f2.pack(side='top')
-                f3.pack(side='top')
-                f4.pack(side='top')
-                self.streamarrows_group.pack(side='top',fill='x')
-                #Decide whether to pack the frame or no
-                self.show_streamarrow_widgets()            
+        # Streamarrows
+        if self.graph.check_capability('streamarrows'):
+            self._make_streamarrows_dialog()
+            
 ##            Pmw.alignlabels(labels)
 
-        # Colourmaps
-        self.cmap_chooser = ColourMapChooser(self.dialog.topframe,"",
-                                             self.graph,
-                                             choose_field=1,
-                                             low=self.cmap_low,
-                                             high=self.cmap_high)
-
-        self.cmap_chooser.widget().pack(side='top',fill='x')
-
         self.sample_var = Tkinter.StringVar()
-
         if self.regular3:
             # Specification of the sampling grid
 
@@ -2025,7 +2059,8 @@ class VectorVisualiser(DataVisualiser):
             self.w_grid_lab.pack(side='top')
 
             # The Frame that hold the grid editor widgets
-            self.grideditor_frame = Tkinter.Frame( self.sample_group.interior() )
+            self.grideditor_frame=Tkinter.Frame(
+                self.sample_group.interior())
             
             self.sample_var = Tkinter.StringVar()
             #self.sample_grid_menu = Pmw.OptionMenu(self.sample_group.interior(),
@@ -2040,15 +2075,368 @@ class VectorVisualiser(DataVisualiser):
             self.update_sample_grid_choice()
 
             print ' creating grid editor'
-            #self.grid_editor = GridEditorWidget(self.sample_group.interior(), self.cut_plane, command = self.__reslice,close_ok=0)
-            self.grid_editor = GridEditorWidget(self.grideditor_frame, self.cut_plane, command = self.__reslice,close_ok=0)
-            print ' packing grid editor'
+#             self.grid_editor = GridEditorWidget(
+#                 self.sample_group.interior(),
+#                 self.cut_plane,
+#                 command = self.__reslice,close_ok=0)
+            self.grid_editor = GridEditorWidget(
+                self.grideditor_frame,
+                self.cut_plane,
+                command = self.__reslice,close_ok=0)
+            #print ' packing grid editor'
             self.grid_editor.pack(side='top')
             self.sample_group.pack(side='top',fill='x')
-            print ' grid editor make_dialog done'
+            #print ' grid editor make_dialog done'
             self.grideditor_show()
         else:
             self.sample_var.set('All Field Points')
+
+
+    def _make_hedgehog_dialog(self):
+        """ Create the dialog to display a hedgehog plot"""
+        
+        self.hedgehog_var = Tkinter.BooleanVar()
+        self.hedgehog_var.set(self.show_hedgehog)
+
+        self.hedgehog_group = Pmw.Group(
+            self.dialog.topframe ,tag_text='Hedgehog')
+
+        
+        f = Tkinter.Frame(self.hedgehog_group.interior())
+        f.pack(side='top')
+
+        self.w_hedgehog_lab = Pmw.LabeledWidget(f,labelpos='w',label_text='Display')
+        self.w_hedgehog = Tkinter.Checkbutton(self.w_hedgehog_lab.interior())
+        self.w_hedgehog.config(variable=self.hedgehog_var)
+        self.w_hedgehog.config(command=lambda s=self: s.__read_buttons() )
+        self.w_hedgehog.pack(side='top')
+        self.w_hedgehog_lab.pack(side='left')
+
+        self.w_hedgehog_scale = Pmw.Counter(
+            f, labelpos = 'w',
+            label_text = 'Scale vectors by',
+            entryfield_value = self.hedgehog_scale,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+
+        self.w_hedgehog_scale.pack(side='left')
+        #labels.append(self.w_hedgehog_scale)
+        
+        self.hedgehog_colourchooser = ColourChooser(
+            self.hedgehog_group.interior(),
+            self.hedgehog_colourer,
+            schemes=['Uniform'],
+            graph=self.graph,
+            choose_field=1
+            )
+        self.hedgehog_colourchooser.widget.pack(side='bottom',fill='x',expand=1)        
+
+        self.hedgehog_group.pack(side='top',fill='x')
+
+    def _make_orientedglyphs_dialog(self):
+        """Create the dialog to display oriented glyphs"""
+    
+        self.orientedglyphs_var = Tkinter.BooleanVar()
+        self.orientedglyphs_var.set(self.show_orientedglyphs)
+
+        self.orientedglyphs_group = Pmw.Group(
+            self.dialog.topframe ,tag_text='Oriented Glyphs')
+        
+        f = Tkinter.Frame(self.orientedglyphs_group.interior())
+        f.pack(side='top')
+
+        self.w_orientedglyphs_lab = Pmw.LabeledWidget(
+            f,labelpos='w',label_text='Display')
+
+        self.w_orientedglyphs = Tkinter.Checkbutton(self.w_orientedglyphs_lab.interior())
+        self.w_orientedglyphs.config(variable=self.orientedglyphs_var)
+        self.w_orientedglyphs.config(command=lambda s=self: s.__read_buttons() )
+        self.w_orientedglyphs.pack(side='left')
+
+        self.w_orientedglyphs_lab.pack(side='left')
+
+        self.w_orientedglyph_scale = Pmw.Counter(
+            f,
+            labelpos = 'w', label_text = 'Scale glyphs by',
+            entryfield_value = self.orientedglyph_scale,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+        self.w_orientedglyph_scale.pack(side='left')
+        #labels.append(self.w_orientedglyph_scale)
+
+        self.orientedglyphs_colourchooser = ColourChooser(
+            self.orientedglyphs_group.interior(),
+            self.orientedglyphs_colourer,
+            schemes=['Uniform'],
+            graph=self.graph,
+            choose_field=1
+            )
+        self.orientedglyphs_colourchooser.widget.pack(side='bottom',fill='x',expand=1)        
+
+        self.orientedglyphs_group.pack(side='top',fill='x')
+
+
+    def _make_streamlines_dialog(self):
+        """Layout the dialog to display streamlines"""
+
+        self.streamlines_var = Tkinter.BooleanVar()
+        self.streamlines_var.set(self.show_streamlines)
+
+        self.streamlines_group = Pmw.Group(
+            self.dialog.topframe ,tag_text='Streamlines')
+
+        # Create a widget to show/hide the rest of the tools in this group
+        # The rest of the tools are all packed in self.streamlines_frame
+        # so that we can just show or hide that one frame
+        self.w_streamlines_show = Pmw.LabeledWidget(
+            self.streamlines_group.interior(),labelpos='w',label_text='Display')
+        self.w_streamlines = Tkinter.Checkbutton(self.w_streamlines_show.interior())
+        self.w_streamlines.config(variable=self.streamlines_var)
+        self.w_streamlines.config(command=lambda s=self: s.show_streamline_widgets() )
+        self.w_streamlines.pack(side='top')
+        self.w_streamlines_show.pack(side='top')
+
+
+        self.streamlines_frame = Tkinter.Frame( self.streamlines_group.interior() )
+        f1 = Tkinter.Frame(self.streamlines_frame)
+        f2 = Tkinter.Frame(self.streamlines_frame)
+        f3 = Tkinter.Frame(self.streamlines_frame)
+        f4 = Tkinter.Frame(self.streamlines_frame)
+
+        self.w_streamline_propagation_time = Pmw.Counter(
+            f1,
+            labelpos = 'w', label_text = 'Propagation Time',
+            entryfield_value = self.streamline_propagation_time,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+
+        self.w_streamline_propagation_time.pack(side='left')
+        #labels.append(self.w_streamline_propagation_time)
+
+        # Thin the number of starting points
+        self.w_streamline_thin_points = Pmw.Counter(
+            f1,
+            labelpos = 'w', label_text = 'Thin Points',
+            entryfield_value = self.streamline_thin_points,
+            entryfield_entry_width = 2,
+            increment=1,
+            datatype = {'counter' : 'integer' },
+            entryfield_validate = { 'validator' : 'integer',
+                                    'min' : '1',
+                                    })
+        self.w_streamline_thin_points.pack(side='left')
+        #labels.append(self.w_streamline_thin_points)
+
+
+        self.w_streamline_integration_step_length = Pmw.Counter(
+            f2,
+            labelpos = 'w', label_text = 'Integ Step Length',
+            entryfield_value = self.streamline_integration_step_length,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+
+        self.w_streamline_integration_step_length.pack(side='left')
+        #labels.append(self.w_streamline_integration_step_length)
+
+        self.w_streamline_step_length = Pmw.Counter(
+            f2,
+            labelpos = 'w', label_text = 'Step Length',
+            entryfield_value = self.streamline_step_length,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+
+        self.w_streamline_step_length.pack(side='left')
+        #labels.append(self.w_streamline_step_length)
+
+        self.streamline_display_mode_var = Tkinter.StringVar()
+        self.w_streamline_display_mode = Pmw.OptionMenu(
+            f3,
+            labelpos = 'w',
+            label_text = 'Display:',
+            menubutton_textvariable = self.streamline_display_mode_var,
+            items = ['lines','tubes','surfaces'],
+            initialitem='lines',
+            menubutton_width = 8)
+
+        self.w_streamline_display_mode.pack(side='left')
+        #labels.append(self.w_streamline_display_mode)
+
+        self.streamline_integration_direction_var = Tkinter.StringVar()
+        self.w_streamline_integration_direction = Pmw.OptionMenu(
+            f3,
+            labelpos = 'w',
+            label_text = 'Integrate ',
+            menubutton_textvariable = self.streamline_integration_direction_var,
+            items = ['forward','backward','both directions'],
+            initialitem='both directions',
+            menubutton_width = 10)
+
+        self.w_streamline_integration_direction.pack(side='left')
+        #labels.append(self.w_streamline_integration_direction)
+
+        self.streamlines_colourchooser = ColourChooser(
+            f4,
+            self.streamlines_colourer,
+            schemes=['Uniform','Speed'],
+            graph=self.graph,
+            choose_field=1
+            )
+        self.streamlines_colourchooser.widget.pack(side='bottom',fill='x',expand=1)        
+
+        f1.pack(side='top')
+        f2.pack(side='top')
+        f3.pack(side='top')
+        f4.pack(side='top')
+        self.streamlines_group.pack(side='top',fill='x')
+
+        # Decide whether we need to be packed or not
+        self.show_streamline_widgets()
+
+    def _make_streamarrows_dialog(self):
+        """Create the dialog to display streamarrows"""
+
+        self.streamarrows_var = Tkinter.BooleanVar()
+        self.streamarrows_var.set(self.show_streamarrows)
+        self.streamarrows_group = Pmw.Group(
+            self.dialog.topframe ,tag_text='StreamArrows')
+
+        self.w_streamarrows_lab = Pmw.LabeledWidget(
+            self.streamarrows_group.interior(),labelpos='w',label_text='Display')
+        self.w_streamarrows = Tkinter.Checkbutton(self.w_streamarrows_lab.interior())
+        self.w_streamarrows.config(variable=self.streamarrows_var)
+        self.w_streamarrows.config(command=lambda s=self: s.show_streamarrow_widgets() )
+        self.w_streamarrows.pack(side='top')
+        self.w_streamarrows_lab.pack(side='top')
+
+        self.streamarrows_frame = Tkinter.Frame( self.streamarrows_group.interior() )
+        f1 = Tkinter.Frame(self.streamarrows_frame)
+        f2 = Tkinter.Frame(self.streamarrows_frame)
+        f3 = Tkinter.Frame(self.streamarrows_frame)
+        f4 = Tkinter.Frame(self.streamarrows_frame)
+
+        self.w_streamarrow_propagation_time = Pmw.Counter(
+            f1,
+            labelpos = 'w', label_text = 'Propagation Time',
+            entryfield_value = self.streamarrow_propagation_time,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+        self.w_streamarrow_propagation_time.pack(side='left')
+        #labels.append(self.w_streamarrow_propagation_time)
+
+        self.w_streamarrow_integration_step_length = Pmw.Counter(
+            f1,
+            labelpos = 'w', label_text = 'Integ Step Length',
+            entryfield_value = self.streamarrow_integration_step_length,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+        self.w_streamarrow_integration_step_length.pack(side='left')
+        #labels.append(self.w_streamarrow_integration_step_length)
+
+        self.streamarrow_integration_direction_var = Tkinter.StringVar()
+        self.w_streamarrow_integration_direction = Pmw.OptionMenu(
+            f2,
+            labelpos = 'w',
+            label_text = 'Integrate ',
+            menubutton_textvariable = self.streamarrow_integration_direction_var,
+            items = ['forward','backward','both directions'],
+            initialitem='both directions',
+            menubutton_width = 10)
+        self.w_streamarrow_integration_direction.pack(side='left')
+        #labels.append(self.w_streamarrow_integration_direction)
+
+        self.w_streamarrow_time_increment = Pmw.Counter(
+            f2,
+            labelpos = 'w', label_text = 'Time Increment',
+            entryfield_value = self.streamarrow_time_increment,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real' })
+        self.w_streamarrow_time_increment.pack(side='left')
+        #labels.append(self.w_streamarrow_time_increment)
+
+        # Widget for selecting whether to reduce the number of points
+        # that the streamarrow integration starts from
+        self.w_streamarrow_thin_points = Pmw.Counter(
+            f3,
+            labelpos = 'w', label_text = 'Thin Points',
+            entryfield_value = self.streamarrow_thin_points,
+            entryfield_entry_width = 2,
+            increment=1,
+            datatype = {'counter' : 'integer' },
+            entryfield_validate = { 'validator' : 'integer',
+                                    'min' : '1',
+                                    })
+        self.w_streamarrow_thin_points.pack(side='left')
+        #labels.append(self.w_streamarrow_thin_points)
+
+        # Size of the arrows
+        self.w_streamarrow_size = Pmw.Counter(
+            f3,
+            labelpos = 'w', label_text = 'Size',
+            entryfield_value = self.streamarrow_size,
+            entryfield_entry_width = 5,
+            increment=0.1,
+            datatype = {'counter' : 'real' },
+            entryfield_validate = { 'validator' : 'real',
+                                    'min' : '0.0',
+                                    })
+        self.w_streamarrow_size.pack(side='left')
+        #labels.append(self.w_streamarrow_size)
+
+        # Select whether to scale the arrows by the vector
+        self.streamarrows_scale_var = Tkinter.BooleanVar()
+        self.w_streamarrows_scalel = Pmw.LabeledWidget(
+            f3,labelpos='w',label_text='Scale')
+        self.w_streamarrows_scale = Tkinter.Checkbutton(self.w_streamarrows_scalel.interior())
+        self.w_streamarrows_scale.config(variable=self.streamarrows_scale_var)
+        self.w_streamarrows_scale.config(command=lambda s=self: s.__read_buttons() )
+        self.w_streamarrows_scale.pack(side='top')
+        self.w_streamarrows_scalel.pack(side='left')
+
+        # Select what sort of glyph to use
+        self.streamarrows_type_var = Tkinter.StringVar()
+        self.w_streamarrow_type = Pmw.OptionMenu(
+            f4,
+            labelpos = 'w',
+            label_text = 'Glyph Type ',
+            menubutton_textvariable = self.streamarrows_type_var,
+            items = ['Arrow','Cone'],
+            initialitem=self.streamarrow_type,
+            menubutton_width = 10)
+        self.w_streamarrow_type.pack(side='left')
+
+        self.streamarrows_colourchooser = ColourChooser(
+            self.streamarrows_frame,
+            self.streamarrows_colourer,
+            schemes=['Uniform','Vector'],
+            graph=self.graph,
+            choose_field=1
+            )
+
+        f1.pack(side='top')
+        f2.pack(side='top')
+        f3.pack(side='top')
+        f4.pack(side='top')
+        self.streamarrows_colourchooser.widget.pack(side='top',fill='x',expand=1)
+        self.streamarrows_group.pack(side='top',fill='x')
+        
+        #Decide whether to pack the frame or no
+        self.show_streamarrow_widgets()
 
     def show_streamline_widgets(self):
         s = self.streamlines_var.get()
@@ -2065,7 +2453,6 @@ class VectorVisualiser(DataVisualiser):
             self.streamarrows_frame.forget()
 
     def grideditor_show(self):
-        print "show_grideditor"
         s = self.grideditor_show_var.get()
         if s:
             self.grideditor_frame.pack()
@@ -2074,6 +2461,7 @@ class VectorVisualiser(DataVisualiser):
 
 
     def enable_dialog(self):
+        #jmht
         if self.regular3:
             self.grid_editor.dynamic_update = 1
 
@@ -2116,88 +2504,35 @@ class VectorVisualiser(DataVisualiser):
         # free up old objects?
         self.Build()
 
-#     def __read_buttons(self):
-#         if self.graph.check_capability('hedgehog'):
-#             self.show_hedgehog = self.hedgehog_var.get()
-#         if self.graph.check_capability('orientedglyphs'):
-#             self.show_orientedglyphs = self.orientedglyphs_var.get()
-#         self.show_streamlines = self.streamlines_var.get()
-#         self.show_streamarrows = self.streamarrows_var.get()
-#         self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
-#         self.streamarrow_scale = self.streamarrows_scale_var.get()
-#         print "set scale to ",self.streamarrow_scale
-#         if self.is_showing:
-#             print "self._show from __read_buttons"
-#             self._show()
-
     def __read_buttons(self):
         print "__read_buttons"
 
     def read_widgets(self):
 
-        # Below was previously in __read_buttons
+        # Hedgehog
         if self.graph.check_capability('hedgehog'):
             self.show_hedgehog = self.hedgehog_var.get()
+            self.hedgehog_scale = float(self.w_hedgehog_scale.get())
+            self.hedgehog_colourchooser.read_widgets()
+
+        # Oriented Glyphs
         if self.graph.check_capability('orientedglyphs'):
             self.show_orientedglyphs = self.orientedglyphs_var.get()
+            self.orientedglyph_scale = float(self.w_orientedglyph_scale.get())
+            self.orientedglyphs_colourchooser.read_widgets()
+
+        # Streamlines
         if self.graph.check_capability('streamlines'):
             self.show_streamlines = self.streamlines_var.get()
-            self.streamline_colourmap = self.streamlines_cmap_var.get()
-        if self.graph.check_capability('streamarrows'):
-            self.show_streamarrows = self.streamarrows_var.get()
-            self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
-            self.streamarrow_scale = self.streamarrows_scale_var.get()
-        #if self.is_showing:
-        #    print "self._show from __read_buttons"
-        #    self._show()
-
-
-        ####apply(SliceVisualiser.read_widgets, (self,))
-        if self.graph.check_capability('hedgehog'):
-            self.hedgehog_scale = float(self.w_hedgehog_scale.get())
-        if self.graph.check_capability('orientedglyphs'):
-            self.orientedglyph_scale = float(self.w_orientedglyph_scale.get())
-
-        #jmht if self.regular3:
-        #if 1:
-        if self.graph.check_capability('streamlines'):
-            self.streamline_propagation_time=float(self.w_streamline_propagation_time.get())
-            self.streamline_integration_step_length=float(self.w_streamline_integration_step_length.get())
+            #self.streamline_colourmap = self.streamlines_cmap_var.get()
+            self.streamlines_colourchooser.read_widgets()
+            self.streamline_propagation_time=float(
+                self.w_streamline_propagation_time.get())
+            self.streamline_integration_step_length=float(
+                self.w_streamline_integration_step_length.get())
             self.streamline_step_length=float(self.w_streamline_step_length.get())
             self.streamline_thin_points=int(self.w_streamline_thin_points.get())
             
-        if self.graph.check_capability('streamarrows'):
-            self.streamarrow_propagation_time=float(self.w_streamarrow_propagation_time.get())
-            self.streamarrow_time_increment=float(self.w_streamarrow_time_increment.get())
-            self.streamarrow_integration_step_length=float(self.w_streamarrow_integration_step_length.get())
-            self.streamarrow_size=float(self.w_streamarrow_size.get())
-            self.streamarrow_thin_points=int(self.w_streamarrow_thin_points.get())
-
-
-        #print 'READW'
-        self.cmap_obj, self.cmap_name, self.cmap_low, self.cmap_high = \
-                        self.cmap_chooser.read_widgets()
-
-#        self.read_opacity_widgets()
-
-        v = self.sample_var.get()
-        if v == 'All Field Points':
-            self.sample_grid = VECTOR_SAMPLE_ALL
-        elif v == 'Internal 2D':
-            self.sample_grid = self.cut_plane
-        else:
-            self.sample_grid = None
-            for o in self.graph.data_list:
-                t1 = string.split(str(o.__class__),'.')
-                myclass = t1[len(t1)-1]
-                if myclass == 'Field':
-                    if o.name == v:
-                        self.sample_grid = o
-            if self.sample_grid is None:
-                print 'Problem locating sampling grid'
-
-        #jmht if self.regular3:
-        if self.graph.check_capability('streamlines'):
             v = self.streamline_integration_direction_var.get()
             if v == 'forward':
                 self.streamline_integration_direction = STREAM_FORWARD
@@ -2214,7 +2549,24 @@ class VectorVisualiser(DataVisualiser):
             if v == 'surfaces':
                 self.streamline_display = STREAM_SURFACE
 
+
+        # Streamarrows
         if self.graph.check_capability('streamarrows'):
+            self.show_streamarrows = self.streamarrows_var.get()
+            #self.streamarrow_colourmap = self.streamarrows_cmap_var.get()
+            self.streamarrows_colourchooser.read_widgets()
+            self.streamarrow_type = self.streamarrows_type_var.get()
+            self.streamarrow_scale = self.streamarrows_scale_var.get()
+            self.streamarrow_propagation_time=float(
+                self.w_streamarrow_propagation_time.get())
+            self.streamarrow_time_increment=float(
+                self.w_streamarrow_time_increment.get())
+            self.streamarrow_integration_step_length=float(
+                self.w_streamarrow_integration_step_length.get())
+            self.streamarrow_size=float(self.w_streamarrow_size.get())
+            self.streamarrow_thin_points=int(
+                self.w_streamarrow_thin_points.get())
+            
             v = self.streamarrow_integration_direction_var.get()
             if v == 'forward':
                 self.streamarrow_integration_direction = STREAM_FORWARD
@@ -2222,6 +2574,26 @@ class VectorVisualiser(DataVisualiser):
                 self.streamarrow_integration_direction = STREAM_BACKWARD
             elif v == 'both directions':
                 self.streamlarrow_integration_direction = STREAM_BOTH
+
+
+        #print 'READW'
+
+        v = self.sample_var.get()
+        print "jmht got sample ",v
+        if v == 'All Field Points':
+            self.sample_grid = VECTOR_SAMPLE_ALL
+        elif v == 'Internal 2D':
+            self.sample_grid = self.cut_plane
+        else:
+            self.sample_grid = None
+            for o in self.graph.data_list:
+                t1 = string.split(str(o.__class__),'.')
+                myclass = t1[len(t1)-1]
+                if myclass == 'Field':
+                    if o.name == v:
+                        self.sample_grid = o
+            if self.sample_grid is None:
+                print 'Problem locating sampling grid'
 
         if self.grid_editor is not None:
             # transform the grid, but do not trigger the the build that
@@ -2235,8 +2607,9 @@ class SliceVisualiser(DataVisualiser):
     """
     def __init__(self, root, graph, obj, colour_obj_choice=None, colour_obj_list=None, **kw):
 
-        DataVisualiser.__init__(self, root, graph, obj, **kw)
+        DataVisualiser.__init__(self, root, graph, obj,data_summary=0,**kw)
 
+        
         # Try and work out sensible starting values
         mymin = -50
         mymax =  50
@@ -2250,13 +2623,21 @@ class SliceVisualiser(DataVisualiser):
         self.ncont = 21
         self.opacity = 1.0
 
-        self.contour_cmap_name = 'Default'
-        self.contour_cmap_low = mymin
-        self.contour_cmap_high = mymax
+        # Setup the two colourers for contours and pcmap
+        self.contour_colourer = Colourer(graph)
+        self.pcmap_colourer = Colourer(graph)
+        
+        #self.contour_cmap_name = 'Default'
+        #self.contour_cmap_low = mymin
+        #self.contour_cmap_high = mymax
+        self.contour_colourer.set_value("cmap_low",mymin)
+        self.contour_colourer.set_value("cmap_high",mymax)
 
-        self.pcmap_cmap_name = 'Default'
-        self.pcmap_cmap_low = mymin
-        self.pcmap_cmap_high = mymax
+        #self.pcmap_cmap_name = 'Default'
+        #self.pcmap_cmap_low = mymin
+        #self.pcmap_cmap_high = mymax
+        self.pcmap_colourer.set_value("cmap_low",mymin)
+        self.pcmap_colourer.set_value("cmap_high",mymax)
 
         # switches for parts of image
         self.show_cont = 1
@@ -2368,16 +2749,26 @@ class SliceVisualiser(DataVisualiser):
 
         self.repframe.pack(side='top',fill='x')
 
-        self.contour_cmap_chooser = ColourMapChooser(self.dialog.topframe,
-                                                     "Contour ", self.graph,
-                                                     low=self.contour_cmap_low,
-                                                     high=self.contour_cmap_high)
+        self.contour_colourchooser = ColourChooser(
+            self.dialog.topframe,
+            self.contour_colourer,
+            schemes=[],
+            graph=self.graph,
+            choose_field=1,
+            title="Contour Colouring"
+            )
+        self.contour_colourchooser.widget.pack(side='top',fill='x',expand=1)        
 
-        self.contour_cmap_chooser.widget().pack(side='top',fill='x')
+        self.pcmap_colourchooser = ColourChooser(
+            self.dialog.topframe,
+            self.pcmap_colourer,
+            schemes=[],
+            graph=self.graph,
+            choose_field=1,
+            title="ColourSurface Colouring"
+            )
+        self.pcmap_colourchooser.widget.pack(side='top',fill='x',expand=1)        
 
-        self.pcmap_cmap_chooser = ColourMapChooser(self.dialog.topframe, "ColourMap ", self.graph,
-                                                     low=self.pcmap_cmap_low,high=self.pcmap_cmap_high)
-        self.pcmap_cmap_chooser.widget().pack(side='top',fill='x')
         
         self.w_min.pack(side='top')
         self.w_max.pack(side='top')
@@ -2400,14 +2791,9 @@ class SliceVisualiser(DataVisualiser):
         self.min = float(self.w_min.get())
         self.max = float(self.w_max.get())
         self.ncont = int(self.w_ncont.get())
-        self.contour_cmap_obj, self.contour_cmap_name, \
-                               self.contour_cmap_low, self.contour_cmap_high = \
-                               self.contour_cmap_chooser.read_widgets()
-        self.pcmap_cmap_obj, self.pcmap_cmap_name, \
-                             self.pcmap_cmap_low, self.pcmap_cmap_high = \
-                             self.pcmap_cmap_chooser.read_widgets()
-
         self.read_opacity_widgets()
+        self.contour_colourchooser.read_widgets()
+        self.pcmap_colourchooser.read_widgets()
 
 class CutSliceVisualiser(SliceVisualiser):
     """Display a slice through a 3D dataset
@@ -2415,7 +2801,7 @@ class CutSliceVisualiser(SliceVisualiser):
     a GridEditor widget to position the slice
     """
     def __init__(self, root, graph, obj, colour_obj_choice=None, colour_obj_list=None, **kw):
-        apply(SliceVisualiser.__init__, (self, root, graph, obj), kw)
+        SliceVisualiser.__init__(self, root, graph, obj,**kw)
         self.grid_editor=None
 
         # Set up a sensible default for the slice plane
@@ -2459,18 +2845,19 @@ class CutSliceVisualiser(SliceVisualiser):
             # normally results
             self.grid_editor.transform(callback=0)
 
-class IrregularDataVisualiser(Visualiser):
+class IrregularDataVisualiser(DataVisualiser):
     """Viewer for unstructured grid of data points
     currently only offers coloured dots.
     """
     def __init__(self, root, graph, obj, **kw):
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        DataVisualiser.__init__(self, root, graph, obj,**kw)
         self.field = obj
 
+        self.colourer = Colourer(graph)
         # Seem to need this (no read_widgets before first build?)
-        self.cmap_name = 'Default'
-        self.cmap_low = -50
-        self.cmap_high = 50
+        self.colourer.set_value("cmap_low",-50)
+        self.colourer.set_value("cmap_high",-50)
+
         self.point_size = graph.field_point_size
         self.opacity = 1.0
         self.title = "Grid View: " + obj.title
@@ -2486,25 +2873,22 @@ class IrregularDataVisualiser(Visualiser):
             entryfield_validate = { 'validator' : 'integer' })
         self.w_point_size.pack(side='top')
 
-        self.cmap_chooser = ColourMapChooser(self.dialog.topframe,"",
-                                             self.graph,
-                                             low=self.cmap_low,
-                                             high=self.cmap_high)
-
-        self.cmap_chooser.widget().pack(side='top',fill='x')
         self.opacity_widget()
+        
+        self.colourchooser = ColourChooser(
+            self.dialog.topframe,
+            self.colourer,
+            schemes=[],
+            graph=self.graph,
+            choose_field=1
+            )
+        self.colourchooser.widget.pack(side='top',fill='x',expand=1)        
+        
         
     def read_widgets(self):
         self.point_size = int(self.w_point_size.get())
 
-        self.cmap_obj, self.cmap_name, self.cmap_low, self.cmap_high = \
-                        self.cmap_chooser.read_widgets()
-
         self.read_opacity_widgets()
-
-        #self.cmap_low = float(self.w_cmap_low.get())
-        #self.cmap_high = float(self.w_cmap_high.get())
-        #self.opacity =  float(self.w_opacity.get())
 
 class AllMoleculeVisualiser( MoleculeVisualiser ):
 

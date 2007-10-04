@@ -76,7 +76,6 @@ class VtkGraph(TkMolView,Graph):
         self.line_type = 2
         self.label_type = 0
         self.stick_type = 2
-        self.streamarrow_type=0 # 0=arrows,1=cones
         self.show_selection_by_colour = 1
         # Set stereo visualiser options.
         self.stereo = None
@@ -109,6 +108,12 @@ class VtkGraph(TkMolView,Graph):
         self.capabilities['orientedglyphs']=1
         self.capabilities['streamlines']=1
         self.capabilities['streamarrows']=1
+        self.capabilities['colourmap_actor']=1
+        
+        # We can only have (currently 2) of these as otherwise
+        # there is nowhere to put them so the graph must keep
+        # track of them
+        self.colourmap_actors = [None,None] # len 2 list for l-r
 
         # Initialise Tk viewer window and menus etc
         # This will source the users ccp1guirc, maybe overwriting
@@ -132,8 +137,6 @@ class VtkGraph(TkMolView,Graph):
             self.pane = vtkTkRenderWidget(self.interior(), stereo=self.stereo)
             renwin = self.pane.GetRenderWindow()
             self._set_stereo( renwin ) # See if we are using stereo
-
-
             self.ren = vtkRenderer()
             renwin.AddRenderer(self.ren)
             renwin.SetDesiredUpdateRate(0.2)
@@ -146,8 +149,8 @@ class VtkGraph(TkMolView,Graph):
             self.ren = vtkRenderer()
             renwin.AddRenderer(self.ren)
             # create an interactor
-            iren = vtkRenderWindowInteractor()
-            iren.SetRenderWindow(renwin)
+            self.iren = vtkRenderWindowInteractor()
+            self.iren.SetRenderWindow(renwin)
             self.pane = vtkTkRenderWidget(self.interior())
             if self.stereo:
                 renwin.SetStereoCapableWindow()
@@ -404,7 +407,7 @@ class VtkGraph(TkMolView,Graph):
             for c in self.colourmaps:
                 if name == c.title:
                     return c.lut
-            print 'Colourmap name not found',name
+            #print 'Colourmap name not found',name
         return None
 
     def _set_stereo( self, RenderWidget ):
@@ -1751,7 +1754,222 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 self.graph.ren.AddActor(a)
             self.selection_visible = 1
 
-class VtkIsoSurf:
+class VtkCmapVis_:
+    """Base class for widets that support a colourmap actor. This one
+    has an underscore in the name because it is the base class that implements
+    the functionality required in the cmap visualisers. VtkCmapVis inherits
+    from this one but provides the _show/_hide/_remove support.
+    However, we keep this class separate as we need the underlying methods in the
+    vector visualiers, which implement their own _show etc.
+    """
+
+    # For keeping track of the scalarbar (for removing/refreshing)
+    colourmap_actor=None
+    
+    # We need to determine the default lookuptable
+    # so we get this from the mapper when we create the actor
+    default_lut=None
+
+
+    def __init__(self,graph):
+        """Optional init method - just sets self.graph for those cases
+        where multiple inheritance doesn't give us a graph"""
+        print "VtkCmapVis_ __init__"
+        self.graph=graph
+
+    def add_colourmap_actor(self,colourer,title=None):
+        """Add a colourmap widget
+        Keywords:
+        title: an optional title for the widget (else one will be
+               constructed from the map object and colourmap name)
+        """
+
+        #print "add_colourmap_actor self.colourmap_actor is ",self.colourmap_actor
+
+        # Just a quick hack - use a list of length 2 for left and right
+        if (self.graph.colourmap_actors[0] and self.graph.colourmap_actors[1]):
+            print "\n\nCANNOT ADD ANOTHER COLOURMAP_ACTOR-PLEASE REMOVE ONE FIRST!\n"
+            return
+
+        self.colourer = colourer
+
+        # Get a title
+        if not title:
+            name = None
+            cmap_obj = colourer.get_value('cmap_obj')
+            cmap_name = colourer.get_value('cmap_name')
+            if not cmap_name:
+                cmap_name = 'Default'
+            if cmap_obj:
+                name = cmap_obj.get_name()
+            if name:
+                title = name + ':\n' + cmap_name
+            else:
+                title = cmap_name
+
+        # Set up the scalarbar
+        if not self.colourmap_actor:
+            print "add colourmap widget create new actor"
+            self.colourmap_actor = vtkScalarBarActor()
+        else:
+            print "add colourmap widget reusing actor"
+            
+            
+        # Get a lookuptable - the default should have been
+        # saved from the mapper
+        lut = self.colourer.get_lut()
+        if not lut:
+            lut = self.get_default_lut()
+        if not lut:
+            raise AttributeError,"No lut!!!"
+        
+        self.colourmap_actor.SetLookupTable(lut)
+        self.colourmap_actor.SetTitle(title)
+        
+        self.colourmap_actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+
+        def add_left(cmap_actor,height=80,width=10,indent=0.01 ):
+            """Position the bar to the left - height & width in viewport"""
+            
+            h=float(height/100.0)
+            w=float(width/100.0)
+            up = (1-h)/2
+            cmap_actor.GetPositionCoordinate().SetValue(indent,up)
+            cmap_actor.SetOrientationToVertical()
+            cmap_actor.SetHeight(h)
+            cmap_actor.SetWidth(w)
+            return cmap_actor
+
+        def add_right(cmap_actor,height=80,width=10,indent=0.01):
+            """Position the bar to the right - height & width in viewport"""
+            
+            h=float(height/100.0)
+            w=float(width/100.0)
+            up = (1-h)/2
+            right=1-(w+indent)
+            cmap_actor.GetPositionCoordinate().SetValue(right,up)
+            cmap_actor.SetOrientationToVertical()
+            cmap_actor.SetHeight(h)
+            cmap_actor.SetWidth(w)
+            return cmap_actor
+
+
+        # Add to the left or right of the window
+        if not self.graph.colourmap_actors[0]:
+            #print "setting left"
+            self.graph.colourmap_actors[0]=self.colourmap_actor
+            self.colourmap_actor = add_left(self.colourmap_actor)
+        elif not self.graph.colourmap_actors[1]:
+            #print "setting right"
+            self.graph.colourmap_actors[1]=self.colourmap_actor
+            self.colourmap_actor = add_right(self.colourmap_actor)
+        else:
+            print "colourmap_actor I SHOULD NOT BE HERE!"
+           
+        #print "Added colourmap actor",self.colourmap_actor
+        #print "list now ",self.graph.colourmap_actors
+        
+        #Bottom
+        #self.colourmap_actor.GetPositionCoordinate().SetValue(0.1,0.01)
+        #self.colourmap_actor.SetOrientationToHorizontal()
+        #self.colourmap_actor.SetHeight(0.17)
+        #self.colourmap_actor.SetWidth(0.8)
+
+        #Top
+        #self.colourmap_actor.GetPositionCoordinate().SetValue(0.1,0.82)
+        #self.colourmap_actor.SetOrientationToHorizontal()
+        #self.colourmap_actor.SetHeight(0.17)
+        #self.colourmap_actor.SetWidth(0.8)
+
+        # Would be great if we could use this but as we
+        # use vtkTkRenderWidget as our base widget there is no
+        # interactor we can use for the widget. £*&*&£!! Tkinter...
+        # Create the scalarwidget
+        #scalarWidget = vtkScalarBarWidget()
+        #scalarWidget.SetScalarBarActor( colourmap_actor )
+        #scalarWidget.EnabledOn()        
+        #scalarWidget.AddObserver("RightButtonPressEvent",None)
+        #scalarWidget.SetInteractor(self.graph.iren)
+        
+        #self.graph.ren.AddActor(self.colourmap_actor)
+
+    def show_colourmap_actor(self):
+        """Show the colourmap actor if we have one"""
+
+        #print "show_colourmap_actor ",
+        if (self.colourmap_actor and self.colourer.get_value(
+            "show_colourmap_actor")):
+            #print "got actor"
+            # Need to set the range for the default lut
+            if not self.colourer.get_lut():
+                lut = self.get_default_lut()
+                lut.SetTableRange( self.colourer.get_value("cmap_low"),
+                                   self.colourer.get_value("cmap_high"))
+                
+            self.graph.ren.AddActor(self.colourmap_actor)
+            
+    def hide_colourmap_actor(self):
+        """Hide the colourmap actor"""
+
+        #print "hide_colourmap_actor ",
+        if self.colourmap_actor:
+            #print "got actor"
+            self.graph.ren.RemoveActor(self.colourmap_actor)
+            
+    def delete_colourmap_actor(self):
+        """Delete the colourmap_actor"""
+
+        # Make sure we remove it from the renderer first
+        self.hide_colourmap_actor()
+        
+        if self.colourmap_actor:
+            # Remove this actor from the graph
+            if self.graph.colourmap_actors[0] == self.colourmap_actor:
+                self.graph.colourmap_actors[0]=None
+            elif self.graph.colourmap_actors[1]==self.colourmap_actor: 
+                self.graph.colourmap_actors[1]=None
+            else:
+                print "delete colourmap actor no self in list!"
+            self.colourmap_actor=None
+
+    def get_default_lut(self):
+        """Return the default lookup table """
+        if self.default_lut:
+            return self.default_lut
+        else:
+            print "!!!!!!!!! get_default_lut no lookuptable!!!"
+
+    def set_default_lut(self,lut):
+        """Set the default lookup table """
+        self.default_lut = lut
+
+class VtkCmapVis(VtkCmapVis_,VtkVis):
+    """Implement the show/hiding of the scalar bar with VtkVis"""
+
+    def _hide(self):
+        VtkVis._hide(self)
+        #print "calling hide_colourmap_actor"
+        self.hide_colourmap_actor()
+        
+    def _show(self):
+        VtkVis._show(self)
+        #print "calling show_colourmap_actor"
+
+        # See if we are displaying a scalar bar to show the
+        # colourmap we are using
+        if ( self.colourer.get_value('show_colourmap_actor') and \
+             self.colourer.cmap_by_object() ):
+            self.add_colourmap_actor(self.colourer)
+            #print "added colourmap_actor in _show"
+        
+        self.show_colourmap_actor()
+        
+    def _delete(self):
+        VtkVis._delete(self)
+        #print "calling delete_colourmap_actor"
+        self.delete_colourmap_actor()
+        
+class VtkIsoSurf(VtkCmapVis):
 
     """A base class for the 3D surface visualisers, supporting
     conversion of field objects to vtk format and the drawing of
@@ -1905,23 +2123,26 @@ class VtkIsoSurf:
         self.alist.append(outlineActor)
 
     def add_surface(self, contour, rgb, opacity):
+#    def add_surface(self, contour, opacity, rgb=None):
 
+        #if not rgb:
+        #    rgb = self.colourer.get_value("plus_rgb")
         r = float(rgb[0])/256
         g = float(rgb[1])/256
         b = float(rgb[2])/256
 
-        if self.cmap_obj:
+        if self.colourer.cmap_by_object():
+            cmap_obj = self.colourer.get_value('cmap_obj')
             # There is an additional field to colour by
-            print 'colour obj',self.cmap_obj.title
             data_array2 = vtkFloatArray()
-            npts = Vector(self.cmap_obj.dim[0],self.cmap_obj.dim[1],self.cmap_obj.dim[2])
+            npts = Vector(cmap_obj.dim[0],cmap_obj.dim[1],cmap_obj.dim[2])
             bigsize = npts[0]*npts[1]*npts[2]
             data_array2.SetNumberOfValues(bigsize)
             offset=0
             for i in range(npts[0]):
                 for j in range(npts[1]):
                     for k in range(npts[2]):
-                        data_array2.SetValue(offset,self.cmap_obj.data[offset])
+                        data_array2.SetValue(offset,cmap_obj.data[offset])
                         offset = offset+1
             data_array2.SetName("MapScalar");
             self.data.GetPointData().AddArray(data_array2)
@@ -1936,24 +2157,28 @@ class VtkIsoSurf:
         n.SetFeatureAngle(89)
 
         m = vtkPolyDataMapper()
+        # Need to determine the default lut before it gets changed
+        self.default_lut = m.GetLookupTable()
         m.SetInput(n.GetOutput())
 
-        if self.cmap_obj:
+        if self.colourer.cmap_by_object():
             m.ScalarVisibilityOn()
             m.ColorByArrayComponent("MapScalar",0);
             m.SetScalarModeToUsePointFieldData()
-            lut = self.graph.get_cmap_lut(self.cmap_name)
+            lut = self.colourer.get_lut()
             if lut:
                 m.SetLookupTable(lut)
-            m.SetScalarRange(self.cmap_low,self.cmap_high)
+            m.SetScalarRange(self.colourer.get_value('cmap_low'),
+                             self.colourer.get_value('cmap_high'))
         else:
             m.ScalarVisibilityOff()
 
         act = vtkActor()
         act.SetMapper(m)
-        if not self.cmap_obj:
+        if not self.colourer.cmap_by_object():
             act.GetProperty().SetColor(r,g,b)
         act.GetProperty().SetOpacity(opacity)
+                    
         self.alist.append(act)
 
 
@@ -2249,7 +2474,9 @@ class VtkDensityVisualiser(DensityVisualiser,VtkIsoSurf,VtkVis):
         apply(VtkIsoSurf.__init__, (self,) , kw)
 
     def _build(self,object=None):
-        self.add_surface(self.height,self.plus_rgb,self.opacity)
+        plus_rgb = self.colourer.get_value("plus_rgb")
+        #self.add_surface(self.height,self.plus_rgb,self.opacity)
+        self.add_surface(self.height,plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()
         self.status = BUILT
@@ -2263,12 +2490,20 @@ class VtkOrbitalVisualiser(OrbitalVisualiser,VtkIsoSurf,VtkVis):
     """
 
     def __init__(self, root, graph, obj, **kw):
-        apply(OrbitalVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkIsoSurf.__init__, (self,), kw)
+        OrbitalVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkIsoSurf.__init__(self,**kw)
 
     def _build(self,object=None):
-        self.add_surface(-self.height,self.minus_rgb,self.opacity)
-        self.add_surface( self.height,self.plus_rgb,self.opacity)
+
+
+        # Get values from the colourer
+        minus_rgb = self.colourer.get_value("minus_rgb")
+        plus_rgb = self.colourer.get_value("plus_rgb")
+
+        self.add_surface(-self.height,minus_rgb,self.opacity)
+        self.add_surface( self.height,plus_rgb,self.opacity)
+#        self.add_surface(-self.height,self.minus_rgb,self.opacity)
+#        self.add_surface( self.height,self.plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()                                 
         self.status = BUILT
@@ -2282,7 +2517,9 @@ class VtkColourSurfaceVisualiser(ColourSurfaceVisualiser,VtkIsoSurf,VtkVis):
         apply(VtkIsoSurf.__init__, (self,), kw)
 
     def _build(self,object=None):
-        self.add_surface(self.height,self.plus_rgb,self.opacity)
+
+        plus_rgb = self.colourer.get_value("plus_rgb")
+        self.add_surface(self.height,plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()
         self.status = BUILT
@@ -2292,7 +2529,7 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
     """
 
     def __init__(self, root, graph, obj, **kw):
-        apply(IrregularDataVisualiser.__init__, (self,root,graph,obj), kw)
+        IrregularDataVisualiser.__init__(self,root,graph,obj,**kw)
         self.alist = []
         self.alist2d = []
 
@@ -2341,12 +2578,12 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
 
         m.SetInput(poly)
 
-        lut = self.graph.get_cmap_lut(self.cmap_name)
+        m.SetScalarRange(self.colourer.get_value("cmap_low"),
+                         self.colourer.get_value("cmap_high"))
+        lut = self.colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
-        m.SetScalarRange(self.cmap_low,self.cmap_high)
 
-        # m.SetLookupTable(self.colour_table)
         #m.SetScalarModeToUsePointFieldData()
         #m.ColorByArrayComponent('z',0)
 
@@ -2358,7 +2595,7 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
         self.alist.append(act)
         self.status = BUILT
 
-class VtkSlice:
+class VtkSlice(VtkCmapVis_):
     """Base class for viewers of 2D data fields
 
     this version assumes storage as lists of floats
@@ -2369,7 +2606,10 @@ class VtkSlice:
     def __init__(self, root, graph, obj, **kw):
         self.alist = []
         self.alist2d = []
-        self.debug = 0
+        self.debug = 1
+
+        self.contour_colourmap_actor=None
+        self.pcmap_colourmap_actor=None
 
     def convert_data(self,field):
 
@@ -2461,10 +2701,24 @@ class VtkSlice:
         m = vtkPolyDataMapper()
         m.SetInput(s.GetOutput())
 
-        m.SetScalarRange(self.contour_cmap_low,self.contour_cmap_high)
-        lut = self.graph.get_cmap_lut(self.contour_cmap_name)
+        m.SetScalarRange(self.contour_colourer.get_value("cmap_low"),
+                         self.contour_colourer.get_value("cmap_high"))
+        
+        default_lut = m.GetLookupTable()
+        lut = self.contour_colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
+
+        # Display colourmap bar
+        if self.contour_colourer.get_value("show_colourmap_actor"):
+            if not self.contour_colourmap_actor:
+                self.contour_colourmap_actor = VtkCmapVis_(self.graph)
+                # Set the default lookuptable
+                self.contour_colourmap_actor.set_default_lut(default_lut)
+                
+            # Add the actor
+            self.contour_colourmap_actor.add_colourmap_actor(
+                self.contour_colourer)
 
         a = vtkActor()
         a.SetMapper(m)
@@ -2480,8 +2734,11 @@ class VtkSlice:
         m = vtkPolyDataMapper()
         m.SetInput(s.GetOutput())
         
-        m.SetScalarRange(self.contour_cmap_low,self.contour_cmap_high)
-        lut = self.graph.get_cmap_lut(self.contour_cmap_name)
+#        m.SetScalarRange(self.contour_cmap_low,self.contour_cmap_high)
+#        lut = self.graph.get_cmap_lut(self.contour_cmap_name)
+        m.SetScalarRange(self.contour_colourer.get_value("cmap_low"),
+                         self.contour_colourer.get_value("cmap_high"))
+        lut = self.contour_colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
 
@@ -2501,10 +2758,24 @@ class VtkSlice:
         ex.SetExtent(0,field.dim[0]-1,0,field.dim[1]-1,0,0)
         m= vtkPolyDataMapper()
         m.SetInput(ex.GetOutput())
-        m.SetScalarRange(self.pcmap_cmap_low,self.pcmap_cmap_high)
-        lut = self.graph.get_cmap_lut(self.pcmap_cmap_name)
+
+        default_lut = m.GetLookupTable()
+        m.SetScalarRange(self.pcmap_colourer.get_value("cmap_low"),
+                         self.pcmap_colourer.get_value("cmap_high"))
+        lut = self.pcmap_colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
+
+        # Display colourmap bar
+        if self.pcmap_colourer.get_value("show_colourmap_actor"):
+            if not self.pcmap_colourmap_actor:
+                self.pcmap_colourmap_actor = VtkCmapVis_(self.graph)
+                # Set the default lookuptable
+                self.pcmap_colourmap_actor.set_default_lut(default_lut)
+            # Add the actor
+            self.pcmap_colourmap_actor.add_colourmap_actor(
+                self.pcmap_colourer)
+
 
         a = vtkActor()
         a.GetProperty().SetOpacity(self.opacity)
@@ -2523,8 +2794,11 @@ class VtkSlice:
         m= vtkPolyDataMapper()
         m.SetInput(ex.GetOutput())
 
-        m.SetScalarRange(self.pcmap_cmap_low,self.pcmap_cmap_high)
-        lut = self.graph.get_cmap_lut(self.pcmap_cmap_name)
+#        m.SetScalarRange(self.pcmap_cmap_low,self.pcmap_cmap_high)
+#        lut = self.graph.get_cmap_lut(self.pcmap_cmap_name)
+        m.SetScalarRange(self.pcmap_colourer.get_value("cmap_low"),
+                         self.pcmap_colourer.get_value("cmap_high"))
+        lut = self.pcmap_colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
 
@@ -2559,15 +2833,53 @@ class VtkSlice:
         green = self.outline_rgb[1] / 255.0
         blue = self.outline_rgb[2] / 255.0
         a.GetProperty().SetColor(red,green,blue)
-        self.alist2d.append(a)        
+        self.alist2d.append(a)
+
+    # jmht need to override vtkvis _show/_hide/_delete methods
+    # as we've two possible colourmap actors
+
+    def _hide(self):
+        VtkVis._hide(self)
+        if self.contour_colourmap_actor:
+            self.contour_colourmap_actor.hide_colourmap_actor()
+        if self.pcmap_colourmap_actor:
+            self.pcmap_colourmap_actor.hide_colourmap_actor()
+        
+    def _show(self):
+        VtkVis._show(self)
+
+        # See if we are displaying a scalar bar to show the
+        # colourmap we are using
+        if self.contour_colourmap_actor:
+            if ( self.contour_colourmap_actor.colourer.get_value(
+                'show_colourmap_actor')):
+                 self.contour_colourmap_actor.show_colourmap_actor()
+        if self.pcmap_colourmap_actor:
+            if ( self.pcmap_colourmap_actor.colourer.get_value(
+                'show_colourmap_actor')):
+                 self.pcmap_colourmap_actor.show_colourmap_actor()
+            #print "added colourmap_actor in _show"
+        
+        self.show_colourmap_actor()
+        
+    def _delete(self):
+        VtkVis._delete(self)
+        if self.contour_colourmap_actor:
+            self.contour_colourmap_actor.delete_colourmap_actor()
+        if self.pcmap_colourmap_actor:
+            self.pcmap_colourmap_actor.delete_colourmap_actor()
+
+
+    
 
 class VtkSliceVisualiser(SliceVisualiser,VtkSlice,VtkVis):
+#class VtkSliceVisualiser(SliceVisualiser,VtkSlice,VtkCmapVis_):
 
     """Viewer for 2D data fields"""
 
     def __init__(self, root, graph, obj, **kw):
-        apply(SliceVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkSlice.__init__, (self,root,graph,obj), kw)
+        SliceVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkSlice.__init__(self,root,graph,obj,**kw)
         self.convert_data(self.field)
 
     def _build(self,object=None):
@@ -2591,8 +2903,8 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
     """Viewer for slicing 3D data fields"""
 
     def __init__(self, root, graph, obj, **kw):
-        apply(CutSliceVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkSlice.__init__, (self,root,graph,obj), kw)
+        CutSliceVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkSlice.__init__(self,root,graph,obj, **kw)
         self.convert_3d_data()
 
 
@@ -2810,7 +3122,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(VectorVisualiser.__init__, (self,root,graph,obj), kw)
+        VectorVisualiser.__init__(self,root,graph,obj,**kw)
+
+        #jmht don't call this here - only call when needed
+        self.vtkgrid3d=None
         self.convert_3d_data()
 
         self.hedgehog_visible = 0
@@ -2818,20 +3133,30 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         self.streamlines_visible = 0
         self.streamarrows_visible = 0
 
+        self.hedgehog_grid=None
+        self.orientedglyphs_grid=None
+        self.streamlines_grid=None
+        self.streamarrows_grid=None
+
         self.hedgehog_actors = []
         self.orientedglyphs_actors = []
         self.streamlines_actors = []
         self.streamarrow_actors = []
 
-        # ---- Streamarrows ----------
-        # 0 = arrows
-        # 1 = cones
-        self.streamarrow_type = self.graph.streamarrow_type
+        self.hedgehog_colourmap_actor=None
+        self.orientedglyphs_colourmap_actor=None
+        self.streamlines_colourmap_actor=None
+        self.streamarrows_colourmap_actor=None
 
+        
         self.debug = 0
 
     def convert_3d_data(self):
+        """Take the field stored in Python and create the VTK grid from it.
+        This is then stored as vtkgrid3d.
         
+        """
+
         # Policy here should depend on whether data is axis aligned or not
         axis_aligned = 0
 
@@ -2887,7 +3212,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             # representation of the point array, render as vtkStructuredGrid
             #
             field = self.field
-            print 'convert field'
+            #print 'convert field'
 
             try:
 
@@ -2914,7 +3239,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 #
                 bigsize = npts[0]*npts[1]*npts[2]
                 # Not clear if this test is right!!
-                print 'DATA', len(field.data), field.ndd
+                #print 'DATA', len(field.data), field.ndd
 
 
                 # Build points array
@@ -2922,7 +3247,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 points = vtkPoints()
                 points.SetNumberOfPoints(bigsize)
                 offset = 0
-                print 'getting grid', field
+                #print 'getting grid', field
                 grid = field.get_grid()
                 #    print 'grid done'
 
@@ -2932,7 +3257,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                             points.SetPoint(offset,grid[offset])
                             offset = offset+1
 
-                print 'setPoints'
+                #print 'setPoints'
                 data.SetPoints(points)
 
             except AttributeError:
@@ -2983,6 +3308,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
             self.vtkgrid3d = data
             #print "self.vtkgrid3d = ",self.vtkgrid3d
+            return self.vtkgrid3d
 
 
     def thin_grid(self,refGrid,factor=2):
@@ -2990,6 +3316,8 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         return a new vtkgrid
         Currently rather crude
         """
+
+        #print "thin_grid"
 
         gridType = refGrid.GetClassName()
         if gridType == 'vtkStructuredGrid':
@@ -3025,7 +3353,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             #Scalar data
             oldScalars = pointData.GetScalars()
             if oldScalars:
-                print "copying scalars"
+                #print "copying scalars"
                 dtype =  oldScalars.GetDataType()
                 if dtype == VTK_FLOAT:
                     newScalars = vtkFloatArray()
@@ -3039,16 +3367,19 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             # Vector data
             oldVectors = pointData.GetVectors()
             if oldVectors:
-                print "copying vectors"
+                #print "copying vectors ",oldVectors
                 dtype =  oldVectors.GetDataType()
                 if dtype == VTK_FLOAT:
                     newVectors = vtkFloatArray()
                 else:
                     raise Exception,"NEED TO ADD MORE DATA TYPES"
+                
                 newVectors.SetNumberOfComponents(3)
+                #print "set components"
                 for i in range(0,npoints,factor):
                     v =  oldVectors.GetTuple3(i)
                     newVectors.InsertNextTuple3( v[0],v[1],v[2] )
+                #print "setting vectors"
                 newGrid.GetPointData().SetVectors( newVectors )
         else:
             raise Exception,"thin_grid unknown gridType: %s" % gridType
@@ -3056,6 +3387,131 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         newGrid.Update() # This appears to be needed in some cases
         #print "returning newGrid ",newGrid
         return newGrid
+
+
+    def get_sample_grid(self,source=None):
+        """Convert the input field object (class Field) into a
+        vtkStructuredGrid object. If a 2D representation is required a
+        second object, with modified points values so the contours
+        are in the xy plane is also generated.
+
+        """
+
+        if source:
+            mygrid=source
+        else:
+            # Get a copy of the grid
+            mygrid = self.get_grid()
+
+        # If we're sampling at all points just return it
+        if self.sample_grid == VECTOR_SAMPLE_ALL:
+            return mygrid
+
+        # sample the grid.
+        print "vtkgraph.py vector get_sample_grid"
+        field = self.sample_grid
+        #print "grid is ",field.list()
+        #if self.debug: deb('convert sample data')
+        self.vtk_sample_grid = vtkUnstructuredGrid()
+        # Pack the data into a float array
+        #bigsize = sample_grid.npts[0]*npts[1]
+
+        grid = self.sample_grid.get_grid()
+
+        #####print 'sample grid',grid
+        bigsize = len(grid)
+        offset = 0
+        if field.data:
+            data_array = vtkFloatArray()
+            data_array.SetNumberOfValues(bigsize)
+            for i in range(bigsize):
+                data_array.SetValue(i,field.data[i])
+
+            self.vtk_sample_grid.GetPointData().SetScalars(data_array)
+
+        points = vtkPoints()
+        points.SetNumberOfPoints(bigsize)
+
+        for i in range(bigsize):
+            points.SetPoint(i,grid[i])
+
+        if self.debug:
+            print 'points'
+            print points
+
+        self.vtk_sample_grid.SetPoints(points)
+
+        if self.debug:
+            print self.vtk_sample_grid
+
+        # The grid is being sampled
+        probe = vtkProbeFilter()
+        #probe.SetSource(self.vtkgrid3d)
+        probe.SetSource(mygrid)
+        probe.SetInput(self.vtk_sample_grid)
+        interp = probe.GetUnstructuredGridOutput()
+
+        # since the interp object is not actually feeding through
+        # to the pipeline, run an update so there is some data
+        # there for us to copy 
+
+        interp.Update()
+        ###data_array = interp.GetPointData().GetScalars()
+        ###self.proj_interp.GetPointData().SetScalars(data_array)
+        return interp
+
+    def get_grid(self):
+        """Return the grid that the data is to be plotted from
+        We return a copy of the original grid as each visualiser
+        needs it's own copy as it will change the scalar values
+        depending on how it is colouring it.
+        """
+
+        
+        if self.vtkgrid3d:
+            source = self.vtkgrid3d
+        else:
+            source = self.convert_3d_data()
+        
+        # Need to copy the grid as each visualiser has it's own
+        # copy
+        gridType = source.GetClassName()
+        if gridType == 'vtkStructuredGrid':
+            newGrid=vtkStructuredGrid()
+        elif gridType == 'vtkUnstructuredGrid':
+            newGrid=vtkUnstucturedGrid()
+        else:
+            raise Exception,"get_grid unknown gridType: %s" % gridType
+        
+        # Can't copy as DeepCopying the grid causes a seg fault
+        newGrid.ShallowCopy(source)
+        #newGrid.DeepCopy(source)
+
+        return newGrid
+        
+
+    def set_grid_scalars(self,grid,obj):
+        """Set the scalars on the grid from a source object. This
+        is done so that the grid can be coloured by the scalars.
+        obj can be None in which case the scalars are set to None
+        """
+
+        #print "set_grid_scalars"
+        if obj:
+            #bigsize = self.vtkgrid3d.GetPoints().GetNumberOfPoints()
+            bigsize = grid.GetPoints().GetNumberOfPoints()
+            data_array = vtkFloatArray()
+            data_array.SetNumberOfValues(bigsize)
+            for offset in range(bigsize):
+                data_array.SetValue(offset,obj.data[offset])
+            grid.GetPointData().SetScalars(data_array)
+            #grid.Update()
+            #self.vtkgrid3d.GetPointData().SetScalars(data_array)
+            #self.vtkgrid3d.GetPointData().AddArray(data_array)
+            #self.vtkgrid3d.GetPointData().SetActiveScalars("MapScalarj")
+        else:
+            grid.GetPointData().SetScalars(None)
+        
     
     def _build(self,object=None):
 
@@ -3071,362 +3527,447 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             print 'streamline_integration_step_length',self.streamline_integration_step_length
             print 'streamline_step_length',self.streamline_step_length
             print 'streamline_display',self.streamline_display
-            print 'colour obj', self.cmap_obj
 
-        if self.cmap_obj:
-            bigsize = self.vtkgrid3d.GetPoints().GetNumberOfPoints()
-            data_array = vtkFloatArray()
-            data_array.SetNumberOfValues(bigsize)
-            for offset in range(bigsize):
-                data_array.SetValue(offset,self.cmap_obj.data[offset])
-            self.vtkgrid3d.GetPointData().SetScalars(data_array)
-            #self.vtkgrid3d.GetPointData().AddArray(data_array)
-            #self.vtkgrid3d.GetPointData().SetActiveScalars("MapScalarj")
-        else:
-            #pass
-            self.vtkgrid3d.GetPointData().SetScalars(None)
-
-        # set up the sampling grid in vtk form
-        # and produce the probe output
-
-        if self.sample_grid != VECTOR_SAMPLE_ALL:
-
-            #Convert the input field object (class Field) into a
-            #vtkStructuredGrid object. If a 2D representation is required a
-            #second object, with modified points values so the contours
-            #are in the xy plane is also generated.
-
-            field = self.sample_grid
-            if self.debug: deb('convert sample data')
-            self.vtk_sample_grid = vtkUnstructuredGrid()
-            # Pack the data into a float array
-            #bigsize = sample_grid.npts[0]*npts[1]
-
-            grid = self.sample_grid.get_grid()
-
-            #####print 'sample grid',grid
-            bigsize = len(grid)
-            offset = 0
-            if field.data:
-                data_array = vtkFloatArray()
-                data_array.SetNumberOfValues(bigsize)
-                for i in range(bigsize):
-                    data_array.SetValue(i,field.data[i])
-
-                self.vtk_sample_grid.GetPointData().SetScalars(data_array)
-
-            points = vtkPoints()
-            points.SetNumberOfPoints(bigsize)
-
-            for i in range(bigsize):
-                points.SetPoint(i,grid[i])
-
-            if self.debug:
-                print 'points'
-                print points
-            
-            self.vtk_sample_grid.SetPoints(points)
-
-            if self.debug:
-                print self.vtk_sample_grid
-
-            # The grid is being sampled
-            probe = vtkProbeFilter()
-            probe.SetSource(self.vtkgrid3d)
-            probe.SetInput(self.vtk_sample_grid)
-            interp = probe.GetUnstructuredGridOutput()
-
-            # since the interp object is not actually feeding through
-            # to the pipeline, run an update so there is some data
-            # there for us to copy 
-
-            interp.Update()
-            ###data_array = interp.GetPointData().GetScalars()
-            ###self.proj_interp.GetPointData().SetScalars(data_array)
-            source = interp
-        else:
-            source = self.vtkgrid3d
 
         # Now display the vector fields using a variety of methods
         if self.show_hedgehog:
-            # We create a simple pipeline to display the data.
-            # we could do with applying the truncation at some stage
-            hedgehog = vtkHedgeHog()
-            if self.debug:
-                print 'Source'
-                print source
-            hedgehog.SetInput(source)
-            hedgehog.SetScaleFactor(self.hedgehog_scale)
-            #hedgehog.SetLineWidth(2.0)
-            if self.debug:
-                print hedgehog
-            sgridMapper = vtkPolyDataMapper()
-            sgridMapper.SetInput(hedgehog.GetOutput())
-            hedgehogActor = vtkActor()
-            hedgehogActor.SetMapper(sgridMapper)
-            #hedgehogActor.GetProperty().SetColor(0,0,0)
-            m=sgridMapper
-
-            lut = self.graph.get_cmap_lut(self.cmap_name)
-            if lut:
-                m.SetLookupTable(lut)
-            m.SetScalarRange(self.cmap_low,self.cmap_high)
-            #m.ColorByArrayComponent("MapScalar",0);
-            #m.SetScalarModeToUsePointFieldData()
-            self.hedgehog_actors.append(hedgehogActor)
-
+            self._build_hedgehog()
+            
         if self.show_orientedglyphs:
-
-            cone = vtkConeSource()
-            cone.SetResolution(10)
-
-            arrow = vtkGlyph3D()
-            arrow.SetInput(source)
-            arrow.SetSource(cone.GetOutput())
-            arrow.SetScaleFactor(self.orientedglyph_scale)
-            ###arrow.ScalingOff()
-            arrow.SetScaleModeToScaleByVector()
-            #make range current 
-            arrow.Update() 
-
-            m=vtkPolyDataMapper()
-            m.SetInput(arrow.GetOutput())
-
-            lut = self.graph.get_cmap_lut(self.cmap_name)
-            if lut:
-                m.SetLookupTable(lut)
-            m.SetScalarRange(self.cmap_low,self.cmap_high)
-
-            vectorActor = vtkActor()
-            vectorActor.SetMapper(m)
-            self.orientedglyphs_actors.append(vectorActor)
-
+            self._build_orientedglyphs()
             
         if self.show_streamlines:
-
-            # We use a rake to generate a series of streamline starting points
-            # scattered along a line. Each point will generate a streamline.
-            if 0:
-                rake=vtkLineSource()
-                rake.SetPoint1(-1,-1,-2)
-                rake.SetPoint2(1,1,2)
-                rake.SetResolution(41)
-                rakeMapper=vtkPolyDataMapper()
-                rakeMapper.SetInput(rake.GetOutput())
-                rakeActor=vtkActor()
-                rakeActor.SetMapper(rakeMapper)
-
-            integ=vtkRungeKutta4()
-            #integ=vtkRungeKutta2()
-            sl=vtkStreamLine()
-            sl.SetInput(self.vtkgrid3d)
-            
-            # Thin the grid
-            if self.streamline_thin_points > 1:
-                grid = self.thin_grid(source,factor=self.streamline_thin_points)
-            else:
-                grid=source
-            sl.SetSource(grid)
-
-            #sl.SetSource(rake.GetOutput())
-            sl.SetIntegrator(integ)
-            sl.SetMaximumPropagationTime(self.streamline_propagation_time)
-            sl.SetIntegrationStepLength(self.streamline_integration_step_length)
-            sl.SetStepLength(self.streamline_step_length)
-
-            if self.streamline_integration_direction == STREAM_BOTH:
-                sl.SetIntegrationDirectionToIntegrateBothDirections()
-            elif self.streamline_integration_direction == STREAM_FORWARD:
-                sl.SetIntegrationDirectionToForward()
-            elif self.streamline_integration_direction == STREAM_BACKWARD:
-                sl.SetIntegrationDirectionToBackward()
-
-
-            streamlineMapper=vtkPolyDataMapper()
-            
-            # Determine how to colour the streamwotsits
-            if self.streamline_colourmap == "None":
-                streamlineMapper.ScalarVisibilityOff()
-            elif self.streamline_colourmap == "Speed":
-                sl.SpeedScalarsOn()
-            elif self.streamline_colourmap == "Scalar":
-                pass
-                
-            if self.streamline_display == STREAM_LINES:
-                
-                streamlineMapper.SetInput(sl.GetOutput())
-                lut = self.graph.get_cmap_lut(self.cmap_name)
-                if lut:
-                    streamlineMapper.SetLookupTable(lut)
-                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
-                #streamlineMapper.UseLookupTableScalarRangeOn()
-                
-                ###streamlineMapper.SetScalarRange(self.vtkgrid3d.GetScalarRange())
-                streamlineActor=vtkActor()
-                streamlineActor.SetMapper(streamlineMapper)
-
-            elif self.streamline_display == STREAM_TUBES:
-
-                # The tube is wrapped around the generated streamline. By varying the
-                # radius by the inverse of vector magnitude, we are creating a tube
-                # whose radius is proportional to mass flux (in incompressible flow).
-                streamTube = vtkTubeFilter()
-                streamTube.SetInput(sl.GetOutput())
-                streamTube.SetRadius(0.02)
-                streamTube.SetNumberOfSides(12)
-                #streamTube.SetVaryRadiusToVaryRadiusByVector()
-                streamlineMapper.SetInput(streamTube.GetOutput())
-
-                #if self.cmap_obj:
-                #    streamlineMapper.SetScalarRange(self.vtkgrid3d.GetPointData().GetScalars().GetRange())
-                lut = self.graph.get_cmap_lut(self.cmap_name)
-                if lut:
-                    streamlineMapper.SetLookupTable(lut)
-                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
-
-                streamlineActor = vtkActor()
-                streamlineActor.SetMapper(streamlineMapper)
-                streamlineActor.GetProperty().BackfaceCullingOn()
-
-            elif self.streamline_display == STREAM_SURFACE:            
-
-                # These streamlines are then fed to the vtkRuledSurfaceFilter
-                # which stitches  the lines together to form a surface.
-                # Note the SetOnRation method. It turns on every other strip that
-                # the filter generates (only when multiple lines are input).
-
-                scalarSurface=vtkRuledSurfaceFilter()
-                scalarSurface.SetInput(sl.GetOutput())
-                scalarSurface.SetOffset(0)
-                scalarSurface.SetOnRatio(2)
-                scalarSurface.PassLinesOn()
-                scalarSurface.SetRuledModeToPointWalk()
-                scalarSurface.SetDistanceFactor(30)
-
-                streamlineMapper.SetInput(scalarSurface.GetOutput())
-                #streamlineMapper.SetScalarRange(self.vtkgrid3d.GetScalarRange())
-                lut = self.graph.get_cmap_lut(self.cmap_name)
-                if lut:
-                    streamlineMapper.SetLookupTable(lut)
-                streamlineMapper.SetScalarRange(self.cmap_low,self.cmap_high)
-                streamlineActor=vtkActor()
-                streamlineActor.SetMapper(streamlineMapper)
-            else:
-                print 'BAD DISPLAY FLAG'
-
-            self.streamlines_actors.append(streamlineActor)
-            ##  eval mapper SetScalarRange [[pl3d GetOutput] GetScalarRange]
+            self._build_streamlines()
 
         if self.show_streamarrows:
-            # Place glyphs on the points calculated by the streamer
-            if self.streamarrow_colourmap == "Vector":
-                print "copying grid"
-                # Need to copy the grid as the colour-mapping for the other vis
-                # work by changing the scalar values of point data and it seems
-                # that this automatically set the colour of the arrows. As I can't
-                # work out how to turn this off we need to copy the original grid but
-                # set the scalar data to Null
-                inputGrid = vtkStructuredGrid()
-                #inputGrid.DeepCopy( self.vtkgrid3d ) # DeepCopy segfaults?!?
-                inputGrid.ShallowCopy( self.vtkgrid3d )
-                inputGrid.GetPointData().SetScalars(None)
-            elif self.streamarrow_colourmap == "None" or \
-                     self.streamarrow_colourmap == "Scalar":
-                # If we're colouring by the scalars we don't need to copy
-                # the grid. If we're not colouring the glyphs, we can turn off
-                # colouring with the mapper (see below)
-                inputGrid = self.vtkgrid3d
-            else:
-                raise Exception,"streamarrow bad cmap"
-
-            #write = vtkStructuredGridWriter()
-            #write.SetFileName('jens.vtk')
-            #write.SetInput( self.vtkgrid3d )
-            #write.Write()
-
-            integ=vtkRungeKutta4()
-            sa=vtkStreamPoints()
-
-            # Thin the grid
-            if self.streamarrow_thin_points > 1:
-                print "thining streamarrows grid by ",self.streamarrow_thin_points
-                grid = self.thin_grid(source,factor=self.streamarrow_thin_points)
-            else:
-                grid = source
-            #sa.SetInput(self.vtkgrid3d) #- cant use this else colours change
-            #sa.SetSource(source)
-            sa.SetInput(inputGrid)
-            sa.SetSource(grid)
-
-            sa.SetIntegrator(integ)
-            sa.SetMaximumPropagationTime(self.streamarrow_propagation_time)
-            sa.SetIntegrationStepLength(self.streamarrow_integration_step_length)
-            sa.SetTimeIncrement(self.streamarrow_time_increment)
-            if self.streamarrow_integration_direction == STREAM_BOTH:
-                sa.SetIntegrationDirectionToIntegrateBothDirections()
-            elif self.streamarrow_integration_direction == STREAM_FORWARD:
-                sa.SetIntegrationDirectionToForward()
-            elif self.streamarrow_integration_direction == STREAM_BACKWARD:
-                sa.SetIntegrationDirectionToBackward()
-
-            if self.streamarrow_type==0:
-                arrow = vtkArrowSource()
-                arrow.SetTipResolution(30)
-                arrow.SetShaftResolution(30)
-                arrow.SetTipRadius(0.2) #0.1
-                arrow.SetTipLength(0.7) #0.35
-                arrow.SetShaftRadius(0.06) #0.03
-            else:
-                arrow = vtkConeSource()
-                arrow.SetResolution(30)
-            
-            glyph = vtkGlyph3D()
-            glyph.SetInput(sa.GetOutput())
-            glyph.SetSource(arrow.GetOutput())
-            
-            #glyph.SetVectorModeToUseNormal()
-            glyph.SetVectorModeToUseVector()
-            if self.streamarrow_scale:
-                glyph.SetScaleModeToScaleByVector()
-            else:
-                glyph.SetScaleModeToDataScalingOff()
-                
-            glyph.SetScaleFactor(self.streamarrow_size)
-            
-            m=vtkPolyDataMapper()
-            if self.streamarrow_colourmap == "None":
-                # No colouring
-                m.ScalarVisibilityOff()
-            elif self.streamarrow_colourmap == "Vector":
-                # If we are colouring by the vector values alone
-                glyph.SetColorModeToColorByVector()
-
-            m.SetInput(glyph.GetOutput())
-            lut = self.graph.get_cmap_lut(self.cmap_name)
-            if lut:
-                m.SetLookupTable(lut)
-            m.SetScalarRange(self.cmap_low,self.cmap_high)
-
-            streamArrowActor=vtkActor()
-            streamArrowActor.SetMapper(m) 
-            self.streamarrow_actors.append(streamArrowActor)
+            self._build_streamarrows()
             
         self.status = BUILT
+
+    def _build_hedgehog(self):
+        """Display the hedgeghog representation"""
+        
+
+        # If we dont' have the data get it
+        #if not self.hedgehog_grid:
+        source = self.get_sample_grid()
+
+        # We create a simple pipeline to display the data.
+        # we could do with applying the truncation at some stage
+        hedgehog = vtkHedgeHog()
+        if self.debug:
+            print 'Source'
+            print source
+        hedgehog.SetInput(source)
+        hedgehog.SetScaleFactor(self.hedgehog_scale)
+        #hedgehog.SetLineWidth(2.0)
+        if self.debug:
+            print hedgehog
+        m = vtkPolyDataMapper()
+        m.SetInput(hedgehog.GetOutput())
+        hedgehogActor = vtkActor()
+        hedgehogActor.SetMapper(m)
+
+        # Get the default lookup table as we need to pass this to the
+        # scalarbar actor
+        default_lut = m.GetLookupTable()
+        lut = self.hedgehog_colourer.get_lut()
+        if lut:
+            m.SetLookupTable(lut)
+
+        # Set scalar range according to the colourer
+        cmap_low = self.hedgehog_colourer.get_value("cmap_low")
+        cmap_high = self.hedgehog_colourer.get_value("cmap_high")
+        m.SetScalarRange(cmap_low,cmap_high)
+
+        if self.hedgehog_colourer.cmap_by_object():
+            #m.ScalarVisibilityOn()
+            cmap_obj=self.hedgehog_colourer.get_value("cmap_obj")
+            self.set_grid_scalars(source,cmap_obj)
+            
+            # See if we are displaying a scalar bar to show the
+            # colourmap we are using
+            if ( self.hedgehog_colourer.get_value('show_colourmap_actor') ):
+                if not self.hedgehog_colourmap_actor:
+                    self.hedgehog_colourmap_actor = VtkCmapVis(self.graph)
+                    
+                # Set the default lookuptable
+                self.hedgehog_colourmap_actor.set_default_lut(default_lut)
+                
+                self.hedgehog_colourmap_actor.add_colourmap_actor(
+                    self.hedgehog_colourer)
+                #self.add_colourmap_actor(self.hedgehog_colourer)
+                #print "added colourmap_actor in _show"
+        else:
+            #m.ScalarVisibilityOff()
+            self.set_grid_scalars(source,None)
+            # Convert from 0-255 to 0-1
+            colour = map(lambda x: float(x)/255.,
+                         self.hedgehog_colourer.get_value("plus_rgb") )
+            hedgehogActor.GetProperty().SetColor(colour)
+            #print dir(m)
+            #print "scalarmode is ",m.GetScalarModeAsString()
+
+
+        #m.ColorByArrayComponent("MapScalar",0);
+        #m.SetScalarModeToUsePointFieldData()
+        self.hedgehog_actors.append(hedgehogActor)
+
+    def _build_orientedglyphs(self):
+        """Show the oriented glyphs"""
+
+        # If we dont' have the data get it
+        #if not self.orientedglyphs_grid:
+        source = self.get_sample_grid()
+
+        cone = vtkConeSource()
+        cone.SetResolution(10)
+
+        arrow = vtkGlyph3D()
+        arrow.SetInput(source)
+        arrow.SetSource(cone.GetOutput())
+        arrow.SetScaleFactor(self.orientedglyph_scale)
+        ###arrow.ScalingOff()
+        arrow.SetScaleModeToScaleByVector()
+        #make range current 
+        arrow.Update() 
+
+        m=vtkPolyDataMapper()
+        m.SetInput(arrow.GetOutput())
+        vectorActor = vtkActor()
+        vectorActor.SetMapper(m)
+
+        # Get the default lookup table as we need to pass this to the
+        # scalarbar actor
+        default_lut = m.GetLookupTable()
+        lut = self.orientedglyphs_colourer.get_lut()
+        if lut:
+            m.SetLookupTable(lut)
+
+        # Determine how to colour the glyphs
+        if self.orientedglyphs_colourer.cmap_by_object():
+            m.ScalarVisibilityOn()
+            cmap_obj=self.orientedglyphs_colourer.get_value("cmap_obj")
+            self.set_grid_scalars(source,cmap_obj)
+
+            # See if we are displaying a scalar bar to show the
+            # colourmap we are using
+            if ( self.orientedglyphs_colourer.get_value(
+                'show_colourmap_actor') ):
+                if not self.orientedglyphs_colourmap_actor:
+                    self.orientedglyphs_colourmap_actor=VtkCmapVis(self.graph)
+                # Set the default lookuptable
+                self.orientedglyphs_colourmap_actor.set_default_lut(
+                    default_lut)
+                self.orientedglyphs_colourmap_actor.add_colourmap_actor(
+                    self.orientedglyphs_colourer)
+            
+        else:
+            m.ScalarVisibilityOff()
+            self.set_grid_scalars(source,None)
+            # Convert from 0-255 to 0-1
+            colour = map(lambda x: float(x)/255.,
+                         self.orientedglyphs_colourer.get_value("plus_rgb") )
+            vectorActor.GetProperty().SetColor(colour)
+
+        self.orientedglyphs_actors.append(vectorActor)
+
+            
+    def _build_streamlines(self):
+        """ Show the streamlines"""
+    
+        # If we dont' have the data get it
+        #if not self.streamlines_grid:
+        #self.streamlines_grid = self.get_grid()
+
+        #writer=vtkUnstructuredGridWriter()
+        #writer.SetInput( self.streamlines_grid )
+        #writer.SetFileName('/home/jmht/segf.vtk')
+        #writer.Write()
+
+
+        # We use a rake to generate a series of streamline starting points
+        # scattered along a line. Each point will generate a streamline.
+        if 0:
+            rake=vtkLineSource()
+            rake.SetPoint1(-1,-1,-2)
+            rake.SetPoint2(1,1,2)
+            rake.SetResolution(41)
+            rakeMapper=vtkPolyDataMapper()
+            rakeMapper.SetInput(rake.GetOutput())
+            rakeActor=vtkActor()
+            rakeActor.SetMapper(rakeMapper)        
+
+        sl=vtkStreamLine()
+
+        # Get the grid with all the data
+        source=self.get_grid()
+        
+        # Get the grid we are sampling the data on
+        sample = self.get_sample_grid(source=source)
+
+        # Thin the sample grid if requested
+        if self.streamline_thin_points > 1:
+            sample = self.thin_grid(sample,
+                                    factor=self.streamline_thin_points)        
+
+        # Set input and source
+        sl.SetInput(source)
+        sl.SetSource(sample)
+        #sl.SetSource(rake.GetOutput())
+        
+        #integ=vtkRungeKutta45()
+        integ=vtkRungeKutta4()
+        #integ=vtkRungeKutta2()
+        sl.SetIntegrator(integ)
+
+        
+        sl.SetMaximumPropagationTime(self.streamline_propagation_time)
+        sl.SetIntegrationStepLength(self.streamline_integration_step_length)
+        sl.SetStepLength(self.streamline_step_length)
+
+        if self.streamline_integration_direction == STREAM_BOTH:
+            sl.SetIntegrationDirectionToIntegrateBothDirections()
+        elif self.streamline_integration_direction == STREAM_FORWARD:
+            sl.SetIntegrationDirectionToForward()
+        elif self.streamline_integration_direction == STREAM_BACKWARD:
+            sl.SetIntegrationDirectionToBackward()
+
+
+        streamlineMapper=vtkPolyDataMapper()
+        # Get the default lookup table for the scalarbar actor
+        default_lut = streamlineMapper.GetLookupTable()
+
+        # Determine how to colour the streamwotsits
+        cscheme = self.streamlines_colourer.get_value("scheme")
+        if cscheme == "Uniform":
+            streamlineMapper.ScalarVisibilityOff()
+        elif cscheme == "Speed":
+            sl.SpeedScalarsOn()
+        else:
+            # Colourmapping by another object
+            cmap_obj=self.streamlines_colourer.get_value("cmap_obj")
+            self.set_grid_scalars(source,cmap_obj)
+
+        # Set the colour lookuptable & mapping values for
+        # all streamlines/tubes/surfaces
+        lut = self.streamlines_colourer.get_lut()
+        cmap_high = self.streamlines_colourer.get_value("cmap_high")
+        cmap_low  = self.streamlines_colourer.get_value("cmap_low")
+
+        # Check to display a scalar bar
+        if cscheme == "Speed" or self.streamlines_colourer.cmap_by_object():
+            if ( self.streamlines_colourer.get_value(
+                'show_colourmap_actor') ):
+                if not self.streamlines_colourmap_actor:
+                    self.streamlines_colourmap_actor = VtkCmapVis(self.graph)
+                # Set the default lookuptable
+                self.streamlines_colourmap_actor.set_default_lut(default_lut)
+                self.streamlines_colourmap_actor.add_colourmap_actor(
+                    self.streamlines_colourer)
+
+        streamlineMapper.SetScalarRange(cmap_low,cmap_high)
+
+        if lut:
+            streamlineMapper.SetLookupTable(lut)
+            
+        if self.streamline_display == STREAM_LINES:
+
+            streamlineMapper.SetInput(sl.GetOutput())
+
+            streamlineActor=vtkActor()
+
+            # Colour if using uniform
+            if cscheme == 'Uniform':
+                # Convert from 0-255 to 0-1
+                colour = map(lambda x: float(x)/255.,
+                             self.streamlines_colourer.get_value("plus_rgb") )
+                streamlineActor.GetProperty().SetColor(colour)
+            
+            streamlineActor.SetMapper(streamlineMapper)
+
+        elif self.streamline_display == STREAM_TUBES:
+
+            # The tube is wrapped around the generated streamline. By varying the
+            # radius by the inverse of vector magnitude, we are creating a tube
+            # whose radius is proportional to mass flux (in incompressible flow).
+            streamTube = vtkTubeFilter()
+            streamTube.SetInput(sl.GetOutput())
+            streamTube.SetRadius(0.02)
+            streamTube.SetNumberOfSides(12)
+            #streamTube.SetVaryRadiusToVaryRadiusByVector()
+            streamlineMapper.SetInput(streamTube.GetOutput())
+
+            streamlineActor = vtkActor()
+            streamlineActor.SetMapper(streamlineMapper)
+            streamlineActor.GetProperty().BackfaceCullingOn()
+
+        elif self.streamline_display == STREAM_SURFACE:            
+
+            # These streamlines are then fed to the vtkRuledSurfaceFilter
+            # which stitches  the lines together to form a surface.
+            # Note the SetOnRation method. It turns on every other strip that
+            # the filter generates (only when multiple lines are input).
+
+            scalarSurface=vtkRuledSurfaceFilter()
+            scalarSurface.SetInput(sl.GetOutput())
+            scalarSurface.SetOffset(0)
+            scalarSurface.SetOnRatio(2)
+            scalarSurface.PassLinesOn()
+            scalarSurface.SetRuledModeToPointWalk()
+            scalarSurface.SetDistanceFactor(30)
+
+            streamlineMapper.SetInput(scalarSurface.GetOutput())
+            streamlineActor=vtkActor()
+            streamlineActor.SetMapper(streamlineMapper)
+        else:
+            print 'BAD DISPLAY FLAG'
+
+
+        self.streamlines_actors.append(streamlineActor)
+        ##  eval mapper SetScalarRange [[pl3d GetOutput] GetScalarRange]
+
+    def _build_streamarrows(self):
+        """Display the streamarrows"""
+
+
+        # Get the source and sample grid
+        source = self.get_grid()
+        sample = self.get_sample_grid(source=source)
+
+        # Thin the grid
+        if self.streamarrow_thin_points > 1:
+            sample = self.thin_grid(sample,factor=self.streamarrow_thin_points)
+            
+        sa=vtkStreamPoints()
+        sa.SetInput(source)
+        sa.SetSource(sample)
+
+        integ=vtkRungeKutta4()
+        sa.SetIntegrator(integ)
+        sa.SetMaximumPropagationTime(self.streamarrow_propagation_time)
+        sa.SetIntegrationStepLength(self.streamarrow_integration_step_length)
+        sa.SetTimeIncrement(self.streamarrow_time_increment)
+        if self.streamarrow_integration_direction == STREAM_BOTH:
+            sa.SetIntegrationDirectionToIntegrateBothDirections()
+        elif self.streamarrow_integration_direction == STREAM_FORWARD:
+            sa.SetIntegrationDirectionToForward()
+        elif self.streamarrow_integration_direction == STREAM_BACKWARD:
+            sa.SetIntegrationDirectionToBackward()
+
+        # Display arrows or cones
+        if self.streamarrow_type=='Arrow':
+            arrow = vtkArrowSource()
+            arrow.SetTipResolution(30)
+            arrow.SetShaftResolution(30)
+            arrow.SetTipRadius(0.2) #0.1
+            arrow.SetTipLength(0.7) #0.35
+            arrow.SetShaftRadius(0.06) #0.03
+        elif self.streamarrow_type=='Cone':
+            arrow = vtkConeSource()
+            arrow.SetResolution(30)
+        else:
+            print "STREAMARROW_TYPE UNKNOWN TYPE!: ",self.streamarrow_type
+
+        glyph = vtkGlyph3D()
+        glyph.SetInput(sa.GetOutput())
+        glyph.SetSource(arrow.GetOutput())
+
+        # Determine how to scale the arrows
+        #glyph.SetVectorModeToUseNormal()
+        glyph.SetVectorModeToUseVector()
+        if self.streamarrow_scale:
+            glyph.SetScaleModeToScaleByVector()
+        else:
+            glyph.SetScaleModeToDataScalingOff()
+        glyph.SetScaleFactor(self.streamarrow_size)
+
+        # Sort out the colouring
+        m=vtkPolyDataMapper()
+        
+        # Get the default lookup table as we need to pass this to the
+        # scalarbar actor
+        default_lut = m.GetLookupTable()
+        
+        cscheme = self.streamarrows_colourer.get_value("scheme")
+        if cscheme == "Uniform":
+            m.ScalarVisibilityOff()
+        elif cscheme == "Vector":
+            # If we are colouring by the vector values alone
+            glyph.SetColorModeToColorByVector()
+        else:
+            # Colourmapping by another object so set the scalar values
+            m.ScalarVisibilityOn()
+            cmap_obj=self.streamarrows_colourer.get_value("cmap_obj")
+            self.set_grid_scalars(source,cmap_obj)
+            
+        m.SetInput(glyph.GetOutput())
+        
+        lut = self.streamarrows_colourer.get_lut()
+        if lut:
+            m.SetLookupTable(lut)
+        cmap_high = self.streamarrows_colourer.get_value("cmap_high")
+        cmap_low  = self.streamarrows_colourer.get_value("cmap_low")
+        m.SetScalarRange(cmap_low,cmap_high)
+
+
+        # Decide whether to display a scalar bar
+        if cscheme == "Vector" or self.streamarrows_colourer.cmap_by_object():
+            if ( self.streamarrows_colourer.get_value('show_colourmap_actor') ):
+                if not self.streamarrows_colourmap_actor:
+                    self.streamarrows_colourmap_actor = VtkCmapVis(self.graph)
+                    
+                # Set the default lookuptable
+                self.streamarrows_colourmap_actor.set_default_lut(default_lut)
+                
+                self.streamarrows_colourmap_actor.add_colourmap_actor(
+                    self.streamarrows_colourer)
+
+        streamArrowActor=vtkActor()
+        # Colour if using uniform
+        if cscheme == 'Uniform':
+            # Convert from 0-255 to 0-1
+            colour = map(lambda x: float(x)/100.,
+                         self.streamarrows_colourer.get_value("plus_rgb") )
+            streamArrowActor.GetProperty().SetColor(colour)
+        
+        streamArrowActor.SetMapper(m) 
+        self.streamarrow_actors.append(streamArrowActor)
+            
 
     def _delete(self):
         """Remove all vtk components of the image"""
 
         if self.debug:
             print '_delete'
-        
+
+        # Hedgehog
         for a in self.hedgehog_actors:
             self.graph.ren.RemoveActor(a)
+        if self.hedgehog_colourmap_actor:
+            self.hedgehog_colourmap_actor.delete_colourmap_actor()
+            self.hedgehog_colourmap_actor=None
+
+        # Oriented Glyphs
         for a in self.orientedglyphs_actors:
             self.graph.ren.RemoveActor(a)
+        if self.orientedglyphs_colourmap_actor:
+            self.orientedglyphs_colourmap_actor.delete_colourmap_actor()
+            self.orientedglyphs_colourmap_actor=None
+
+        # Streamlines
         for a in self.streamlines_actors:
             self.graph.ren.RemoveActor(a)
+        if self.streamlines_colourmap_actor:
+            self.streamlines_colourmap_actor.delete_colourmap_actor()
+            self.streamlines_colourmap_actor=None
+
+        # Streamarrows
         for a in self.streamarrow_actors:
             self.graph.ren.RemoveActor(a)
+        if self.streamarrows_colourmap_actor:
+            self.streamarrows_colourmap_actor.delete_colourmap_actor()
+            self.streamarrows_colourmap_actor=None
 
         # Reset dictionary for selection actors
         self.atom_to_selection_actors = {}
@@ -3450,22 +3991,29 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         if self.show_hedgehog and self.hedgehog_visible:
             for a in self.hedgehog_actors:
                 self.graph.ren.RemoveActor(a)
+            if self.hedgehog_colourmap_actor:
+                self.hedgehog_colourmap_actor.hide_colourmap_actor()
             self.hedgehog_visible = 0
 
         if self.show_orientedglyphs and self.orientedglyphs_visible:
             for a in self.orientedglyphs_actors:
                 self.graph.ren.RemoveActor(a)
+            if self.orientedglyphs_colourmap_actor:
+                self.orientedglyphs_colourmap_actor.hide_colourmap_actor()
             self.orientedglyphs_visible = 0
 
         if self.show_streamlines and self.streamlines_visible:
             for a in self.streamlines_actors:
                 self.graph.ren.RemoveActor(a)
+            if self.streamlines_colourmap_actor:
+                self.streamlines_colourmap_actor.hide_colourmap_actor()
             self.streamlines_visible = 0
-
 
         if self.show_streamarrows and self.streamarrows_visible:
             for a in self.streamarrow_actors:
                 self.graph.ren.RemoveActor(a)
+            if self.streamarrows_colourmap_actor:
+                self.streamarrows_colourmap_actor.hide_colourmap_actor()
             self.streamarrows_visible = 0
 
 
@@ -3475,11 +4023,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             print 'show_', self.show_hedgehog, self.show_orientedglyphs, self.show_streamlines
             print '  visi', self.hedgehog_visible, self.orientedglyphs_visible, self.streamlines_visible
 
+        # Hedgehog
         if self.show_hedgehog:
             if not self.hedgehog_visible:
                 for a in self.hedgehog_actors:
                     self.graph.ren.AddActor(a)
                     #print 'add hedgehog'
+                if self.hedgehog_colourmap_actor:
+                    self.hedgehog_colourmap_actor.show_colourmap_actor()
                 self.hedgehog_visible=1
         else:
             if self.hedgehog_visible:
@@ -3488,11 +4039,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                     #print 'rem hedgehog'
                 self.hedgehog_visible = 0
 
+        # Orientedglyphs
         if self.show_orientedglyphs:
             if not self.orientedglyphs_visible:
                 for a in self.orientedglyphs_actors:
                     #print 'add glyphs'
                     self.graph.ren.AddActor(a)
+                if self.orientedglyphs_colourmap_actor:
+                    self.orientedglyphs_colourmap_actor.show_colourmap_actor()
                 self.orientedglyphs_visible = 1
         else:
             if self.orientedglyphs_visible:
@@ -3501,11 +4055,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                     #print 'rem glyphs'
                 self.orientedglyphs_visible = 0
 
+        # Streamlines
         if self.show_streamlines:
             if not self.streamlines_visible:
                 for a in self.streamlines_actors:
                     #print 'add stream'
                     self.graph.ren.AddActor(a)
+                if self.streamlines_colourmap_actor:
+                    self.streamlines_colourmap_actor.show_colourmap_actor()
                 self.streamlines_visible = 1
         else:
             if self.streamlines_visible:
@@ -3514,11 +4071,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                     #print 'rem stream'
                 self.streamlines_visible = 0
 
+        # Streamarrows
         if self.show_streamarrows:
             if not self.streamarrows_visible:
                 for a in self.streamarrow_actors:
                     #print 'add stream'
                     self.graph.ren.AddActor(a)
+                if self.streamarrows_colourmap_actor:
+                    self.streamarrows_colourmap_actor.show_colourmap_actor()
                 self.streamarrows_visible = 1
         else:
             if self.streamarrows_visible:
