@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 # Make sure we can find python...
