@@ -74,9 +74,10 @@ class AM1Calc(QMCalc):
         self.set_program('AM1')
         self.set_title('x')
         self.set_parameter('task',MENU_OPT)
-        self.set_parameter('frozen_density', 1)
-        self.set_parameter('fixed', -1)
-        self.set_parameter('opt_method','Newton')
+        self.set_parameter('max_iter', 100)
+        self.set_parameter('energy_threshold', 1e-6)
+        self.set_parameter('gradient_threshold', 1e-3)
+        self.set_parameter('opt_method','Conjugate-gradient')
         self.set_parameter('job_name','am1 cleanup')
         
     def check_avail_parameters(self):
@@ -175,9 +176,14 @@ class AM1Calc(QMCalc):
         for atom in mol.atom:
             Am1Mol.add( atom.name, atom.symbol,atom.coord[0], atom.coord[1], atom.coord[2] )
         if self.get_parameter( 'opt_method' ) == 'Newton':
-            print "Running Newton calculation"
+            print "Running quasi-newton optimization"
             self.generator = Am1Mol.newton( self.get_parameter('fixed'),
                                        self.get_parameter('frozen_density') )
+        elif self.get_parameter( 'opt_method' ) == 'Conjugate-gradient':
+            print "Running conjugate-gradient optimization"
+            self.generator = Am1Mol.conjugategradient( self.get_parameter('max_iter'),
+                                                       self.get_parameter('gradient_threshold'),
+                                                       self.get_parameter('energy_threshold'))
         else:
             print "No calculation"
 
