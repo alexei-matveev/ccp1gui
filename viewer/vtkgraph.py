@@ -1883,7 +1883,7 @@ class VtkCmapVis_:
 
         # Would be great if we could use this but as we
         # use vtkTkRenderWidget as our base widget there is no
-        # interactor we can use for the widget. £*&*&£!! Tkinter...
+        # interactor we can use for the widget. *#*#*!! Tkinter...
         # Create the scalarwidget
         #scalarWidget = vtkScalarBarWidget()
         #scalarWidget.SetScalarBarActor( colourmap_actor )
