@@ -6559,6 +6559,13 @@ if __name__ == "__main__":
         print "You need to install Scientific Python"
         sys.exit(-1)
 
+    # On OSX might need to hide the additional console window when
+    # run as an application from the finder
+    try:
+        root.tk.call('console', 'hide')
+    except:
+        pass
+    
     from viewer.vtkgraph import *
     root = Tkinter.Tk()
     root.withdraw()
