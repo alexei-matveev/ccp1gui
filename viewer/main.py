@@ -458,20 +458,15 @@ class TkMolView(Pmw.MegaToplevel):
         """
         global defaults
 
-        rcfile = defaults.rcfile            
-        if not os.path.isfile( rcfile ):
-            # No ccp1guirc file so we can return
-            #print "No user preferences file: %s found" % rcfile
-            return
-        
-        print "Executing ccp1guirc file %s" % rcfile
-        execfile( rcfile )
+        rcfile = defaults.rcfile
+        if os.path.isfile( rcfile ):
+            print "Executing ccp1guirc file %s" % rcfile
+            execfile( rcfile )
 
-        # New read in the file using defaults
-        defaults.read_from_file()
+            # New read in the file using defaults
+            defaults.read_from_file()
         
-        # Now try and set this if it is an attribute of main
-        # and set it if it is
+        # Now set anything in the defaults that might be an attribute of main
         for key,value in defaults.iteritems():
             if hasattr( self, key ):
                 #print "setting attribute of main: %s : %s" %(key,value)
@@ -486,82 +481,6 @@ class TkMolView(Pmw.MegaToplevel):
         #        if p:
         #            paths['user'] = p
 
-
-#     def read_ccp1guirc(self):
-#         """Process the ccp1guirc file:
-#            Execute the file to execute any of the users python code, and then
-#            check for any variables that are set in the file. These are stored
-#            in the rc_vars dictionary. Any variables that are attributes of self
-#            are set.
-#         """
-#         global rc_vars
-
-#         # Need to append all variables that we are going to change to locals
-#         # in order for them to be in scope when execfile executes
-#         #for var_name in rc_vars.keys():
-#         #    locals()[var_name] = rc_vars[var_name]
-
-#         # Load user Defaults if present
-#         if sys.platform[:3] == 'win':
-#             rcfile = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
-#         else:
-#             rcfile = os.path.expandvars('$HOME/.ccp1guirc.py')
-            
-#         if not os.path.isfile( rcfile ):
-#             # No ccp1guirc file so we can return
-#             #print "No user preferences file: %s found" % rcfile
-#             return
-        
-#         #print "Executing ccp1guirc file %s" % rcfile
-#         #try:
-#         execfile( rcfile )
-#         #except Exception,e:
-#         #        print "Error reading ccp1guirc file: %s" % rcfile
-#         #        print e
-
-#         # Pull any rc_vars out
-#         rc_buff = []
-#         f = open( rcfile )
-
-#         for line in f.readlines():
-#             rc_buff.append(line)
-#         f.close()
-
-#         for line in rc_buff:
-#             if re.compile( '###################### End User Defaults #####################' ).match( line ):
-#                 break
-#             elif re.compile( '^[a-zA-Z][a-zA-Z1-9 _-]*={1}.*' ).match( line ):
-#                 split = line.split('=')
-#                 key = split[0].strip()
-#                 execline = 'tmp = '+key
-#                 try:
-#                     exec(execline)
-#                     #print "%s from ccp1guirc is: %s" % (key, tmp)
-#                     # Need to check if this is a string. Under windows a path could contain the
-#                     # \b character (backspace). If the string is interpreted as a normal string
-#                     # this causes the \b and the preceding character to be deleted. We therefore
-#                     # need to convert the variable to a raw string.
-#                     if type(tmp) is str:
-#                         tmp = self.raw( tmp )
-                   
-#                     rc_vars[key] = tmp
-#                 except NameError:
-#                     #print "%s is not in ccp1guirc file" % key
-#                     pass
-#                 # Now try and set this if it is an attribute of main
-#                 # and set it if it is
-#                 if hasattr( self, key ):
-#                     setattr( self, key, rc_vars[key] )
-                    
-
-#         # Set the default path to where we we were last
-#         if rc_vars['old_path']:
-#             if rc_vars.has_key('user_path'):
-#                 p = rc_vars['user_path']
-#                 print "Using old path from rc_vars: ",p
-#                 if p:
-#                     paths['user'] = p
-        
 
     def raw(self, text):
         """Returns a raw string representation of text
@@ -598,96 +517,6 @@ class TkMolView(Pmw.MegaToplevel):
             except KeyError: new_string+=char
         return new_string
 
-#     def write_ccp1guirc(self):
-#         """ Write out the current state of the rc_vars to file
-#         """
-
-#         print "writing ccp1guirc file"
-#         global rc_vars
-
-#         # Save the user path to the dictionary so that we can
-#         # start from there on a restart
-#         rc_vars['user_path'] = paths['user']
-        
-#         # find the ccp1guirc file
-#         if sys.platform[:3] == 'win':
-#             rc_filename = os.path.expandvars('$USERPROFILE\ccp1guirc.py')
-#         else:
-#             rc_filename = os.path.expandvars('$HOME/.ccp1guirc.py')
-
-#         if not os.path.isfile( rc_filename ):
-#             # No ccp1guirc file found, so just dump out the dictionary to a new ccp1guirc file
-#             try:
-#                 rc_file = open( rc_filename, 'w' ) # Open File in write mode
-#             except IOError,e:
-#                 print "Cant create user rc file. I give up..."
-#                 return
-
-#             rc_file.write("# This ccp1guirc file has been created by the CCP1GUI as no\n")
-#             rc_file.write("# user file could be found\n#\n#\n")
-#             for name in rc_vars.keys():
-#                 if type(rc_vars[name]) is str:
-#                     # Need to quote strings
-#                     rc_file.write( "%s = \'%s\'\n" % (name,str(rc_vars[name])) )
-#                 else:
-#                     rc_file.write( "%s = %s\n" % (name,str(rc_vars[name])) )
-
-#             rc_file.write( '###################### End User Defaults #####################\n' )
-#             # Have dumped dictionary so quit here
-#             return
-
-#         # Read the file into a buffer
-#         try:
-#             rc_file = open( rc_filename, 'r' )
-#             rc_buff = rc_file.readlines()
-#             rc_file.close()
-#         except Error,e:
-#             print "Error reading ccp1guirc file!"
-#             print e
-#             return
-
-#         # For each line of the file, if a variable appears at the start of the line
-#         # we replace the old value with the one from the rc_vars dictionary
-#         count = 0
-#         last_var = 0
-#         keys = [] # list to remember which keys we have written out
-#         for line in rc_buff:
-#             for var_name in rc_vars.keys():
-#                 re_str = '^'+var_name+' *='
-#                 if re.compile( re_str ).match( line ):
-#                     last_var = count
-#                     keys.append( var_name )
-#                     # replace that line in the buffer with the new value
-#                     if type(rc_vars[var_name]) is str:
-#                         rc_buff[ count ] = "%s = \'%s\'\n" % (var_name, str(rc_vars[var_name]) )
-#                     else:
-#                         rc_buff[ count ] = "%s = %s\n" % (var_name, str(rc_vars[var_name]) )
-#             count += 1
-
-#         # Now see if there are any variables in the rc_vars that we didn't write out
-#         # because they have been added this session. We add these into the file at the
-#         # spot we found the last variable.
-#         newvar_buff = []
-#         for key,var in rc_vars.iteritems():
-#             if  key not in keys:
-#                 if type(rc_vars[key]) is str:
-#                     newvar_buff.append("%s = \'%s\'\n" % (key, str(rc_vars[key]) ))
-#                 else:
-#                     newvar_buff.append("%s = %s\n" % (key, str(rc_vars[key]) ))
-                    
-#         if len(newvar_buff) > 0:
-#             for line in newvar_buff:
-#                 rc_buff.insert(last_var+1,line)
-
-#         # Write out the ammended file
-#         try:
-#             rc_file = open( rc_filename, 'w')
-#             for line in rc_buff:
-#                 rc_file.write( line )
-#         except Error,e:
-#             print "Can't write rc_file %s " % rc_filename
-#             print "Error is:"
-#             print e
 
     def restore_saved_jobs(self,directory=None):
         """
