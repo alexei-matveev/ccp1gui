@@ -63,7 +63,7 @@ dynlibdir=dist/ccp1gui.app/Contents/Resources/lib/python2.5/lib-dynload
 python setup.py py2app --frameworks \
 $vtkbuilddir/libvtkRenderingPythonTkWidgets.5.1.0.dylib,\
 $vtkbuilddir/libvtkRenderingPythonTkWidgets.5.1.dylib,\
-$vtkbuilddir/libvtkRenderingPythonTkWidgets.dylib | exit 1
+$vtkbuilddir/libvtkRenderingPythonTkWidgets.dylib || exit 1
 
 # Now copy Scientific .so files into it
 # Need to manually copy these as using the --frameworks
