@@ -40,12 +40,12 @@ class Defaults:
         # Molecule variables
         self.defaults['mol_line_width']  =  3
         self.defaults['mol_point_size']  =  4
-        self.defaults['mol_sphere_resolution'] = 8
+        self.defaults['mol_sphere_resolution'] = 20
         self.defaults['mol_sphere_specular'] = 1.0
         self.defaults['mol_sphere_diffuse'] = 1.0
         self.defaults['mol_sphere_ambient'] = 0.4
         self.defaults['mol_sphere_specular_power'] = 5
-        self.defaults['mol_cylinder_resolution'] = 8
+        self.defaults['mol_cylinder_resolution'] = 20
         self.defaults['mol_cylinder_specular'] = 0.7
         self.defaults['mol_cylinder_diffuse'] = 0.7
         self.defaults['mol_cylinder_ambient'] = 0.4
