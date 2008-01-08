@@ -76,6 +76,7 @@ class VtkGraph(TkMolView,Graph):
         self.line_type = 2
         self.label_type = 0
         self.stick_type = 2
+        self.show_selection_by_dots = 1
         self.show_selection_by_colour = 1
         # Set stereo visualiser options.
         self.stereo = None
@@ -140,6 +141,7 @@ class VtkGraph(TkMolView,Graph):
             self.ren = vtkRenderer()
             renwin.AddRenderer(self.ren)
             renwin.SetDesiredUpdateRate(0.2)
+            
             self.pane.firstrenderer()
             self.pane.SetCamera(0.,0.,15.)
             self.pane.Reset()
@@ -1445,11 +1447,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 ##            else:
 ##                print 'INDEX IS -1'
 
-        for a in self.molecule.atom:
-            if a.selected:
-                act = self.create_selection_actor(a)
-                self.selection_actors.append(act)
-                self.graph.ren.AddActor(act)
+        if self.graph.show_selection_by_dots:
+            for a in self.molecule.atom:
+                if a.selected:
+                    act = self.create_selection_actor(a)
+                    self.selection_actors.append(act)
+                    self.graph.ren.AddActor(act)
             
         if self.debug_selection:
             print 'after build # sel acts=', len(self.selection_actors)
@@ -1502,60 +1505,48 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         for act in self.selection_actors:
             self.graph.ren.RemoveActor(act)
         self.selection_actors = []
-        for atom in mol.atom:
-            if atom.selected:
-                if self.debug_selection:
-                    print 'showing selected atom',atom.get_index()
-                act = self.create_selection_actor(atom)
-                self.selection_actors.append(act)
-                self.graph.ren.AddActor(act)
+        
+        if self.graph.show_selection_by_dots:
+            for atom in mol.atom:
+                if atom.selected:
+                    if self.debug_selection:
+                        print 'showing selected atom',atom.get_index()
+                    act = self.create_selection_actor(atom)
+                    self.selection_actors.append(act)
+                    self.graph.ren.AddActor(act)
 
     def create_selection_actor(self,a,actor=None):
+        """ Create the little yellow dots to show that an atom has been
+        selected.
+        """
+                
         # Add a 2D text element
         if not actor:
             m = vtkTextMapper()
             m.SetInput('.')
-            #m.SetInput('x\nx')
-
-            # Fonts appear to behave differently under different vtk versions
-            if self.graph.vtkVersion[0] >= 5:
-                fontsize = 1
-            else:
-                fontsize = 2
+            
             try:
-                prop = m.GetTextProperty()
-                prop.SetBold(1)
-                prop.SetFontSize(fontsize)
-                prop.SetJustificationToLeft()
+                prop=m.GetTextProperty()
             except AttributeError:
-                m.SetBold(1)
-                m.SetFontSize(fontsize)
-                m.SetJustificationToLeft()
-                #m.SetLineOffset(-1.0)
-                #m.SetLineSpacing(3)
-                #m.SetNumberOfLines(2)
-                #m.SetVerticalJustificationToCentered()
-
-                
-            # create the actor
-            # jmht issues with VTK 4 -> 5
-            if self.graph.vtkVersion[0] >= 5:
-                act = vtkTextActor()
-                act.ScaledTextOn()
-            else:
-                act = vtkScaledTextActor()
-
-            act.GetProperty().SetColor(1.0,1.0,0.0)
-            self.selection_actors.append(act)
+                prop=m
+                    
+            prop = m.GetTextProperty()
+            prop.SetBold(1)
+            prop.SetFontSize(70)
+            prop.SetJustificationToLeft()
+            prop.SetColor(1.0,1.0,0.0)
+            act = vtkActor2D()
             act.SetMapper(m)
+                
+            act.PickableOff()
             act.GetPositionCoordinate().SetCoordinateSystemToWorld();
             # Perform display-coordinate transformation
             # works but needs refreshing as molecule moves
             #x,y = c.GetComputedDisplayValue(self.graph.ren)
             #c.SetCoordinateSystemToDisplay();
             #c.SetValue(x-8,y-8)
+            self.selection_actors.append(act)
 
-            act.PickableOff()
         else:
             act = actor
 

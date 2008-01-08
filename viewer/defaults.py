@@ -34,6 +34,7 @@ class Defaults:
         self.defaults['contact_toler']   = 1.5
         self.defaults['bg_rgb'] = (0,0,0)
         self.defaults['pick_tolerance'] = 0.01
+        self.defaults['show_selection_by_dots'] = 1
         self.defaults['show_selection_by_colour'] = 1
         self.defaults['field_line_width']  =  1
         self.defaults['field_point_size']  =  2
