@@ -6378,16 +6378,11 @@ def copycontents(to,fro):
         to.__dict__[k] = fro.__dict__[k]
 
 if __name__ == "__main__":
-    import sys
-    #import profile
 
-    # test imports
-    try:
-        import Scientific
-    except ImportError:
-        print "You need to install Scientific Python"
-        sys.exit(-1)
-
+    from viewer.vtkgraph import *
+    root = Tkinter.Tk()
+    root.withdraw()
+    
     # On OSX might need to hide the additional console window when
     # run as an application from the finder
     try:
@@ -6395,9 +6390,6 @@ if __name__ == "__main__":
     except:
         pass
     
-    from viewer.vtkgraph import *
-    root = Tkinter.Tk()
-    root.withdraw()
     vt = VtkGraph(root)
     for file in sys.argv[1:]:
         print 'loading',file
