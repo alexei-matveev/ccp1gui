@@ -20,10 +20,15 @@
 # VTK_WRAP_TCL: ON
 #
 # There is a problem with how the vtk window interacts with the Tk window in
-# the latest version of Active Tcl (8.4.16) but it is o.k. with TclTkAqua 8.4.10,
-# although this is not a universal build. In the end I was able to fix this by 
-# removing all the Tk/Tlc installations apart from those in /System/Library/Frameworks
-# which appear to be universal binaries
+# the latest version of Active Tcl (8.4.16 and above). This manifests itself by
+# the VTK window not being in the centre of the Tk window. This problem isn't
+# present in TclTkAqua 8.4.10, although this is not a universal build. In the 
+# end I was able to fix this by removing all the Tk/Tlc installations apart 
+# from those in /System/Library/Frameworks which are 8.4 appear to be 
+# universal binaries
+#
+# It also seems that for the time being, Tk 8.5 is not recommended
+# http://mail.python.org/pipermail/python-dev/2007-December/075725.html
 #
 # Scientific python isn't packaged properly, as the .so files in the darwin
 # subdirectory aren't found so these need to be copied across manually
@@ -43,6 +48,14 @@
 #
 # import basis.keyword
 # basis_module[keyword] = getattr(basis,'keyword')
+#
+# Icons - it should be possible to set the icon using the CFBundleIconFile
+# key in the Info.Plist file, although this doesn't work for me. Instead,
+# 1. Open a picture with the desired icon
+# 2. Apple-C to copy it
+# 3. Click on the ccp1gui.app folder and Apple-I to bring up the info box
+# 4. Click on the icon in the upper LHC of the window and Apple-V to paste the pic
+#
 #
 # To create the disk image for distribution:
 # hdiutil create -srcfolder ./ccp1gui.app ./ccp1gui
