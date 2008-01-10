@@ -132,7 +132,7 @@ class AM1Calc(QMCalc):
             job.add_monitor(ed.monitor)
 
         job.add_step(PYTHON_CMD,'am1 optimisation',proc=self.runAM1,kill_cmd=self.killAM1)
-        #job.add_tidy(self.endjob2)
+        job.add_tidy(self.tidy)
         
         return job
 
@@ -147,23 +147,25 @@ class AM1Calc(QMCalc):
         """
         return 0,""
 
-    def endjob2(self,code=0):
-        """This function is executed in the main thread"""
+    def tidy(self,code):
+        """ This is run by the job editor when the job completes. Code
+        is 0 if the job succeeded and 1 if it failed.
+        
+        This updates the calculation monitor so that it displays the last point
+        calculated - this wasn't happening before as the monitor code is only
+        run by the job editor when the calculation is running (see
+        jobmanager/jobeditor.py)
 
-        if self.debug:
-            print 'running endjob2 code=',code
+        It also uses the editor dialog to inform the user that the optimisation
+        has finished.
+        """
 
-        # load contents of listing for viewing
-        if self.debug_slave:
-            print 'endjob....'
-        job_name = self.get_parameter("job_name")
-        directory = self.get_parameter("directory")
-        file = open(directory+'/'+job_name+'.out','r')
-        self.ReadOutput(file)
-        file.close()
-
-        print 'scan output'
-
+        if self.debug: print "AM1 tidy executing with code ",code
+        
+        ed = self.get_editor()
+        ed.calcMon.update()
+        ed.Info("Optimisation finished")
+        
 
     def get_generator( self ):
         """Return a generator object that can be used to cycle through the

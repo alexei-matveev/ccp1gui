@@ -28,7 +28,10 @@ class CalculationMonitor(Pmw.MegaToplevel):
 
             
         # Initialise base class (after defining options).
-        Pmw.MegaToplevel.__init__( self, root, title='Calc Monitor' )
+        Pmw.MegaToplevel.__init__( self, root )
+
+        # Set the title
+        self.configure( title = 'Calculation Monitor' )
         
         # Ensure that when the user kills us with the window manager we behave as expected
         self.userdeletefunc( lambda s=self: s.hide() )
