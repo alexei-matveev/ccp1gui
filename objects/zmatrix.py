@@ -213,12 +213,12 @@ class Atom:
         """Rotate the atom around center"""
         angle = angle *dtorad
         R = cpv.rotation_matrix(angle,axis)
-        print 'R=',R
+        #print 'R=',R
         print 'centre=',center
         rt = cpv.sub(self.coord,center)
         print 'initial coords',self.coord
-        print 'rt',rt
-        print 'trans rt',cpv.transform(R,rt)
+        #print 'rt',rt
+        #print 'trans rt',cpv.transform(R,rt)
         self.coord = cpv.add(cpv.transform(R,rt),center)
         print 'rotated atom coords',self.coord
 
@@ -3181,11 +3181,16 @@ class Zmatrix(Indexed):
             for coor in a.coord:
                 print "%10.5f" % (coor,),
             print
+            
+        if a.zorc=='c':
+            if self.debug: print "Atom is not under zmatrix control"
+            return
 
         if index > 0:
             i1 = a.i1.get_index()
             rnew = self.get_distance(a,self.atom[i1])
             if self.debug:
+                print 'old r (',index+1,i1+1,') = ',a.r
                 print 'new r (',index+1,i1+1,') = ',rnew
             v = a.r_var
             if v and not v.constant:
@@ -3212,6 +3217,7 @@ class Zmatrix(Indexed):
             anew = self.get_angle(a, self.atom[i1], self.atom[i2])
 
             if self.debug:
+                print 'old theta (',index+1,i1+1,i2+1,') = ',a.theta
                 print 'new theta (',index+1,i1+1,i2+1,') = ',anew
 
             v = a.theta_var
@@ -3239,6 +3245,7 @@ class Zmatrix(Indexed):
 
             tnew = self.get_dihedral(a, self.atom[i1],self.atom[i2],self.atom[i3])
             if self.debug:
+                print 'old phi (',index+1,i1+1,i2+1,i3+1,') =',a.phi
                 print 'new phi (',index+1,i1+1,i2+1,i3+1,') =',tnew
 
             v = a.phi_var
@@ -3966,6 +3973,136 @@ class Zmatrix(Indexed):
                       11.00000))
         fp.write("END \n")
 
+    def change_bond_length( self, atom1, atom2, difference ):
+        """ Change the bond length between two atoms by difference
+            1. See if we can do this using a zmatrix if the two atoms are under
+               zmatrix control & there is an r defining the distance between them
+            2. If not see if the molecule can be separated into two fragments separated by
+               the two atoms.
+            2. If so call change_bond_length_fragments
+            3. If not just shift the least connected atom.
+            return None if we couldn't manage it or a function suitable for undoing the action
+        """
+
+        debug=self.debug
+        #debug=1
+
+        # First get the current & new bond lengths
+        currentLength = cpv.distance( atom1.coord, atom2.coord )
+        newLength = currentLength + difference
+
+        # See if we can use a zmatrix:
+        
+        # Both under zmatrix control?
+        if atom1.zorc=='z' and atom2.zorc=='z':
+            # bond betwen them is defined by the zmatrix?
+            if atom1.i1 == atom2 or atom2.i1 == atom1 :
+                # See which one is the 
+                if atom1.i1 == atom2:
+                    defAtom = atom1
+                else:
+                    defAtom = atom2
+
+                if debug:
+                    print "Changing bond length using zmatrix"
+                    
+                if defAtom.r_var:
+                    defAtom.r_var.value = newLength
+                    self.calculate_coordinates()
+                    def undo_move( defAtom, currentLength):
+                        defAtom.r_var.value = currentLength
+                        self.calculate_coordinates()
+                else:
+                    defAtom.r = newLength
+                    self.calculate_coordinates()
+                    def undo_move( defAtom, currentLength):
+                        defAtom.r = currentLength
+                        self.calculate_coordinates()
+                return lambda d=defAtom : undo_move(d, currentLength)
+
+        # Can't use change the zmatrix definitions to change the length so
+        # see if we can separate the molecule into 2 separate fragments
+        connected1 = atom1.get_connected( atom2 )
+        if debug: print "connected1 is ",connected1
+        connected2 = atom2.get_connected( atom1 )
+        if debug: print "connected2 is ",connected2
+
+        # Two fragments 
+        if connected1 or connected2:
+            undo = self.change_bond_length_fragments( atom1, connected1, atom2, connected2, difference)
+            return undo
+
+        # Can't move the atoms using a zmatrix or as 2 separate fragments, so just shift
+        # the atom with the fewest connections
+        if debug: print "only moving one atom"
+        if len(atom1.conn) < len(atom2.conn):
+            small = atom1
+            big = atom2
+        else:
+            small = atom2
+            big = atom1
+
+        oldLength = cpv.distance( small.coord, big.coord )
+        newLength=oldLength+difference
+        oldVec = [ small.coord[0] - big.coord[0],
+                   small.coord[1] - big.coord[1],
+                   small.coord[2] - big.coord[2] ]
+        scale = newLength / oldLength
+        newVec = cpv.scale( oldVec, scale )
+        diff = cpv.sub( newVec, oldVec )
+
+        # Got diff so move
+        small.coord = cpv.add( small.coord, diff )
+        
+        def undo_move( small, diff ):
+            small.coord = cpv.sub( small.coord, diff )
+        return lambda c = small: undo_move( c, diff )
+
+    def change_bond_length_fragments( self, atom1, frag1, atom2, frag2, difference ):
+        """ Change the bond length between two atoms where the molecule can be
+            separated into two fragments, frag1 connected to atom 1 and frag2
+            to atom 2.
+            This assumes that the move cannot be carried out using a zmatrix definition
+            (see change_bond_length) and so shifts the smaller fragment using the Cartesian
+            coordinate definitions.
+        """
+
+        debug=self.debug
+        #debug=1
+        
+        # Shift the atoms by directly updating the Cartesian coordinates        
+        if debug: print "updating bond distances using cartesians"
+
+        # Work out which is smallest and should be moved
+        if len(frag1) < len(frag2):
+            smallerAtom = atom1
+            largerAtom = atom2
+            smallerFragment = frag1
+        else:
+            smallerAtom = atom2
+            largerAtom = atom1
+            smallerFragment = frag2
+
+        # Might need to think about what to do if some atoms had zmatrix definitions
+        # as these won't be updated to reflect the change
+
+        # Am sure this algorithm is pretty clumsy & could be improved...
+        oldLength = cpv.distance( smallerAtom.coord, largerAtom.coord )
+        newLength=oldLength+difference
+        oldVec = [ smallerAtom.coord[0] - largerAtom.coord[0],
+                   smallerAtom.coord[1] - largerAtom.coord[1],
+                   smallerAtom.coord[2] - largerAtom.coord[2] ]
+        scale = newLength / oldLength
+        newVec = cpv.scale( oldVec, scale )
+        diff = cpv.sub( newVec, oldVec )
+        for c in smallerFragment:
+            c.coord = cpv.add( c.coord, diff )
+        
+        def undo_move( smallerFragment, diff ):
+            for c in smallerFragment:
+                c.coord = cpv.sub( c.coord, diff )
+
+        return lambda c = smallerFragment: undo_move( c, diff )
 
     def update_bond_distances( self, atom, newElement):
         """ Scale the bond for atom so that the bond distance between it
@@ -3976,12 +4113,12 @@ class Zmatrix(Indexed):
             to undo this change, otherwise we return None
         """
 
-        debug=1
+        debug=self.debug
+        
         if debug: print "updating bond distances"
         # Find out if we are connected to more than one x-atom
         # if so we don't do anything - an alternative would be to create a zmatrix
         # and change things that way
-        #
         i=0
         for bonded in atom.conn:
             if not bonded.symbol[0].lower() == 'x':
@@ -3995,52 +4132,9 @@ class Zmatrix(Indexed):
         # The new bond length
         newLength = get_bond_length( newElement, root.symbol )
         oldLength = cpv.distance( atom.coord, root.coord )
-
-        # See if all atoms have a zmatrix definition
-        connected = atom.get_connected( root )
-        if debug: print "connected is ",connected
-        if not connected:
-            print "Fragment is circular! - cannot change bond length!"
-            return
+        difference = newLength-oldLength
+        return self.change_bond_length( atom, root, difference )
         
-        zmat = 1
-        for c in connected:
-            if c.zorc != 'z':
-                zmat = None
-
-        if zmat:
-            # We have a z-matrix definition for all atoms so update the definition
-            # See if this atom and root have a definition defining their distance
-            if debug: print "updating bond distances using zmatrix"
-            if ( atom.i1 == root or root.i1 == atom ):
-                if atom.i1 == root:
-                    defAtom = atom
-                else:
-                    defAtom = root
-
-                if defAtom.r_var:
-                    defAtom.r_var.value = newLength
-                    def undo_move( defAtom, oldLength):
-                        defAtom.r_var.value = oldLength
-                else:
-                    defAtom.r = newLength
-                    def undo_move( defAtom, oldLength):
-                        defAtom.r = oldLength
-                return lambda d=defAtom : undo_move(d, oldLength)
-            
-        # Shift the atoms by directly updating the Cartesian coordinates
-        # Might need to think about what to do if some atoms had zmatrix definitions
-        # as these won't be updated to reflect the change
-        if debug: print "updating bond distances using cartesians"
-        diff = self.get_bond_coord_diff( atom, root, newLength )
-        for c in connected:
-            c.coord = cpv.add( c.coord, diff )
-
-        def undo_move( connected, diff ):
-            for c in connected:
-                c.coord = cpv.sub( c.coord, diff )
-
-        return lambda c = connected: undo_move( c, diff )
 
     def get_bond_coord_diff( self, atom, root, newLength ):
         """ Get the change in coordinates that can be applied to all atoms in a fragment
@@ -4065,8 +4159,7 @@ class Zmatrix(Indexed):
         """ Rotate a fragement about an axis defined by two atoms
             by angle in degrees - this still needs work. Sigh..."""
 
-        debug = 1
-        
+        debug = self.debug
         if atom1 not in atom2.conn:
             print "Atom %s not connected to atom %s" % ( atom1, atom1)
             return
@@ -4103,6 +4196,7 @@ class Zmatrix(Indexed):
             root = atom1
 
         if 0:
+            #OLD CODE
             # See if there is a zmatrix definition for the dihedral angle we want to
             # rotate about
             if center.zorc == 'z' and root.zorc == 'z':
@@ -4140,20 +4234,19 @@ class Zmatrix(Indexed):
         # Failed to rotate using a zmatrix, so use Cartesians
         # Again - need to think what happens to mixed definitions here
         if debug: print "XRotating fragment using Cartesians by angle %s" % angle
+        
+        #print "center is ",center
         axis = cpv.sub( atom1.coord, atom2.coord )
-        print "center is ",center
-
         for atom in self.atom:
             atom.flag = 0
         for atom in smallest:
-            print "rotating atom ",atom
+            #print "rotating atom ",atom
             atom.rotate( angle, axis, center=center.coord )
             atom.flag=1
 
-        print 'updating internals'
+        #print 'updating internals'
         # Still a problem here in that shared variables could
         # might need to be "unshared"
-
         self.imported_vars = {}
         for atom in self.atom:
             if atom.flag:

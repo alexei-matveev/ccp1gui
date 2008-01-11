@@ -80,7 +80,7 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         right_up =Frame(right)
         right_down =Frame(right)
 
-        self.createcomponent('misc-group',(), None,
+        self.createcomponent('editing-group',(), None,
                              Pmw.Group, left_up,tag_text = 'Editing')
         self.createcomponent('misc2-group',(), None,
                              Pmw.Group, left_down,tag_text = 'Measure')
@@ -102,7 +102,7 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         right_up.pack(side='top')
         right_down.pack(side='top')
         
-        self.component('misc-group').pack(side='left')
+        self.component('editing-group').pack(side='left')
         self.component('misc2-group').pack(side='left')
         self.component('hybridisation-group').pack(side='left')
         self.component('fragment-group').pack(side='left')
@@ -116,14 +116,28 @@ class EditingToolsWidget(Pmw.MegaToplevel):
 
         self.component('periodic-table').pack()
 
+        # Editing tools
+        self.createcomponent('editing-group-top-frame',(), None,
+                             Frame,
+                             self.component('editing-group').interior())
+        self.component('editing-group-top-frame').pack(side='top')
+        
+        self.createcomponent('editing-group-bottom-frame',(), None,
+                             Frame,
+                             self.component('editing-group').interior())
+        self.component('editing-group-bottom-frame').pack(side='top')
+        
         for op in ['Del Atom','Del Bond','Add Bond','All X->H']:
             t = self.createcomponent('button-'+op,
                                      (), None,
                                      Button,
-                                     self.component('misc-group').interior(),
+                                     self.component('editing-group-top-frame'),
                                      command = lambda s=self,z=op : s.miscop(z),
                                      text=op)
             t.pack(side='left')
+            
+        # Additional tools for editing bonds
+        self.create_bond_tools()
 
         for op in ['Distance', 'Angle','Torsion']:
             t = self.createcomponent('button-'+op,
@@ -303,6 +317,63 @@ class EditingToolsWidget(Pmw.MegaToplevel):
         if self['command']:
             self['command']('symmetry',None)
 
+    def create_bond_tools(self):
+        """Create the tools for editing bonds"""
+
+        self.createcomponent('bond-tools-choose', (), None,
+                             Pmw.OptionMenu,
+                             self.component('editing-group-bottom-frame'),
+                             labelpos='w',
+                             label_text='Edit Bond:',
+                             items=('Length','Rotate'),
+                             command=self.__change_bedit_increment
+                             )
+        self.component('bond-tools-choose').pack(side='left')
+        
+        self.createcomponent('bond-tools-edit', (), None,
+                             Pmw.Counter,
+                             self.component('editing-group-bottom-frame'),
+                             datatype='real',
+                             increment=0.1,
+                             entryfield_value=0.0,
+                             entry_width=6,
+                             entryfield_command=self.handle_bond_edit,
+                             )
+        self.component('bond-tools-edit').pack(side='left')
+
+        self.createcomponent('bond-tools-apply', (), None,
+                             Button,
+                             self.component('editing-group-bottom-frame'),
+                             text='Apply',
+                             command=self.handle_bond_edit
+                             )
+        self.component('bond-tools-apply').pack(side='left')
+
+    def __change_bedit_increment(self,select):
+        """Change how we increment the bond editor depending on the whether
+        we are changing the length or rotating
+        """
+        if select=="Length":
+            self.component('bond-tools-edit').configure( increment=0.1 )
+        elif select=="Rotate":
+            self.component('bond-tools-edit').configure( increment=1 )
+        else:
+            raise AttributeError,"toolpanel.py:__change_bedit_increment, unknown option: %s" % select
+        
+    def handle_bond_edit(self):
+        """Read the bond editing tools and call the appropriate command"""
+        action=self.component('bond-tools-choose').getvalue()
+        value=float(self.component('bond-tools-edit').component('entryfield').getvalue())
+
+        if action=='Length':
+            command='change_bond_length'
+        elif action=='Rotate':
+            command='rotate_about_bond'
+        else:
+            raise AttributeError,"toolpanel.py:handle_bond_edit, unknown option: %s" % action
+        
+        if self['command']:
+            self['command'](command,value)
 
 if __name__ == "__main__":
     root=Tk()

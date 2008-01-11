@@ -224,24 +224,14 @@ class TkMolView(Pmw.MegaToplevel):
         self.master.bind_all('<F1>', lambda event : viewer.help.helpall(event))
         # Associate helpfile with widget
         viewer.help.sethelp(self.master,'Introduction')
-
-        #jmhttest code
-        self.master.bind_all("<q>",
-                       lambda e,s=self: s.rotate_about_bond())
         #self.master.bind("<j>",lambda e,s=self: s.restore_saved_jobs())
 
         self.xmlreader = None
-        # jmht
         self.getfileIO = None # object to get the correct reader for a file
     
-        # Variables required by the AM1 optimiser
-        #self.am1 = None
-        #self.calcMon = None
-        #self.AM1Stop = None
-        #self.AM1Lock = None
-        
         # We only want one instance of the allmoleculevisualiser 
         self.allmolecule_visualiser = None
+        
         # We only want one scene visualiser
         self.ani_image_widget = None
 
@@ -1410,6 +1400,10 @@ class TkMolView(Pmw.MegaToplevel):
             return self.measure_torsion()
         elif operation == 'symmetry':
             return self.show_symmetry_widget()
+        elif operation == 'change_bond_length':
+            return self.change_bond_length(argument)
+        elif operation == 'rotate_about_bond':
+            return self.rotate_about_bond(argument)
         else:
             self.error('Unimplemented Edit: '+operation+' '+argument)
 
@@ -1658,8 +1652,32 @@ you would like to extract the frame from."""
         self.AM1Lock.release()
         return
 
+    def change_bond_length(self, distance):
+        """Change a bond length"""
 
-    def rotate_about_bond(self):
+        molecule = self.choose_mol()
+        if not molecule:
+            print "change_bond_length no molecule"
+            return None
+
+        sel = self.sel()
+        atoms = sel.get_by_mol( molecule )
+
+        if len(atoms) != 2:
+            print "Only select two atoms to define the axis!"
+            return
+
+        atom1 = atoms[0]
+        atom2 = atoms[1]
+        myundo = molecule.change_bond_length( atom1, atom2, distance )
+
+        if myundo:
+            self.undo_stack.append([ myundo,
+                                     lambda m = molecule, s = self: s.update_from_object(m)
+                                     ])
+            self.update_from_object( molecule )
+            
+    def rotate_about_bond(self,angle):
         """ Rotate a fragement about an axis defined by two atoms"""
         
         molecule = self.choose_mol()
@@ -1675,7 +1693,7 @@ you would like to extract the frame from."""
 
         atom1 = atoms[0]
         atom2 = atoms[1]
-        molecule.rotate_about_bond( atom1, atom2, 5.0 )
+        molecule.rotate_about_bond( atom1, atom2, angle )
 
         molecule.calculate_coordinates()
         self.update_from_object( molecule )
