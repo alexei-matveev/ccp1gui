@@ -46,7 +46,7 @@ if __name__ == "__main__":
 Alternatively, for information on all of the dependancies for the GUI and
 instructions for their installation proceedures, please visit:
 
-http://www.cse.clrc.ac.uk/qcg/ccp1gui/install.shtml
+http://www.cse.clrc.ac.uk/ccg/software/ccp1gui/install.shtml
 
 Distributions of the CCP1GUI that contain the relevant Python modules
 and pre-compiled vtk libraries are available for download for some
