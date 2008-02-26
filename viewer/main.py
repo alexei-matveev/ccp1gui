@@ -143,7 +143,6 @@ http://public.kitware.com/VTK/get-software.php"""
     print "CCP1GUI directory: ",paths['gui']
     print
 
-
 import os,stat
 from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
@@ -379,6 +378,9 @@ class TkMolView(Pmw.MegaToplevel):
                                                     command=self.symmetry_operations,
                                                     balloon = self.balloon  )
         self.symmetryWidget.withdraw()
+
+        # For the iPython shell
+        self.ipythonshell=None
         
 
         # Create a text widget for the debug output
@@ -1566,7 +1568,6 @@ you would like to extract the frame from."""
                    ( b.index[0] == a2.get_index() and b.index[1] == a1.get_index() ) :
                 bhit = b
 
-        print 'bhit',bhit
         m1.bond.remove(bhit)
         self.update_from_object(m1)
 
@@ -2593,7 +2594,10 @@ you would like to extract the frame from."""
         menu = self.shell_menu
         menu.delete(0,Tkinter.AtEnd())
         menu.add_command(label='Idle Shell', underline=0, 
-                command=lambda x=self: x.myshell())
+                command=lambda x=self: x.idleShell())
+        
+        menu.add_command(label='iPython Shell', underline=0, 
+                command=lambda x=self: x.iPythonShell())
         #menu.add_separator()
 
     def open_debug_window(self):
@@ -5247,8 +5251,29 @@ you would like to extract the frame from."""
 
     #-------------- Command Window -------------------------
 
-    def myshell(self):
+    def idleShell(self):
         mypyshell(self.master)
+
+    def iPythonShell(self):
+        if self.ipythonshell:
+            self.ipythonshell.withdraw()
+            self.ipythonshell.show()
+            return
+        
+        try:
+            import ipython.ipythonTk
+            banner="This is the CCP1GUI IPython shell.\n" + \
+                    "For info on IPython see: http://ipython.scipy.org\n" + \
+                    "The main CCP1GUI instance can be accessed as the variable: gui\n\n"
+            self.ipythonshell=ipython.ipythonTk.IPythonTopLevel(self.master, banner=banner)
+            self.ipythonshell.userdeletefunc(lambda s=self:
+                                             s.ipythonshell.withdraw())
+            self.ipythonshell.component('console').updateNamespace({'gui':self})
+            self.ipythonshell.show()
+        except ImportError:
+            self.warn("Cannot execute iPython shell as iPython does not\n"+\
+                      "appear to be installed. Please install iPython from:\n"+\
+                      "http://ipython.scipy.org")
         
     def build_command_window(self):
         self.shell_dialog = Pmw.TextDialog(self.master, scrolledtext_labelpos = 'n',
@@ -6394,6 +6419,7 @@ def copycontents(to,fro):
         d2 = {}
     for k in d2.keys():
         to.__dict__[k] = fro.__dict__[k]
+
 
 if __name__ == "__main__":
 
