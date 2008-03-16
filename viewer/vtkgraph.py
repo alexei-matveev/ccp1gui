@@ -219,7 +219,7 @@ class VtkGraph(TkMolView,Graph):
         self.pane2d.Render(trace=0)
 
 
-    def save_image(self, renderWindow, file, format=None, quality=None  ):
+    def save_image(self, renderWindow, filename, format=None, quality=None  ):
         """
            Save an image from the renderwindow to file.
            Specify format as png to write as png else it defaults
@@ -234,7 +234,10 @@ class VtkGraph(TkMolView,Graph):
         if format == "png":
             writer = vtkPNGWriter()
             print "Saving png to file... %s" % file
-        else:
+        elif format == "tiff":
+            writer = vtkTIFFWriter()
+            writer.SetCompressionToNoCompression()
+        elif format == 'jpg':
             writer = vtkJPEGWriter()
             print "Saving jpeg to file... %s" % file
             if ( quality ):
@@ -247,7 +250,7 @@ class VtkGraph(TkMolView,Graph):
                 print 'Resolution of jpeg is %d' % quality
             
         writer.SetInput(w2i.GetOutput())
-        writer.SetFileName(file)
+        writer.SetFileName(filename)
         writer.Write()
 
 #    def save_image2d(self,file):

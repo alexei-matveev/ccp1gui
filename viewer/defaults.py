@@ -62,6 +62,8 @@ class Defaults:
         self.defaults['old_path'] = 0
         # dont prompt for guk input file overwrites
         self.defaults['guk_check_overwrite_input'] = 0
+        # Use Paul's quick images save widget
+        self.defaults['save_image_dialog_quick'] = False
         self.defaults['user_path'] = None
 
 

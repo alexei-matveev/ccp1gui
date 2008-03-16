@@ -203,6 +203,50 @@ class TkMolView(Pmw.MegaToplevel):
 
         Pmw.MegaToplevel.__init__(self) 
 
+        # First set any default values - the defaults are actaully set 
+        # when the defaults object is is instantiated, but we need to
+        # to set the variables that are attributes of main
+
+        # This group of options can be set by the user from the 
+        # Options tool
+        #
+        self.conn_scale = 1.0
+        self.conn_toler   = 0.5
+        self.contact_scale = 1.0
+        self.contact_toler   = 1.5
+        self.bg_rgb      =  (0,0,0)
+        self.field_line_width  =  1
+        self.field_point_size  =  2
+        self.mol_line_width  =  3
+        self.mol_point_size  =  4
+        self.mol_sphere_resolution = 8
+        self.mol_sphere_specular = 1.0
+        self.mol_sphere_ambient = 0.4
+        self.mol_sphere_diffuse = 1.0       
+        self.mol_sphere_specular_power = 5
+        self.mol_cylinder_resolution = 8
+        self.mol_cylinder_ambient = 0.4
+        self.mol_cylinder_specular = 0.7
+        self.mol_cylinder_diffuse = 0.7
+        self.mol_cylinder_specular_power = 10
+        
+
+        # Set any defaults, then override and add any user-defined functions
+        #   from the ccp1guirc file +
+        self.read_ccp1guirc()
+
+        ## this may have a different meaning in the derived class
+        try:
+            itest = self.pick_tolerance
+        except AttributeError:
+            self.pick_tolerance = -999
+
+        self.debug = 0
+        self.debug_callbacks = 0
+        self.debug_selection = 0
+        self.enable_undo = 1
+
+
         self.title('CCP1GUI'+25*' '+title)
         self.iconname('CCP1GUI')
 
@@ -283,9 +327,9 @@ class TkMolView(Pmw.MegaToplevel):
         self.build_distance_dialog()
         self.build_distance_dialog(include_xyz=1)
         self.build_command_window()
-        #self.build_save_image_dialog()
-
-        self.build_save_image_dialog_jens()
+        
+        if not defaults.get_value('save_image_dialog_quick'):
+            self.build_save_image_dialog()
 
         self.build_save_movie_dialog()
         self.build_saveas_filetype_dialog()
@@ -317,46 +361,6 @@ class TkMolView(Pmw.MegaToplevel):
 
         self.undo_stack = []
 
-        #
-        # This group of options can be set by the user from the 
-        # Options tool
-        #
-
-        self.conn_scale = 1.0
-        self.conn_toler   = 0.5
-        self.contact_scale = 1.0
-        self.contact_toler   = 1.5
-        self.bg_rgb      =  (0,0,0)
-
-        ## this may have a different meaning in the derived class
-        try:
-            itest = self.pick_tolerance
-        except AttributeError:
-            self.pick_tolerance = -999
-
-        self.field_line_width  =  1
-        self.field_point_size  =  2
-
-        self.mol_line_width  =  3
-        self.mol_point_size  =  4
-
-        self.mol_sphere_resolution = 8
-        self.mol_sphere_specular = 1.0
-        self.mol_sphere_ambient = 0.4
-        self.mol_sphere_diffuse = 1.0       
-        self.mol_sphere_specular_power = 5
-
-        self.mol_cylinder_resolution = 8
-        self.mol_cylinder_ambient = 0.4
-        self.mol_cylinder_specular = 0.7
-        self.mol_cylinder_diffuse = 0.7
-        self.mol_cylinder_specular_power = 10
-
-        self.debug = 0
-        self.debug_callbacks = 0
-        self.debug_selection = 0
-        self.enable_undo = 1
-
         # animation controls
         self.build_ani_toolbar()
         self.pack_ani_toolbar()
@@ -364,9 +368,6 @@ class TkMolView(Pmw.MegaToplevel):
         # list of images from last animation frame
         #self.oldvisl = []
 
-        # Set any defaults form the ccp1guirc file & any user-defined functions
-        self.read_ccp1guirc()
-        
         self.build_options_dialog()
         self.toolwidget = EditingToolsWidget(self.master,
                                              command=self.handle_edits)
@@ -668,42 +669,44 @@ class TkMolView(Pmw.MegaToplevel):
         mbutton['menu'] = menu
         return mbutton
 
-    def OldFileMenu(self):
-        mbutton = Menubutton(self.mBar, text='File', underline=0)
-        mbutton.pack(side=LEFT, padx="2m")
-        menu = Menu(mbutton, tearoff=0)
-
-        menu.add_command(label='Open ', underline=0, 
-                command=self.ask_load_from_file)
-
-        menu.add_command(label='Save As', underline=0, 
-               command=self.save_to_file)
-
-        menu.add_command(label='New Molecule', underline=0, 
-                         command = lambda s=self: s.new_coords() )
-
-        menu.add_separator()
-
-        menu.add_command(label='Save Image', underline=0, 
-               command=self.save_image)
-        
-        # menu.add_separator()
-        # menu.add_command(label='Watch ', underline=0, 
-        #        command=self.ask_watch_file)
-
-        menu.add_separator()
-        menu.add_command(label='Open Calc',underline=0,
-                         command = lambda s=self: s.open_calc() )
-
-        # menu.add_command(label='Hardcopy', underline=0, 
-        # command=self.hardcopy)
-
-        menu.add_separator()
-        menu.add_command(label='Quit', underline=0, 
-                command=self.myquit)
-
-        mbutton['menu'] = menu
-        return mbutton
+#===============================================================================
+#    def OldFileMenu(self):
+#        mbutton = Menubutton(self.mBar, text='File', underline=0)
+#        mbutton.pack(side=LEFT, padx="2m")
+#        menu = Menu(mbutton, tearoff=0)
+# 
+#        menu.add_command(label='Open ', underline=0, 
+#                command=self.ask_load_from_file)
+# 
+#        menu.add_command(label='Save As', underline=0, 
+#               command=self.save_to_file)
+# 
+#        menu.add_command(label='New Molecule', underline=0, 
+#                         command = lambda s=self: s.new_coords() )
+# 
+#        menu.add_separator()
+# 
+#        menu.add_command(label='Save Image', underline=0, 
+#               command=self.save_image)
+#        
+#        # menu.add_separator()
+#        # menu.add_command(label='Watch ', underline=0, 
+#        #        command=self.ask_watch_file)
+# 
+#        menu.add_separator()
+#        menu.add_command(label='Open Calc',underline=0,
+#                         command = lambda s=self: s.open_calc() )
+# 
+#        # menu.add_command(label='Hardcopy', underline=0, 
+#        # command=self.hardcopy)
+# 
+#        menu.add_separator()
+#        menu.add_command(label='Quit', underline=0, 
+#                command=self.myquit)
+# 
+#        mbutton['menu'] = menu
+#        return mbutton
+#===============================================================================
 
 
     def FileMenu2d(self):
@@ -763,7 +766,7 @@ class TkMolView(Pmw.MegaToplevel):
 
 
 
-    def build_save_image_dialog(self):
+    def build_save_image_dialog_quick(self):
         """Build up the widgets that consitute the save image dialog box with the
            slider to specify the quality of the jpeg.
         """
@@ -790,43 +793,45 @@ class TkMolView(Pmw.MegaToplevel):
         pngradio = Tkinter.Radiobutton( format_frame,
                                         text = "png", variable = self.image_format, value = "png",
                                         command = self.select_image_format )
+        tiffradio = Tkinter.Radiobutton( format_frame,
+                                        text = "tiff", variable = self.image_format, value = "tiff",
+                                        command = self.select_image_format )
 
         self.jpeg_res_frame = Tkinter.Frame( myframe )
         
-#        self.jpeg_res_widget = Tkinter.Scale( self.jpeg_res_frame ,
-#                                           label = 'Jpeg quality',
-#                                           orient = 'horizontal',
-#                                           tickinterval = '10',
-#                                           length = '400',
-#                                           from_ = 0, to_ = 100 )
         format_frame.pack()
         jpegradio.select()
         jpegradio.pack( side = 'left' )
         pngradio.pack( side = 'left' )
-#        self.jpeg_res_frame.pack()
-#        self.jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
-#        self.jpeg_res_widget.pack()
+        tiffradio.pack( side = 'left' )
+#         print dir(self.save_image_dialog)
 
-
-    def build_save_image_dialog_jens(self):
+    def build_save_image_dialog(self):
         """Build up the widgets that consitute the save image dialog box with the
            slider to specify the quality of the jpeg.
         """
 
-        self.image_filename = None
+        format='jpg'
+        self.image_format = Tkinter.StringVar( )
+        self.image_format.set(format)
+
+        self.image_filename = Tkinter.StringVar()
+        self.image_filename.set(paths['user']+os.sep+'out.'+format)
+
         self.save_image_dialog = Pmw.Dialog( self.master,
-                                             buttons = ( 'Save', 'Close', 'Browse...' ),
+                                             buttons = ( 'Save', 'Cancel'),
                                              title = 'Save window as image',
                                              command = self.save_image3d )
         format_frame = Tkinter.Frame( self.save_image_dialog.interior() )
 
-        self.image_format = Tkinter.StringVar( )
-        self.image_format.set("jpg")
         jpegradio = Tkinter.Radiobutton( format_frame,
                                         text = "jpg", variable = self.image_format, value = "jpg",
                                               command = self.select_image_format )
         pngradio = Tkinter.Radiobutton( format_frame,
                                         text = "png", variable = self.image_format, value = "png",
+                                        command = self.select_image_format )
+        tiffradio = Tkinter.Radiobutton( format_frame,
+                                        text = "tiff", variable = self.image_format, value = "tiff",
                                         command = self.select_image_format )
 
         self.jpeg_res_frame = Tkinter.Frame( self.save_image_dialog.interior() )
@@ -837,27 +842,72 @@ class TkMolView(Pmw.MegaToplevel):
                                            tickinterval = '10',
                                            length = '400',
                                            from_ = 0, to_ = 100 )
+        self.jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
+
         
+        # Show/change name/path
+        filepath_frame = Tkinter.Frame( self.save_image_dialog.interior() )
+        self.save_image_fpath_widget = Pmw.EntryField(
+            filepath_frame,
+            labelpos = 'w',
+            entry_width=40,
+            label_text = 'Filename:',
+            value = self.image_filename.get())
+        self.save_image_fpath_button = Tkinter.Button( filepath_frame,
+                                                       text='Browse..',
+                                                       command = self.ask_save_image_filename)
         format_frame.pack()
         jpegradio.select()
         jpegradio.pack( side = 'left' )
         pngradio.pack( side = 'left' )
+        tiffradio.pack( side = 'left' )
         self.jpeg_res_frame.pack()
-        self.jpeg_res_widget.set( '95' ) # This seems to be the default (see: VTK/IO/vtkJPEGWriter.cxx )
         self.jpeg_res_widget.pack()
+
+        filepath_frame.pack()
+        self.save_image_fpath_widget.pack(side='left')
+        self.save_image_fpath_button.pack(side='left')
+        
+
         self.save_image_dialog.withdraw()
+
+    def ask_save_image_filename( self ):
+        """ Select between jpeg and png image formats - if jpg
+            is selected display the widget to specify the quality
+        """
+        filepath = self.image_filename.get()
+        filename = os.path.basename(filepath)
+        format = self.image_format.get()
+        filepath = tkFileDialog.asksaveasfilename(
+            initialfile = filename,
+            filetypes=[("All","*.*")])
+
+        if len(filepath):
+            self.image_filename.set(filepath)
+            self.save_image_fpath_widget.setentry(filepath)
 
     def select_image_format( self ):
         """ Select between jpeg and png image formats - if jpg
             is selected display the widget to specify the quality
+            We also change the extension.
         """
+        if defaults.get_value('save_image_dialog_quick'):
+            return
+
         format = self.image_format.get()
+
+        # Change the extension to match the format
+        filepath=self.image_filename.get()
+        stem,ext = os.path.splitext( filepath )
+        if '.'+ext != format:
+            filepath=stem+'.'+format
+            self.image_filename.set(filepath)
+            self.save_image_fpath_widget.setentry(filepath)
+
         if format == "jpg":
             self.jpeg_res_frame.pack()
-        elif format == "png":
-            self.jpeg_res_frame.forget()
         else:
-            print "no image string :%s" % format
+            self.jpeg_res_frame.forget()
             
     def build_save_movie_dialog(self):
         """Build up the widgets that consitute the save image dialog box with the
@@ -982,64 +1032,26 @@ class TkMolView(Pmw.MegaToplevel):
         return
         
     def ask_save_image3d(self):
-        #need code here to choose a sensible initial file
 
-        #self.build_save_image_dialog_jens()
-        #self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
-        renderWindow = self.pane.GetRenderWindow()
-        self.build_save_image_dialog()
-#        self.image_filename = self.save_image_dialog.go(".","*.*","out.jpg")
-        self.image_filename = self.save_image_dialog.go(paths['user'],"*.*","out.jpg")
-
-        format = self.image_format.get()
-        print 'filename',self.image_filename
-        if format == "png":
-            self.save_image( renderWindow, self.image_filename, format = format )
-        elif format == "jpg":
-#            quality = self.jpeg_res_widget.get()
-            quality = 95
-            self.save_image( renderWindow, self.image_filename, format = format, quality=quality )
+        if defaults.get_value('save_image_dialog_quick'):
+            self.build_save_image_dialog_quick()
+            filepath = self.save_image_dialog.go(paths['user'],"*.*","out.jpg")
+            if (filepath):
+                rw = self.pane.GetRenderWindow()
+                format = self.image_format.get()
+                self.save_image(rw, filepath, format=format )
         else:
-            print "ERROR getting format in ask_save_image3d"
-        self.image_filename = None
+            self.save_image_dialog.show()
 
     def save_image3d( self, result ):
-        """Save image from main window to a JPEG file"""
+        """Function called by the save_image_dialog when the user has clicked Save or Cancel"""
+        if result == 'Save':
+            format = self.image_format.get()
+            filename = self.image_filename.get()
+            renderWindow = self.pane.GetRenderWindow()
+            self.save_image( renderWindow, filename, format = format )
 
-        format = self.image_format.get()
-        
-        if ( result == 'Save' ):
-            if self.image_filename == None:
-                name = 'out.'+format
-                self.image_filename = paths['user'] + os.sep + name
-
-            print 'filename',self.image_filename
-            if format == "png":
-                self.save_image( self.image_filename, format = format )
-            elif format == "jpg":
-                quality = self.jpeg_res_widget.get()
-                self.save_image( self.image_filename, format = format, quality=quality )
-            else:
-                print "ERROR getting format in save_image3d"
-
-            self.image_filename = None
-            self.save_image_dialog.withdraw()
-            
-        elif ( result == 'Close' ):
-            self.save_image_dialog.withdraw()
-
-        elif( result == 'Browse...' ):
-            if format == "png":
-                self.image_filename = tkFileDialog.asksaveasfilename(
-                    initialfile = paths['user'] + self.image_filename,
-                    filetypes=[("PNG","*.png")])
-                print "png self.image_filename ",self.image_filename
-            else:
-                self.image_filename = tkFileDialog.asksaveasfilename(
-                    initialfile = self.image_filename,
-                    filetypes=[("JPEG","*.jpg")])
-                print "jpeg self.image_filename ",self.image_filename
-            
+        self.save_image_dialog.withdraw()
 
     def ask_save_image2d(self):
         """Save image from main window to a JPEG file"""
