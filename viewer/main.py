@@ -208,7 +208,8 @@ class TkMolView(Pmw.MegaToplevel):
         # to set the variables that are attributes of main
 
         # This group of options can be set by the user from the 
-        # Options tool
+        # Options tool - they can also be over-ridden by the users'
+        # .ccp1guirc.py file (see read_ccp1guirc).
         #
         self.conn_scale = 1.0
         self.conn_toler   = 0.5
@@ -230,10 +231,6 @@ class TkMolView(Pmw.MegaToplevel):
         self.mol_cylinder_diffuse = 0.7
         self.mol_cylinder_specular_power = 10
         
-
-        # Set any defaults, then override and add any user-defined functions
-        #   from the ccp1guirc file +
-        self.read_ccp1guirc()
 
         ## this may have a different meaning in the derived class
         try:
@@ -442,6 +439,11 @@ class TkMolView(Pmw.MegaToplevel):
         #   - by convention this is handled by the on_exit= argument
         self.editing_callbacks = {}
 
+        # Set any defaults, then override and add any user-defined functions
+        #   from the ccp1guirc file 
+        self.read_ccp1guirc()
+
+    
     def read_ccp1guirc(self):
         """Process the ccp1guirc file:
            Execute the file to execute any of the users python code, and then

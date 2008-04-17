@@ -28,7 +28,7 @@ import string
 import tkFileDialog
 
 from   calc       import *
-from   filepunch  import *
+import filepunch
 from   gamessuk   import *
 from   molpro     import *
 from   mndo       import *
@@ -323,7 +323,7 @@ class ChemShellCalc(Calc):
         if self.debug:
             print "_ReadChemShellPunch..."
             
-        p = PunchIO()
+        p = filepunch.PunchIO()
         if p.ReadFile( filepath=file ):
             return 1
         self.results = p.GetObjects()
@@ -1929,9 +1929,11 @@ class ChemShellCalcEd(CalcEd):
             print 'monitor'
         # Update displayed structure if a new geometry has arrived
         if os.path.exists('FRAME.stamp'):
-            p=PunchReader()
+            #p=PunchReader()
+            p=filepunch.PunchIO()
             os.unlink('FRAME.stamp')
-            p.scan('FRAME')
+            #p.scan('FRAME')
+            p.ReadFile('FRAME')
             mol = self.calc.get_input('mol_obj')
             print 'UPDATE GEOM'
             mol.import_geometry(p.objects[0])
@@ -1996,10 +1998,13 @@ def fcomp(a,b):
 def chemshell_z_modes():
 
     # First load the zmatrix defining the coordinate system
-    p = PunchReader()
-    p.scan("zopt.z_vis")
+    #p = PunchReader()
+    p = filepunch.PunchIO()
+    #p.scan("zopt.z_vis")
+    p.ReadFile("zopt.z_vis")
     # And the hessian matrix defining the normal modes
-    p.scan("newopt.h_vis")
+    #p.scan("newopt.h_vis")
+    p.ReadFile("newopt.h_vis")
     z = p.objects[0]
     h = p.objects[1]
 
@@ -2083,7 +2088,8 @@ def chemshell_z_modes():
 def chemshell_c_modes():
 
     # First load the structure defining the coordinate system
-    p = PunchReader()
+    #p = PunchReader()
+    p = filepunch.PunchIO()
     p.scan("copt.c_vis")
     # And the hessian matrix defining the normal modes
     p.scan("newopt.h_vis")
