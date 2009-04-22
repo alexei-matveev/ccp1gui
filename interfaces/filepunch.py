@@ -330,6 +330,7 @@ class PunchIO(FileIO):
         self.records=0
         self.elements=1
         self.dimensions=[]
+        self.unit=""
         self.block_name="*******"
 
         # skip blanks
@@ -423,6 +424,8 @@ class PunchIO(FileIO):
                 self.dimensions = []
                 for t3 in t2:
                     self.dimensions.append(int(t3))
+            elif t1 == 'unit':
+                self.unit = t2[0]
         return 0
    
     def read_coordinates(self,f,tt):
@@ -433,7 +436,12 @@ class PunchIO(FileIO):
             return
 
         cnt = 0
-        fac = au_to_angstrom
+        if self.unit == "" or self.unit == "au" or self.unit == "bohr":
+          fac = au_to_angstrom
+        elif self.unit == "angstrom":
+          fac = 1
+        else:
+          print 'unknown units for atomic positions: ',self.unit
         tt.atom = []
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
