@@ -580,7 +580,9 @@ class Visualiser:
         we check this before calling _make_dialog"""
         if not self.dialog:
             self.make_base_dialog()
-        self._make_dialog()
+        if not self.dialog_contents:
+            self._make_dialog()
+            self.dialog_contents=1
 
     def _make_dialog(self):
         """This should be overloaded in any derived class"""
@@ -619,18 +621,15 @@ class Visualiser:
         self.dialog.b3.pack(side='left',fill='x')
         self.dialog.b4.pack(side='left',fill='x')
         self.dialog.b5.pack(side='left',fill='x')
+        self.dialog_contents=0
 
     def Open(self):
         """ Open the widget for editing/actions """
-        print 'Open'
         self.make_dialog()
-        print 'reposition'
         self.reposition()
-        print 'disable'
         self.disable_dialog()
         self.dialog.show()
         self.dialog.update()
-        print 'disable'
         self.enable_dialog()
 
     def disable_dialog(self):
@@ -1147,7 +1146,7 @@ class VibrationVisualiser(MoleculeVisualiser):
         self.frames = 36
         self.scale =  0.3
         self.vib = obj
-        self.frame_delay = 20
+        self.frame_delay = 10
         self.choose_mode = 0
         
         if kw.has_key("mol"):
@@ -1176,6 +1175,7 @@ class VibrationVisualiser(MoleculeVisualiser):
         # derived classes will run their moleculevisualiser methods
         # after this 
         
+
     def _make_dialog(self, **kw):
         print 'Dialog'
         apply(MoleculeVisualiser._make_dialog, (self,), kw)
@@ -1232,7 +1232,7 @@ class VibrationVisualiser(MoleculeVisualiser):
                                    labelpos = 'w', label_text = 'Frame delay',
                                    entryfield_value = self.frame_delay,
                                    entryfield_entry_width = 5,
-                                   increment=10,
+                                   increment=1,
                                    datatype = {'counter' : 'integer' },
                                    entryfield_validate = { 'validator' : 'integer',
                                                            'min'       : 1 })
@@ -1264,9 +1264,26 @@ class VibrationVisualiser(MoleculeVisualiser):
             self.mode = self.w_mode.index(Pmw.SELECT)
             #print 'Mode',self.mode
             #self.mode =  int(self.w_mode.get())
-        self.frames =  int(self.w_frames.get())
-        self.scale  =  float(self.w_scale.get())
-        self.frame_delay  =  int(self.w_delay.get())
+
+        # since this is in the diplay loop, it is better to keep
+        # the current value in case of failure
+        old = self.frames
+        try:
+            self.frames =  int(self.w_frames.get())
+        except:
+            self.frames = old
+
+        old = self.scale
+        try:
+            self.scale  =  float(self.w_scale.get())
+        except:
+            self.scale = old
+
+        old = self.frame_delay
+        try:
+            self.frame_delay  =  int(self.w_delay.get())
+        except:
+            self.frame_delay = old
 
     def start_ani(self):
         self.animate=1
@@ -1885,6 +1902,8 @@ class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
                                     increment=0.005,
                                     datatype = {'counter' : 'real' },
                                     entryfield_validate = { 'validator' : 'real' })
+
+        self.w_height.pack(side='top')
 
         self.opacity_widget(frame=f)
         surface_group.pack(side='top',fill='x')
