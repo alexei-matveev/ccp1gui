@@ -148,7 +148,7 @@ from math import fabs, cos, sin, pi, sqrt, floor
 from string import strip, split, atof
 from tkFileDialog import *
 from tkSimpleDialog import *
-from tkColorChooser import *
+import tkColorChooser
 from SimpleDialog import SimpleDialog
 import traceback
 
@@ -3253,11 +3253,11 @@ you would like to extract the frame from."""
         self.setscale(scale)
 
     def bgcolor(self):
-        color=askcolor()
+        color=tkColorChooser.askcolor()
         self.setbgcolor(color[0])
 
     def fgcolor(self):
-        color=askcolor()
+        color=tkColorChooser.askcolor()
         self.setfgcolor(color[0])
 
     def colorheight(self):
@@ -5175,7 +5175,9 @@ you would like to extract the frame from."""
         viewer.help.sethelp(self.options_dialog,'Edit Options')
 
     def __choose_bg_colour(self):
-        self.bg_rgb, self.bg_colour = askcolor(initialcolor=self.bg_colour)
+        colour = tkColorChooser.askcolor(initialcolor=self.bg_colour)
+        self.bg_rgb    = colour[0]
+        self.bg_colour = colour[1]
         self.w_bgcolor.configure(foreground = self.bg_colour)
 
     def open_options_dialog(self):

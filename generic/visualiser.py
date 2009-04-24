@@ -37,7 +37,6 @@ import time
 from Scientific.Geometry.VectorModule import *
 
 from SimpleDialog import SimpleDialog
-#from tkColorChooser import *
 import tkColorChooser
 from tkFileDialog import *
 from objects.field import Field
@@ -1119,11 +1118,11 @@ class MoleculeVisualiser(Visualiser):
             self._show()
 
     def __choose_label_colour(self):
-        self.label_rgb, self.label_colour = askcolor(initialcolor=self.label_colour)
+        self.label_rgb, self.label_colour = tkColorChooser.askcolor(initialcolor=self.label_colour)
         self.w_label_colour.configure(foreground = self.label_colour)
 
     def __choose_cyl_colour(self):
-        self.cyl_rgb, self.cyl_colour = askcolor(initialcolor=self.cyl_colour)
+        self.cyl_rgb, self.cyl_colour = tkColorChooser.askcolor(initialcolor=self.cyl_colour)
         self.w_cyl_colour.configure(foreground = self.cyl_colour)
 
     def read_widgets(self):
@@ -1581,7 +1580,7 @@ class OutlineVisualiser:
         self.surface_outline_group.pack(side='top',fill='x')
 
     def _choose_outline_colour(self):
-        self.outline_rgb, self.outline_colour = askcolor(initialcolor=self.outline_colour)
+        self.outline_rgb, self.outline_colour = tkColorChooser.askcolor(initialcolor=self.outline_colour)
         self.w_outline_colour.configure(foreground = self.outline_colour)
 
     def _outline_switch(self):
@@ -1711,7 +1710,7 @@ class DensityVisualiser(IsoSurfaceVisualiser):
 
 
     def __choose_plus_colour(self):
-        self.plus_rgb, self.plus_colour = askcolor(initialcolor=self.plus_colour)
+        self.plus_rgb, self.plus_colour = tkColorChooser.askcolor(initialcolor=self.plus_colour)
         self.w_pcolor.configure(foreground = self.plus_colour)
 
     def read_widgets(self):
@@ -1825,11 +1824,11 @@ class VolumeVisualiser(Visualiser,OutlineVisualiser):
         self.add_outline_widget()
 
     def __choose_colour(self, ix):
-        self.rgb[ix], self.colour[ix] = askcolor(initialcolor=self.colour[ix])
+        self.rgb[ix], self.colour[ix] = tkColorChooser.askcolor(initialcolor=self.colour[ix])
         self.w_color[ix].configure(foreground = self.colour[ix])
 
     def __choose_outline_colour(self):
-        self.outline_rgb, self.outline_colour = askcolor(initialcolor=self.outline_colour)
+        self.outline_rgb, self.outline_colour = tkColorChooser.askcolor(initialcolor=self.outline_colour)
         self.w_outline_colour.configure(foreground = self.outline_colour)
 
     def read_widgets(self):
@@ -2794,7 +2793,7 @@ class SliceVisualiser(DataVisualiser):
         self.w_ncont.pack(side='top')
 
     def __choose_outline_colour(self):
-        self.outline_rgb, self.outline_colour = askcolor(initialcolor=self.outline_colour)
+        self.outline_rgb, self.outline_colour = tkColorChooser.askcolor(initialcolor=self.outline_colour)
         self.w_outline_colour.configure(foreground = self.outline_colour)
 
     def __read_buttons(self):
