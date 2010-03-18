@@ -1,0 +1,14 @@
+block = zmatrix records = 0
+block = zmatrix_title records = 1
+
+block = zmatrix_zatoms records = 4
+c   0   0.0    0   0.0    0   0.0  
+x   1   1.88972666351032e+00   0   0.0    0   0.0  
+n   1   #1   2   #4   0   0.0  
+f   1   #2   2   #4   3   #3 
+block = zmatrix_constants records = 1
+ang    9.00000000000000e+01 
+block = zmatrix_variables records = 3
+cn    2.43579843636405e+00 
+cf    2.68085606441031e+00 
+phi    2.81278278329343e+02 

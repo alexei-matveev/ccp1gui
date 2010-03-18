@@ -1,0 +1,37 @@
+
+This example shows how to visualise the modes of the hessian from
+ChemShell geometry optimisations
+
+Since the two examples create a newopt.h_vis file, you should run one
+of the .chm files and then visualise the results from that, and then do the same
+for the other .chm file (rather than try and maintain the visualisation files for both together).
+
+In case you don't have a working chemshell, you can use the Makefile to create them from copies stored here
+
+make zopt_test
+
+or
+
+make copt_test
+
+
+Include this section in your ~/.ccp1guirc.py file to add the additional menus
+
+#
+# tools for loading ChemShell hessian eigenmode information from
+# the newopt optimiser
+#
+from interfaces.chemshell import chemshell_z_modes, chemshell_c_modes
+
+global get_chemshell_z_modes
+def get_chemshell_z_modes(gui):
+    gui.data_list = gui.data_list + chemshell_z_modes()
+
+global get_chemshell_c_modes
+def get_chemshell_c_modes(gui):
+    gui.data_list = gui.data_list + chemshell_c_modes()
+
+menu.add_command(label='Load ChemShell Zopt Modes', underline=0,command=lambda s=self: get_chemshell_z_modes(s) )
+menu.add_command(label='Load ChemShell Copt Modes', underline=0,command=lambda s=self: get_chemshell_c_modes(s) )
+
+

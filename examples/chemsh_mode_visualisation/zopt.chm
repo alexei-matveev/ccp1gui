@@ -1,0 +1,33 @@
+#
+#   functions zopt.* allow the newopt optimiser to work with
+#       the energy as a function of the internal coordinates of
+#       the molecule
+#
+#    this a simple transition state search
+#
+z_create zmatrix=z {
+zmatrix angstrom
+c
+x 1 1.0
+n 1 cn 2 ang
+f 1 cf 2 ang 3 phi
+variables 
+cn     1.135319
+cf     1.287016
+phi    180.
+constants
+ang    90.
+end
+}
+
+set args "{theory=mndo : {hamiltonian=am1 accuracy=high} zmatrix=z}"
+
+hessian function=zopt : [ list $args ] \
+        hessian=h_fcn_ts method=finite_difference
+
+newopt function=zopt : [ list $args ] \
+       method=baker \
+       input_hessian=h_fcn_ts \
+       follow_mode=1 \
+       list_variables=yes
+
