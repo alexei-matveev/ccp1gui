@@ -1998,15 +1998,20 @@ def fcomp(a,b):
 def chemshell_z_modes():
 
     # First load the zmatrix defining the coordinate system
-    #p = PunchReader()
-    p = filepunch.PunchIO()
-    #p.scan("zopt.z_vis")
-    p.ReadFile("zopt.z_vis")
+    p = filepunch.PunchIO(debug=1)
+    if p.ReadFile("zopt.z_vis"):
+        print 'ERROR - zmatrix needed in file zopt.z_vis'
+        return 1
+
+    z = p.GetObjects()[0]
+
     # And the hessian matrix defining the normal modes
-    #p.scan("newopt.h_vis")
-    p.ReadFile("newopt.h_vis")
-    z = p.objects[0]
-    h = p.objects[1]
+    p = filepunch.PunchIO(debug=1)
+    if p.ReadFile("newopt.h_vis"):
+        print 'ERROR - internal coordinate hessian needed in file newopt.h_vis'
+        return 1
+
+    h = p.GetObjects()[0]
 
     # Convert hessian data to a Numeric array
     from Numeric import array
@@ -2023,8 +2028,8 @@ def chemshell_z_modes():
     # Generate evals and evecs
     from LinearAlgebra import eigenvectors
     eval,evec = eigenvectors(h.array)
-    print 'eval',eval
-    print 'evec',evec
+    #print 'eval',eval
+    #print 'evec',evec
 
     # Generate Initial cartesians
     z.calculate_coordinates()
@@ -2088,13 +2093,17 @@ def chemshell_z_modes():
 def chemshell_c_modes():
 
     # First load the structure defining the coordinate system
-    #p = PunchReader()
     p = filepunch.PunchIO()
-    p.scan("copt.c_vis")
-    # And the hessian matrix defining the normal modes
-    p.scan("newopt.h_vis")
-    z = p.objects[0]
-    h = p.objects[1]
+    if p.ReadFile("copt.c_vis"):
+        print 'ERROR - cartesian coordinates needed in file copt.c_vis'
+        return 1
+    z = p.GetObjects()[0]
+
+    p = filepunch.PunchIO()
+    if p.ReadFile("newopt.h_vis"):
+        print 'ERROR - cartesian hessian needed in file newopt.h_vis'
+        return 1
+    h = p.GetObjects()[0]
 
     # Convert hessian data to a Numeric array
     from Numeric import array
