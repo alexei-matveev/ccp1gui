@@ -99,6 +99,7 @@ class FileIO:
                             'fields',
                             'objects',
                             'bricks',
+                            'matrices',
                             'lists'
                             ]
 
@@ -180,6 +181,8 @@ class FileIO:
                 
             self._ReadFile(**kw)
             self.read = 1
+        else:
+            print 'skipping ',filepath,' as data loaded already'
 
     def _ReadFile( self, **kw):
         """
