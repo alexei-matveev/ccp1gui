@@ -158,6 +158,7 @@ class PunchIO(FileIO):
         self.fragment = None
     
     def _ReadFile(self,**kw):
+
         if self.debug:
             print "> filepunch.py ReadFile"
 
@@ -313,6 +314,8 @@ class PunchIO(FileIO):
             self.bricks.append(tt)
         elif myclass == 'Field':
             self.fields.append(tt)
+        elif myclass == 'Matrix':
+            self.matrices.append(tt)
         else:
             print "unknown class ",myclass
             self.objects.append(tt)
@@ -330,8 +333,8 @@ class PunchIO(FileIO):
         self.records=0
         self.elements=1
         self.dimensions=[]
-        self.unit=""
         self.block_name="*******"
+        self.unit=None
 
         # skip blanks
         words=[]
@@ -420,6 +423,8 @@ class PunchIO(FileIO):
                 self.index = int(t2[0])
             elif t1 == 'elements':
                 self.elements = int(t2[0])
+            elif t1 == 'unit':
+                self.unit = t2[0]
             elif t1 == 'dimensions':
                 self.dimensions = []
                 for t3 in t2:
@@ -436,12 +441,14 @@ class PunchIO(FileIO):
             return
 
         cnt = 0
-        if self.unit == "" or self.unit == "au" or self.unit == "bohr":
-          fac = au_to_angstrom
+
+        if self.unit == "au" or self.unit == "bohr" or self.unit == None:
+            fac = au_to_angstrom
         elif self.unit == "angstrom":
-          fac = 1
+            fac = 1.0
         else:
-          print 'unknown units for atomic positions: ',self.unit
+            print 'unknown units for atomic positions: ',self.unit
+
         tt.atom = []
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
