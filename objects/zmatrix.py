@@ -266,11 +266,11 @@ class Indexed:
 
         # if we have moved atoms into the first 3 we need to preserve
         # their coordinates by marking as cartesian
-        if self.atom[0].oldix > 0 and self.atom[0].zorc == 'z':
+        if len(self.atom) > 0 and self.atom[0].oldix > 0 and self.atom[0].zorc == 'z':
             self.atom[0].zorc = 'c'
-        if self.atom[1].oldix > 1 and self.atom[1].zorc == 'z':
+        if len(self.atom) > 1 and self.atom[1].oldix > 1 and self.atom[1].zorc == 'z':
             self.atom[1].zorc = 'c'
-        if self.atom[2].oldix > 2 and self.atom[2].zorc == 'z':
+        if len(self.atom) > 2 and self.atom[2].oldix > 2 and self.atom[2].zorc == 'z':
             self.atom[2].zorc = 'c'
 
         # Could do a rotation/translation here....
