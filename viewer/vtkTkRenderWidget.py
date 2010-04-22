@@ -51,7 +51,9 @@ from Tkinter import *
 import math, os, sys
 from vtkpython import *
 
-from vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
+#psh change
+#from vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
+from vtkLoadPythonTkWidgetsP import vtkLoadPythonTkWidgetsP
 
 class vtkTkRenderWidget(Tkinter.Widget):
     """
@@ -63,7 +65,9 @@ class vtkTkRenderWidget(Tkinter.Widget):
     def __init__(self, master, cnf={}, **kw):
 
         # load the necessary extensions into tk
-        vtkLoadPythonTkWidgets(master.tk)
+        #psh change
+        #vtkLoadPythonTkWidgets(master.tk)
+        vtkLoadPythonTkWidgetsP(master.tk)
 
         try: # check to see if a render window was specified
             renderWindow = kw['rw']
