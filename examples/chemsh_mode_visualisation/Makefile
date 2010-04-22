@@ -22,6 +22,24 @@ clean:
 	rm -f zopt.result
 	rm -f zopt.z_start
 	rm -f zopt.z_vis
+	rm -f force.coo
+	rm -f force.tempc
+	rm -f force.tempe
+	rm -f force.tempg
+	rm -f h
+	rm -f myhess
+	rm -f nh3.evals
+	rm -f nh3.evecs
+	rm -f opt.coor
+	rm -f opt.cout
+	rm -f opt.ener
+	rm -f opt.eout
+	rm -f opt.grad
+	rm -f opt.hout
+	rm -f opt.zout
+	rm -f r
+	rm -f sym.in
+	rm -f symmetry.out
 
 zopt_test:
 	cp zopt.z_vis.keep zopt.z_vis

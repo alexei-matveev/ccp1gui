@@ -421,6 +421,7 @@ class MOLPROCalc(QMCalc):
 
         jobtype = job.jobtype
         job.name = job_name
+        job.clear_steps()
 
         # Now we have the jobs, add the steps to it
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
@@ -699,7 +700,8 @@ class MOLPROCalc(QMCalc):
         #file.write("***,%s\nmemory,64,m\n" % title)
         file.write("***,%s\n" % title)
 
-        file.write("file,2,%s.wfu\n" % job_name)
+        # At this stage, start a new wfu file for each job
+        file.write("file,2,%s.wfu,new\n" % job_name)
         
         if self.get_parameter("spin")-1 != 0:
             file.write("set,spin=%d\n" % self.get_parameter("spin")-1)
