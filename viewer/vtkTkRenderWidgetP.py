@@ -56,7 +56,25 @@ import math, os, sys
 
 from vtk import *
 
-from vtk.tk.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
+# jmht - problem with how tk objects are handled in Python 2.3:
+# http://www.vtk.org/pipermail/vtkusers/2008-September/096743.html
+#
+# We can't use the Tkinter.wantobjects=0 fix as it breaks other stuff
+# within Tkinter.
+#
+# Although this supposedly appeared in Py 2.3, it doesn't seem
+# to have made it into any packaged version before 2.6
+# The problem was fixed in the vtkLoadPythonTkWidgets file on 03/07/2009
+# which corresponds to vtk 5.4
+
+py_version = sys.version_info
+vtk_version = map(int,vtkVersion.GetVTKVersion().split('.'))
+
+if (py_version[0] >= 2 and py_version[1] >= 6) and (vtk_version[0] <= 5 and vtk_version[1] <= 4):
+    from viewer.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
+else:
+    from vtk.tk.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
+
 
 class vtkTkRenderWidget(Tkinter.Widget):
     """

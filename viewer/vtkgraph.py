@@ -3081,8 +3081,9 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             self.proj_interp2.SetOrigin(ox,oy,0.01)
 
             # interpolate
-            interp = vtkStructuredGrid()
-            probe.SetOutput(interp)
+            #interp = vtkStructuredGrid()
+            #probe.SetOutput(interp)
+            interp = probe.GetOutput()
             # since the interp object is not actually feeding through
             # to the pipeline, run an update so there is some data
             # there for us to copy 
