@@ -19,7 +19,7 @@
 #
 """A molecule representation including internal coordinates.
 
-This is derived from the PyMOL chempy class Indexed with provision
+This is derived from the PyMOL chempy class Indexed, with provision
 for storage of the internal coordinates.
 """
 
