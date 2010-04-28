@@ -1,10 +1,22 @@
 #
 # unit tests for the zmatrix classes
 #
+
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    import os,sys
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
+
 import zmatrix
 import interfaces.filepunch
+import copy
 import unittest
-from viewer.paths import gui_path
+
 # some simple structures / zmatrices to be used in testing
 z1="""
 zmatrix angstrom
@@ -58,103 +70,75 @@ class testReadFromFile(unittest.TestCase):
     """load a zmatrix from a file artesian """
 
     def testLoadFromFile1(self):
-        # check simple file reader
+        """Check simple file reader 1"""
+        model=zmatrix.Zmatrix(file=gui_path+"/examples/water.zmt")
+        self.assertEqual( 3, len(model.atom) )
+
+    def testLoadFromFile2(self):
+        """Check simple file reader 2"""
         model=zmatrix.Zmatrix(file=gui_path+"/examples/feco5.zmt")
-        model.zlist()
+        self.assertEqual( 16, len(model.atom) )
+
 
 class testAutoZ(unittest.TestCase):
     """test automatic z-matrix generation"""
 
     def testAutoZ1(self):
-        # check autoz function
-        p = interfaces.filepunch.PunchReader()
-        p.scan(gui_path+'/examples/caffeine.pun')
-        model = p.objects[0]
-        model.list()
-        print model.is_fully_connected()
+        """Check autoz function"""
+        r = interfaces.filepunch.PunchIO()
+        model = r.GetObjects(filepath=gui_path+'/examples/caffeine.pun')[0]
         model.autoz()
-        model.zlist()
+
+        # A couple of silly tests
+        self.assertEqual(model.atom[4].name,'C06')
+        self.assertEqual(model.atom[4].i1.name,'C05')
 
 class testImportCart(unittest.TestCase):
     """import function using Cartesian """
 
     def testA(self):
         """check import cartesians for zmatrix with no variables"""
-        # import cartesians ->  zmat without variables
 
         model = zmatrix.Zmatrix(list=c1.split('\n'))
         model2 = zmatrix.Zmatrix(list=z1.split('\n'))
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
         model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
 
     def testB(self):
         """check import cartesians for zmatrix with a variable"""
         model = zmatrix.Zmatrix(list=c1.split('\n'))
         model2 = zmatrix.Zmatrix(list=z2.split('\n'))
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
         model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
 
 
     def testImportWithDummy(self):
-        # import cartesians ->  zmat with a dummy
+        """import cartesians ->  zmat with a dummy"""
         # this generates warnings and the wrong answer with the current code
         # because it has a dummy at atom 2
         model = zmatrix.Zmatrix(list=c1.split('\n'))
         model2 = zmatrix.Zmatrix(list=z3.split('\n'))
-        print 'INITIAL CART MODEL'
-        model.zlist()
-        print 'INITIAL Z MODEL'
-        model2.zlist()
-        print 'IMPORT'
-        model2.import_geometry(model)
-        print 'AFTER IMPORT'
-        model2.zlist()
-
+        self.assertRaises(zmatrix.ImportGeometryError,model2.import_geometry,model)
+ 
     def testCartesianImport(self):
         # check import function for pure cartestian system
-        p = interfaces.filepunch.PunchReader()
-        p.scan("../examples/metallo.c")
-        model = p.objects[0]
-        p.objects = []
-        p.scan("../examples/metallo.c")
-        model2 = p.objects[0]
-        print 'BEFORE IMPORT'
-        model.list()
-        print 'IMPORT'
+        r = interfaces.filepunch.PunchIO()
+        model = r.GetObjects(filepath=gui_path+'/examples/metallo.c')[0]
+        model2 = copy.deepcopy(model)
         model.import_geometry(model2)
-        print 'AFTER IMPORT'
-        model.list()
 
 
 if __name__ == "__main__":
+
+    # Need to add the gui directory to the python path
+    #guidir = os.path.dirname( os.path.realpath( __file__ ) )
+    
 
     if 1:
         # Run all tests in this module automatically
         unittest.main()
     else:
         # Build a test suite with required cases and run it
-
-        #myTestSuite = unittest.TestSuite()
-
-        #myTestSuite.addTest(testSpawn("testA"))
-        #myTestSuite.addTest(testSpawnRemoteProcess("testA"))
-        #myTestSuite.addTest(testSpawnRemoteProcess("testB"))
-        #myTestSuite.addTest(testPipeRemoteCmd("testA"))
-        #myTestSuite.addTest(testPipeRemoteCmd("testB"))
-
-        #runner = unittest.TextTestRunner()
-        #runner.run(myTestSuite)
-        pass
+        myTestSuite = unittest.TestSuite()
+        myTestSuite.addTest(testImportCart("testCartesianImport"))
+        runner = unittest.TextTestRunner()
+        runner.run(myTestSuite)
     
