@@ -34,7 +34,7 @@ import string
 import time
 
 # From Konrad Hinsens scientific python
-from Scientific.Geometry.VectorModule import *
+import Scientific.Geometry.VectorModule
 
 from SimpleDialog import SimpleDialog
 import tkColorChooser
@@ -144,7 +144,7 @@ class ColourChooser:
                  ):
 
 
-        self.debug=1
+        self.debug=0
         self.parent = parent
         self.colourer = colourer # object to hold colour info
         self.schemes = schemes # which schemes this widget supports
@@ -649,7 +649,7 @@ class Visualiser:
 
     def reposition(self):
 
-        print 'reposition'
+        if self.debug:deb('reposition')
         """ Try to translate the widget so it is in a convenient spot
         relative to the main window This needs to be executed after
         the widget is complete
@@ -661,7 +661,7 @@ class Visualiser:
         # Find position of master
         m = re.match('(\d+)x(\d+)\+(\d+)\+(\d+)',self.graph.master.geometry())
         msx,msy,mpx,mpy = int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4))
-        print 'master geom',    msx,msy,mpx,mpy
+        if self.debug:deb('master geom: %f %f %f %f' % (msx,msy,mpx,mpy))
         self.dialog.geometry("+%d+%d" % (mpx+msx+4,mpy))
     
     def opacity_widget(self,frame=None):
@@ -852,7 +852,7 @@ class MoleculeVisualiser(Visualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        Visualiser.__init__(self, root, graph, obj, **kw)
 
         self.show_wire =      self.graph.check_capability('wire')
 
@@ -1176,8 +1176,8 @@ class VibrationVisualiser(MoleculeVisualiser):
         
 
     def _make_dialog(self, **kw):
-        print 'Dialog'
-        apply(MoleculeVisualiser._make_dialog, (self,), kw)
+        #print 'Dialog'
+        MoleculeVisualiser._make_dialog(self, **kw)
 
         self.ani_frame = Pmw.Group(self.dialog.topframe, tag_text="Animation")
 
@@ -1257,7 +1257,7 @@ class VibrationVisualiser(MoleculeVisualiser):
         
     def read_widgets(self):
 
-        apply(MoleculeVisualiser.read_widgets, (self, ) )
+        MoleculeVisualiser.read_widgets(self)
 
         if self.choose_mode:
             self.mode = self.w_mode.index(Pmw.SELECT)
@@ -1326,7 +1326,7 @@ class VibrationVisualiser(MoleculeVisualiser):
     def hide(self,**kw):
         """Overload to avoid reappearance """
         self.animate=0
-        apply(Visualiser.hide, (self,), kw)
+        Visualiser.hide(self,**kw)
 
 
 class VibrationSetVisualiser(VibrationVisualiser):
@@ -1660,7 +1660,6 @@ class DensityVisualiser(IsoSurfaceVisualiser):
 
         IsoSurfaceVisualiser.__init__(self, root, graph, obj,data_summary=1,**kw)
 
-
         # Default settings
         self.height = 0.05
         self.opacity = 1.0
@@ -1717,12 +1716,12 @@ class DensityVisualiser(IsoSurfaceVisualiser):
         self.height =  float(self.w_height.get())
         self.opacity =  float(self.w_opacity.get())
 
-class VolumeVisualiser(Visualiser,OutlineVisualiser):
+class VolumeVisualiser(DataVisualiser,OutlineVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
-        apply(OutlineVisualiser.__init__, (self,), kw)        
+        DataVisualiser.__init__(self, root, graph, obj, data_summary=1, **kw)
+        OutlineVisualiser.__init__(self, **kw)        
         self.colour_obj = None
 
         # Default settings
@@ -1845,7 +1844,7 @@ class VolumeDensityVisualiser(VolumeVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(VolumeVisualiser.__init__, (self, root, graph, obj), kw)
+        VolumeVisualiser.__init__(self, root, graph, obj, **kw)
         self.title = 'Density Volume Visualisation: ' + self.field.title
         self.setvalues()
 
@@ -1860,7 +1859,7 @@ class VolumeOrbitalVisualiser(VolumeVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(VolumeVisualiser.__init__, (self, root, graph, obj), kw)
+        VolumeVisualiser.__init__(self, root, graph, obj, **kw)
         self.title = 'Density Orbital Visualisation: ' + self.field.title
         self.setvalues()
 
@@ -1929,13 +1928,13 @@ class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
         
 class GridVisualiser(Visualiser):
     def __init__(self, root, graph, obj, **kw):
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        aVisualiser.__init__(self, root, graph, obj, **kw)
         self.field = obj
 
 
-STREAM_LINES=1
-STREAM_TUBES=2
-STREAM_SURFACE=3
+STREAM_LINES='lines'
+STREAM_TUBES='tubes'
+STREAM_SURFACE='surface'
 STREAM_FORWARD=11
 STREAM_BACKWARD=12
 STREAM_BOTH=13
@@ -1949,7 +1948,7 @@ class VectorVisualiser(DataVisualiser):
     """
 
     def __init__(self, root, graph, obj, colour_obj_choice=None, colour_obj_list=None, **kw):
-        DataVisualiser.__init__(self, root, graph, obj, **kw)
+        DataVisualiser.__init__(self, root, graph, obj, data_summary=1,**kw)
         self.grid_editor=None
 
         #jmht - hack
@@ -2039,7 +2038,7 @@ class VectorVisualiser(DataVisualiser):
 
     def _make_dialog(self, **kw):
 
-        print 'vectorvis.make_dialog'
+        #print 'vectorvis.make_dialog'
         #labels = []
 
         # Hedgehog widget group
@@ -2068,7 +2067,7 @@ class VectorVisualiser(DataVisualiser):
 
             # Checkbox to decide whether we display the grid editor
             self.grideditor_show_var = Tkinter.BooleanVar()
-            self.grideditor_show_var.set(1) # Show by default - only hide if requested
+            self.grideditor_show_var.set(0) # Hide by default - only show if requested
             self.w_grid_lab = Pmw.LabeledWidget(self.sample_group.interior(),labelpos='w',label_text='Display')
             self.w_grid = Tkinter.Checkbutton(self.w_grid_lab.interior())
             self.w_grid.config(variable=self.grideditor_show_var)
@@ -2092,7 +2091,7 @@ class VectorVisualiser(DataVisualiser):
             self.sample_grid_menu.pack(side='top')
             self.update_sample_grid_choice()
 
-            print ' creating grid editor'
+            #print ' creating grid editor'
 #             self.grid_editor = GridEditorWidget(
 #                 self.sample_group.interior(),
 #                 self.cut_plane,
@@ -2282,8 +2281,8 @@ class VectorVisualiser(DataVisualiser):
             labelpos = 'w',
             label_text = 'Display:',
             menubutton_textvariable = self.streamline_display_mode_var,
-            items = ['lines','tubes','surfaces'],
-            initialitem='lines',
+            items = [STREAM_LINES,STREAM_TUBES,STREAM_SURFACE],
+            initialitem=self.streamline_display,
             menubutton_width = 8)
 
         self.w_streamline_display_mode.pack(side='left')
@@ -2523,7 +2522,8 @@ class VectorVisualiser(DataVisualiser):
         self.Build()
 
     def __read_buttons(self):
-        print "__read_buttons"
+        if self.debug:
+            deb("__read_buttons")
 
     def read_widgets(self):
 
@@ -2559,14 +2559,7 @@ class VectorVisualiser(DataVisualiser):
             elif v == 'both directions':
                 self.streamline_integration_direction = STREAM_BOTH
 
-            v = self.streamline_display_mode_var.get()
-            if v == 'lines':
-                self.streamline_display = STREAM_LINES
-            if v == 'tubes':
-                self.streamline_display = STREAM_TUBES
-            if v == 'surfaces':
-                self.streamline_display = STREAM_SURFACE
-
+            self.streamline_display = self.streamline_display_mode_var.get()
 
         # Streamarrows
         if self.graph.check_capability('streamarrows'):
@@ -2597,7 +2590,6 @@ class VectorVisualiser(DataVisualiser):
         #print 'READW'
 
         v = self.sample_var.get()
-        print "jmht got sample ",v
         if v == 'All Field Points':
             self.sample_grid = VECTOR_SAMPLE_ALL
         elif v == 'Internal 2D':
@@ -2841,7 +2833,7 @@ class CutSliceVisualiser(SliceVisualiser):
         self.title = 'Cut Slice View: ' + self.field.title
 
     def _make_dialog(self, **kw):
-        apply(SliceVisualiser._make_dialog, (self,), kw)
+        SliceVisualiser._make_dialog(self,**kw)
         self.grid_editor = GridEditorWidget(self.dialog.topframe, self.cut_plane, command = self.__reslice, close_ok=0)
         self.grid_editor.pack(side='top')
 
@@ -2857,7 +2849,7 @@ class CutSliceVisualiser(SliceVisualiser):
         self.Build()
 
     def read_widgets(self):
-        apply(SliceVisualiser.read_widgets, (self,))
+        SliceVisualiser.read_widgets(self)
         if self.grid_editor is not None:
             # transform the grid, but do not trigger the the build that
             # normally results
@@ -2927,8 +2919,8 @@ class AllMoleculeVisualiser( MoleculeVisualiser ):
         #apply( MoleculeVisualiser.__init__, (self, root, graph, obj), kw )
         # Weve got stuff to display so carry on
         kw_dict = {'allvis': '1'}
-        apply( Visualiser.__init__, ( self, root, graph, obj ), kw_dict )
-        apply( MoleculeVisualiser.__init__, (self, root, graph, obj), kw_dict )
+        Visualiser.__init__( self, root, graph, obj , **kw_dict )
+        MoleculeVisualiser.__init__(self, root, graph, obj, **kw_dict )
 
 
     def update_mol_list(self):
@@ -3052,9 +3044,9 @@ class AllMoleculeVisualiser( MoleculeVisualiser ):
                 # Each molecule could have a number of images
                 # so for each id cycle through the list of possible images
                 visl = self.vis_dict[t]
-                print "visl is ",visl
+                #print "visl is ",visl
                 for vis in self.vis_list:
-                    print "deleting vis: ",vis
+                    #print "deleting vis: ",vis
                     vis._delete()
                     self.vis_list.remove( vis )
                 # Remove the object from the vis dict?
@@ -3069,7 +3061,7 @@ class AllMoleculeVisualiser( MoleculeVisualiser ):
 class MoldenWfnVisualiser(OrbitalVisualiser,Visualiser):
 
     def __init__(self, root, graph, obj, **kw):
-        apply(Visualiser.__init__, (self, root, graph, obj), kw)
+        Visualiser.__init__(self, root, graph, obj, **kw)
         self.field = Field()
         OrbitalVisualiser.__init__(self, root, graph, self.field, **kw)
 
@@ -3155,7 +3147,7 @@ class MoldenWfnVisualiser(OrbitalVisualiser,Visualiser):
 
         self.w_edge.pack(side='top')
 
-        apply(OrbitalVisualiser._make_dialog, (self, ), kw)
+        OrbitalVisualiser._make_dialog(self, **kw)
 
     def compute_grid(self):
         """ Compute the data via a call to Molden """
