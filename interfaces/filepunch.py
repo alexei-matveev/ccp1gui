@@ -809,8 +809,8 @@ class PunchIO(FileIO):
         except AttributeError:
 
             # Irregular grid (it has no dim array)
-            print 'No Dim'
-            print 'Recs',self.records
+            #print 'No Dim'
+            #print 'Recs',self.records
             dim = [self.records]
 
             if self.records:
@@ -831,14 +831,14 @@ class PunchIO(FileIO):
 
         # Add min and max values - will only both be zero if nothing was found
         if not ( data_min == 0 and data_max == 0 ):
-            print "Got field data with min: %s max: %s" % (data_min,data_max)
+            #print "Got field data with min: %s max: %s" % (data_min,data_max)
             brik.data_min = data_min
             brik.data_max = data_max
             
     def read_grid_points(self,f,brik):
 
         if not brik:
-            print '... skipped - grid_points without data block'
+            #print '... skipped - grid_points without data block'
             self.skip_block(f)
             return
       
