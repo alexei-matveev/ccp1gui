@@ -23,42 +23,43 @@ The viewer framework that this runs in is provided by
 a parent class TkMolView.
 
 """
-import re
+import sys,re
+import math
 
-from chempy.cpv import *
-
+import chempy.cpv
 from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
 
-from viewer.vtkTkRenderWidgetP import *
+import vtk
+import viewer.vtkTkRenderWidgetP
 
-from viewer.main import *
+import viewer.main
 from viewer.debug import deb,trb
 
 from generic.graph import Graph
 from generic.colourmap import ColourMap
-from generic.visualiser import *
+import generic.visualiser
 
 mol_select_key=1
 
 # From Konrad Hinsens scientific python
-from Scientific.Geometry.VectorModule import *
+import Scientific.Geometry.VectorModule
 
 def truncate_vec(tup,lim):
     len = tup[0]*tup[0] + tup[1]*tup[1] + tup[2]*tup[2]
     if len > lim*lim:
-        fac = lim/sqrt(len)
+        fac = lim/math.sqrt(len)
         tup[0] = tup[0] * fac
         tup[1] = tup[1] * fac
         tup[2] = tup[2] *fac
     return tup
 
-class VtkGraph(TkMolView,Graph):
+class VtkGraph(viewer.main.TkMolView,Graph):
 
     def __init__(self, parent, title=''):
 
         Graph.__init__(self)
 
-        self.vtkVersion = vtkVersion.GetVTKVersion()
+        self.vtkVersion = vtk.vtkVersion.GetVTKVersion()
 
         self.render_in_tk = 1
 
@@ -75,7 +76,7 @@ class VtkGraph(TkMolView,Graph):
         self.sphere_type = 2
         self.line_type = 2
         self.label_type = 0
-        self.stick_type = 2
+        self.stick_type = 0
         self.show_selection_by_dots = 1
         self.show_selection_by_colour = 1
         # Set stereo visualiser options.
@@ -119,7 +120,7 @@ class VtkGraph(TkMolView,Graph):
         # Initialise Tk viewer window and menus etc
         # This will source the users ccp1guirc, maybe overwriting
         # settings made in the section above
-        TkMolView.__init__(self, parent) 
+        viewer.main.TkMolView.__init__(self, parent) 
 
         global sel
         sel = self.sel()
@@ -135,10 +136,10 @@ class VtkGraph(TkMolView,Graph):
 
         if self.render_in_tk == 1:
             # create vtkTkRenderWidget
-            self.pane = vtkTkRenderWidget(self.interior(), stereo=self.stereo)
+            self.pane = viewer.vtkTkRenderWidgetP.vtkTkRenderWidget(self.interior(), stereo=self.stereo)
             renwin = self.pane.GetRenderWindow()
             self._set_stereo( renwin ) # See if we are using stereo
-            self.ren = vtkRenderer()
+            self.ren = vtk.vtkRenderer()
             renwin.AddRenderer(self.ren)
             renwin.SetDesiredUpdateRate(0.2)
             
@@ -147,13 +148,13 @@ class VtkGraph(TkMolView,Graph):
             self.pane.Reset()
 
         else:
-            renwin = vtkRenderWindow()
-            self.ren = vtkRenderer()
+            renwin = vtk.vtkRenderWindow()
+            self.ren = vtk.vtkRenderer()
             renwin.AddRenderer(self.ren)
             # create an interactor
-            self.iren = vtkRenderWindowInteractor()
+            self.iren = vtk.vtkRenderWindowInteractor()
             self.iren.SetRenderWindow(renwin)
-            self.pane = vtkTkRenderWidget(self.interior())
+            self.pane = vtk.vtkTkRenderWidget(self.interior())
             if self.stereo:
                 renwin.SetStereoCapableWindow()
             self.renwin = renwin
@@ -179,9 +180,9 @@ class VtkGraph(TkMolView,Graph):
 
 
         # create vtkTkRenderWidget
-        self.pane2d = vtkTkRenderWidget(self.window2d.interior())
+        self.pane2d = viewer.vtkTkRenderWidgetP.vtkTkRenderWidget(self.window2d.interior())
         self.pane2d.pack(side = 'top', expand=1, fill = 'both',padx=3, pady=3)
-        self.ren2d = vtkRenderer()
+        self.ren2d = vtk.vtkRenderer()
         renwin = self.pane2d.GetRenderWindow()
         renwin.AddRenderer(self.ren2d)
         renwin.SetDesiredUpdateRate(0.2)
@@ -227,18 +228,18 @@ class VtkGraph(TkMolView,Graph):
            the quality ( default is 95 ).
         """
         self.master.update()
-        w2i = vtkWindowToImageFilter()
+        w2i = vtk.vtkWindowToImageFilter()
         #w2i.SetInput(self.pane.GetRenderWindow())
         w2i.SetInput(renderWindow)
 
         if format == "png":
-            writer = vtkPNGWriter()
+            writer = vtk.vtkPNGWriter()
             print "Saving png to file... %s" % file
         elif format == "tiff":
-            writer = vtkTIFFWriter()
+            writer = vtk.vtkTIFFWriter()
             writer.SetCompressionToNoCompression()
         elif format == 'jpg':
-            writer = vtkJPEGWriter()
+            writer = vtk.vtkJPEGWriter()
             print "Saving jpeg to file... %s" % file
             if ( quality ):
                 try:
@@ -357,7 +358,7 @@ class VtkGraph(TkMolView,Graph):
             i = self.pane.GetPicker().GetPointId()
             atom = self.picked_mol.atom[i]
 
-        print 'Picked atom',atom.get_index()+ 1,'in ',self.picked_mol.title
+        #print 'Picked atom',atom.get_index()+ 1,'in ',self.picked_mol.title
         if but == 1:
             sel.toggle(self.picked_mol,[atom])
             t = id(self.picked_mol)
@@ -419,8 +420,6 @@ class VtkGraph(TkMolView,Graph):
         """ Set the stereo options for the widget
             We also activate stero here for the time being.
         """
-        print "Setting Stereo type..."
-        
         # StereoCapableOn is done already in vtkTkRenderWidget by specifying stereo
         #RenderWidget.StereoCapableWindowOn()
 
@@ -492,7 +491,7 @@ class VtkVis:
         self.alist2d = []
 
 
-class VtkMoleculeVisualiser(MoleculeVisualiser):
+class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 
     """Represent a molecule using Vtk
 
@@ -502,7 +501,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
     def __init__(self, root, graph, obj, **kw):
 
-        apply(MoleculeVisualiser.__init__, (self,root,graph,obj), kw)
+        generic.visualiser.MoleculeVisualiser.__init__(self,root,graph,obj, **kw)
         
         self.wire_actors = []
         self.sphere_actors = []
@@ -556,7 +555,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
         self.molecule.reindex()
 
-        t = vtkLookupTable()
+        t = vtk.vtkLookupTable()
         t.SetNumberOfColors(len(colours) + 1)
         t.Build()
         ix = 0
@@ -624,12 +623,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             r,g,b = (1.,1.,1.)
 
                         # create the sphere
-                        s = vtkSphereSource()
+                        s = vtk.vtkSphereSource()
 
                         s.SetThetaResolution(self.graph.mol_sphere_resolution)
                         s.SetPhiResolution(self.graph.mol_sphere_resolution)
                         
-                        if self.sphere_table == COV_RADII:
+                        if self.sphere_table == generic.visualiser.COV_RADII:
                             fac = 0.529177 * rcov[z] * self.sphere_scale
                         else:
                             fac = rvdw[z] * self.sphere_scale
@@ -640,11 +639,11 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         s.SetRadius(fac)
 
                         # create the mapper
-                        m = vtkPolyDataMapper()
+                        m = vtk.vtkPolyDataMapper()
                         m.SetInput(s.GetOutput())
 
                         # create the actor
-                        act = vtkActor()
+                        act = vtk.vtkActor()
                         self.sphere_actors.append(act)
                         act.SetMapper(m)
                         act.GetProperty().SetColor(r,g,b)
@@ -666,7 +665,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
             elif self.sphere_type == 1:
 
-                app = vtkAppendPolyData()
+                app = vtk.vtkAppendPolyData()
                 for a in self.molecule.atom:
                     try:
                         z = a.get_number()
@@ -675,7 +674,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     r,g,b = colours[z]
 
                     # create the sphere
-                    s = vtkSphereSource()
+                    s = vtk.vtkSphereSource()
  
                     s.SetThetaResolution(self.graph.mol_sphere_resolution)
                     s.SetPhiResolution(self.graph.mol_sphere_resolution)
@@ -693,11 +692,11 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     app.AddInput(s.GetOutput())
 
                 # create the mapper
-                m = vtkPolyDataMapper()
+                m = vtk.vtkPolyDataMapper()
                 m.SetInput(app.GetOutput())
 
                 # create the actor
-                act = vtkLODActor()
+                act = vtk.vtkLODActor()
                 self.sphere_actors.append(act)
                 act.SetMapper(m)
                 act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
@@ -762,13 +761,13 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     # Now got the label as txt
                     if self.label_type == 0:
                         # 3D Actors
-                        s = vtkVectorText()
+                        s = vtk.vtkVectorText()
                         s.SetText(txt)
 
-                        m = vtkPolyDataMapper()
+                        m = vtk.vtkPolyDataMapper()
                         m.SetInput(s.GetOutput())
 
-                        act = vtkFollower()
+                        act = vtk.vtkFollower()
                         self.label_actors.append(act)
                         act.SetMapper(m)
 
@@ -789,7 +788,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     elif self.label_type == 1:
                         # 2D Actors
                         # create the mapper
-                        m = vtkTextMapper()
+                        m = vtk.vtkTextMapper()
                         m.SetInput(txt)
                         #print 'label scale',self.label_scale
                         #size = int(20.0*self.label_scale)
@@ -797,7 +796,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                         # create the actor
                         #act = vtkScaledTextActor() # deprecated
-                        act = vtkTextActor()
+                        act = vtk.vtkTextActor()
                         act.ScaledTextOn()
                         self.label_actors.append(act)
                         act.SetMapper(m)
@@ -832,7 +831,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         if self.show_wire:
             # Lines
             line_count = 0
-            rad2deg = 180./Numeric.pi
+            rad2deg = 180./math.pi
             if self.line_type == 0:
                 # 2 linesource objects per bond with their own actors
                 orphans = []
@@ -864,13 +863,13 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 z = 0
                             r,g,b = colours[z]
 
-                            s = vtkLineSource()
+                            s = vtk.vtkLineSource()
                             s.SetPoint1(start)
                             s.SetPoint2(mid)
-                            m = vtkPolyDataMapper()
+                            m = vtk.vtkPolyDataMapper()
 
                             m.SetInput(s.GetOutput())
-                            act = vtkActor()
+                            act = vtk.vtkActor()
                             act.SetMapper(m)
                             act.GetProperty().SetColor(r,g,b)
                             act.GetProperty().SetLineWidth(self.graph.mol_line_width)
@@ -888,12 +887,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 z = 0
                             r,g,b = colours[z]
 
-                            s = vtkLineSource()
+                            s = vtk.vtkLineSource()
                             s.SetPoint1(mid)
                             s.SetPoint2(end)
-                            m = vtkPolyDataMapper()
+                            m = vtk.vtkPolyDataMapper()
                             m.SetInput(s.GetOutput())
-                            act = vtkActor()
+                            act = vtk.vtkActor()
                             act.SetMapper(m)
                             act.GetProperty().SetColor(r,g,b)
                             act.GetProperty().SetLineWidth(self.graph.mol_line_width)
@@ -921,13 +920,13 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             z = 0
                         r,g,b = colours[z]
 
-                        s = vtkPointSource()
+                        s = vtk.vtkPointSource()
                         s.SetNumberOfPoints(1)
                         s.SetRadius(0.0)
                         s.SetCenter(a.coord)
-                        m = vtkPolyDataMapper()
+                        m = vtk.vtkPolyDataMapper()
                         m.SetInput(s.GetOutput())
-                        act = vtkActor()
+                        act = vtk.vtkActor()
                         act.SetMapper(m)
                         act.GetProperty().SetColor(r,g,b)
                         act.GetProperty().SetPointSize(self.graph.mol_point_size)
@@ -950,13 +949,13 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                         r,g,b = (0.7,0.0,0.7)
 
-                        s = vtkPointSource()
+                        s = vtk.vtkPointSource()
                         s.SetNumberOfPoints(1)
                         s.SetRadius(0.0)
                         s.SetCenter(a.coord)
-                        m = vtkPolyDataMapper()
+                        m = vtk.vtkPolyDataMapper()
                         m.SetInput(s.GetOutput())
-                        act = vtkActor()
+                        act = vtk.vtkActor()
                         act.SetMapper(m)
                         act.GetProperty().SetColor(r,g,b)
                         act.GetProperty().SetPointSize(self.graph.mol_point_size)
@@ -969,7 +968,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
             elif self.line_type == 1:
                 # use linesource but append into a single polydata
-                app = vtkAppendPolyData()
+                app = vtk.vtkAppendPolyData()
                 for a in self.molecule.atom:
                     try:
                         c = a.conn
@@ -988,7 +987,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 z = 0
                             r,g,b = colours[z]
 
-                            s = vtkLineSource()
+                            s = vtk.vtkLineSource()
                             s.SetPoint1(start)
                             s.SetPoint2(mid)
 
@@ -1002,7 +1001,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 z = 0
                             r,g,b = colours[z]
 
-                            s = vtkLineSource()
+                            s = vtk.vtkLineSource()
                             s.SetPoint1(mid)
                             s.SetPoint2(end)
 
@@ -1011,11 +1010,11 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             line_count = line_count + 1
 
                 # create the mapper
-                m = vtkPolyDataMapper()
+                m = vtk.vtkPolyDataMapper()
                 m.SetInput(app.GetOutput())
 
                 # create the actor
-                act = vtkActor()
+                act = vtk.vtkActor()
                 self.wire_actors.append(act)
                 act.SetMapper(m)
 
@@ -1055,14 +1054,14 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         np = np + 1
 
                 #print 'points', np
-                p = vtkPoints()
+                p = vtk.vtkPoints()
 
-                zvals = vtkIntArray()
+                zvals = vtk.vtkIntArray()
                 zvals.SetName('z')
                 zvals.SetNumberOfComponents(1)
                 zvals.SetNumberOfTuples(np)
 
-                hackrad = vtkFloatArray()
+                hackrad = vtk.vtkFloatArray()
                 hackrad.SetName('sizevecs')
                 hackrad.SetNumberOfComponents(3)
                 hackrad.SetNumberOfTuples(np)
@@ -1087,7 +1086,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                         zvals.SetTuple1(np,z)
 
                         
-                        if self.sphere_table == COV_RADII:
+                        if self.sphere_table == generic.visualiser.COV_RADII:
                             fac = 0.529177 * rcov[z] * self.sphere_scale
                         else:
                             fac = rvdw[z] * self.sphere_scale
@@ -1134,7 +1133,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                         np = np + 1
 
-                l = vtkCellArray()
+                l = vtk.vtkCellArray()
                 nb = len(bonds)
                 l.Allocate(nb,nb)
                 for b in bonds:
@@ -1142,14 +1141,14 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     l.InsertCellPoint(b[0])
                     l.InsertCellPoint(b[1])
 
-                v = vtkCellArray()
+                v = vtk.vtkCellArray()
                 nv = len(orphans)
                 v.Allocate(nv,nv)
                 for o in orphans:
                     v.InsertNextCell(1)
                     v.InsertCellPoint(o)
 
-                poly = vtkPolyData()
+                poly = vtk.vtkPolyData()
                 poly.SetPoints(p)
                 poly.SetLines(l)
                 poly.SetVerts(v)
@@ -1164,7 +1163,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 self.zvals = zvals
                 self.poly = poly
 
-                m = vtkPolyDataMapper()
+                m = vtk.vtkPolyDataMapper()
                 self.map = m
                 m.SetInput(poly)
 
@@ -1175,7 +1174,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 m.SetScalarModeToUsePointFieldData()
                 m.ColorByArrayComponent('z',0)
 
-                act = vtkActor()
+                act = vtk.vtkActor()
                 act.SetMapper(m)
                 act.GetProperty().SetLineWidth(self.graph.mol_line_width)
                 act.GetProperty().SetPointSize(self.graph.mol_point_size)
@@ -1188,12 +1187,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                 if self.sphere_type == 2:
 
-                    s = vtkSphereSource()
+                    s = vtk.vtkSphereSource()
 
                     s.SetThetaResolution(self.graph.mol_sphere_resolution)
                     s.SetPhiResolution(self.graph.mol_sphere_resolution)
 
-                    g = vtkGlyph3D()
+                    g = vtk.vtkGlyph3D()
                     g.SetInput(poly)
                     g.SetSource(s.GetOutput())
                     g.SetScaleFactor(0.4)
@@ -1203,14 +1202,14 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     g.SetColorMode(1)
                     g.SetScaleMode(2)
 
-                    m = vtkPolyDataMapper()
+                    m = vtk.vtkPolyDataMapper()
                     m.SetInput(g.GetOutput())
                     m.SetLookupTable(self.colour_table)
                     m.SetScalarRange(rgb_min,rgb_max+1)
                     # from xyz
                     m.SetScalarVisibility(1)
                     m.UseLookupTableScalarRangeOff()
-                    act = vtkActor()
+                    act = vtk.vtkActor()
                     act.SetMapper(m)
                     act.PickableOff()
 
@@ -1229,11 +1228,10 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 #print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
 
         if self.show_sticks:
-            #print 'stick type', self.stick_type
             if self.stick_type == 0:
                 # Cylinders
                 line_count = 0
-                rad2deg = 180./Numeric.pi
+                rad2deg = 180./math.pi
                 for a in self.molecule.atom:
                     try:
                         c = a.conn
@@ -1248,12 +1246,12 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             draw = 1
 
                         if t.get_index() > a.get_index() and draw:
-                            r1 = Vector(a.coord)
-                            r2 = Vector(t.coord)
+                            r1 = Scientific.Geometry.VectorModule.Vector(a.coord)
+                            r2 = Scientific.Geometry.VectorModule.Vector(t.coord)
                             axis = r2-r1
                             center = 0.5*(r1+r2)
-                            print 'center', center, t.get_index(), a.get_index()
-                            print 'axis',axis
+                            #print 'center', center, t.get_index(), a.get_index()
+                            #print 'axis',axis
 
                             blength = axis.length()
                             # print 'blength ',blength
@@ -1264,7 +1262,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 # first move cylinder so that it overlap the target
                                 # direction in the projection down Z
 
-                                rot = Numeric.array([0.0,0.0,0.0])
+                                rot = Scientific.Geometry.VectorModule.Numeric.array([0.0,0.0,0.0])
 
                                 # Assume we start with z 
 
@@ -1276,20 +1274,20 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
                                 else:
                                     ratio = axis[0] / axis[1]
-                                    angle = Numeric.arctan(ratio)*rad2deg
+                                    angle = Scientific.Geometry.VectorModule.Numeric.arctan(ratio)*rad2deg
 
-                                print 'z angle',angle
+                                #print 'z angle',angle
                                 # sign convention is empirical
                                 rot[2] = -angle
 
                                 # Get angle of target direction relative to yx plane
                                 # and rotate about the local x axis
-                                prj = sqrt(axis[0]*axis[0] + axis[1]*axis[1])
+                                prj = math.sqrt(axis[0]*axis[0] + axis[1]*axis[1])
                                 if prj ==  0.0:
                                     angle = 90.0
                                 else:
                                     ratio = axis[2] / prj
-                                    angle = Numeric.arctan(ratio)*rad2deg
+                                    angle = Scientific.Geometry.VectorModule.Numeric.arctan(ratio)*rad2deg
                                     if axis[1] < 0:
                                         angle = -angle
 
@@ -1300,7 +1298,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 # we dont need a y rotation (cylinder axis)
                                 rot[1] = 0.0
 
-                                s = vtkCylinderSource()
+                                s = vtk.vtkCylinderSource()
 
                                 # using radius values of less that 1 appear to
                                 # produce very dark sided cylinders
@@ -1308,9 +1306,9 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                                 # of the corresponding actor
                                 s.SetRadius(1.0)
                                 s.SetResolution(self.graph.mol_cylinder_resolution)
-                                m = vtkPolyDataMapper()
+                                m = vtk.vtkPolyDataMapper()
                                 m.SetInput(s.GetOutput())
-                                act = vtkActor()
+                                act = vtk.vtkActor()
                                 act.SetMapper(m)
                                 red = self.cyl_rgb[0] / 255.0
                                 green = self.cyl_rgb[1] / 255.0
@@ -1334,7 +1332,9 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
 
             elif self.stick_type == 2:
 
-                Tube= vtkTubeFilter()
+                ## jmht - this broken - poly is unreferenced - not sure if this ever worked
+
+                Tube= vtk.vtkTubeFilter()
                 ####Tube.SetInputConnection(readerGetOutputPort())
                 Tube.SetInput(poly)
                 Tube.SetNumberOfSides(16)
@@ -1345,7 +1345,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 Tube.SetVaryRadius(0)
                 Tube.SetRadiusFactor(10)
 
-                m= vtkPolyDataMapper()
+                m= vtk.vtkPolyDataMapper()
                 ###m.SetInputConnection(TubeGetOutputPort())
                 m.SetInput(Tube.GetOutput())
 
@@ -1366,7 +1366,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     green = self.cyl_rgb[1] / 255.0
                     blue = self.cyl_rgb[2] / 255.0
 
-                act= vtkActor()
+                act= vtk.vtkActor()
                 act.SetMapper(m)
                 act.GetProperty().SetRepresentationToSurface()
                 act.GetProperty().SetInterpolationToGouraud()
@@ -1387,7 +1387,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 self.molecule.find_contacts(self.graph.contact_scale,
                                             self.graph.contact_toler)
 
-                p = vtkPoints()
+                p = vtk.vtkPoints()
                 n = len(self.molecule.atom)
                 p.SetNumberOfPoints(n)
                 for a in self.molecule.atom:
@@ -1399,7 +1399,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                     if draw:
                         p.SetPoint(a.get_index(),a.coord[0], a.coord[1], a.coord[2])
 
-                l = vtkCellArray()
+                l = vtk.vtkCellArray()
                 nb = len(self.molecule.contacts)
                 l.Allocate(nb,nb)
                 for c in self.molecule.contacts:
@@ -1414,18 +1414,18 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                             l.InsertNextCell(2)
                             l.InsertCellPoint(c.index[0])
                             l.InsertCellPoint(c.index[1])
-                poly = vtkPolyData()
+                poly = vtk.vtkPolyData()
                 poly.SetPoints(p)
                 poly.SetLines(l)
 
-                m = vtkPolyDataMapper()
+                m = vtk.vtkPolyDataMapper()
                 m.SetInput(poly)
-                act = vtkActor()
+                act = vtk.vtkActor()
                 act.SetMapper(m)
                 act.GetProperty().SetLineWidth(1)
                 act.GetProperty().SetColor(1.0,1.0,1.0)
                 self.contact_actors.append(act)
-                print 'made contact polydata with ', len(self.molecule.contacts), ' lines'
+                #print 'made contact polydata with ', len(self.molecule.contacts), ' lines'
 
         if self.show_wire and self.line_type == 2:
             # Apply selection highlighting by poking into zvals array
@@ -1469,7 +1469,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
         self.contacts_visible  = 0
 
         # set current visibility
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
 ####    def sel_show(self,atoms):
 
@@ -1525,7 +1525,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
                 
         # Add a 2D text element
         if not actor:
-            m = vtkTextMapper()
+            m = vtk.vtkTextMapper()
             m.SetInput('.')
             
             try:
@@ -1538,7 +1538,7 @@ class VtkMoleculeVisualiser(MoleculeVisualiser):
             prop.SetFontSize(70)
             prop.SetJustificationToLeft()
             prop.SetColor(1.0,1.0,0.0)
-            act = vtkActor2D()
+            act = vtk.vtkActor2D()
             act.SetMapper(m)
                 
             act.PickableOff()
@@ -1768,7 +1768,7 @@ class VtkCmapVis_:
     def __init__(self,graph):
         """Optional init method - just sets self.graph for those cases
         where multiple inheritance doesn't give us a graph"""
-        print "VtkCmapVis_ __init__"
+        #print "VtkCmapVis_ __init__"
         self.graph=graph
 
     def add_colourmap_actor(self,colourer,title=None):
@@ -1804,7 +1804,7 @@ class VtkCmapVis_:
         # Set up the scalarbar
         if not self.colourmap_actor:
             print "add colourmap widget create new actor"
-            self.colourmap_actor = vtkScalarBarActor()
+            self.colourmap_actor = vtk.vtkScalarBarActor()
         else:
             print "add colourmap widget reusing actor"
             
@@ -2001,7 +2001,7 @@ class VtkIsoSurf(VtkCmapVis):
             # Use structured points (alias vtkImageData) if data is 
             # on the grid assumed by vtk
             #
-            self.data = vtkStructuredPoints()
+            self.data = vtk.vtkStructuredPoints()
             data = self.data
             npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
@@ -2015,7 +2015,7 @@ class VtkIsoSurf(VtkCmapVis):
 
             bigsize = npts[0]*npts[1]*npts[2]
 
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfValues(bigsize)
 
             # The mess with the offsets is to correct for the fact that, although
@@ -2056,11 +2056,10 @@ class VtkIsoSurf(VtkCmapVis):
             else:
                 nz = 1
 
-            npts = Vector(nx,ny,nz)
+            npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
+            #print 'dim',self.field.dim,'vec',npts
 
-            print 'dim',self.field.dim,'vec',npts
-
-            self.data = vtkStructuredGrid()
+            self.data = vtk.vtkStructuredGrid()
             self.data.SetDimensions(npts[0],npts[1],npts[2])
             #
             # Pack the data into a float arrat
@@ -2070,7 +2069,7 @@ class VtkIsoSurf(VtkCmapVis):
             # Not clear if this test is right!!
 
             if self.field.data:
-                data_array = vtkFloatArray()
+                data_array = vtk.vtkFloatArray()
                 data_array.SetNumberOfValues(bigsize)
                 offset = 0
                 for k in range(npts[2]):
@@ -2079,16 +2078,16 @@ class VtkIsoSurf(VtkCmapVis):
                             data_array.SetValue(offset,self.field.data[offset])
                             offset = offset+1
 
-                print 'set scalars'
+                #print 'set scalars'
                 self.data.GetPointData().SetScalars(data_array)
 
             bigsize = npts[0]*npts[1]*npts[2]
-            points = vtkPoints()
+            points = vtk.vtkPoints()
             points.SetNumberOfPoints(bigsize)
             offset = 0
-            print 'getting grid'
+            #print 'getting grid'
             grid = self.field.get_grid()
-            print 'grid done'
+            #print 'grid done'
 
             for k in range(npts[2]):
                 for j in range(npts[1]):
@@ -2096,18 +2095,18 @@ class VtkIsoSurf(VtkCmapVis):
                         points.SetPoint(offset,grid[offset])
                         offset = offset+1
 
-            print 'setPoints'
+            #print 'setPoints'
             self.data.SetPoints(points)
 
     def add_outline(self):
         #jmht
         #outline = vtkStructuredGridOutlineFilter()
         # outline filter will work with both Structured Grids & vtkImageData
-        outline = vtkOutlineFilter()
+        outline = vtk.vtkOutlineFilter()
         outline.SetInput(self.data)
-        outlineMapper = vtkPolyDataMapper()
+        outlineMapper = vtk.vtkPolyDataMapper()
         outlineMapper.SetInput(outline.GetOutput())
-        outlineActor = vtkActor()
+        outlineActor = vtk.vtkActor()
 
         red = self.outline_rgb[0] / 255.0
         green = self.outline_rgb[1] / 255.0
@@ -2128,7 +2127,7 @@ class VtkIsoSurf(VtkCmapVis):
         if self.colourer.cmap_by_object():
             cmap_obj = self.colourer.get_value('cmap_obj')
             # There is an additional field to colour by
-            data_array2 = vtkFloatArray()
+            data_array2 = vtk.vtkFloatArray()
             npts = Vector(cmap_obj.dim[0],cmap_obj.dim[1],cmap_obj.dim[2])
             bigsize = npts[0]*npts[1]*npts[2]
             data_array2.SetNumberOfValues(bigsize)
@@ -2141,16 +2140,16 @@ class VtkIsoSurf(VtkCmapVis):
             data_array2.SetName("MapScalar");
             self.data.GetPointData().AddArray(data_array2)
 
-        s = vtkContourFilter()
+        s = vtk.vtkContourFilter()
         s.SetInput(self.data)
         s.SetValue(0,contour)
         s.SetComputeNormals(1)
 
-        n = vtkPolyDataNormals()
+        n = vtk.vtkPolyDataNormals()
         n.SetInput(s.GetOutput())
         n.SetFeatureAngle(89)
 
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         # Need to determine the default lut before it gets changed
         self.default_lut = m.GetLookupTable()
         m.SetInput(n.GetOutput())
@@ -2167,7 +2166,7 @@ class VtkIsoSurf(VtkCmapVis):
         else:
             m.ScalarVisibilityOff()
 
-        act = vtkActor()
+        act = vtk.vtkActor()
         act.SetMapper(m)
         if not self.colourer.cmap_by_object():
             act.GetProperty().SetColor(r,g,b)
@@ -2214,9 +2213,9 @@ class VtkVolVis:
         # Use structured points (alias vtkImageData) if data is 
         # on the grid assumed by vtk
         #
-        self.data = vtkStructuredPoints()
+        self.data = vtk.vtkStructuredPoints()
         data = self.data
-        npts = Vector(field.dim[0],field.dim[1],field.dim[2])
+        npts = Scientific.Geometry.VectorModule.Vector(field.dim[0],field.dim[1],field.dim[2])
 
         # jmht - noticed that cube reader didn't have a mapping
         # and so this failed
@@ -2255,7 +2254,7 @@ class VtkVolVis:
 
         bigsize = npts[0]*npts[1]*npts[2]
 
-        data_array = vtkUnsignedShortArray()
+        data_array = vtk.vtkUnsignedShortArray()
         data_array.SetNumberOfValues(bigsize)
 
         #This now in a separate routine as also required by vtk
@@ -2298,7 +2297,7 @@ class VtkVolVis:
         
         # We need to cast the data to unsigned shorts for the volumeMapper, so we
         # are required to scale & shift the data, as we are converting from floats
-        datacast = vtkImageShiftScale()
+        datacast = vtk.vtkImageShiftScale()
         datacast.SetInput(self.data)
         datacast.SetScale( self.sfac )
         datacast.SetShift( self.offset )
@@ -2316,15 +2315,15 @@ class VtkVolVis:
 
     def add_outline(self):
 
-        outline=vtkOutlineFilter()
+        outline=vtk.vtkOutlineFilter()
         outline.SetInput(self.data)
-        outlineMapper=vtkPolyDataMapper()
+        outlineMapper=vtk.vtkPolyDataMapper()
         outlineMapper.SetInput(outline.GetOutput())
-        outlineActor=vtkActor()
+        outlineActor=vtk.vtkActor()
         red = self.outline_rgb[0] / 255.0
         green = self.outline_rgb[1] / 255.0
         blue = self.outline_rgb[2] / 255.0
-        print 'outline colour',red,green,blue
+        #print 'outline colour',red,green,blue
         outlineActor.GetProperty().SetColor(red,green,blue)
         outlineActor.SetMapper(outlineMapper)
         self.alist.append(outlineActor)
@@ -2333,8 +2332,8 @@ class VtkVolVis:
 
         # Create transfer mapping scalar value to opacity
 
-        opacityTransferFunction=vtkPiecewiseFunction()
-        colorTransferFunction=vtkColorTransferFunction ()
+        opacityTransferFunction=vtk.vtkPiecewiseFunction()
+        colorTransferFunction=vtk.vtkColorTransferFunction ()
         for i in range(5):
             opacityTransferFunction.AddPoint(self.offset + self.sfac*self.tfv[i],self.opacity[i])
             red,green,blue = self.rgb[i]
@@ -2342,27 +2341,27 @@ class VtkVolVis:
             green = green / 255.0
             blue = blue / 255.0
             colorTransferFunction.AddRGBPoint(self.offset + self.sfac*self.tfv[i], red, green, blue)
-            print i,self.tfv[i],self.offset + self.sfac*self.tfv[i],self.opacity[i],'(',red,green,blue,')'
+            #print i,self.tfv[i],self.offset + self.sfac*self.tfv[i],self.opacity[i],'(',red,green,blue,')'
 
         # The property describes how the data will look
-        volumeProperty=vtkVolumeProperty()
+        volumeProperty=vtk.vtkVolumeProperty()
         volumeProperty.SetColor(colorTransferFunction)
         volumeProperty.SetScalarOpacity(opacityTransferFunction)
 
         if 0:
             # The mapper / ray cast function know how to render the data
-            compositeFunction=vtkVolumeRayCastCompositeFunction()
-            volumeMapper=vtkVolumeRayCastMapper()
+            compositeFunction=vtk.vtkVolumeRayCastCompositeFunction()
+            volumeMapper=vtk.vtkVolumeRayCastMapper()
             volumeMapper.SetVolumeRayCastFunction(compositeFunction)
         else:
             # The mapper knows how to render the data
-            volumeMapper=vtkVolumeTextureMapper2D()
+            volumeMapper=vtk.vtkVolumeTextureMapper2D()
 
         volumeMapper.SetInput(self.data)
 
         # The volume holds the mapper and the property and
         # can be used to position/orient the volume
-        volume=vtkVolume()
+        volume=vtk.vtkVolume()
         volume.SetMapper(volumeMapper)
         volume.SetProperty(volumeProperty)
         self.alist.append(volume)
@@ -2372,27 +2371,27 @@ class VtkVolVis:
         self.mapvol()
         if self.show_outline:
             self.add_outline()
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
-class VtkVolumeDensityVisualiser(VolumeDensityVisualiser,VtkVolVis,VtkVis):
+class VtkVolumeDensityVisualiser(generic.visualiser.VolumeDensityVisualiser,VtkVolVis,VtkVis):
     """Represent an density using VTK
     see visualiser.py for the base class (VolumeVisualiser) which defines
     the user interactions
     """
     def __init__(self, root, graph, obj, **kw):
-        apply(VolumeVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkVolVis.__init__, (self,) , kw)
+        generic.visualiser.VolumeVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkVolVis.__init__(self, **kw)
 
-class VtkVolumeOrbitalVisualiser(VolumeOrbitalVisualiser,VtkVolVis,VtkVis):
+class VtkVolumeOrbitalVisualiser(generic.visualiser.VolumeOrbitalVisualiser,VtkVolVis,VtkVis):
     """Represent an Orbital using VTK volume rendering
     see visualiser.py for the base class (VolumeVisualiser) which defines
     the user interactions
     """
     def __init__(self, root, graph, obj, **kw):
-        apply(VolumeVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkVolVis.__init__, (self,) , kw)
+        generic.visualiser.VolumeVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkVolVis.__init__(self, **kw)
 
-class VtkGridVisualiser(GridVisualiser,VtkVis):
+class VtkGridVisualiser(generic.visualiser.GridVisualiser,VtkVis):
 
     """Represent an empty grid using VTK
     See visualiser.py for the base class which defines the user
@@ -2402,7 +2401,7 @@ class VtkGridVisualiser(GridVisualiser,VtkVis):
     """
 
     def __init__(self, root, graph, obj, **kw):
-        apply(GridVisualiser.__init__, (self,root,graph,obj), kw)
+        generic.visualiser.GridVisualiser.__init__(self,root,graph,obj,**kw)
         self.alist = []
         self.alist2d = []
         self.points = [ (-1,-1,-1),(-1,-1, 1),(-1, 1,-1),(-1, 1, 1),
@@ -2431,41 +2430,41 @@ class VtkGridVisualiser(GridVisualiser,VtkVis):
             nz = 1
             ax3 = Vector(0.,0.,0.)
 
-        app = vtkAppendPolyData()
+        app = vtk.vtkAppendPolyData()
         for i,j in self.lines:
             x,y,z = self.points[i-1]
             start = o + 0.5*(x*ax1+y*ax2+z*ax3)
             x,y,z = self.points[j-1]
             end = o + 0.5*(x*ax1+y*ax2+z*ax3)
 
-            s = vtkLineSource()
+            s = vtk.vtkLineSource()
             s.SetPoint1(start)
             s.SetPoint2(end)
             app.AddInput(s.GetOutput())
 
             # create the mapper
-            m = vtkPolyDataMapper()
+            m = vtk.vtkPolyDataMapper()
             m.SetInput(app.GetOutput())
 
             # create the actor
-            act = vtkActor()
+            act = vtk.vtkActor()
             act.SetMapper(m)
             self.alist.append(act)
 
         self.showing = 0
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
 
 
-class VtkDensityVisualiser(DensityVisualiser,VtkIsoSurf,VtkVis):
+class VtkDensityVisualiser(generic.visualiser.DensityVisualiser,VtkIsoSurf,VtkVis):
     """Represent an density using VTK
     see visualiser.py for the base class which defines
     the user interactions
     """
     def __init__(self, root, graph, obj, **kw):
         
-        apply(DensityVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkIsoSurf.__init__, (self,) , kw)
+        generic.visualiser.DensityVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkIsoSurf.__init__(self,**kw)
 
     def _build(self,object=None):
         plus_rgb = self.colourer.get_value("plus_rgb")
@@ -2473,18 +2472,18 @@ class VtkDensityVisualiser(DensityVisualiser,VtkIsoSurf,VtkVis):
         self.add_surface(self.height,plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
 
 
-class VtkOrbitalVisualiser(OrbitalVisualiser,VtkIsoSurf,VtkVis):
+class VtkOrbitalVisualiser(generic.visualiser.OrbitalVisualiser,VtkIsoSurf,VtkVis):
     """Represent an orbital using VTK
     see visualiser.py for the base class which defines
     the user interactions
     """
 
     def __init__(self, root, graph, obj, **kw):
-        OrbitalVisualiser.__init__(self,root,graph,obj,**kw)
+        generic.visualiser.OrbitalVisualiser.__init__(self,root,graph,obj,**kw)
         VtkIsoSurf.__init__(self,**kw)
 
     def _build(self,object=None):
@@ -2500,15 +2499,15 @@ class VtkOrbitalVisualiser(OrbitalVisualiser,VtkIsoSurf,VtkVis):
 #        self.add_surface( self.height,self.plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()                                 
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
-class VtkColourSurfaceVisualiser(ColourSurfaceVisualiser,VtkIsoSurf,VtkVis):
+class VtkColourSurfaceVisualiser(generic.visualiser.ColourSurfaceVisualiser,VtkIsoSurf,VtkVis):
     """Viewer for surfaces, coloured using another data field
     """
 
     def __init__(self, root, graph, obj, **kw):
-        apply(ColourSurfaceVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkIsoSurf.__init__, (self,), kw)
+        generic.visualiser.ColourSurfaceVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkIsoSurf.__init__(self,**kw)
 
     def _build(self,object=None):
 
@@ -2516,21 +2515,21 @@ class VtkColourSurfaceVisualiser(ColourSurfaceVisualiser,VtkIsoSurf,VtkVis):
         self.add_surface(self.height,plus_rgb,self.opacity)
         if self.show_outline:
             self.add_outline()
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
-class VtkIrVis(IrregularDataVisualiser,VtkVis):
+class VtkIrVis(generic.visualiser.IrregularDataVisualiser,VtkVis):
     """ Viewer for Irregular Data
     """
 
     def __init__(self, root, graph, obj, **kw):
-        IrregularDataVisualiser.__init__(self,root,graph,obj,**kw)
+        generic.visualiser.IrregularDataVisualiser.__init__(self,root,graph,obj,**kw)
         self.alist = []
         self.alist2d = []
 
     def _build(self,object=None):
 
         if self.field.vtkdata:
-            im2poly = vtkImageDataGeometryFilter()
+            im2poly = vtk.vtkImageDataGeometryFilter()
             im2poly.SetInput( self.field.vtkdata )
             poly = im2poly.GetOutput()
             
@@ -2539,7 +2538,7 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
             # structures held in the Field object
             # Build up the grid
             gridpts = self.field.get_grid()
-            p = vtkPoints()
+            p = vtk.vtkPoints()
             n = len(gridpts)
             p.SetNumberOfPoints(n)
             i = 0
@@ -2547,7 +2546,7 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
                 p.SetPoint(i,pt[0],pt[1],pt[2])
                 i = i + 1
 
-            v = vtkCellArray()
+            v = vtk.vtkCellArray()
             v.Allocate(n,n)
 
             i = 0
@@ -2556,18 +2555,18 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
                 v.InsertCellPoint(i)
                 i = i + 1
 
-            poly = vtkPolyData()
+            poly = vtk.vtkPolyData()
             poly.SetPoints(p)
             poly.SetVerts(v)
 
             if self.field.data != None:
-                data_array = vtkFloatArray()
+                data_array = vtk.vtkFloatArray()
                 data_array.SetNumberOfValues(n)
                 for i in range(n):
                     data_array.SetValue(i,self.field.data[i])
                 poly.GetPointData().SetScalars(data_array)
 
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         self.map = m            
 
         m.SetInput(poly)
@@ -2581,13 +2580,13 @@ class VtkIrVis(IrregularDataVisualiser,VtkVis):
         #m.SetScalarModeToUsePointFieldData()
         #m.ColorByArrayComponent('z',0)
 
-        act = vtkActor()
+        act = vtk.vtkActor()
         act.SetMapper(m)
         act.GetProperty().SetLineWidth(self.graph.field_line_width)
         act.GetProperty().SetPointSize(self.point_size)
         act.GetProperty().SetOpacity(self.opacity)
         self.alist.append(act)
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
 class VtkSlice(VtkCmapVis_):
     """Base class for viewers of 2D data fields
@@ -2600,7 +2599,7 @@ class VtkSlice(VtkCmapVis_):
     def __init__(self, root, graph, obj, **kw):
         self.alist = []
         self.alist2d = []
-        self.debug = 1
+        self.debug = 0
 
         self.contour_colourmap_actor=None
         self.pcmap_colourmap_actor=None
@@ -2614,13 +2613,13 @@ class VtkSlice(VtkCmapVis_):
         """
 
         if self.debug: deb('convert slice data')
-        npts = Vector(field.dim[0],field.dim[1],1)
-        self.vtkgrid = vtkStructuredGrid()
+        npts = Scientific.Geometry.VectorModule.Vector(field.dim[0],field.dim[1],1)
+        self.vtkgrid = vtk.vtkStructuredGrid()
         self.vtkgrid.SetDimensions(npts[0],npts[1],1)
 
         # Pack the data into a float array
         bigsize = npts[0]*npts[1]
-        data_array = vtkFloatArray()
+        data_array = vtk.vtkFloatArray()
         data_array.SetNumberOfValues(bigsize)
         offset = 0
         if field.data:
@@ -2630,7 +2629,7 @@ class VtkSlice(VtkCmapVis_):
                     offset = offset+1
         self.vtkgrid.GetPointData().SetScalars(data_array)
         bigsize = npts[0]*npts[1]
-        points = vtkPoints()
+        points = vtk.vtkPoints()
         points.SetNumberOfPoints(bigsize)
         offset = 0
         grid = field.get_grid()
@@ -2643,11 +2642,11 @@ class VtkSlice(VtkCmapVis_):
         # projected version for 2D window.
         # this is a vtkStructuredPoints (ie image) dataset
 
-        self.proj_vtkpoints = vtkStructuredPoints()
+        self.proj_vtkpoints = vtk.vtkStructuredPoints()
         self.proj_vtkpoints.SetDimensions(npts[0],npts[1],1)
 
-        lenx = sqrt(field.axis[0]*field.axis[0])
-        leny = sqrt(field.axis[1]*field.axis[1])
+        lenx = math.sqrt(field.axis[0]*field.axis[0])
+        leny = math.sqrt(field.axis[1]*field.axis[1])
         lenmax = max(lenx,leny)
         spacex = lenx / (lenmax *float(npts[0]))
         spacey = leny / (lenmax *float(npts[1]))
@@ -2665,7 +2664,7 @@ class VtkSlice(VtkCmapVis_):
         # spacial position .. note the origin shift on z
         # that way contours appear in front of the colourmap
         #
-        self.proj_vtkpoints2 = vtkStructuredPoints()
+        self.proj_vtkpoints2 = vtk.vtkStructuredPoints()
         self.proj_vtkpoints2.SetDimensions(npts[0],npts[1],1)
         self.proj_vtkpoints2.SetSpacing(spacex,spacey,1.)
         self.proj_vtkpoints2.SetOrigin(ox,oy,0.001)
@@ -2689,10 +2688,10 @@ class VtkSlice(VtkCmapVis_):
 
     def make_2d_contour_map(self,vtkgrid):
         if self.debug: deb('make contour map')
-        s = vtkContourFilter()
+        s = vtk.vtkContourFilter()
         s.SetInput(vtkgrid)
         s.GenerateValues(self.ncont,self.min,self.max)
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         m.SetInput(s.GetOutput())
 
         m.SetScalarRange(self.contour_colourer.get_value("cmap_low"),
@@ -2714,7 +2713,7 @@ class VtkSlice(VtkCmapVis_):
             self.contour_colourmap_actor.add_colourmap_actor(
                 self.contour_colourer)
 
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.SetMapper(m)
         a.GetProperty().SetLineWidth(self.graph.field_line_width)
         self.alist.append(a)
@@ -2722,10 +2721,10 @@ class VtkSlice(VtkCmapVis_):
     def make_proj_2d_contour_map(self,vtkpoints):
 
         if self.debug: deb('make projected contour map')
-        s = vtkContourFilter()
+        s = vtk.vtkContourFilter()
         s.SetInput(vtkpoints)
         s.GenerateValues(self.ncont,self.min,self.max)
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         m.SetInput(s.GetOutput())
         
 #        m.SetScalarRange(self.contour_cmap_low,self.contour_cmap_high)
@@ -2736,7 +2735,7 @@ class VtkSlice(VtkCmapVis_):
         if lut:
             m.SetLookupTable(lut)
 
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.SetMapper(m)
         a.GetProperty().SetLineWidth(self.graph.field_line_width)
         self.alist2d.append(a)
@@ -2747,10 +2746,10 @@ class VtkSlice(VtkCmapVis_):
         of the dimensions for setting extent
         """
         if self.debug: deb('make plane')
-        ex = vtkStructuredGridGeometryFilter()
+        ex = vtk.vtkStructuredGridGeometryFilter()
         ex.SetInput(vtkgrid)
         ex.SetExtent(0,field.dim[0]-1,0,field.dim[1]-1,0,0)
-        m= vtkPolyDataMapper()
+        m= vtk.vtkPolyDataMapper()
         m.SetInput(ex.GetOutput())
 
         default_lut = m.GetLookupTable()
@@ -2771,7 +2770,7 @@ class VtkSlice(VtkCmapVis_):
                 self.pcmap_colourer)
 
 
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.GetProperty().SetOpacity(self.opacity)
         a.SetMapper(m)
         self.alist.append(a)
@@ -2782,10 +2781,10 @@ class VtkSlice(VtkCmapVis_):
         of the dimensions for setting extent
         """
         if self.debug: deb('make proj plane')
-        ex = vtkGeometryFilter()
+        ex = vtk.vtkGeometryFilter()
         ex.SetInput(vtkgrid)
         ex.SetExtent(0,field.dim[0]-1,0,field.dim[1]-1,0,0)
-        m= vtkPolyDataMapper()
+        m= vtk.vtkPolyDataMapper()
         m.SetInput(ex.GetOutput())
 
 #        m.SetScalarRange(self.pcmap_cmap_low,self.pcmap_cmap_high)
@@ -2796,18 +2795,18 @@ class VtkSlice(VtkCmapVis_):
         if lut:
             m.SetLookupTable(lut)
 
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.GetProperty().SetOpacity(self.opacity)
         a.SetMapper(m)
         self.alist2d.append(a)
 
     def make_2d_outline(self,vtkgrid):
         if self.debug: deb('make outline')
-        outline = vtkStructuredGridOutlineFilter()
+        outline = vtk.vtkStructuredGridOutlineFilter()
         outline.SetInput(vtkgrid)
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         m.SetInput(outline.GetOutput())
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.SetMapper(m)
         red = self.outline_rgb[0] / 255.0
         green = self.outline_rgb[1] / 255.0
@@ -2817,11 +2816,11 @@ class VtkSlice(VtkCmapVis_):
 
     def make_proj_2d_outline(self,vtkgrid):
         if self.debug: deb('make proj outline')
-        outline = vtkOutlineFilter()
+        outline = vtk.vtkOutlineFilter()
         outline.SetInput(vtkgrid)
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         m.SetInput(outline.GetOutput())
-        a = vtkActor()
+        a = vtk.vtkActor()
         a.SetMapper(m)
         red = self.outline_rgb[0] / 255.0
         green = self.outline_rgb[1] / 255.0
@@ -2866,13 +2865,13 @@ class VtkSlice(VtkCmapVis_):
 
     
 
-class VtkSliceVisualiser(SliceVisualiser,VtkSlice,VtkVis):
+class VtkSliceVisualiser(generic.visualiser.SliceVisualiser,VtkSlice,VtkVis):
 #class VtkSliceVisualiser(SliceVisualiser,VtkSlice,VtkCmapVis_):
 
     """Viewer for 2D data fields"""
 
     def __init__(self, root, graph, obj, **kw):
-        SliceVisualiser.__init__(self,root,graph,obj,**kw)
+        generic.visualiser.SliceVisualiser.__init__(self,root,graph,obj,**kw)
         VtkSlice.__init__(self,root,graph,obj,**kw)
         self.convert_data(self.field)
 
@@ -2890,14 +2889,14 @@ class VtkSliceVisualiser(SliceVisualiser,VtkSlice,VtkVis):
             if self.show_2d:
                 self.make_proj_2d_outline(self.proj_vtkpoints)
 
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
-class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
+class VtkCutSliceVisualiser(generic.visualiser.CutSliceVisualiser,VtkSlice,VtkVis):
 
     """Viewer for slicing 3D data fields"""
 
     def __init__(self, root, graph, obj, **kw):
-        CutSliceVisualiser.__init__(self,root,graph,obj,**kw)
+        generic.visualiser.CutSliceVisualiser.__init__(self,root,graph,obj,**kw)
         VtkSlice.__init__(self,root,graph,obj, **kw)
         self.convert_3d_data()
 
@@ -2934,7 +2933,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             # Use structured points (alias vtkImageData) if data is 
             # on the grid assumed by vtk
             #
-            self.vtkgrid3d = vtkStructuredPoints()
+            self.vtkgrid3d = vtk.vtkStructuredPoints()
             data = self.vtkgrid3d
             npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
@@ -2948,7 +2947,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
 
             bigsize = npts[0]*npts[1]*npts[2]
 
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfValues(bigsize)
 
             # The mess with the offsets is to correct for the fact that, although
@@ -2977,7 +2976,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             # use the Field get_grid method to generate an explicit
             # representation of the point array, render as vtkStructuredGrid
             #
-            print 'isov vis init'
+            #print 'isov vis init'
 
             nx = self.field.dim[0]
             if len(self.field.dim) > 1:
@@ -2991,18 +2990,19 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             else:
                 nz = 1
 
-            npts = Vector(nx,ny,nz)
+            npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
 
-            print 'dim',self.field.dim,'vec',npts
 
-            self.vtkgrid3d = vtkStructuredGrid()
+            #print 'dim',self.field.dim,'vec',npts
+
+            self.vtkgrid3d = vtk.vtkStructuredGrid()
             self.vtkgrid3d.SetDimensions(npts[0],npts[1],npts[2])
             #
             # Pack the data into a float arrat
             bigsize = npts[0]*npts[1]*npts[2]
             # Not clear if this test is right!!
             if self.field.data:
-                data_array = vtkFloatArray()
+                data_array = vtk.vtkFloatArray()
                 data_array.SetNumberOfValues(bigsize)
                 offset = 0
                 for k in range(npts[2]):
@@ -3011,16 +3011,16 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
                             data_array.SetValue(offset,self.field.data[offset])
                             offset = offset+1
 
-                print 'set scalars'
+                #print 'set scalars'
                 self.vtkgrid3d.GetPointData().SetScalars(data_array)
 
             bigsize = npts[0]*npts[1]*npts[2]
-            points = vtkPoints()
+            points = vtk.vtkPoints()
             points.SetNumberOfPoints(bigsize)
             offset = 0
-            print 'getting grid'
+            #print 'getting grid'
             grid = self.field.get_grid()
-            print 'grid done'
+            #print 'grid done'
 
             for k in range(npts[2]):
                 for j in range(npts[1]):
@@ -3028,7 +3028,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
                         points.SetPoint(offset,grid[offset])
                         offset = offset+1
 
-            print 'setPoints'
+            #print 'setPoints'
             self.vtkgrid3d.SetPoints(points)
 
 
@@ -3054,16 +3054,16 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             # cutActor.SetMapper(cutMapper)
             pass
         else:
-            probe = vtkProbeFilter()
+            probe = vtk.vtkProbeFilter()
             probe.SetSource(self.vtkgrid3d)
             probe.SetInput(self.vtkgrid)
 
             # Generate a normalised XY representation
             # twice, to support overlay of contours and pseudocolourmaps
-            self.proj_interp = vtkStructuredPoints()
+            self.proj_interp = vtk.vtkStructuredPoints()
             self.proj_interp.SetDimensions(self.cut_plane.dim[0],self.cut_plane.dim[1],1)
-            lenx = sqrt(self.cut_plane.axis[0]*self.cut_plane.axis[0])
-            leny = sqrt(self.cut_plane.axis[1]*self.cut_plane.axis[1])
+            lenx = math.sqrt(self.cut_plane.axis[0]*self.cut_plane.axis[0])
+            leny = math.sqrt(self.cut_plane.axis[1]*self.cut_plane.axis[1])
             lenmax = max(lenx,leny)
             spacex = lenx / (lenmax *float(self.cut_plane.dim[0]-1))
             spacey = leny / (lenmax *float(self.cut_plane.dim[1]-1))
@@ -3075,7 +3075,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
                 deb('spacings'+str([spacex,spacey]))
                 deb('origin  '+str([ox,oy]))
             # the second one to place contours above the plane
-            self.proj_interp2 = vtkStructuredPoints()
+            self.proj_interp2 = vtk.vtkStructuredPoints()
             self.proj_interp2.SetDimensions(self.cut_plane.dim[0],self.cut_plane.dim[1],1)
             self.proj_interp2.SetSpacing(spacex,spacey,1.)
             self.proj_interp2.SetOrigin(ox,oy,0.01)
@@ -3084,6 +3084,7 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             #interp = vtkStructuredGrid()
             #probe.SetOutput(interp)
             interp = probe.GetOutput()
+
             # since the interp object is not actually feeding through
             # to the pipeline, run an update so there is some data
             # there for us to copy 
@@ -3105,10 +3106,10 @@ class VtkCutSliceVisualiser(CutSliceVisualiser,VtkSlice,VtkVis):
             if self.show_2d:
                 self.make_proj_2d_outline(self.proj_interp)
 
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
 
-class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
+class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
 
     """Viewer for visualising vector fields
     Includes ability to sample using internal 2D slice or a
@@ -3117,7 +3118,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
     def __init__(self, root, graph, obj, **kw):
 
-        VectorVisualiser.__init__(self,root,graph,obj,**kw)
+        generic.visualiser.VectorVisualiser.__init__(self,root,graph,obj,**kw)
 
         #jmht don't call this here - only call when needed
         self.vtkgrid3d=None
@@ -3162,7 +3163,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             # Use structured points (alias vtkImageData) if data is 
             # on the grid assumed by vtk
             #
-            self.vtkgrid3d = vtkStructuredPoints()
+            self.vtkgrid3d = vtk.vtkStructuredPoints()
             data = self.vtkgrid3d
             npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
@@ -3176,7 +3177,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
             bigsize = npts[0]*npts[1]*npts[2]
 
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfValues(bigsize)
 
             # The mess with the offsets is to correct for the fact that, although
@@ -3225,9 +3226,9 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 else:
                     nz = 1
 
-                npts = Vector(nx,ny,nz)
-                print 'dim',field.dim,'vec',npts
-                data = vtkStructuredGrid()
+                npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
+                #print 'dim',field.dim,'vec',npts
+                data = vtk.vtkStructuredGrid()
                 data.SetDimensions(npts[0],npts[1],npts[2])
                 #
                 # Pack the data into a float arrat
@@ -3239,7 +3240,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
                 # Build points array
                 bigsize = npts[0]*npts[1]*npts[2]
-                points = vtkPoints()
+                points = vtk.vtkPoints()
                 points.SetNumberOfPoints(bigsize)
                 offset = 0
                 #print 'getting grid', field
@@ -3259,13 +3260,13 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
                 # Iregular Case
 
-                data  = vtkPolyData()
+                data  = vtk.vtkPolyData()
 
                 #print "getting grid",self.field
                 self.field.list()
 
                 gridpts = self.field.get_grid()
-                points = vtkPoints()
+                points = vtk.vtkPoints()
                 n = len(gridpts)
                 points.SetNumberOfPoints(n)
                 i = 0
@@ -3289,7 +3290,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 ##                 poly.SetPoints(p)
 ##                 poly.SetVerts(v)
                     
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfComponents(3)
             data_array.SetNumberOfTuples(bigsize)
 
@@ -3316,14 +3317,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
         gridType = refGrid.GetClassName()
         if gridType == 'vtkStructuredGrid':
-            print "reducing resolution for vtkStructuredGrid by %d" % factor
+            #print "reducing resolution for vtkStructuredGrid by %d" % factor
             dim = refGrid.GetDimensions()
-            eg = vtkExtractGrid()
+            eg = vtk.vtkExtractGrid()
             eg.SetSampleRate(factor,factor,factor)
             eg.SetInput(refGrid)
             newGrid = eg.GetOutput()
         elif gridType == 'vtkUnstructuredGrid':
-            print "reducing resolution for vtkUnstructuredGrid by %d" % factor
+            #print "reducing resolution for vtkUnstructuredGrid by %d" % factor
 
             # This feels like taking a sledgehammer to a nut, but while I don't know
             # any better, for unstructured grids, we manually go through the points and
@@ -3332,10 +3333,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             # Is also a bit cludgy as we use the InsertNext method to add data/points
             # instead of working out the size and them setting the values
             # no idea if this has much of an impact on performance
-            newGrid = vtkUnstructuredGrid()
+            newGrid = vtk.vtkUnstructuredGrid()
 
             # Thin the points
-            newpoints = vtkPoints()
+            newpoints = vtk.vtkPoints()
             oldpoints = refGrid.GetPoints()
             npoints = oldpoints.GetNumberOfPoints()
             for i in range( 0, npoints, factor ):
@@ -3350,8 +3351,8 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             if oldScalars:
                 #print "copying scalars"
                 dtype =  oldScalars.GetDataType()
-                if dtype == VTK_FLOAT:
-                    newScalars = vtkFloatArray()
+                if dtype == vtk.VTK_FLOAT:
+                    newScalars = vtk.vtkFloatArray()
                 else:
                     raise Exception,"NEED TO ADD MORE DATA TYPES"
                 newScalars.SetNumberOfComponents(1)
@@ -3364,8 +3365,8 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             if oldVectors:
                 #print "copying vectors ",oldVectors
                 dtype =  oldVectors.GetDataType()
-                if dtype == VTK_FLOAT:
-                    newVectors = vtkFloatArray()
+                if dtype == vtk.VTK_FLOAT:
+                    newVectors = vtk.vtkFloatArray()
                 else:
                     raise Exception,"NEED TO ADD MORE DATA TYPES"
                 
@@ -3399,15 +3400,15 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             mygrid = self.get_grid()
 
         # If we're sampling at all points just return it
-        if self.sample_grid == VECTOR_SAMPLE_ALL:
+        if self.sample_grid == generic.visualiser.VECTOR_SAMPLE_ALL:
             return mygrid
 
         # sample the grid.
-        print "vtkgraph.py vector get_sample_grid"
+        #print "vtkgraph.py vector get_sample_grid"
         field = self.sample_grid
         #print "grid is ",field.list()
         #if self.debug: deb('convert sample data')
-        self.vtk_sample_grid = vtkUnstructuredGrid()
+        self.vtk_sample_grid = vtk.vtkUnstructuredGrid()
         # Pack the data into a float array
         #bigsize = sample_grid.npts[0]*npts[1]
 
@@ -3417,14 +3418,14 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         bigsize = len(grid)
         offset = 0
         if field.data:
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfValues(bigsize)
             for i in range(bigsize):
                 data_array.SetValue(i,field.data[i])
 
             self.vtk_sample_grid.GetPointData().SetScalars(data_array)
 
-        points = vtkPoints()
+        points = vtk.vtkPoints()
         points.SetNumberOfPoints(bigsize)
 
         for i in range(bigsize):
@@ -3440,7 +3441,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             print self.vtk_sample_grid
 
         # The grid is being sampled
-        probe = vtkProbeFilter()
+        probe = vtk.vtkProbeFilter()
         #probe.SetSource(self.vtkgrid3d)
         probe.SetSource(mygrid)
         probe.SetInput(self.vtk_sample_grid)
@@ -3472,9 +3473,9 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         # copy
         gridType = source.GetClassName()
         if gridType == 'vtkStructuredGrid':
-            newGrid=vtkStructuredGrid()
+            newGrid=vtk.vtkStructuredGrid()
         elif gridType == 'vtkUnstructuredGrid':
-            newGrid=vtkUnstucturedGrid()
+            newGrid=vtk.vtkUnstucturedGrid()
         else:
             raise Exception,"get_grid unknown gridType: %s" % gridType
         
@@ -3495,7 +3496,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         if obj:
             #bigsize = self.vtkgrid3d.GetPoints().GetNumberOfPoints()
             bigsize = grid.GetPoints().GetNumberOfPoints()
-            data_array = vtkFloatArray()
+            data_array = vtk.vtkFloatArray()
             data_array.SetNumberOfValues(bigsize)
             for offset in range(bigsize):
                 data_array.SetValue(offset,obj.data[offset])
@@ -3537,7 +3538,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         if self.show_streamarrows:
             self._build_streamarrows()
             
-        self.status = BUILT
+        self.status = generic.visualiser.BUILT
 
     def _build_hedgehog(self):
         """Display the hedgeghog representation"""
@@ -3549,7 +3550,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
         # We create a simple pipeline to display the data.
         # we could do with applying the truncation at some stage
-        hedgehog = vtkHedgeHog()
+        hedgehog = vtk.vtkHedgeHog()
         if self.debug:
             print 'Source'
             print source
@@ -3558,9 +3559,9 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         #hedgehog.SetLineWidth(2.0)
         if self.debug:
             print hedgehog
-        m = vtkPolyDataMapper()
+        m = vtk.vtkPolyDataMapper()
         m.SetInput(hedgehog.GetOutput())
-        hedgehogActor = vtkActor()
+        hedgehogActor = vtk.vtkActor()
         hedgehogActor.SetMapper(m)
 
         # Get the default lookup table as we need to pass this to the
@@ -3615,10 +3616,10 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         #if not self.orientedglyphs_grid:
         source = self.get_sample_grid()
 
-        cone = vtkConeSource()
+        cone = vtk.vtkConeSource()
         cone.SetResolution(10)
 
-        arrow = vtkGlyph3D()
+        arrow = vtk.vtkGlyph3D()
         arrow.SetInput(source)
         arrow.SetSource(cone.GetOutput())
         arrow.SetScaleFactor(self.orientedglyph_scale)
@@ -3627,9 +3628,9 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         #make range current 
         arrow.Update() 
 
-        m=vtkPolyDataMapper()
+        m=vtk.vtkPolyDataMapper()
         m.SetInput(arrow.GetOutput())
-        vectorActor = vtkActor()
+        vectorActor = vtk.vtkActor()
         vectorActor.SetMapper(m)
 
         # Get the default lookup table as we need to pass this to the
@@ -3684,16 +3685,16 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         # We use a rake to generate a series of streamline starting points
         # scattered along a line. Each point will generate a streamline.
         if 0:
-            rake=vtkLineSource()
+            rake=vtk.vtkLineSource()
             rake.SetPoint1(-1,-1,-2)
             rake.SetPoint2(1,1,2)
             rake.SetResolution(41)
-            rakeMapper=vtkPolyDataMapper()
+            rakeMapper=vtk.vtkPolyDataMapper()
             rakeMapper.SetInput(rake.GetOutput())
-            rakeActor=vtkActor()
+            rakeActor=vtk.vtkActor()
             rakeActor.SetMapper(rakeMapper)        
 
-        sl=vtkStreamLine()
+        sl=vtk.vtkStreamLine()
 
         # Get the grid with all the data
         source=self.get_grid()
@@ -3712,7 +3713,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         #sl.SetSource(rake.GetOutput())
         
         #integ=vtkRungeKutta45()
-        integ=vtkRungeKutta4()
+        integ=vtk.vtkRungeKutta4()
         #integ=vtkRungeKutta2()
         sl.SetIntegrator(integ)
 
@@ -3721,15 +3722,15 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         sl.SetIntegrationStepLength(self.streamline_integration_step_length)
         sl.SetStepLength(self.streamline_step_length)
 
-        if self.streamline_integration_direction == STREAM_BOTH:
+        if self.streamline_integration_direction == generic.visualiser.STREAM_BOTH:
             sl.SetIntegrationDirectionToIntegrateBothDirections()
-        elif self.streamline_integration_direction == STREAM_FORWARD:
+        elif self.streamline_integration_direction == generic.visualiser.STREAM_FORWARD:
             sl.SetIntegrationDirectionToForward()
-        elif self.streamline_integration_direction == STREAM_BACKWARD:
+        elif self.streamline_integration_direction == generic.visualiser.STREAM_BACKWARD:
             sl.SetIntegrationDirectionToBackward()
 
 
-        streamlineMapper=vtkPolyDataMapper()
+        streamlineMapper=vtk.vtkPolyDataMapper()
         # Get the default lookup table for the scalarbar actor
         default_lut = streamlineMapper.GetLookupTable()
 
@@ -3765,12 +3766,12 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
 
         if lut:
             streamlineMapper.SetLookupTable(lut)
-            
-        if self.streamline_display == STREAM_LINES:
+
+        if self.streamline_display == generic.visualiser.STREAM_LINES:
 
             streamlineMapper.SetInput(sl.GetOutput())
 
-            streamlineActor=vtkActor()
+            streamlineActor=vtk.vtkActor()
 
             # Colour if using uniform
             if cscheme == 'Uniform':
@@ -3781,30 +3782,30 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             
             streamlineActor.SetMapper(streamlineMapper)
 
-        elif self.streamline_display == STREAM_TUBES:
+        elif self.streamline_display == generic.visualiser.STREAM_TUBES:
 
             # The tube is wrapped around the generated streamline. By varying the
             # radius by the inverse of vector magnitude, we are creating a tube
             # whose radius is proportional to mass flux (in incompressible flow).
-            streamTube = vtkTubeFilter()
+            streamTube = vtk.vtkTubeFilter()
             streamTube.SetInput(sl.GetOutput())
             streamTube.SetRadius(0.02)
             streamTube.SetNumberOfSides(12)
             #streamTube.SetVaryRadiusToVaryRadiusByVector()
             streamlineMapper.SetInput(streamTube.GetOutput())
 
-            streamlineActor = vtkActor()
+            streamlineActor = vtk.vtkActor()
             streamlineActor.SetMapper(streamlineMapper)
             streamlineActor.GetProperty().BackfaceCullingOn()
 
-        elif self.streamline_display == STREAM_SURFACE:            
+        elif self.streamline_display == generic.visualiser.STREAM_SURFACE:            
 
             # These streamlines are then fed to the vtkRuledSurfaceFilter
             # which stitches  the lines together to form a surface.
             # Note the SetOnRation method. It turns on every other strip that
             # the filter generates (only when multiple lines are input).
 
-            scalarSurface=vtkRuledSurfaceFilter()
+            scalarSurface=vtk.vtkRuledSurfaceFilter()
             scalarSurface.SetInput(sl.GetOutput())
             scalarSurface.SetOffset(0)
             scalarSurface.SetOnRatio(2)
@@ -3813,7 +3814,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
             scalarSurface.SetDistanceFactor(30)
 
             streamlineMapper.SetInput(scalarSurface.GetOutput())
-            streamlineActor=vtkActor()
+            streamlineActor=vtk.vtkActor()
             streamlineActor.SetMapper(streamlineMapper)
         else:
             print 'BAD DISPLAY FLAG'
@@ -3834,37 +3835,37 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         if self.streamarrow_thin_points > 1:
             sample = self.thin_grid(sample,factor=self.streamarrow_thin_points)
             
-        sa=vtkStreamPoints()
+        sa=vtk.vtkStreamPoints()
         sa.SetInput(source)
         sa.SetSource(sample)
 
-        integ=vtkRungeKutta4()
-        sa.SetIntegrator(integ)
+        integ=vtk.vtkRungeKutta4()
+        sa.SetIntegrator(integ) 
         sa.SetMaximumPropagationTime(self.streamarrow_propagation_time)
         sa.SetIntegrationStepLength(self.streamarrow_integration_step_length)
         sa.SetTimeIncrement(self.streamarrow_time_increment)
-        if self.streamarrow_integration_direction == STREAM_BOTH:
+        if self.streamarrow_integration_direction == generic.visualiser.STREAM_BOTH:
             sa.SetIntegrationDirectionToIntegrateBothDirections()
-        elif self.streamarrow_integration_direction == STREAM_FORWARD:
+        elif self.streamarrow_integration_direction == generic.visualiser.STREAM_FORWARD:
             sa.SetIntegrationDirectionToForward()
-        elif self.streamarrow_integration_direction == STREAM_BACKWARD:
+        elif self.streamarrow_integration_direction == generic.visualiser.STREAM_BACKWARD:
             sa.SetIntegrationDirectionToBackward()
 
         # Display arrows or cones
         if self.streamarrow_type=='Arrow':
-            arrow = vtkArrowSource()
+            arrow = vtk.vtkArrowSource()
             arrow.SetTipResolution(30)
             arrow.SetShaftResolution(30)
             arrow.SetTipRadius(0.2) #0.1
             arrow.SetTipLength(0.7) #0.35
             arrow.SetShaftRadius(0.06) #0.03
         elif self.streamarrow_type=='Cone':
-            arrow = vtkConeSource()
+            arrow = vtk.vtkConeSource()
             arrow.SetResolution(30)
         else:
             print "STREAMARROW_TYPE UNKNOWN TYPE!: ",self.streamarrow_type
 
-        glyph = vtkGlyph3D()
+        glyph = vtk.vtkGlyph3D()
         glyph.SetInput(sa.GetOutput())
         glyph.SetSource(arrow.GetOutput())
 
@@ -3878,7 +3879,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
         glyph.SetScaleFactor(self.streamarrow_size)
 
         # Sort out the colouring
-        m=vtkPolyDataMapper()
+        m=vtk.vtkPolyDataMapper()
         
         # Get the default lookup table as we need to pass this to the
         # scalarbar actor
@@ -3918,7 +3919,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 self.streamarrows_colourmap_actor.add_colourmap_actor(
                     self.streamarrows_colourer)
 
-        streamArrowActor=vtkActor()
+        streamArrowActor=vtk.vtkActor()
         # Colour if using uniform
         if cscheme == 'Uniform':
             # Convert from 0-255 to 0-1
@@ -4083,7 +4084,7 @@ class VtkVectorVisualiser(VectorVisualiser,VtkSlice,VtkVis):
                 self.streamarrows_visible = 0
 
 
-class VtkVibrationVisualiser(VibrationVisualiser,VtkMoleculeVisualiser):
+class VtkVibrationVisualiser(generic.visualiser.VibrationVisualiser,VtkMoleculeVisualiser):
 
     """Visualiser for molecular vibrations.
     Uses all low-level methods of the vtk molvis, for vibration
@@ -4093,13 +4094,13 @@ class VtkVibrationVisualiser(VibrationVisualiser,VtkMoleculeVisualiser):
 
         # this will assign self.vib & self.object to the visualisation object
         # and self.molecule to a copy to be visualised 
-        apply(VibrationVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkMoleculeVisualiser.__init__, (self,root,graph,self.molecule), kw)
+        generic.visualiser.VibrationVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkMoleculeVisualiser.__init__(self,root,graph,self.molecule,**kw)
 
         # This hack is needed to restore data overwritten
         self.title = 'Animate ' + self.vib.title
 
-class VtkVibrationSetVisualiser(VibrationSetVisualiser,VtkMoleculeVisualiser):
+class VtkVibrationSetVisualiser(generic.visualiser.VibrationSetVisualiser,VtkMoleculeVisualiser):
 
     """Visualiser for a set of molecular vibrations.
     Uses all low-level methods of the vtk molvis, for vibration
@@ -4109,23 +4110,23 @@ class VtkVibrationSetVisualiser(VibrationSetVisualiser,VtkMoleculeVisualiser):
 
         # this will assign self.vib & self.object to the visualisation object
         # and self.molecule to a copy to be visualised 
-        apply(VibrationSetVisualiser.__init__, (self,root,graph,obj), kw)
-        apply(VtkMoleculeVisualiser.__init__, (self,root,graph,self.molecule), kw)
+        generic.visualiser.VibrationSetVisualiser.__init__(self,root,graph,obj,**kw)
+        VtkMoleculeVisualiser.__init__(self,root,graph,self.molecule,**kw)
 
         # This hack is needed to restore data overwritten
         self.title = 'Animate ' + self.vib.title
 
-class VtkTrajectoryVisualiser(TrajectoryVisualiser,VtkMoleculeVisualiser):
+class VtkTrajectoryVisualiser(generic.visualiser.TrajectoryVisualiser,VtkMoleculeVisualiser):
     """Visualiser for trajectorues
     Uses all low-level methods of the vtk molvis, for trajectory
     specific code see TrajectoryVisualiser implementation (graph/visualiser.py)
     """
     def __init__(self, root, graph, obj, **kw):
-        TrajectoryVisualiser.__init__(self,root,graph,obj, **kw)
+        generic.visualiser.TrajectoryVisualiser.__init__(self,root,graph,obj, **kw)
         VtkMoleculeVisualiser.__init__(self,root,graph,self.molecule, **kw)
         self.title = 'trajectory view'
 
-class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
+class VtkMoldenWfnVisualiser(generic.visualiser.MoldenWfnVisualiser,VtkOrbitalVisualiser):
 
     """Visualiser for wavefunction (held as a molden-compatible
     output file, obj is just a string holding the name of the file)
@@ -4134,7 +4135,7 @@ class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
 
         self.alist = []
         self.alist2d = []
-        apply(MoldenWfnVisualiser.__init__, (self,root,graph,obj), kw)
+        generic.visualiser.MoldenWfnVisualiser.__init__(self,root,graph,obj,**kw)
 
 
     def _build(self,**kw):
@@ -4145,7 +4146,7 @@ class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
         if self.compute_grid():
             self.convert_data()
 
-        print 'plot height', self.height
+        #print 'plot height', self.height
         VtkOrbitalVisualiser._build(self)
 
     # this group of methods can act on the particular embedded visualiser
@@ -4155,7 +4156,7 @@ class VtkMoldenWfnVisualiser(MoldenWfnVisualiser,VtkOrbitalVisualiser):
 class VtkColourMap(ColourMap):
 
     def _build(self):
-        t = vtkLookupTable()
+        t = vtk.vtkLookupTable()
         t.SetNumberOfTableValues(len(self.colours))
         ix = 0
         for i in range(len(self.colours)):
