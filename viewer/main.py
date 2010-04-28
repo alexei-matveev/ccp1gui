@@ -3582,9 +3582,10 @@ you would like to extract the frame from."""
         if not self.getfileIO:
             self.getfileIO = GetFileIO()
 
-        # This bust under linux as the menu gets too long
-        #ftypes = self.getfileIO.GetOutputFiletypesAsTuple()
-        ftypes = {}
+        # This (was?) bust under linux as the menu gets too long
+        #ftypes = {}
+        ftypes = self.getfileIO.GetOutputFiletypesAsTuple()
+
         filepath = tkFileDialog.asksaveasfilename(
             initialfile = mol.name,
             initialdir = paths['user'],
@@ -3604,10 +3605,11 @@ you would like to extract the frame from."""
 
         if not format:
             # User probably canced
-            print "### User cancelled write"
+            #print "### User cancelled write"
             return None
 
-        print 'ATTEMPT WRITE',filepath,format
+        if self.debug: print 'ATTEMPT WRITE',filepath,format
+
         # See if we have a reader suitable for the selected file
         writer = self.getfileIO.GetWriter( dataobj=mol, filepath=filepath, format=format )
         if not writer:
