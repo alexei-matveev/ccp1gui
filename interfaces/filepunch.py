@@ -23,27 +23,42 @@
 #    at once - this was because list.pop(0) turned 
 #    out to be too slow
 #   
-from Numeric import *
-from objects.zme import *
-from math  import *
-from objects.zmatrix import *
-from objects.field import *
-from objects.matrix import *
-from objects.vibfreq import *
-from objects.list import *
 
-from fileio import FileIO
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    import os,sys
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
-#from objects.units import *
-au_to_angstrom = 0.529177
-angstrom_to_au = 1.0/au_to_angstrom
-
-# From Konrad Hinsens scientific python
-from Scientific.Geometry.VectorModule import *
 
 import copy
 import string
 import os
+
+import fileio
+import objects.zmatrix
+import objects.field
+import objects.vibfreq
+
+# From Konrad Hinsens scientific python
+import Scientific.Geometry.VectorModule
+import Numeric
+
+# The testing for this file is contained within it at the bottom
+import unittest
+
+
+# The following imports are either not needed or don't trigger
+# any errors with the current unitttest cases
+#from objects.list import *
+#import objects.zme
+#from math  import *
+#from objects.units import *
+
+
+au_to_angstrom = 0.529177
+angstrom_to_au = 1.0/au_to_angstrom
 
 End_of_Block = 1
 End_of_Complex = 2
@@ -51,13 +66,13 @@ End_of_File = 3
 Read_Error = 4
 Bad_Position = 5
 
-class PunchIO(FileIO):
+class PunchIO(fileio.FileIO):
     """Load result objects from GAMESS-UK format punchfiles"""
     def __init__(self,**kw):
 
         self.debug=1
         # Initialise Base Class
-        FileIO.__init__(self,**kw)
+        fileio.FileIO.__init__(self,**kw)
 
         self.canRead = True
         self.canWrite = ['Zmatrix', 'Indexed']
@@ -202,8 +217,6 @@ class PunchIO(FileIO):
       
         if self.debug:
             print 'read_object Obj=',object,'Subbl=',subblocks
-      
-        if self.debug:
             print 'read_object header', self.block_name
 
         if subblocks:
@@ -219,8 +232,8 @@ class PunchIO(FileIO):
             if self.readers[self.block_name]:
                 if self.debug:
                     print 'calling known reader for ', self.block_name
-                #try:
-                print self.block_name
+                    print self.block_name
+
                 self.readers[self.block_name](f,object)
                 #except Exception,e:
                 if 0:
@@ -246,7 +259,7 @@ class PunchIO(FileIO):
                 #tt = Indexed()
                 # We use the zmatrix derived-class here, so we can use zmatrix tools
                 # to edit it 
-                tt = Zmatrix()
+                tt = objects.zmatrix.Zmatrix()
                 #tt.title='unknown'
                 tt.title = self.block_name
             # This is a hack so the VibFreq instances have a reference structure
@@ -272,7 +285,7 @@ class PunchIO(FileIO):
         elif self.block_name == 'data' or self.block_name == 'field':
             if self.debug:
                 print 'New Field'
-            tt = Field()
+            tt = objects.field.Field()
             tt.title='unknown'
             # Start with an irregular grid 
             del tt.dim 
@@ -453,7 +466,7 @@ class PunchIO(FileIO):
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
             #p = Atom()
-            p = ZAtom()
+            p = objects.zmatrix.ZAtom()
             line = f.readline()
             rr = string.split(line)
             try:
@@ -579,7 +592,7 @@ class PunchIO(FileIO):
         for i in range(0,self.records):
             line = f.readline()
             rr = string.split(line)
-            tt.cell.append(Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]))
+            tt.cell.append(Scientific.Geometry.VectorModule.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]))
 
     def read_title(self,f,tt):
         if tt:
@@ -668,12 +681,12 @@ class PunchIO(FileIO):
                 rr.append(txt[50:60])
 
             if i == 0:
-                brik.origin_corner = Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ])
-                brik.mapping.append(Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.origin_corner = Scientific.Geometry.VectorModule.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ])
+                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
             elif i == 1:
-                brik.mapping.append(Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
             elif i == 2:
-                brik.mapping.append(Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
 
         if self.debug:
             print 'origin', brik.origin
@@ -851,7 +864,7 @@ class PunchIO(FileIO):
                 v = float(txt[j])
                 v = v * fac
                 t.append(v)
-            brik.points.append(Vector(t))
+            brik.points.append(Scientific.Geometry.VectorModule.Vector(t))
 
 ##      d = [ dim[0]*3 ]
 ##      brik.points = zeros(d,Float)
@@ -895,7 +908,7 @@ class PunchIO(FileIO):
             print self.block_name , self.records, self.index
 
         if len(self.normal) == 0:
-            vs = VibFreqSet()
+            vs = objects.vibfreq.VibFreqSet()
             if not self.fragment:
                 raise AttributeError,"Error in read_normal: No molecular fragment to serve as a reference!"
             
@@ -909,7 +922,7 @@ class PunchIO(FileIO):
         disp = []
         for i in range(0,self.records):
             rr = string.split(f.readline())
-            vec = Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
+            vec = Scientific.Geometry.VectorModule.Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
             disp.append(vec)
 
         v = self.vfs.add_vib(disp)
@@ -1236,20 +1249,52 @@ class PunchIO(FileIO):
         while 1:
             junk = f.readline()
 
+
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+class PunchIOTestCases(unittest.TestCase):
+    
+    def testImport1(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"caffeine.pun")
+        #print objs
+        
+    def testImport2(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"ethane_vib.pun")
+        #print objs
+    
+    def testImport3(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"ethane_vib.pun")
+        self.assertTrue( isinstance(objs[1], objects.vibfreq.VibFreqSet) )
+
+    def testImport4(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"gamess_surf.pun")
+        self.assertTrue( isinstance(objs[1], objects.field.Field) )
+
+    def testImport5(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"gamess_vect3d.pun")
+        self.assertTrue( isinstance(objs[2], objects.field.Field) )
+
+    def testImport6(self):
+        p = PunchIO()
+        objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"gamess_vect.pun")
+        #self.assertTrue( isinstance(objs[1], objects.vibfreq.VibFreqSet) )
+
+
 if __name__ == "__main__":
 
-    p = PunchIO()
-    p.ReadFile("../../new1.pun")
-
-    sys.exit(0)
-    m = p.objects[0]
-    # m.reindex()
-    m.list()
-    from Numeric import array
-    m.array = array([m.data[0:3],m.data[3:6],m.data[6:]])
-    print m.array
-    from LinearAlgebra import inverse, eigenvectors
-    # print inverse(m.array)
-    eval,evec = eigenvectors(m.array)
-    print eval
-    print evec
+    unittest.main()
+    #myTestSuite = unittest.TestSuite()
+    #myTestSuite.addTest(PunchIOTestCases("testImport1"))
+    #runner = unittest.TextTestRunner()
+    #runner.run(myTestSuite)
