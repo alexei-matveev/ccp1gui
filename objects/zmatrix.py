@@ -1735,7 +1735,7 @@ class Zmatrix(Indexed):
         Box3 = {}
         boxSize=2
 
-        print 'Pass 0'
+        #print 'Pass 0'
         rmax = 0.0
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1746,7 +1746,7 @@ class Zmatrix(Indexed):
 
         boxSize=2*rmax*scale+toler+0.1
 
-        print 'Pass 0','box size=',boxSize
+        #print 'Pass 0','box size=',boxSize
 
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1764,7 +1764,7 @@ class Zmatrix(Indexed):
         for key in Box1.keys():
             Box3[key] = self._permBox(key)
 
-        print 'Pass 2'
+        #print 'Pass 2'
         for i in range(len(self.atom)):
             if not i % 50:
                 print '....' + str(i),
@@ -1805,7 +1805,7 @@ class Zmatrix(Indexed):
         Box1 = {}
         Box3 = {}
 
-        print 'Pass 0'
+        #print 'Pass 0'
         rmax = 0.0
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1814,7 +1814,7 @@ class Zmatrix(Indexed):
                 rmax = atomi.rad
 
         boxSize=2*rmax*contact_scale+contact_toler+0.1
-        print 'Pass 1'
+        #print 'Pass 1'
 
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1838,7 +1838,7 @@ class Zmatrix(Indexed):
         newlist = []
         for i in list:
             newlist.append(i+1)
-        print 'Pass 2', newlist
+        #print 'Pass 2', newlist
 
         exclusions = {}
         for a in self.atom:
@@ -2000,7 +2000,7 @@ class Zmatrix(Indexed):
         #    self.atom[b.index[1]].conn.append(self.atom[b.index[0]])
         #self.reindex()
 
-        print 'After rebuilding atom.conn'
+        #print 'After rebuilding atom.conn'
         self.list()
 
         self.recycle = []
@@ -2010,7 +2010,7 @@ class Zmatrix(Indexed):
                 print 'del list'
                 self.recycle.append(a)
 
-        print 'list of Xs to be recycled',self.recycle
+        #print 'list of Xs to be recycled',self.recycle
         ###self.delete_list(dels)
 
         # disconnect the recycle list
@@ -2025,7 +2025,7 @@ class Zmatrix(Indexed):
                 print 'Internal error.. unexpected connectivity for X-atom'
 
         self.reindex()
-        print 'After processing recycle'
+        #print 'After processing recycle'
         self.list()
 
         for a in self.atom:
@@ -2035,8 +2035,8 @@ class Zmatrix(Indexed):
             else:
                 print ''
 
-        print 'len of conn',len(atom.conn)
-        print 'conn',atom.conn
+        #print 'len of conn',len(atom.conn)
+        #print 'conn',atom.conn
 
         self.irecyc = 0
 
@@ -2732,7 +2732,7 @@ class Zmatrix(Indexed):
         for a in self.atom:
             a.conn = []
 
-        print 'len of bond',len(self.bond)
+        #print 'len of bond',len(self.bond)
 
         for b in self.bond:
             self.atom[b.index[0]].conn.append(self.atom[b.index[1]])
