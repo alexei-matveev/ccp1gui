@@ -54,7 +54,7 @@ import Tkinter
 from Tkinter import *
 import math, os, sys
 
-from vtk import *
+import vtk
 
 # jmht - problem with how tk objects are handled in Python 2.3:
 # http://www.vtk.org/pipermail/vtkusers/2008-September/096743.html
@@ -68,7 +68,7 @@ from vtk import *
 # which corresponds to vtk 5.4
 
 py_version = sys.version_info
-vtk_version = map(int,vtkVersion.GetVTKVersion().split('.'))
+vtk_version = map(int,vtk.vtkVersion.GetVTKVersion().split('.'))
 
 if (py_version[0] >= 2 and py_version[1] >= 6) and (vtk_version[0] <= 5 and vtk_version[1] <= 4):
     from viewer.vtkLoadPythonTkWidgets import vtkLoadPythonTkWidgets
@@ -90,7 +90,7 @@ class vtkTkRenderWidget(Tkinter.Widget):
         try: # check to see if a render window was specified
             renderWindow = kw['rw']
         except KeyError:
-            renderWindow = vtkRenderWindow()
+            renderWindow = vtk.vtkRenderWindow()
 
         try:  # was a stereo rendering context requested?
             if kw['stereo']:
@@ -110,10 +110,10 @@ class vtkTkRenderWidget(Tkinter.Widget):
         self._ViewportCenterX = 0
         self._ViewportCenterY = 0
         
-        self._Picker = vtkPointPicker()
+        self._Picker = vtk.vtkPointPicker()
         #self._Picker.SetTolerance(0.02)
         self._PickedAssembly = None
-        self._PickedProperty = vtkProperty()
+        self._PickedProperty = vtk.vtkProperty()
         self._PickedProperty.SetColor(1,0,0)
         self._PrePickedProperty = None
         
@@ -233,7 +233,7 @@ class vtkTkRenderWidget(Tkinter.Widget):
 
     def GetRenderWindow(self):
         addr = self.tk.call(self._w, 'GetRenderWindow')[5:]
-        return vtkRenderWindow('_%s_vtkRenderWindow_p' % addr)
+        return vtk.vtkRenderWindow('_%s_vtkRenderWindow_p' % addr)
 
     def GetPicker(self):
         return self._Picker
@@ -509,7 +509,7 @@ class vtkTkRenderWidget(Tkinter.Widget):
 
     def Reset(self):
         """ Restore the initial settings"""
-        print 'Reset'
+        #print 'Reset'
         if self._CurrentRenderer:
             self._CurrentCamera = self._CurrentRenderer.GetActiveCamera()
             camera = self._CurrentCamera
