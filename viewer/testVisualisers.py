@@ -75,7 +75,6 @@ class testMoleculeVisualisers(unittest.TestCase):
         self.visualiser.show_sticks = 1
         self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
         self.visualiser.show_sticks = 0
-        raise KeyError("FUUUUUUUCKIIIITTT!!!")
 
     def testWire(self):
         """Test the wire visualiser"""
@@ -83,7 +82,6 @@ class testMoleculeVisualisers(unittest.TestCase):
         self.visualiser.show_wire = 1
         self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
         self.visualiser.show_wire = 0
-        self.assertEqual(1,2)
 
 
 
