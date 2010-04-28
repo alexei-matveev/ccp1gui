@@ -139,7 +139,7 @@ http://public.kitware.com/VTK/get-software.php"""
     print 'VTK version',vtk.vtkVersion.GetVTKVersion(),' from ',vtk.__file__ 
     print Numeric.__file__
     print Scientific.__file__
-    print Pmw.__file__
+    #print Pmw.__file__
     print "CCP1GUI directory: ",paths['gui']
     print
 
