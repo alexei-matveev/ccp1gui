@@ -601,7 +601,8 @@ class Field:
         if mini == None or maxi == None:
             print "WARNING!!!: field minmax - could not work out max or min!"
         
-        print "field minmax returning min: %s max: %s" % (mini,maxi)
+        if self.debug:
+            deb("field minmax returning min: %s max: %s" % (mini,maxi))
         return (mini,maxi)
 
     def integral(self,fac=1.0):
