@@ -44,7 +44,7 @@ import os
 import Numeric,LinearAlgebra
 
 # From Konrad Hinsens scientific python
-from Scientific.Geometry.VectorModule import *
+import  Scientific.Geometry.VectorModule
 
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv, atomic_number
@@ -69,8 +69,8 @@ fp0 = None
 # define some exceptions
 #
 class ImportGeometryError(exceptions.Exception):
-    def __init__(self,args=None):
-        self.args = args
+    def __init__(self,msg=None):
+        self.msg = msg
 
 class Atom:
     def __init__(self):
@@ -251,7 +251,7 @@ class Indexed:
             deadmen.append(self.atom[i])
             self.atom[i].tempflag=1
 
-        print 'sorting shells'
+        if self.debug: print 'sorting shells'
         # keep only attached shells
         oldshell = self.shell
         self.shell = []
@@ -352,7 +352,8 @@ class VariableError(exceptions.Exception):
 class Zmatrix(Indexed):
 
     def __init__(self, mol=None,file=None,list=None,title=None,debug=0):
-        apply(Indexed.__init__, (self,))
+
+        Indexed.__init__(self)
 
         self.v_key = 0
         self.debug = debug
@@ -415,10 +416,9 @@ class Zmatrix(Indexed):
             self.load_from_list(list)
 
     def zlist(self,full=0):
-        txt = self.output_zmat(full=full)
-        for rec in txt:
+        for rec in self.output_zmat(full=full):
             print rec
-        apply(Indexed.list,(self,), {})
+        #Indexed.list(self)
 
     def copy(self):
         self.update_bonds()
@@ -1982,7 +1982,7 @@ class Zmatrix(Indexed):
         self.reindex()
         if self.debug:
             print 'HYBRIDISE',atom.get_index()
-        self.list()
+            self.list()
 
         for a in self.atom:
             print a.get_index(),len(a.conn),
@@ -2000,14 +2000,14 @@ class Zmatrix(Indexed):
         #    self.atom[b.index[1]].conn.append(self.atom[b.index[0]])
         #self.reindex()
 
-        #print 'After rebuilding atom.conn'
-        self.list()
+        if self.debug:
+            print 'After rebuilding atom.conn'
+            self.list()
 
         self.recycle = []
         for a in atom.conn:
             print a, a.get_number()
             if a.get_number() == 0 and len(a.conn) == 1:
-                print 'del list'
                 self.recycle.append(a)
 
         #print 'list of Xs to be recycled',self.recycle
@@ -2025,8 +2025,10 @@ class Zmatrix(Indexed):
                 print 'Internal error.. unexpected connectivity for X-atom'
 
         self.reindex()
-        #print 'After processing recycle'
-        self.list()
+
+        if self.debug:
+            print 'After processing recycle'
+            self.list()
 
         for a in self.atom:
             print a.get_index(),len(a.conn),
@@ -2333,7 +2335,7 @@ class Zmatrix(Indexed):
             return (-1,'Cannot hybridise '+hybridisation+' yet')
 
         self.update_bonds()
-        self.list()
+        #self.list()
 
         # finally delete Xs that we dont need
         dels = []
@@ -2388,36 +2390,28 @@ class Zmatrix(Indexed):
         if self.debug:
             print '_find_i2', 'target = ', target.get_index(),' and i1 = ', i1atom.get_index()
         for test in i1atom.conn:
-            if self.debug:
-                print 'checking',test.get_index(),
+            if self.debug: print 'checking',test.get_index(),
             if test == target:
-                if self.debug:
-                    print 'is target'
+                if self.debug: print 'is target'
             elif (check == ORDER_CHECK) and (test.get_index() > target.get_index() ):
-                if self.debug:
-                    print 'out of order'
+                if self.debug: print 'out of order'
             elif (check == OK_CHECK) and (not test.ok ) :
-                if self.debug:
-                    print 'atom marked as undefined'
+                if self.debug: print 'atom marked as undefined'
             else:
-                print 'looking for valid i3'
+                if self.debug: print 'looking for valid i3'
                 if (check_i3 == 0) or self._find_i3(target,i1atom,test,check=check,testang=testang) \
                        or self._find_i3(target,i1atom,test,check=check,improper=1,testang=testang):
                     ang = self.get_angle(test,i1atom,target)
                     tester = abs(ang - 90)
-                    if self.debug:
-                        print 'ok, i2 candidate tester=',tester,
+                    if self.debug: print 'ok, i2 candidate tester=',tester,
                     if tester < bestang:
                         bestang = tester
                         i2 = test
-                        if self.debug:
-                            print ' - retain',i2.get_index()
+                        if self.debug: print ' - retain',i2.get_index()
                     else:
-                        if self.debug:
-                            print ' - reject'
+                        if self.debug: print ' - reject'
                 else:
-                    if self.debug:
-                        print 'no possible i3'
+                    if self.debug: print 'no possible i3'
 
         return i2
 
@@ -2428,14 +2422,14 @@ class Zmatrix(Indexed):
         i3 = None
         bestang = testang
 
-        print 'i3 CHECK is',check
-
         if self.debug:
+            print 'i3 CHECK is',check
             print '   _find_i3',target.get_index(),'i1',i1atom.get_index(),'i2',i2atom.get_index(),
             if improper:
                 ', proper'
             else:
-                ', improper'                
+                ', improper'
+
         if improper:
             list = i1atom.conn
         elif i2atom:
@@ -2600,8 +2594,9 @@ class Zmatrix(Indexed):
         f.connect()
         f.update_conn()
 
-        print 'chosen frag is ',f.title
-        f.list()
+        if self.debug:
+            print 'chosen frag is ',f.title
+            f.list()
 
         # Check if the atom is a terminus - if it is, and it is of type x, we
         # change the bond length.
@@ -2966,7 +2961,7 @@ class Zmatrix(Indexed):
                         else:
                             a.theta = anew
 
-                print 'upd phi'
+                if self.debug: print 'upd phi'
 
                 v = a.phi_var
                 if v and not v.constant:
@@ -2994,7 +2989,7 @@ class Zmatrix(Indexed):
                         else:
                             a.phi = tnew
 
-                print 'done'
+                if self.debug: print 'done'
 
             # Compute new coords
             self.calculate_coordinates()
@@ -3070,8 +3065,8 @@ class Zmatrix(Indexed):
 
                 #jmht - need to check that the names match up, otherwise we are foobar
                 if string.upper(workz.atom[i1].name) != string.upper(newgeom.atom[i1].name):
-                    print "Error importing geometry! Atom tags do not match up."
-                    raise ImportGeometryError,"Error importing geometry! Atom tags do not match up."
+                    #print "Error importing geometry! Atom tags do not match up."
+                    raise ImportGeometryError("Error importing geometry! Atom tags do not match up.")
 
                 if string.upper(workz.atom[i1].name[0]) == 'X' and \
                        string.upper(newgeom.atom[i2].name[0]) != 'X':
@@ -3253,7 +3248,8 @@ class Zmatrix(Indexed):
                 self.update_variable(v,tnew,torsion=1)
             else:
                 tnew = self._adjust_dihedral(tnew, a.phi)
-                print '    using adjusted dihedral',tnew
+                if self.debug:
+                    print '    using adjusted dihedral',tnew
                 if not update_constants:
                     if v:
                         tester = abs(v,value - tnew)
@@ -3382,7 +3378,8 @@ class Zmatrix(Indexed):
             # the first update of this variable
             if torsion:
                 val = self._adjust_dihedral(val, var.value)
-                print 'using adjusted dihedral2',val
+                if self.debug:
+                    print 'using adjusted dihedral2',val
             self.imported_vars[var.name] = [ val ]
 
         # assign the current value of the variable
@@ -3454,9 +3451,7 @@ class Zmatrix(Indexed):
             # this is needed by the loop over bonds as the basis for dihedral search
             # we can skip this if the alternative strategy works OK
 
-            print 'on entry len bond', len(self.bond)
             self.update_bonds()
-            print 'new len bond', len(self.bond)
         
             if self.debug > 2:
                 print 'revised bonding:'
@@ -3468,7 +3463,7 @@ class Zmatrix(Indexed):
         # generates raw atom sets needed to construct an internal coordinate
         # description of the molecule
 
-        self.list()
+        #self.list()
         
         center = [0.0,0.0,0.0]
         nAtom = len(self.atom)
@@ -3508,7 +3503,7 @@ class Zmatrix(Indexed):
                 fst = min_a
             else:
                 fst = self.atom[0]
-            print 'fst',fst.get_index()
+
             z_set = [( fst,) ]
             fst.ok = 1
             to_go = to_go - 1
@@ -3527,7 +3522,7 @@ class Zmatrix(Indexed):
             nxt.ok = 1
             to_go = to_go - 1
 
-            print '2nd',nxt.get_index()
+            if self.debug: print '2nd',nxt.get_index()
 
             # for the third atom, choose a different multivalent neighbor
             trd = None
@@ -3539,10 +3534,12 @@ class Zmatrix(Indexed):
                     if not b.ok:
                         trd = b
                         break
-            if trd:
-                print 'trd 1',trd.get_index()
-            else:
-                print 'safety code for trd'
+
+            if self.debug:
+                if trd:
+                    print 'trd 1',trd.get_index()
+                else:
+                    print 'safety code for trd'
 
             # safety, choose any unchosen neighbor
             if not trd:
@@ -3553,8 +3550,6 @@ class Zmatrix(Indexed):
             z_set.append((trd,fst,nxt))
             trd.ok = 1
             to_go = to_go - 1
-            print 'trd 2',trd.get_index()
-            print 'to_go',to_go
 
             # this is the original pymol algorithm
             # the alternative is an attempt to optimise choice of
@@ -3565,39 +3560,40 @@ class Zmatrix(Indexed):
                 # to define atoms at one or other end
                 tors = []
                 for b in self.bond: # use bond as center of torsion
-                    print 'bond indices',b.index[0],b.index[1]
+                    #print 'bond indices',b.index[0],b.index[1]
                     a1 = self.atom[b.index[0]]
                     a2 = self.atom[b.index[1]]
                     for c in a1.conn:
                         if c != a2:
                             ang1 = self.get_angle(c,a1,a2)
-                            print '   checking c=',c.get_index(), 'angle=',ang1,
+                            
+                            if self.debug: print '   checking c=',c.get_index(), 'angle=',ang1,
                             if ang1 >= ang_tol:
-                                print 'Rejected'                              
+                                if self.debug: print 'Rejected'                              
                             else:
                                 print ""
                                 for d in a2.conn:
                                     if d != a1 and d != c:
                                         ang2  = self.get_angle(a1,a2,d)
-                                        print '   checking d=',d.get_index(), 'angle=',ang2,
+                                        if self.debug: print '   checking d=',d.get_index(), 'angle=',ang2,
                                         if ang2 < ang_tol:                                        
                                             if c.get_index() < d.get_index():
                                                 to = (c,a1,a2,d)
                                             else:
                                                 to = (d,a2,a1,c)
                                             tors.append(to)
-                                            print 'Keep',to
+                                            if self.debug: print 'Keep',to
                                         else:
-                                            print 'Rejected'
+                                            if self.debug: print 'Rejected'
 
-                print 'List of proper Torsions',tors
+                if self.debug: print 'List of proper Torsions',tors
                 if len(tors):
                     # assign atoms where possible using torsions
                     oldcnt = -1
                     while 1:
-                        print 'Loop to_go=',to_go
+                        if self.debug: print 'Loop to_go=',to_go
                         if oldcnt == to_go:
-                            print 'tors loop finished with ',to_go,' unassigned atoms'
+                            if self.debug: print 'tors loop finished with ',to_go,' unassigned atoms'
                             break
                         oldcnt = to_go
                         for tor in tors:
@@ -3608,12 +3604,12 @@ class Zmatrix(Indexed):
                             if ( (not a0.ok) and a1.ok and a2.ok and a3.ok ):
                                 z_set.append((a0,a1,a2,a3))
                                 a0.ok = 1
-                                print 'select ',(a0,a1,a2,a3)
+                                if self.debug: print 'select ',(a0,a1,a2,a3)
                                 to_go = to_go - 1
                             elif ( a0.ok and a1.ok and a2.ok and (not a3.ok) ):
                                 z_set.append((a3,a2,a1,a0))
                                 a3.ok = 1
-                                print 'select ',(a3,a2,a1,a0)
+                                if self.debug: print 'select ',(a3,a2,a1,a0)
                                 to_go = to_go - 1
 
             if to_go:
@@ -3622,9 +3618,9 @@ class Zmatrix(Indexed):
 
                 oldcnt = -1
                 while 1:
-                    print 'Loop to_go=',to_go
+                    if self.debug: print 'Loop to_go=',to_go
                     if oldcnt == to_go:
-                        print 'impropers loop finished with ',to_go,' unassigned atoms'
+                        if self.debug: print 'impropers loop finished with ',to_go,' unassigned atoms'
                         break
                     oldcnt = to_go
 
@@ -3632,29 +3628,29 @@ class Zmatrix(Indexed):
                     for a in self.atom:
                         if not a.ok:
                             unass.append(a)
-                    print 'unassigned: ',unass
+                    if self.debug: print 'unassigned: ',unass
 
                     for orphan in unass:
                         for con in orphan.conn:
                             if con.ok:
-                                print 'XXXXX'
+                                if self.debug: print 'XXXXX'
                                 i2 = self._find_i2(orphan,con,check=OK_CHECK,testang=testang)
-                                print 'XXXXX returned',i2
+                                if self.debug: print 'XXXXX returned',i2
                                 if i2:
-                                    print 'YYYYY search i3 proper'
+                                    if self.debug: print 'YYYYY search i3 proper'
                                     i3 = self._find_i3(orphan,con,i2,check=OK_CHECK,testang=testang)
-                                    print 'YYYYY proper returned',i3
+                                    if self.debug: print 'YYYYY proper returned',i3
                                     if i3:
-                                        print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
+                                        if self.debug: print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
                                         z_set.append((orphan,con,i2,i3))
                                         orphan.ok = 1
                                         to_go = to_go - 1
                                     else:
-                                        print 'YYYYY search i3 improper'
+                                        if self.debug: print 'YYYYY search i3 improper'
                                         i3 = self._find_i3(orphan,con,i2,check=OK_CHECK,improper=1,testang=testang)
-                                        print 'YYYYY improper returned',i3
+                                        if self.debug: print 'YYYYY improper returned',i3
                                         if i3:
-                                            print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
+                                            if self.debug: print 'found possible definition',i3.get_index(),i2.get_index(),con.get_index(),orphan.get_index()
                                             to_go = to_go - 1
                                             orphan.ok = 1                                                
                                             z_set.append((orphan,con,i2,i3))
@@ -3665,7 +3661,7 @@ class Zmatrix(Indexed):
             self.warn("Autoz failed - probably linear angles, you may need to add some dummy atoms")
             raise ConversionError, "Autoz failed - probably linear angles, you may need to add some dummy atoms"
 
-        print 'autoz: Building new zmatrix'
+        if self.debug: print 'autoz: Building new zmatrix'
         
         if self.debug > 2:
             print 'internal tuples',z_set
@@ -3678,13 +3674,9 @@ class Zmatrix(Indexed):
         self.atom = []
 
         for z in z_set:
-            print 'z',z
-            print 'z[0]',z[0]
             indices = z
             a = z[0]
-
             a.zorc = 'z'
-
             a.r = 0.0
             a.theta = 0.0
             a.phi = 0.0
@@ -3729,7 +3721,7 @@ class Zmatrix(Indexed):
         if warn:
             print "Some distances 0 or internal coordinates undefined"
 
-        self.zlist()
+        #self.zlist()
 
     def is_fully_connected(self):
         set = [self.atom[0]]
@@ -3743,7 +3735,7 @@ class Zmatrix(Indexed):
                     else:
                         set.append(b)
                         more=1
-        print 'connection check',len(set),len(self.atom)
+        if self.debug: print 'connection check',len(set),len(self.atom)
         if len(set) == len(self.atom):
             return 1
         else:
