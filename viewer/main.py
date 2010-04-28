@@ -139,18 +139,20 @@ http://public.kitware.com/VTK/get-software.php"""
     print 'VTK version',vtk.vtkVersion.GetVTKVersion(),' from ',vtk.__file__ 
     print Numeric.__file__
     print Scientific.__file__
-    #print Pmw.__file__
+    print Pmw.__file__
     print "CCP1GUI directory: ",paths['gui']
     print
 
-import os,stat
-from math import fabs, cos, sin, pi, sqrt, floor
-from string import strip, split, atof
+import stat
+#from math import fabs, cos, sin, pi, sqrt, floor
+import math
+#from string import strip, split, atof
 from tkFileDialog import *
 from tkSimpleDialog import *
 import tkColorChooser
 from SimpleDialog import SimpleDialog
 import traceback
+import types
 
 import time
 from generic.graph import *
@@ -525,7 +527,7 @@ class TkMolView(Pmw.MegaToplevel):
         - otherwise just start the job
         """
         
-        print "checking save jobs"
+        #print "checking save jobs"
         job_ext = '.job'
         
         if not directory:
@@ -2306,22 +2308,19 @@ you would like to extract the frame from."""
             t1 = string.split(str(obj.__class__),'.')
             myclass = t1[len(t1)-1]
 
-            print 'MYCLASS',myclass
+            #print 'MYCLASS',myclass
 
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if self.molecule_visualiser:
                     cascade.add_command(
                         label="New Molecule View",command=\
-                           lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                              lambda r=s.master,g=s,func=s.molecule_visualiser,obj=obj: func(r,g,obj)))
+                           lambda s=self,obj=obj: s.visualise(obj,'molecule',open_widget=1))
 
             if myclass == 'ZmatrixSequence':
                 if self.trajectory_visualiser:
                     cascade.add_command(
                         label="New Trajectory View",command=\
-                           lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                              lambda r=s.master,g=s,func=s.trajectory_visualiser,obj=obj: func(r,g,obj),
-                                                              open_widget=1))
+                           lambda s=self,obj=obj: s.visualise(obj,'trajectory',open_widget=1))
 
             if myclass == 'Field' :
                 if obj.dimensions() == 3:
@@ -2330,52 +2329,40 @@ you would like to extract the frame from."""
                             # scalar visualiser tools
                             cascade.add_command(
                                 label="New Orbital View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.orbital_visualiser,obj=obj: func(r,g,obj),open_widget=1))
+                                   lambda s=self,obj=obj: s.visualise(obj,'orbital',open_widget=1))
                             cascade.add_command(
                                 label="New Density View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.density_visualiser,obj=obj: func(r,g,obj),open_widget=1))
+                                   lambda s=self,obj=obj: s.visualise(obj,'density',open_widget=1))
                             cascade.add_command(
                                  label="Density Volume Visualisation View",command=\
-                                    lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                       lambda r=s.master,g=s,func=s.volume_density_visualiser,obj=obj: func(r,g,obj),open_widget=1))
+                                    lambda s=self,obj=obj: s.visualise(obj,'volume_density',open_widget=1))
                             cascade.add_command(
                                 label="Orbital Volume Visualisation View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.volume_orbital_visualiser,obj=obj: func(r,g,obj,open_widget=1)))
+                                   lambda s=self,obj=obj: s.visualise(obj,'volume_orbital',open_widget=1))
                             cascade.add_command(
                                 label="New Cut Slice View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.cut_slice_visualiser,obj=obj: func(r,g,obj),open_widget=1))
-
+                                   lambda s=self,obj=obj: s.visualise(obj,'cut_slice',open_widget=1))
                             cascade.add_command(
                                 label="New Colour Surface View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.colour_surface_visualiser,obj=obj : func(
-                                r,g,obj,colour_obj=None),open_widget=1))
+                                   lambda s=self,obj=obj: s.visualise(obj,'colour_surface',open_widget=1))
 
                 if obj.dimensions() == 2:
                     if self.slice_visualiser:
                         cascade.add_command(
                             label="New 2D View",command=\
-                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.slice_visualiser,obj=obj: func(r,g,obj),open_widget=1))
+                               lambda s=self,obj=obj: s.visualise(obj,'slice',open_widget=1))
 
-                print 'ndd',obj.ndd
+                #print 'ndd',obj.ndd
                 if obj.ndd == 3:
                     if self.vector_visualiser:
                         cascade.add_command(
                             label="Vector Visualisation View",command=\
-                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.vector_visualiser,obj=obj: func(r,g,obj),open_widget=1))
+                               lambda s=self,obj=obj: s.visualise(obj,'vector',open_widget=1))
                 else:
                     if self.irregular_data_visualiser:
                         cascade.add_command(
                             label="New Grid View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                      lambda r=s.master,g=s,func=s.irregular_data_visualiser,obj=obj: func(r,g,obj),
-                                                                      open_widget=1))
+                                   lambda s=self,obj=obj: s.visualise(obj,'irregular_data',open_widget=1))
 
 
 
@@ -2383,31 +2370,25 @@ you would like to extract the frame from."""
                 if self.vibration_visualiser:
                     cascade.add_command(
                         label="Animate Vibration",command=\
-                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.vibration_visualiser,obj=obj: func(r,g,obj),
-                                                                  open_widget=1))
+                               lambda s=self,obj=obj: s.visualise(obj,'vibration',open_widget=1))
+
             if myclass == 'VibFreqSet' :
                 if self.vibration_set_visualiser:
                     cascade.add_command(
                         label="Animate",command=\
-                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.vibration_set_visualiser,obj=obj: func(r,g,obj),
-                                                                  open_widget=1))
+                               lambda s=self,obj=obj: s.visualise(obj,'vibration_set',open_widget=1))
 
             if myclass == 'File' and obj.MoldenReadable() :
                 if self.wavefunction_visualiser:  
                     cascade.add_command(
                         label="Run Molden",command=\
-                               lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                                  lambda r=s.master,g=s,func=s.wavefunction_visualiser,obj=obj: func(r,g,obj),
-                                                                  open_widget=1))
+                               lambda s=self,obj=obj: s.visualise(obj,'wavefunction',open_widget=1))
+
             if myclass == 'Dl_PolyHISTORYFile':
                 if self.trajectory_visualiser:
                     cascade.add_command(
                         label="New Trajectory View",command=\
-                        lambda s=self,obj=obj: s.visualise(obj,visualiser=\
-                               lambda r=s.master,g=s,func=s.trajectory_visualiser,obj=obj: func(r,g,obj,type='DLPOLYHISTORY'),
-                               open_widget=1))
+                        lambda s=self,obj=obj: s.visualise(obj,'dlpoly_trajectory',open_widget=1))
 
 
     def add_vis_menu(self,menu,txt,fnc,objects):
@@ -3066,86 +3047,86 @@ you would like to extract the frame from."""
                     if vis:
                         vis.Open()
 
-    def visualise(self, o, visualiser=None,open_widget=0 ):
+    def visualise(self, object, visualiser ,open_widget=0 ):
+        """Visualise object with the type of visualiser specified with the visualiser argument.
+        The visualiser argument can either be a string specifying the visualiser or a visualiser instance.
+
+        """
+
+        # If it's not a string we assume it's a visualiser
+        if type(visualiser) != types.StringType:
+            visualiser=visualiser
+
+        elif visualiser == 'molecule':
+            visualiser=self.molecule_visualiser(self.master,self,object)
+
+        elif visualiser == 'trajectory':
+            visualiser=self.trajectory_visualiser(self.master,self,object)
+
+        elif visualiser == 'orbital':
+            visualiser=self.orbital_visualiser(self.master,self,object)
+
+        elif visualiser == 'density':
+            visualiser=self.density_visualiser(self.master,self,object)
+
+        elif visualiser == 'volume_density':
+            visualiser=self.volume_density_visualiser(self.master,self,object)
+
+        elif visualiser == 'volume_orbital':
+            visualiser=self.volume_orbital_visualiser(self.master,self,object)
+
+        elif visualiser == 'cut_slice':
+            visualiser=self.cut_slice_visualiser(self.master,self,object)
+
+        elif visualiser == 'colour_surface':
+            visualiser=self.colour_surface_visualiser(self.master,self,object)
+
+        elif visualiser == 'slice':
+            visualiser=self.slice_visualiser(self.master,self,object)
+
+        elif visualiser == 'vector':
+            visualiser=self.vector_visualiser(self.master,self,object)
+
+        elif visualiser == 'irregular_data':
+            visualiser=self.irregular_data_visualiser(self.master,self,object)
+
+        elif visualiser == 'vibration':
+            visualiser=self.vibration_visualiser(self.master,self,object)
+
+        elif visualiser == 'vibration_set':
+            visualiser=self.vibration_set_visualiser(self.master,self,object)
+
+        elif visualiser == 'wavefunction':
+            visualiser=self.wavefunction_visualiser(self.master,self,object)
+
+        elif visualiser == 'dlpoly_trajectory':
+            visualiser=self.trajectory_visualiser(self.master,self,object,type='DLPOLYHISTORY')
             
-        t1 = string.split(str(o.__class__),'.')
-        myclass = t1[len(t1)-1]
-        t = id(o)
-
-        if visualiser:
-            vis = visualiser()
         else:
-            vis = None
-            if myclass == 'Indexed' or myclass == 'Zmatrix':
-                vis = self.molecule_visualiser(self.master,self,o)
+            raise KeyError("No visualiser of type: %s found!" % visualiser)
 
-            elif myclass == 'ZmatrixSequence':
-                vis = self.trajectory_visualiser(self.master,self,o)
+        t1 = string.split(str(object.__class__),'.')
+        myclass = t1[len(t1)-1]
+        t = id(object)
 
-            elif myclass == 'VibFreq' :
-                # create a vibration visualiser
-                try:
-                    refmol = o.reference
-                except AttributeError:
-                    refmol = self.choose_mol()
-                vis = self.vibration_visualiser(self.master, self, o, mol=refmol)
-                # best have this one open from the start or nothing will happen
-                vis.Open()
-
-            elif myclass == 'VibFreqSet' :
-                # create a vibration visualiser
-                try:
-                    refmol = o.reference
-                except AttributeError:
-                    refmol = self.choose_mol()
-                vis = self.vibration_set_visualiser(self.master, self, o, mol=refmol)
-                # best have this one open from the start or nothing will happen
-                vis.Open()
-
-            elif myclass == 'Field':
-                # Data visualisation - rather confusing
-                # New Field Class
-                try:
-                    nd = len(o.dim)
-                    if nd == 1:
-                        self.warn('No viewer available for 1D data')
-                        return None
-                    elif nd == 2:
-                        vis = self.slice_visualiser(self.master,self,o)
-                    elif o.title == 'density':
-                        #vis = self.density_visualiser(self.master,self,o)
-                        vis = self.colour_surface_visualiser(self.master,self,o)
-                    else:
-                        vis = self.orbital_visualiser(self.master,self,o)
-
-                except KeyError:
-                    pass
-                    #except AttributeError:
-                    # Irregular Dataset
-                    #vis = self.irregular_data_visualiser(self.master,self,o)
-
-            else:
-                print 'Warning - cant yet visualise', myclass
-                return None
         try:
             x = self.vis_dict[t]
-            self.vis_dict[t].append(vis)
+            self.vis_dict[t].append(visualiser)
         except KeyError:
-            self.vis_dict[t] = [vis]
+            self.vis_dict[t] = [visualiser]
 
         if open_widget:
-            vis.Open()                    
+            visualiser.Open()
 
-        self.vis_list.append(vis)
+        self.vis_list.append(visualiser)
         self.__update_vis_list()
         # to get correct view/show/hide
         # self.__update_data_list()
-        vis.Show()
-        return vis
+        visualiser.Show()
+        return visualiser
 
     def graphics(self):
         """Open a new window with all the graphics controls """
-
         self.__update_vis_list()
         self.vis_dialog.show()
 
@@ -3286,10 +3267,10 @@ you would like to extract the frame from."""
 
         self.load_from_file( filepath )
 
-    def load_from_file(self,filepath):
+    def load_from_file(self, filepath, display=1):
         """load structure from a file"""
         
-        print 'ATTEMPT LOAD',filepath
+        #print 'ATTEMPT LOAD',filepath
         
         # Only do this once
         if not self.getfileIO:
@@ -3313,7 +3294,7 @@ you would like to extract the frame from."""
 
         if objects:
             name = reader.name
-            self.import_view_objects( objects, name=name  )
+            self.import_view_objects( objects, name=name, display=display )
             #self.info("Imported %s objects for viewing" % len(objects))
         
         # Set this directory as the cwd for future operations
@@ -3322,7 +3303,7 @@ you would like to extract the frame from."""
         print 'user directory is now',paths['user']
 
 
-    def import_view_objects( self, objects,name=None ):
+    def import_view_objects( self, objects, name=None, display=1 ):
         """ Import a selection of objects into the GUI """
 
         if not name:
@@ -3333,8 +3314,8 @@ you would like to extract the frame from."""
         for o in objects:
             
             myclass = self.get_class( o )
-            print 'import_view_objects: obj',o
-            print 'class ',myclass
+            #print 'import_view_objects: obj',o
+            #print 'class ',myclass
 
             #print 'unique',root, o.title
             #root = os.path.basename( filepath )
@@ -3387,8 +3368,10 @@ you would like to extract the frame from."""
             #t = id(o)
             #self.file_dict[t] = file
                 
-        self.quick_mol_view(mols)
-        self.quick_trajectory_view(trajectories)
+        if display:
+            self.quick_mol_view(mols)
+            self.quick_trajectory_view(trajectories)
+
         # add to any open dialogs
         self.__update_data_list()
             
@@ -4532,19 +4515,19 @@ you would like to extract the frame from."""
             Regenerate the list of objects and refresh the widget if it does.
         """
 
-        print 'start'
+        #print 'start'
         if not self.ani_image_widget:
             from objects import selector
-            print 'sel'
-            self.ani_image_widget = selector.Selector( self.master, self )
+            #print 'sel'
+            #self.ani_image_widget = selector.Selector( self.master, self )
             print 'show'
             self.ani_image_widget.show()
         else:
-            print "self.ani_image_widget is ",str(self.ani_image_widget)
+            #print "self.ani_image_widget is ",str(self.ani_image_widget)
             self.ani_image_widget.refresh()
             self.ani_image_widget.show()
 
-        print 'done'
+        #print 'done'
         
     def ask_save_movie(self):
         """ The use has clicked on the button to save a movie
@@ -4588,7 +4571,7 @@ you would like to extract the frame from."""
         """ Reset the main window so that is clears out all images showing
             and displays the first one in the ani_list
         """
-        print 'ani_refresh'
+        #print 'ani_refresh'
 ##         for obj in self.data_list:
 ##             t = id(obj)
 ##             print 'ani_refresh loop'
@@ -4605,9 +4588,9 @@ you would like to extract the frame from."""
 
         #self._ani_hide_all()
         self.frame_no = 0
-        print '_ani_show'
+        #print '_ani_show'
         if self._ani_show():
-            print 'update'
+            #print 'update'
             self.update()
             
     def ani_rew(self):
@@ -4707,7 +4690,7 @@ you would like to extract the frame from."""
         self.ani_stop = 0
         while ( self.frame_no <= len(self.ani_list)-2 ):
 
-            print 'Frame:',self.frame_no
+            #print 'Frame:',self.frame_no
             self.interior().update()
             if self.ani_stop:
                 return
@@ -4748,7 +4731,7 @@ you would like to extract the frame from."""
             Return 1 if we have an image to show, None if not
         """
         try:
-            print 'show',self.frame_no
+            #print 'show',self.frame_no
             vis = self.ani_list[ self.frame_no ]
             vis._show()
             # Hack so the view menu display what is showing/hidden
@@ -4758,7 +4741,7 @@ you would like to extract the frame from."""
             #print '_ani_show frame #',self.frame_no
             return 1
         except IndexError:
-            print "ani_show: nothing to show"
+            #print "ani_show: nothing to show"
             return None
             
                     
@@ -6439,7 +6422,8 @@ def copycontents(to,fro):
 
 if __name__ == "__main__":
 
-    from viewer.vtkgraph import *
+
+    import viewer.vtkgraph
     root = Tkinter.Tk()
     root.withdraw()
     
@@ -6449,8 +6433,9 @@ if __name__ == "__main__":
         root.tk.call('console', 'hide')
     except:
         pass
+
     
-    vt = VtkGraph(root)
+    vt = viewer.vtkgraph.VtkGraph(root)
     for file in sys.argv[1:]:
         print 'loading',file
         vt.load_from_file(file)
