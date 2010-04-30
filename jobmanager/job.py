@@ -48,17 +48,25 @@ LoadLevelerJob(RemoteBatchJob)
 
 """
 
-import subprocess
-import sys
-import os
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
+import ccp1gui_subprocess
 import re
 import time
 import copy
 import shutil
 import tarfile
 import socket
+import types
 from viewer.paths import backup_dir
 from viewer.defaults import defaults
+# See bottom of the file for the unittests
+import unittest
 
 # These are placeholders for modules that will be loaded as required
 SOAPpy = None
@@ -132,9 +140,17 @@ class JobStep:
         self.jobname=jobname
         self.proc=proc
         self.local_command=local_command
+
+        if local_command_args and not isinstance(local_command_args,types.ListType):
+                raise JobError("local_command_args must be a list!")
         self.local_command_args=local_command_args
+
         self.remote_command=remote_command
+
+        if remote_command_args and not isinstance(remote_command_args,types.ListType):
+                raise JobError("local_command_args must be a list!")
         self.remote_command_args=remote_command_args
+
         self.stdin_file=stdin_file
         self.stdout_file=stdout_file
         self.stderr_file=stderr_file
@@ -343,7 +359,7 @@ class Job:
             cmd = 'rm'
             args = [step.remote_filename]
 
-        pipe=subprocess.Pipe(cmd,args=args,debug=self.debug)
+        pipe=ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = pipe.run()
         if code:
             msg = pipe.msg
@@ -393,7 +409,7 @@ class Job:
                         self.remoteuser+'@'+self.host+':'+step.remote_filename]
 
         print 'copy out cmd',[cmd] + args
-        p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+        p = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
@@ -414,7 +430,7 @@ class Job:
             args = [self.remoteuser+'@'+self.host+':'+step.remote_filename,
                     step.local_filename]
 
-        p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+        p = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug)
         code = p.run()
         print 'copy out code',code
         return code,None
@@ -423,7 +439,7 @@ class Job:
         return -1,"execute shell unimplemented"
 
     def python_cmd(self,step):
-        return step.proc()
+        return step.proc(),None
 
     def execute_step(self):
         """Execute a single step
@@ -577,7 +593,7 @@ class Job:
                 print "get_dcautlt param no dict to return"
                 return
 
-        print "parameters are ",parameters
+        #print "parameters are ",parameters
             
         return parameters
 
@@ -705,7 +721,7 @@ class LocalJob(Job):
     """
 
     def __init__(self,**kw):
-        apply(Job.__init__, (self,), kw)
+        Job.__init__(self,**kw)
         self.jobtype=LOCALHOST
         #self.job_parameters['host'] = LOCALHOST
         self.job_parameters['executable'] = None
@@ -723,10 +739,10 @@ class LocalJob(Job):
         if os.path.abspath(step.local_filename) != os.path.abspath(step.remote_filename):
             cmd = 'del'
             args = [step.remote_filename]
-            subprocess.Pipe(cmd,args=args,debug=self.debug).run()
+            ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug).run()
             cmd = 'ren'
             args = [step.local_filename, step.remote_filename]
-            subprocess.Pipe(cmd,args=args,debug=self.debug).run()
+            ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug).run()
         return 0,None
 
     def run_app(self,step):
@@ -747,7 +763,7 @@ class LocalJob(Job):
                 f = os.popen('del '+step.stdout_file)
                 status2 = f.close()
 
-            self.process = subprocess.Spawn(step.local_command,
+            self.process = ccp1gui_subprocess.Spawn(step.local_command,
                                             args=step.local_command_args,
                                             debug=self.debug)
             if self.debug:
@@ -788,7 +804,7 @@ class LocalJob(Job):
 
         else:
             # Unix code
-            self.process = subprocess.Spawn(step.local_command,
+            self.process = ccp1gui_subprocess.Spawn(step.local_command,
                                             args=step.local_command_args,
                                             debug=self.debug)
             if self.debug:
@@ -828,13 +844,13 @@ class LocalJob(Job):
             if sys.platform[:3] == 'win':
                 cmd = 'ren'
                 args = [step.remote_filename,step.local_filename]
-                code = subprocess.Pipe(cmd,args=args,debug=self.debug).run()
+                code = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
             else:
                 cmd = 'mv'
                 args = [step.remote_filename,step.local_filename]
-                code = subprocess.Pipe(cmd,args=args,debug=self.debug).run()
+                code = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug).run()
                 if code:
                     raise JobError, "failed to recover " +  step.remote_filename
         return 0,None
@@ -885,7 +901,7 @@ class LocalJobNoSpawn(LocalJob):
 
             cmd="C:/cygwin/bin/bash.exe"
             args= ['<','bash.txt']
-            p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+            p = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug)
             code = p.run()
 
             return code,None
@@ -910,7 +926,7 @@ class LocalJobNoSpawn(LocalJob):
             #p = subprocess.Pipe("echo $PATH",debug=self.debug)
             #code = p.run()        
 
-            p = subprocess.Pipe(cmd,args=args,debug=self.debug)
+            p = ccp1gui_subprocess.Pipe(cmd,args=args,debug=self.debug)
             if self.debug:
                 print 'ForegroundJob: cmd=',p.cmd_as_string()
             code = p.run()
@@ -937,7 +953,7 @@ class RemoteJob(Job):
         self.remoteuser=remoteuser
 
     def run_app(self,step):
-        p = subprocess.PipeRemoteCmd(self.host,self.remoteuser,step.remote_command,step.remote_command_args)
+        p = ccp1gui_subprocess.PipeRemoteCmd(self.host,self.remoteuser,step.remote_command,step.remote_command_args)
         code=p.run()
         return code,None
 
@@ -1998,7 +2014,7 @@ class GlobusJob(GridJob):
         # Make sure that we have a valid proxy
         self.CheckProxy()
             
-        p = subprocess.Spawn( command, args=args ,debug=None)
+        p = ccp1gui_subprocess.Spawn( command, args=args ,debug=None)
         p.run()
         ret = p.wait()
         if ret < 0:
@@ -2611,8 +2627,6 @@ class NordugridJob(GridJob):
 class JobError(RuntimeError):
     def __init__(self,message):
         
-       #self.args = args
-       
        # Make sure that message is a string
        if type(message) == list:
            message = "\n".join(message)
@@ -2620,12 +2634,19 @@ class JobError(RuntimeError):
            message = str(message)
        
        self.args = message
-       self.message = message
+       self.msg = message
        
     def __str__(self):
-        return self.message
-       
+        return self.msg
 
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+       
 class DummyJob(Job):
     """ Dummy job for testing"""
 
@@ -2696,15 +2717,29 @@ class DummyJob(Job):
         except:
             print "Error removing ",self.fname
         self.status = JOBSTATUS_KILLED
+
+class JobTestCases(unittest.TestCase):
     
-if __name__ == "__main__":
 
-    def testpy():
-        i=j
-        time.sleep(3)
+    def testLocalJob(self):
+        job = LocalJob()
+        job.add_step(RUN_APP,'get python version',local_command='python',local_command_args=['--version'])
+        ret = job.run()
+        self.assertEqual(ret,0)
 
-    if 0:
-        print 'testing remote foreground job'
+
+    def testPythonCmd(self):
+
+        def testpy():
+            i=1
+            time.sleep(3)
+
+        job = LocalJob()
+        job.add_step(PYTHON_CMD,'cleanup',proc=testpy)
+        ret = job.run()
+        self.assertEqual(ret,0)
+
+    def XXXtestRemoteForegroundJob(self):
         job = LoadLevelerJob('hpcx','psh')
         job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small2.in')
         job.add_step(RUN_APP,'run gamess',local_command='rungamess',local_command_args='small',jobname='small2')
@@ -2713,13 +2748,7 @@ if __name__ == "__main__":
         job.add_step(PYTHON_CMD,'cleanup',proc=testpy)
         job.run()
 
-    if 0:
-        print 'testing exception'
-        job = ForegroundJob()
-        job.add_step(PYTHON_CMD,'cleanup',proc=testpy)
-        job.run()
-    
-    if 0:
+    def XXXtestLocalBackgroundJob(self):
         print 'testing local background job (Windows)'
         job = BackgroundJob()
         job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun')
@@ -2730,9 +2759,7 @@ if __name__ == "__main__":
         job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
 
-    if 0:
-        print 'testing local chemshell job (Windows)'
-        import os
+    def XXXtestLocalChemshellJob(self):
         os.environ['TCL_LIBRARY']='/usr/share/tcl8.4'
         os.environ['TCLLIBPATH']='/cygdrive/e/chemsh/tcl'
         chemshell_exe='"E:/chemsh/bin/chemshprog.exe"'
@@ -2743,11 +2770,8 @@ if __name__ == "__main__":
         #job.add_step(COPY_BACK_FILE,'fetch log',remote_filename='small2.out')
         #job.add_step(COPY_BACK_FILE,'fetch punch',local_filename='small2.pun',remote_filename='ftn058')
         job.run()
-        print 'done'
 
-    if 0:
-        print 'testing rmcs job'
-        
+    def XXXtestRMCSJob(self):
         job = RMCSJob()
         #job.add_step(DELETE_FILE,'kill old pun',remote_filename='small2.pun',kill_on_error=0)
         #job.add_step(COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in', remote_filename='zoom.in')
@@ -2756,11 +2780,8 @@ if __name__ == "__main__":
         #job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out')
         #job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out',remote_filename='output.txt')
         job.run()
-        print 'rmcs done'
 
-    if 0:
-        print 'testing nordugrid job'
-        
+    def XXXtestNordugridJob(self):
         job_parameters = {}
         job_parameters['count'] = '1'
         job_parameters['outputfiles'] = {"\"/\"": None}
@@ -2773,14 +2794,12 @@ if __name__ == "__main__":
         job.update_parameters( job_dict = job_parameters )
         job.add_step(RUN_APP,'run nordugrid')
         print job.CreateRSL()
-#         job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
+        #job.add_step(COPY_BACK_FILE,'Copy Back Results',local_filename='SC4H4.out')
         #job.run()
-#         job.copy_back_rundir()
-#         job.clean()
-        print 'end jens job'
+        #job.copy_back_rundir()
+        #job.clean()
 
-    if 1:
-        print 'testing Globus job'
+    def XXXtestGlobusJob(self):
         job = GlobusJob()
         job.debug = 1
         executable='/bi/hostname'
@@ -2794,5 +2813,112 @@ if __name__ == "__main__":
         #job.check_exe( executable,host='lv1.nw-grid.ac.uk' )
         job.check_exe( executable )
         #job.run()
+
+
+    def XXXtestGlobusJobmanagerFork(self):
+        """
+        Test the fork jobmanager when we are copying back several files
+        and we have a number of arguments
+        We use dd to test this as it's universally available and has different
+        behaviour when using variable numbers of arguments
+
+        """
+
+        HOST= 'dl1.nw-grid.ac.uk'
+        stdin='stdin'
+        stdout='stdout'
+        stderr='stderr'
+
+        # Create a simple input file
+        myinput ="""first line
+second line
+third line
+fourth line
+fifth line
+sixth line
+"""
+        f = open( self.stdin ,'w' )
+        f.writelines( myinput )
+        f.close()
         
 
+        # Create the job 
+        job = jobmanager.GlobusJob()
+        #job.debug=1
+
+        # Set the parameters
+        executable = '/bin/dd'
+        arguments = ['bs=1','count=23','conv=ucase']
+        job.set_parameter( 'executable', executable )
+        job.set_parameter( 'jobmanager', 'jobmanager-fork' )
+        job.set_parameter( 'host' , self.HOST )
+        job.set_parameter( 'stdin' , self.stdin )
+        job.set_parameter( 'arguments' , arguments )
+        job.set_parameter( 'stdout' ,self.stdout )
+        job.set_parameter( 'stderr' ,self.stderr )
+
+        # Add the steps that define the job
+        # Copy out the input
+        job.add_step( jobmanager.COPY_OUT_FILE,
+                      'transfer input: %s' % self.stdin,
+                      local_filename=self.stdin,
+                      remote_filename=self.stdin)
+
+        # Run the application
+        job.add_step(
+            jobmanager.RUN_APP,
+            'Running commmand: %s %s' % (executable, str(arguments) ),
+            stdin_file=None
+            )
+
+        # Copy back stdout
+        job.add_step(
+            jobmanager.COPY_BACK_FILE,
+            'Copying back stdout',
+            remote_filename=self.stdout
+            )
+        
+        # Copy back stderr
+        job.add_step(
+            jobmanager.COPY_BACK_FILE,
+            'Copying back stderr',
+            remote_filename=self.stderr
+            )
+
+
+        # Run the job
+        code = job.run()
+
+        # See how it went
+        # Check if the job itself worked
+        self.assertEqual( code, 0,
+                         "Job Failed with code: %s!\n\n%s" % ( str(code),job.msg )
+                          )
+
+        # Check the stdout - first word on second line should be SECOND
+        f = open(self.stdout,'r')
+        line = f.readline()
+        line = f.readline().strip()
+        word1 = line.split()[0]
+        f.close()
+        self.assertEqual( word1, 'SECOND',
+                          "stdout file was incorrect: 1st word on 2nd line was: %s" % word1)
+
+        # Check the stdout - first word on 3rd line should be 23 for n bytes transferred
+        f = open(self.stderr,'r')
+        line = f.readline()
+        line = f.readline()
+        line = f.readline().strip()
+        nbytes = int(line.split()[0])
+        f.close()
+        self.assertEqual( nbytes, 23,
+                          "stder file was incorrect: 1st word on 3rd line was: %s" % nbytes)
+        # Then clean up
+        os.remove( self.stdin )
+        os.remove( self.stdout )
+        os.remove( self.stderr )
+
+
+    
+if __name__ == "__main__":
+    unittest.main()
