@@ -583,8 +583,6 @@ of any program using or generating them. The parameters however will be
             t1 = string.split(str(o.__class__),'.')
             myclass = t1[len(t1)-1]
 
-            print 'LOADING up',myclass
-
             if myclass == 'VibFreq' or \
                    myclass == 'VibFreqSet' or \
                    myclass == 'Brick' or \
