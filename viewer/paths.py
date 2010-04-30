@@ -29,7 +29,8 @@ import __main__
 
 # __main__ trick didnt always give the same path
 # paul hack
-import objects.zmatrix
+# Jens - don't understand and it seriously screws the testing up ...
+#import objects.zmatrix
 
 
 version=sys.version_info #The version of python we are using
