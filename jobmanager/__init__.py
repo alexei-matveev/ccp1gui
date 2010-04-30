@@ -19,11 +19,11 @@
 #
 """Job manager and editor Tkinter interface to control jobs 
 """
-
-from jobmanager.job import *
-from jobmanager.subprocess import *
-from jobmanager.jobeditor import *
-from jobmanager.jobthread import *
+import sys
+import jobmanager.job
+import jobmanager.ccp1gui_subprocess
+import jobmanager.jobeditor
+import jobmanager.jobthread
 
 if sys.platform[:3] == 'win':
     import jobmanager.winprocess
