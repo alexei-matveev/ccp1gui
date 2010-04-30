@@ -20,10 +20,14 @@
 """Implements the GAMESS-UK specific calculation (Calc) and
 calculation editor (CalcEd) classes
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
-import os
 import string
-import sys
 import shutil
 
 import Tkinter
@@ -694,9 +698,9 @@ or use the existing file (No)?" % inputfile )
                 print "Checking rungamess script is suitable..."
                 # We've found a script so check it's o.k. to use it
                 # Check if rungamess -V works - this prints out the environment variables
-                from jobmanager import subprocess
+                from jobmanager import ccp1gui_subprocess
                 #cmd = script + " -V"
-                p = subprocess.Pipe(script,args=['-V'])
+                p = ccp1gui_subprocess.Pipe(script,args=['-V'])
                 code = p.run()
                 dict = {}
                 print 'code',code,'p.error',p.error
@@ -2515,9 +2519,9 @@ class GAMESSUKCalcEd(QMCalcEd):
             
         else:
             try:
-                from jobmanager import subprocess
+                from jobmanager import ccp1gui_subprocess
                 cmd="rungamess -V"
-                p = subprocess.Pipe(cmd)
+                p = ccp1gui_subprocess.Pipe(cmd)
                 code = p.run()
                 dict = {}
                 for l in p.output:
@@ -2981,20 +2985,20 @@ def pickler(obj):
 
 if __name__ == "__main__":
     
-    from interfaces.gamessuk import *
-    from objects.zmatrix import *
+    #from interfaces.gamessuk import *
+    import objects.zmatrix
     from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
+    model = objects.zmatrix.Zmatrix()
+    atom = objects.zmatrix.ZAtom()
     atom.symbol = 'C'
     atom.name = 'C'
     model.insert_atom(0,atom)
-    atom = ZAtom()
+    atom = objects.zmatrix.ZAtom()
     atom.symbol = 'Cl'
     atom.name = 'Cl'
     atom.coord = [ 1.,0.,0. ]
     model.insert_atom(1,atom)
-    atom = ZAtom()
+    atom = objects.zmatrix.ZAtom()
     atom.symbol = 'H'
     atom.name = 'H'
 
@@ -3010,8 +3014,8 @@ if __name__ == "__main__":
 
     if 1:
         calc.set_input('mol_obj',model)
-        jm = JobManager()
-        je = JobEditor(root,jm)
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(root,jm)
         vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
         #vt.Run()
 
