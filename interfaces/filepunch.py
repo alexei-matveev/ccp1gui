@@ -40,6 +40,7 @@ import fileio
 import objects.zmatrix
 import objects.field
 import objects.vibfreq
+import objects.list
 
 # From Konrad Hinsens scientific python
 import Scientific.Geometry.VectorModule
@@ -51,7 +52,6 @@ import unittest
 
 # The following imports are either not needed or don't trigger
 # any errors with the current unitttest cases
-#from objects.list import *
 #import objects.zme
 #from math  import *
 #from objects.units import *
@@ -245,14 +245,13 @@ class PunchIO(fileio.FileIO):
                 return End_of_Block
 
         else:
-            print '...skipped (no reader)'
+            if self.debug: print '...skipped (no reader)'
             self.skip_block(f)
             return End_of_Block
          
         # these are composite blocks that have no readers
         if self.block_name == 'fragment':
-            if self.debug:
-                print 'New frag'
+            if self.debug: print 'New frag'
             if object:
                 tt = object
             else:
@@ -267,14 +266,12 @@ class PunchIO(fileio.FileIO):
             tt.tidy = self.tidy_frag
          
         elif self.block_name == 'fragment.sequence':
-            if self.debug:
-                print 'New frag (seq)'
+            if self.debug: print 'New frag (seq)'
             tt = ZmatrixSequence()
             tt.title = tt.title+ ' ' +self.block_name
 
         elif self.block_name == 'zmatrix':
-            if self.debug:
-                print 'New zmatrix frag'
+            if self.debug: print 'New zmatrix frag'
             tt = Zmatrix()
             #tt.title='unknown'
             tt.title=self.block_name
@@ -283,16 +280,14 @@ class PunchIO(fileio.FileIO):
             tt.tidy = self.tidy_z
 
         elif self.block_name == 'data' or self.block_name == 'field':
-            if self.debug:
-                print 'New Field'
+            if self.debug: print 'New Field'
             tt = objects.field.Field()
             tt.title='unknown'
             # Start with an irregular grid 
             del tt.dim 
 
         elif self.block_name == 'matrix':
-            if self.debug:
-                print 'New Matrix'
+            if self.debug: print 'New Matrix'
             tt = Matrix()
             tt.title='unknown'
 
@@ -308,8 +303,7 @@ class PunchIO(fileio.FileIO):
         if tf:
             tf(tt)
 
-        if self.debug:
-            print 'read_object appending',id(tt)
+        if self.debug: print 'read_object appending',id(tt)
         # self.objects.append(tt)
         # jmht - readers need to specify what objects they are returning
 
@@ -337,8 +331,7 @@ class PunchIO(fileio.FileIO):
         """Parse the next header on the file"""
 
         if self.skip_parse:
-            if self.debug:
-                print 'parse_header skipped'
+            if self.debug: print 'parse_header skipped'
             self.skip_parse=0
             return
 
@@ -356,14 +349,12 @@ class PunchIO(fileio.FileIO):
             if len(line) == 0:
                 return 1
             header=line
-            if self.debug:
-                print 'try parse header', line
+            if self.debug: print 'try parse header', line
             a = string.split(header)
             if len(a) > 0:
                 self.cont = 0
                 for w in a:
-                    if self.debug:
-                        print 'word',w
+                    if self.debug: print 'word',w
                     if w == '\\':
                         self.cont=1
                     else:
@@ -373,13 +364,11 @@ class PunchIO(fileio.FileIO):
                     line = f.readline()
                     a = string.split(line)
                     for w in a:
-                        if self.debug:
-                            print 'word',w
+                        if self.debug: print 'word',w
                         words.append(w)
                 break
 
-        if self.debug:
-            print 'now parse header', words
+        if self.debug: print 'now parse header', words
 
         self.header = words
       
@@ -401,8 +390,7 @@ class PunchIO(fileio.FileIO):
 
         if self.debug: print 'read>', header
         counter = 0
-        if self.debug:
-            print 'header words before loop',tmp
+        if self.debug: print 'header words before loop',tmp
 
         # sanity check so that stray lines to terminate read
         if header.strip()[0:5] != 'block':
@@ -1133,33 +1121,33 @@ class PunchIO(fileio.FileIO):
             tt.data.append(float(r))
 
     def read_pdc(self,f,obj):
-        print 'read_pdc',obj
+        if self.debug: print 'read_pdc',obj
         tt = []
         for i in range(0,self.records):
             r = f.readline()
             tt.append(float(r))
-        l = List('PDC')
+        l = objects.list.List('PDC')
         l.data = tt
         self.objects.append(l)
 
     def read_mulliken(self,f,obj):
-        print 'read_mulliken',obj
+        if self.debug: print 'read_mulliken',obj
         tt = []
         for i in range(0,self.records):
             r = f.readline()
             tt.append(float(r))
-        l = List('Mulliken')
+        l = objects.list.List('Mulliken')
         l.data = tt
         self.objects.append(l)
 
     def read_lowdin(self,f,obj):
-        print 'read_lowdin',obj
+        if self.debug: print 'read_lowdin',obj
         tt = []
         for i in range(0,self.records):
             r = f.readline()
             tt.append(float(r))
         #obj.charge_sets.append(('Lowdin',tt))
-        l = List('Lowdin')
+        l = objects.list.List('Lowdin')
         l.data = tt
         self.objects.append(l)
 
