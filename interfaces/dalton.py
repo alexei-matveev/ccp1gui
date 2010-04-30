@@ -1442,10 +1442,10 @@ class DALTONCalcEd(QMCalcEd):
         if ( scratch == 'UNSET' ):
             # This is the first time we've been called so try and
             # get the current scratch directory from the dalton script
-            from jobmanager import subprocess
+            from jobmanager import ccp1gui_subprocess
             dalton_script = self.calc.get_parameter( 'dalton_script' )
             cmd = dalton_script + " -h"
-            p = subprocess.Pipe(cmd)
+            p = ccp1gui_subprocess.Pipe(cmd)
             code = p.run()
 
             gotscratch = None
