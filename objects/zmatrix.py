@@ -34,20 +34,30 @@ for storage of the internal coordinates.
 #  or held in strings and then processed on demand?
 #  (these two could easily be combined)
 #
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
+# Import Python modules
 import math
 import copy
 import exceptions
 import string
 import re
-import symdet
-import os
-import Numeric,LinearAlgebra
+import unittest
 
+# Import external modules
+import Numeric,LinearAlgebra
 # From Konrad Hinsens scientific python
 import  Scientific.Geometry.VectorModule
 
+# Import local modules
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv, atomic_number
+import symdet
 
 pi_over_180 = math.atan(1.0) / 45.0
 dtorad = pi_over_180
@@ -4740,38 +4750,125 @@ init_x="""
     x4       -0.471611        0.816855       -0.332161
 """
 
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+class testReadFromFile(unittest.TestCase):
+    """load a zmatrix from a file artesian """
+
+    def testLoadFromFile1(self):
+        """Check simple file reader 1"""
+        model=Zmatrix(file=gui_path+"/examples/water.zmt")
+        self.assertEqual( 3, len(model.atom) )
+
+    def testLoadFromFile2(self):
+        """Check simple file reader 2"""
+        model=Zmatrix(file=gui_path+"/examples/feco5.zmt")
+        self.assertEqual( 16, len(model.atom) )
+
+
+class testAutoZ(unittest.TestCase):
+    """test automatic z-matrix generation"""
+
+    def testAutoZ1(self):
+        """Check autoz function"""
+        r = PunchIO()
+        model = r.GetObjects(filepath=gui_path+'/examples/caffeine.pun')[0]
+        model.autoz()
+
+        # A couple of silly tests
+        self.assertEqual(model.atom[4].name,'c06')
+        self.assertEqual(model.atom[4].i1.name,'c05')
+
+class testImportCart(unittest.TestCase):
+    """import function using Cartesian """
+
+    # some simple structures / zmatrices to be used in testing
+    z1="""
+zmatrix angstrom
+     C                                                  
+     h    1     1.0000                                  
+     H    1     1.0900    2   109.4000                  
+     H    1     1.0900    2   109.4000    3   120.0000  
+     H    1     1.0900    2   109.4000    3  -120.0000  
+"""
+
+    z2="""
+zmatrix angstrom
+     C                                                  
+     h    1     CH1                                  
+     H    1     1.0900    2   109.4000                  
+     H    1     1.0900    2   109.4000    3   120.0000  
+     H    1     1.0900    2   109.4000    3  -120.0000  
+variables
+CH1 1.0
+"""
+
+    z3="""
+zmatrix angstrom
+     C                                                  
+     X    1     1.0000                                  
+     H    1         r3    2         v1a                  
+     H    1         r4    2         v1b    3   180.0000  
+     H    1         r5    2         v2a    3    90.0000  
+     H    1         r6    2         v2b    3   270.0000  
+variables angstrom
+      v1a     50.000000  
+      v2a    130.000000  
+      v1b     50.000000  
+      v2b    130.000000  
+      r3       1.000000  
+      r4       1.000000  
+      r5       1.000000  
+      r6       1.000000
+"""
+
+    c1="""
+coordinates
+C 0.0 0.0 0.0
+h 2.31417154151e-016 0.0 1.88972687777
+H 1.94285219728 0.0 -0.684186262154
+H -0.971426098735 -1.68255935859 -0.684186262154
+H -0.971426098735 1.68255935859 -0.684186262154
+"""
+
+
+    def testA(self):
+        """check import cartesians for zmatrix with no variables"""
+
+        model = Zmatrix(list=self.c1.split('\n'))
+        model2 = Zmatrix(list=self.z1.split('\n'))
+        model2.import_geometry(model)
+
+    def testB(self):
+        """check import cartesians for zmatrix with a variable"""
+        model = Zmatrix(list=self.c1.split('\n'))
+        model2 = Zmatrix(list=self.z2.split('\n'))
+        model2.import_geometry(model)
+
+
+    def testImportWithDummy(self):
+        """import cartesians ->  zmat with a dummy"""
+        # this generates warnings and the wrong answer with the current code
+        # because it has a dummy at atom 2
+        model = Zmatrix(list=self.c1.split('\n'))
+        model2 = Zmatrix(list=self.z3.split('\n'))
+        self.assertRaises(ImportGeometryError,model2.import_geometry,model)
+ 
+    def testCartesianImport(self):
+        # check import function for pure cartestian system
+        r = PunchIO()
+        model = r.GetObjects(filepath=gui_path+'/examples/metallo.c')[0]
+        model2 = copy.deepcopy(model)
+        model.import_geometry(model2)
 
 
 if __name__ == "__main__":
-
-    from viewer.paths import gui_path
-
-    if 0:
-        model=Zmatrix(file=gui_path+"/examples/feco5.zmt")
-        model.list()
-    
-    if 0:
-        # test fragment addition
-        model2 = Zmatrix(list=init_x.split('\n'),debug=1)
-        model2.connect()
-        model2.add_fragment(model2.atom[1],'Me')
-        
-    if 0:
-        # debug import geometry
-        model1=Zmatrix(file=gui_path+"/old.zmt",debug=0)
-        print "###### LIST1 #########"
-        model1.list()
-        
-        model2 = Zmatrix(file=gui_path+"/new.zmt",debug=0)
-        print "###### LIST2 #########"
-        model2.list()
-
-        model1.import_geometry(model2,update_constants=0)
-        print "###### LIST1 #########"
-        model1.list()
-        
-    if 1:
-        model = Zmatrix()
-        model.rdcml(gui_path+"/examples/caffeine.xml")
-        model.list()
-    
+    # Only do import here to avoid circular import problem
+    from interfaces.filepunch import PunchIO
+    unittest.main()
