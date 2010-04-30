@@ -352,17 +352,17 @@ of any program using or generating them. The parameters however will be
 
             
         if jobtype == self.LOCALHOST:
-            job =  jobmanager.LocalJob()            
+            job =  jobmanager.job.LocalJob()            
         elif jobtype == 'SSH':
             host = 'login.hpcx.ac.uk'
             user = 'psh'
-            job =  jobmanager.RemoteJob(host,user)
+            job =  jobmanager.job.RemoteJob(host,user)
         elif jobtype == 'RMCS':
-            job =  jobmanager.RMCSJob()
+            job =  jobmanager.job.RMCSJob()
         elif jobtype == 'Nordugrid':
-            job =  jobmanager.NordugridJob()
+            job =  jobmanager.job.NordugridJob()
         elif jobtype == 'Globus':
-            job =  jobmanager.GlobusJob()
+            job =  jobmanager.job.GlobusJob()
         else:
             raise AttributeError,"create_job: unknown jobtype: %s" % jobtype
 
