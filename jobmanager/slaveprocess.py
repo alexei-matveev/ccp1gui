@@ -8,9 +8,22 @@ is spawned of to handle each job they are no longer needed,
 but retained for possible future use.
 
 """
-from subprocess import *
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
-class SlavePipe(SubProcess):
+import threading
+import subprocess
+import time
+import Queue
+import unittest
+
+import ccp1gui_subprocess
+
+class SlavePipe(ccp1gui_subprocess.SubProcess):
 
     """Spawn a thread which then uses a pipe to run the commmand
     This method runs the requested command in a subthread
@@ -23,7 +36,7 @@ class SlavePipe(SubProcess):
 
     """
     def __init__(self,cmd,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)
+        ccp1gui_subprocess.SubProcess.__init__(self,cmd,**kw)
 
     def run(self):
 
@@ -33,7 +46,7 @@ class SlavePipe(SubProcess):
         # Create the queues
         self.queue = Queue.Queue()
 
-        self.status = SLAVE_PIPE
+        self.status = ccp1gui_subprocess.SLAVE_PIPE
         self.slavethread = SlaveThread(self.lock, self.queue, None, self.__slave_pipe_proc)
 
         if self.debug:
@@ -58,19 +71,19 @@ class SlavePipe(SubProcess):
 
             try:
                 tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
+                if tt == ccp1gui_subprocess.CHILD_STDOUT:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         self.output.append(x)
                         print  'stdout>',x,
 
-                elif tt == CHILD_STDERR:
+                elif tt == ccp1gui_subprocess.CHILD_STDERR:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         self.err.append(x)
                         print  'stderr>',x,
 
-                elif tt == CHILD_EXITS:
+                elif tt == ccp1gui_subprocess.CHILD_EXITS:
                     code = self.queue.get(0)
                     if self.debug:
                         print t.time(),'done'
@@ -80,7 +93,7 @@ class SlavePipe(SubProcess):
                 if self.debug:
                     print t.time(), 'queue from slave empty, sleep .1'
                 time.sleep(0.1)
-        print t.time(),'wait timed out'
+        #print t.time(),'wait timed out'
 
     def kill(self):
         """(not implemented) """
@@ -94,19 +107,19 @@ class SlavePipe(SubProcess):
         while 1:
             try:
                 tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
+                if tt == ccp1gui_subprocess.CHILD_STDOUT:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         self.output.append(x)
                         print  'stdout>',x,
 
-                elif tt == CHILD_STDERR:
+                elif tt == ccp1gui_subprocess.CHILD_STDERR:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         self.err.append(x)
                         print  'stderr>',x,
 
-                elif tt == CHILD_EXITS:
+                elif tt == ccp1gui_subprocess.CHILD_EXITS:
                     code = self.queue.get(0)
                     if self.debug:
                         print t.time(),'done'
@@ -129,7 +142,14 @@ class SlavePipe(SubProcess):
         if self.debug:
             print t.time(), 'invoke command',cmd
 
-        (stdin,stdout,stderr) = os.popen3(cmd)
+        #(stdin,stdout,stderr) = os.popen3(cmd)
+        p =subprocess.Popen(cmd,
+                            shell=True,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            close_fds=True)
+        (stdin, stdout, stderr) = (p.stdin, p.stdout, p.stderr)
 
         if self.debug:
             print t.time(),'command exits'
@@ -141,7 +161,7 @@ class SlavePipe(SubProcess):
             if txt:
                 if self.debug:
                     print t.time(),'read out returns', txt[0],' etc'
-                queue.put(CHILD_STDOUT)
+                queue.put(ccp1gui_subprocess.CHILD_STDOUT)
                 queue.put(txt)
             else:
                 if self.debug:
@@ -172,15 +192,15 @@ class SlavePipe(SubProcess):
         if self.debug:
             print 'stderr  close status',status
         if self.debug:
-            print t.time(),'put to close:', CHILD_EXITS
+            print t.time(),'put to close:', ccp1gui_subprocess.CHILD_EXITS
 
-        queue.put(CHILD_EXITS)
+        queue.put(ccp1gui_subprocess.CHILD_EXITS)
         code = 0
         queue.put(code)
 
 
 
-class SlaveSpawn(SubProcess):
+class SlaveSpawn(ccp1gui_subprocess.SubProcess):
     """Use a pythonwin process or fork with controlling thread
 
     2 queues connect launching thread to control thread
@@ -190,7 +210,7 @@ class SlaveSpawn(SubProcess):
     """
 
     def __init__(self,cmd,**kw):
-        apply(SubProcess.__init__, (self,cmd,) , kw)        
+        ccp1gui_subprocess.SubProcess.__init__(self,cmd,**kw)        
 
     def run(self,stdin=None,stdout=None,stderr=None):
 
@@ -205,7 +225,7 @@ class SlaveSpawn(SubProcess):
         self.queue = Queue.Queue()
         self.queue1 = Queue.Queue()
 
-        self.status = SLAVE_SPAWN
+        self.status = ccp1gui_subprocess.SLAVE_SPAWN
         self.slavethread = SlaveThread(self.lock, self.queue ,self.queue1,self.__slave_spawn_proc)
 
         if self.debug:
@@ -217,8 +237,8 @@ class SlaveSpawn(SubProcess):
     def kill(self):
         """pass kill signal to controlling thread """
         if self.debug:
-            print t.time(), 'queue.put ',KILL_CHILD
-        self.queue1.put(KILL_CHILD)
+            print t.time(), 'queue.put ',ccp1gui_subprocess.KILL_CHILD
+        self.queue1.put(ccp1gui_subprocess.KILL_CHILD)
 
     def __slave_spawn_proc(self,loc,queue,queue1):
         """ this is the code executed in the slave thread
@@ -242,7 +262,7 @@ class SlaveSpawn(SubProcess):
 
             if code != 999:
                 # child has exited pass back return code
-                queue.put(CHILD_EXITS)
+                queue.put(ccp1gui_subprocess.CHILD_EXITS)
                 queue.put(code)
                 # Attempt to execute any termination code
                 if self.on_end:
@@ -256,7 +276,7 @@ class SlaveSpawn(SubProcess):
                 tt = queue1.get(0)
                 if self.debug:
                     print t.time(), 'slave gets message for child', tt
-                if tt == KILL_CHILD:
+                if tt == ccp1gui_subprocess.KILL_CHILD:
                     code = self._kill_child()
                     break
             except Queue.Empty:
@@ -265,7 +285,7 @@ class SlaveSpawn(SubProcess):
 
             time.sleep(0.1)
 
-        queue.put(CHILD_EXITS)
+        queue.put(ccp1gui_subprocess.CHILD_EXITS)
         queue.put(code)
 
         #
@@ -295,17 +315,17 @@ class SlaveSpawn(SubProcess):
 
             try:
                 tt = self.queue.get(0)
-                if tt == CHILD_STDOUT:
+                if tt == ccp1gui_subprocess.CHILD_STDOUT:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         print  'stdout>',x,
 
-                elif tt == CHILD_STDERR:
+                elif tt == ccp1gui_subprocess.CHILD_STDERR:
                     tt2 = self.queue.get(0)
                     for x in tt2:
                         print  'stderr>',x,
 
-                elif tt == CHILD_EXITS:
+                elif tt == ccp1gui_subprocess.CHILD_EXITS:
                     code = self.queue.get(0)
                     if self.debug:
                         print t.time(),'done'
@@ -316,7 +336,7 @@ class SlaveSpawn(SubProcess):
                     print t.time(), 'queue from slave empty, sleep .1'
                 time.sleep(0.1)
 
-        print t.time(),'wait timed out'
+        #print t.time(),'wait timed out'
 
 
 class SlaveThread(threading.Thread):
@@ -339,5 +359,35 @@ class SlaveThread(threading.Thread):
         try:
             code = self.proc(self.lock,self.queue,self.queue1)
         except RuntimeError, e:
-            self.queue.put(RUNTIME_ERROR)
+            self.queue.put(ccp1gui_subprocess.RUNTIME_ERROR)
 
+
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+class testSlaveSpawn(unittest.TestCase):
+    """fork/pythonwin process management with extra process"""
+
+    # this is not longer needed for GUI operation
+    # it also has not been adapted to take cmd + args separately
+    # however it does seem to work
+    def testA(self):
+        """check echo on local host using stdout redirection"""
+        self.proc = SlaveSpawn('echo a b',debug=0)
+        o = open('test.out','w')
+        self.proc.run(stdout=o)
+        self.proc.wait()
+        o.close()
+        o = open('test.out','r')
+        output = o.readlines()
+        print 'output=',output
+        self.assertEqual(output,['a b\n'])
+
+if __name__ == "__main__":
+    # Run all tests automatically
+    unittest.main()
