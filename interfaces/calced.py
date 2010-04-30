@@ -23,6 +23,7 @@ import re
 import copy
 import cPickle
 import traceback
+import threading
 
 import Pmw
 import Tkinter
