@@ -1597,9 +1597,9 @@ class MOLPROCalcEd(QMCalcEd):
             
         else:
             try:
-                from jobmanager import subprocess
+                from jobmanager import ccp1gui_subprocess
                 cmd="runmolpro -V"
-                p = subprocess.ForegroundPipe(cmd)
+                p = ccp1gui_subprocess.ForegroundPipe(cmd)
                 code = p.run()
                 dict = {}
                 for l in p.output:
