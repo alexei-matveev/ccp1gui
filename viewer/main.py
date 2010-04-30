@@ -470,51 +470,6 @@ class TkMolView(Pmw.MegaToplevel):
                 setattr( self, key, value )
                     
 
-        # Set the default path to where we we were last
-        #if rc_vars['old_path']:
-        #    if rc_vars.has_key('user_path'):
-        #        p = rc_vars['user_path']
-        #        print "Using old path from rc_vars: ",p
-        #        if p:
-        #            paths['user'] = p
-
-
-    def raw(self, text):
-        """Returns a raw string representation of text
-           Credit where it's due: this function was written by Brett Cannon and was
-           found on the Python Cookbook website:
-           http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65211
-
-        """
-
-        escape_dict={'\a':r'\a',
-               '\b':r'\b',
-               '\c':r'\c',
-               '\f':r'\f',
-               '\n':r'\n',
-               '\r':r'\r',
-               '\t':r'\t',
-               '\v':r'\v',
-               '\'':r'\'',
-               '\"':r'\"',
-               '\0':r'\0',
-               '\1':r'\1',
-               '\2':r'\2',
-               '\3':r'\3',
-               '\4':r'\4',
-               '\5':r'\5',
-               '\6':r'\6',
-               '\7':r'\7',
-               '\8':r'\8',
-               '\9':r'\9'}
-
-        new_string=''
-        for char in text:
-            try: new_string+=escape_dict[char]
-            except KeyError: new_string+=char
-        return new_string
-
-
     def restore_saved_jobs(self,directory=None):
         """
         See if there are any pickled jobs in this directory
