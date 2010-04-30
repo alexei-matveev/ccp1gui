@@ -20,10 +20,18 @@
 """
      
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
 # import python modules
 import re
-import os
+import unittest
 
 # import external modules
 # the following line fails on linux, reason unclear at the moment
@@ -37,6 +45,8 @@ from objects.zmatrix import Zmatrix
 
 # import external modules
 from Scientific.IO import PDB
+
+openbabel=None
 
 class FileIO:
     """
@@ -937,7 +947,6 @@ class VTK_IO(FileIO):
         field.name = self.name
         self.fields.append(field)
 
-#################################
 
 class XYZ_IO(FileIO):
     """
@@ -1063,8 +1072,6 @@ class XYZ_IO(FileIO):
         fd.close()
             
         
-#################################
-
 class ZmatrixIO(FileIO):
     """
      A reader for a zmatrix file
@@ -1100,32 +1107,286 @@ class ZmatrixIO(FileIO):
             fobj.write(rec + '\n')
         fobj.close()
 
+
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+
+class IOTestCase(unittest.TestCase):
+    """Base class - might come in useful later and save lots of typing..."""
+
+    # So that all tests can find the examples directory
+    egdir = egdir=gui_path+os.sep+'examples'+os.sep
+    
+    def getMolecule(self):
+        """ Return a molecule suitable for testing the writers - could
+            just read one in, but this way we have more control over
+            exactly what the molecule contains
+        """
+
+        molecule = objects.zmatrix.Zmatrix()
+        molecule.title = "Test Molecule"
+        molecule.name = "Test1"
+        data = [
+            ['1.58890', '-1.44870', '-0.47000', 'C1', 'C', 6],
+            ['1.54300', '-2.25990', '0.77910', 'C2', 'C', 6],
+            ['2.21440', '-3.47410', '0.88040', 'C3', 'C', 6],
+            ['2.16940', '-4.22350', '2.03080', 'C4', 'C', 6],
+            ['1.45120', '-3.77740', '3.11890', 'C5', 'C', 6],
+            ['0.77320', '-2.58240', '3.03840', 'C6', 'C', 6],
+            ['0.82440', '-1.82660', '1.89060', 'C7', 'C', 6],
+            ['2.40210', '-1.69480', '-0.94010', 'H8', 'H', 1],
+            ['0.81370', '-1.61080', '-1.10630', 'H9', 'H', 1],
+            ['1.55340', '-0.51550', '-0.20780', 'H10', 'H', 1],
+            ['2.79760', '-3.75410', '0.13240', 'H11', 'H', 1],
+            ['2.62530', '-5.03180', '2.07500', 'H12', 'H', 1],
+            ['1.44160', '-4.26200', '3.93440', 'H13', 'H', 1],
+            ['0.18740', '-2.32460', '3.76300', 'H14', 'H', 1],
+            ['0.34860', '-0.96230', '1.79710', 'H15', 'H', 1]
+
+            ]
+
+        for d in data:
+            atom = objects.zmatrix.ZAtom()
+            x = float( d[0] )
+            y = float( d[1] )
+            z = float( d[2] )
+            atom.coord = [ x,y,z ]
+            atom.name = d[3]
+            atom.symbol = d[4]
+            molecule.add_atom( atom )
+            
+        return molecule
+        
+
+class testCML(IOTestCase):
+
+    """Test whether we deal with a CML file"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.reader = self.writer = CML_IO()
+
+    def testRead(self):
+        """CML Reader Test"""
+        fil=self.egdir+'caffeine.cml'
+        molecules = self.reader.GetObjects(filepath=fil,otype = 'molecules')
+        self.assertEqual( len(molecules[0].atom),14)
+
+    def testWrite(self):
+        """CML Writer Test"""
+        mol = self.getMolecule()
+        filepath = os.getcwd()+'/test.cml'
+        self.writer.WriteFile( mol, filepath=filepath )
+        statinfo = os.stat( filepath )
+        self.assertEqual( statinfo.st_size,1141)
+        os.remove( filepath )
+
+
+class testMDL_IO(IOTestCase):
+    """Test whether we deal with MDL mol file"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""        
+        self.reader = MDL_IO()
+
+    def testRead(self):
+        """ """
+
+        molecules = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/nsc2dmol.mol',
+            otype = 'molecules'
+            )
+        # Should return 13 atoms
+        self.assertEqual( len(molecules[0].atom),13)
+
+
+class testMSICeriussII_IO(IOTestCase):
+    """Test whether we deal with an MSI Cerius II file"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.writer = MSICeriusII_IO()
+
+    def testWrite(self):
+        """ """
+        mol = self.getMolecule()
+
+        filepath = os.getcwd()+'/test.car'
+        self.writer.WriteFile( mol, filepath=filepath )
+
+        statinfo = os.stat( filepath )
+        self.assertEqual( statinfo.st_size,1847)
+        os.remove( filepath )
+
+        
+class testPDB_IO(IOTestCase):
+    """Test whether we deal with PDB files"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.IO = PDB_IO()
+
+    def testRead(self):
+        """ """
+
+        molecules = self.IO.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/pg_kaptein1.pdb',
+            otype = 'molecules'
+            )
+
+        # Should return 1929 atoms
+        self.assertEqual( len(molecules[0].atom),1929)
+
+    def testWrite(self):
+        """ """
+
+        mol = self.getMolecule()
+
+        filepath = os.getcwd()+'/test.pdb'
+        self.IO.WriteFile( mol, filepath=filepath )
+
+        statinfo = os.stat( filepath )
+        self.assertEqual( statinfo.st_size,1009)
+        os.remove( filepath )
+
+class testSHELXTL_IO(IOTestCase):
+    """Test whether we deal with a shelxtl .res file"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.writer = SHELXTL_IO()
+
+    def testWrite(self):
+        """ """
+
+        mol = self.getMolecule()
+
+        filepath = os.getcwd()+'/test.res'
+        self.writer.WriteFile( mol, filepath=filepath )
+
+        statinfo = os.stat( filepath )
+        self.assertEqual( statinfo.st_size,840)
+        os.remove( filepath )
+
+
+class testSpartanInputIO(IOTestCase):
+    """Test whether we deal with Spartan input data"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.reader = SpartanInputIO()
+
+    def testRead(self):
+        """ read in a molecule
+        """
+
+        molecules = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/infile.spinput',
+            otype = 'molecules'
+            )
+        self.assertEqual( len(molecules[0].atom) , 68)
+
+
+class testVTK_IO(IOTestCase):
+    """Test whether we deal with VTK data"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.reader = VTK_IO()
+
+    def testScalarRead(self):
+        """ read in scalar data
+        """
+
+        fields = self.reader.GetObjects(
+            filepath='/home/jmht/VTK/VTKData/Data/ironProt.vtk',
+            otype = 'fields'
+            )
+
+        self.assertEqual( fields[0].dim[0] , 68)
+
+class testXYZ_IO(IOTestCase):
+    """Test whether we deal with VTK data"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.reader = XYZ_IO()
+
+    def testRead(self):
+        """ read in scalar data
+        """
+
+        molecules = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/toluene.xyz',
+            otype = 'molecules'
+            )
+
+        self.assertEqual( len(molecules[0].atom) , 15)
+
+
+class testZmatrixIO(IOTestCase):
+    """Test whether we deal with Zmatrix data"""
+
+    def setUp(self):
+        """Set the reader for all these filetypes"""
+        self.reader = ZmatrixIO()
+
+    def testRead(self):
+        """ read in a zmatrix
+        """
+
+        molecules = self.reader.GetObjects(
+            filepath=self.egdir+'feco5.zmt',
+            otype = 'molecules'
+            )
+
+        self.assertEqual( len(molecules[0].atom) , 16)
+
+
+if openbabel:
+    class testOpenBabel_IO(IOTestCase):
+        """Test whether we deal with the openbabel interface
+           If it is some of the other tests will fail as the file
+           sizes written out by different readers for (e.g. pdb) vary
+           This is on the list of things to sort out...
+        """
+
+        def setUp(self):
+            """Set the reader for all these filetypes"""
+
+            getIO = GetFileIO()
+            self.IO = getIO.GetOpenBabelIO( )
+
+        def testReadPDB(self):
+            """ read in a PDB  FIle
+            """
+
+            molecules = self.IO.GetObjects(
+                format='Protein Data Bank format',
+                filepath=self.egdir+'caffeine.pdb',
+                otype = 'molecules'
+                )
+
+            self.assertEqual( len(molecules[0].atom) , 24)
+
+
 if __name__ == "__main__":
 
-    import interfaces.getfileio
-    root = "/home/jmht/Documents/codes/OpenBabel/fileformats/"
-    
-    testcases = [
-        root+'pg_kaptein1.pdb',
-        root+'optim_c6h6.nwo',
-        root+'Samples.sdf',
-        root+'CChol_HF_631Gd_freq.log',
-        root+'gamessuk.out',
-        
-        ]
 
-    getIO = interfaces.getfileio.GetFileIO()
-    
-    for filepath in testcases:
-        print "checking file ",filepath
-        reader = getIO.GetReader( filepath )
-        print "reader ",reader
-        if reader:
-            objs = reader.GetObjects()
-            print "objs ",objs
-            print len(objs)
-        else:
-            print "No reader!!!"
+    unittest.main()
 
-    
-    
+    #root = "/home/jmht/Documents/codes/OpenBabel/fileformats/"
+    #testcases = [
+    #    root+'pg_kaptein1.pdb',
+    #    root+'optim_c6h6.nwo',
+    #    root+'Samples.sdf',
+    #    root+'CChol_HF_631Gd_freq.log',
+    #    root+'gamessuk.out',
+    #    
+    #    ]

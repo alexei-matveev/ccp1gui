@@ -26,20 +26,26 @@ remove rotations/translations
   tool to step through vibrations?
 
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
 # import python modules
 import string
 import re
-#import xreadlines
+import unittest
 
 # import external modules
-from Scientific.Geometry.VectorModule import *
+import Scientific.Geometry.VectorModule
 
 # import internal modules
 from fileio import FileIO
-from objects.zmatrix import *
-from objects.vibfreq import *
-from objects import periodic # for name_to_element
+import objects.zmatrix
+import objects.vibfreq
+from objects.periodic import name_to_element
 
 toAngstrom = 0.529177249
 
@@ -199,7 +205,7 @@ class GUKInputIO(FileIO):
                 print "zmat: ",line
 
         # Now we've got a buffer with the coordinates, create the model
-        model = Zmatrix( list = zmat_buffer )
+        model = objects.zmatrix.Zmatrix( list = zmat_buffer )
         model.title = self.name
         model.name = self.name
         self.molecules.append( model )
@@ -366,17 +372,17 @@ class GUKOutputIO( FileIO ):
         line = self.fd.readline()
         line = self.fd.readline()
         line = self.fd.readline()    # Start parsing this line
-        zz = Zmatrix()
+        zz = objects.zmatrix.Zmatrix()
         cnt = 0
         while not line.isspace():
-            p = ZAtom()
+            p = objects.zmatrix.ZAtom()
             s = line.split()
             x = float(s[3])*toAngstrom
             y = float(s[4])*toAngstrom
             z = float(s[5])*toAngstrom
             p.coord = [ x, y, z ]
             p.name = s[1]
-            p.symbol = periodic.name_to_element( s[1] )
+            p.symbol = name_to_element( s[1] )
             p.index = cnt
             cnt += 1
             zz.add_atom(p)
@@ -402,17 +408,17 @@ class GUKOutputIO( FileIO ):
         line = self.fd.readline()
         line = self.fd.readline()
         line = self.fd.readline()    # this line will be the first to be parsed
-        zz = Zmatrix()
+        zz = objects.zmatrix.Zmatrix()
         cnt = 0
         search = re.compile('^.* ENTERING RHFCLM')
         while ( not line.isspace() and search.match(line) ) :
-            p = ZAtom()
+            p = objects.zmatrix.ZAtom()
             s = line.split()
             x = float(s[2]*toAngstrom)
             y = float(s[3]*toAngstrom)
             z = float(s[4]*toAngstrom)
             p.coord = [ x, y, z ]
-            p.symbol = periodic.name_to_element( s[1] )
+            p.symbol = name_to_element( s[1] )
             p.index = cnt
             cnt += 1
             zz.add_atom(p)
@@ -430,7 +436,7 @@ class GUKOutputIO( FileIO ):
         if point == 0:
             # First optimisation point so add a trajectory object
             # we then append all further molecules to this
-            self.trajectories.append( ZmatrixSequence() )
+            self.trajectories.append( objects.zmatrix.ZmatrixSequence() )
             
         # skip to start of coordinates
         while ( line and not line[3:5] == "==" ):
@@ -438,7 +444,7 @@ class GUKOutputIO( FileIO ):
             
         line = self.fd.readline() # get first coordinates line
 
-        zz = Zmatrix()
+        zz = objects.zmatrix.Zmatrix()
         reading = 1
         count = 0 # to count in num of atoms
         while ( reading ):
@@ -452,14 +458,14 @@ class GUKOutputIO( FileIO ):
             if ( len( fields ) != 5 ):
                 reading = 0
             else:
-                a = ZAtom()
+                a = objects.zmatrix.ZAtom()
                 tag = fields[4]
                 x = float(fields[0])*toAngstrom
                 y = float(fields[1])*toAngstrom
                 z = float(fields[2])*toAngstrom
                 a.coord = [ x, y, z ]
                 a.name = tag
-                a.symbol = periodic.name_to_element( tag )
+                a.symbol = name_to_element( tag )
                 a.index = count
  
                 zz.add_atom(a)
@@ -594,7 +600,7 @@ class GUKOutputIO( FileIO ):
             line = self.fd.readline()
             zmat.append( line[7:].lower() )
 
-        model = Zmatrix( list = zmat )
+        model = objects.zmatrix.Zmatrix( list = zmat )
         self.molecules.append( model )
         
         
@@ -691,7 +697,7 @@ class GUKOutputIO( FileIO ):
         gotc = 0 # need to skip the first line of stars
         done = 0
         
-        molc = Zmatrix()
+        molc = objects.zmatrix.Zmatrix()
         while not done:
 
             if not line:
@@ -722,10 +728,10 @@ class GUKOutputIO( FileIO ):
                         print "Offending line is: ",line
                         
                     #print "tag:%s q:%s x:%s y:%s z:%s" % ( tag,charge,x,y,z)
-                    a = ZAtom()
+                    a = objects.zmatrix.ZAtom()
                     a.coord = [ x, y, z ]
                     a.name = tag
-                    a.symbol = periodic.name_to_element( tag )
+                    a.symbol = name_to_element( tag )
                     molc.add_atom(a)
 
             line = self.fd.readline()
@@ -1043,7 +1049,7 @@ class GUKOutputIO( FileIO ):
             v.reference = mol
             v.disp = []
             for cnt in range(0,n):
-                p = ZAtom()
+                p = objects.zmatrix.ZAtom()
 ##                p.coord = [ 0.0, 0.0, 0.0 ]
 ##                p.name  = mol.atom[cnt].name
 ##                p.index = mol.atom[cnt].index
@@ -1103,7 +1109,7 @@ class GUKOutputIO( FileIO ):
             v.reference = mol
             v.disp = []
             for cnt in range(0,natoms):
-                p = ZAtom()
+                p = objects.zmatrix.ZAtom()
 ##                p.coord = [ 0.0, 0.0, 0.0 ]
 ##                p.name  = mol.atom[cnt].name
 ##                p.index = mol.atom[cnt].index
@@ -1275,67 +1281,29 @@ class GUKOutputIO( FileIO ):
 
     #end def
 
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+class testGAMESSUK_IO(unittest.TestCase):
+    """Test whether we can read a GAMESS-UK Output file"""
+
+    def testOutputOPTXY(self):
+        """ """
+        
+        reader = GUKOutputIO()
+        trajectories = reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/gamessuk/DFT_opt.exti4a1.3-21G.8x4.out',
+            otype = 'trajectories'
+            )
+
+        # Should return one trajectory object
+        self.assertEqual( len(trajectories),1)
+
+
 if __name__ == "__main__":
-    import sys
-    import glob
-    for file in glob.glob('tests/*.gout'):
-#for file in sys.argv[1:]:
-        print 'loading %s ...' % file
-        g = GamessOutputReader(file)
-        print
-        print 'FILE %s' % file
-        print 'Title = ', g.title
-        print 'Date = ', g.date
-        print 'Time = ', g.time
-        print 'Multiplicity = ',g.multiplicity
-        print 'Charge = ',g.charge
-        print 'No. of electrons = ',g.nelec
-        print 'Basis set = ',g.basis
-        print 'No. basis functions = ',g.nbasis
-        print 'No. of shells = ',g.nshells
-        print 'Symmetry = ',g.pointGroup
-        print 'Order of principle axis = ',g.orderOfPrincipalAxis
-        print 'Nuclear energies: ',g.nuclearEnergies
-        print 'Electronic energies: ',g.electronicEnergies
-        print 'Total energies: ',g.totalEnergies
-        print 'Final nuclear energy = ',g.finalNuclearEnergy
-        print 'Final electronic energy = ',g.finalElectronicEnergy
-        print 'FInal total energy = ',g.finalTotalEnergy
-        print 'Orbital Irreps: ',g.orbitalIrreps
-        print 'Orbital energies: ',g.orbitalEnergies
-        print 'Orbital occupancies: ',g.orbitalOccupancies
-        print 'Mulliken pops: ',g.mullikens
-        print 'Lowdin pops: ',g.lowdins
-        print 'Scftypes: ',g.scftypes
-        print 'Runtypes: ',g.runtypes
-        print 'Convergence: ',g.maximumSteps
-        print 'Converged = ',g.converged
-        print 'homo = ',g.homo
-        print 'lumo = ',g.lumo
-        print 'Nuclear Dipole:', g.nuclearDipole
-        print 'Electronic Dipole:', g.electronicDipole
-        print 'Total Dipole:', g.totalDipole
-        
-        #g.zmatrix_atoms
-        #g.zmatrix_n1s
-        #g.zmatrix_v1s
-        #g.zmatrix_n2s
-        #g.zmatrix_v2s
-        #g.zmatrix_n3s
-        #g.zmatrix_v3s
-        #g.variables_type
-        #g.variables_value
-        #g.variables_units
-        #g.variables_hessian
-        #g.normalModes
-        #g.TransitionFrequencies
-        #g.TransitionDipoles
-        #g.TransitionStrengths
-        #g.TransitionIntensities
-        #g.DRF_totalQMEnergy
-        #g.DRF_qm_classical
-        #g.DRF_polarisation
-        #g.DRF_totalEnergy
-        #g.DRF_totalArea
-        #g.molecules
-        
+    unittest.main()

@@ -17,11 +17,18 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
 # Import python modules
 import re
 import string
 import copy
+import unittest
 
 # Import internal modules
 from objects import zmatrix
@@ -412,45 +419,4 @@ class DaltonIO(FileIO):
 
 if __name__ == "__main__":
 
-    import sys
-    if ( len( sys.argv ) != 2 ):
-        print "%s needs a file to test!" % sys.argv[0]
-        sys.exit(0)
-        
-    test = sys.argv[1]
-    f = open( test, 'r' )
-    d = DaltonOutputReader( ofile=test )
-    print "file is %s" % test
-    print "date is %s" % d.date
-    print "charge is %f" % d.charge
-    print "finalNuclearEnergy = %f" % d.finalNuclearEnergy
-    print "finalElectronicEnergy = %f" % d.finalElectronicEnergy
-    print "finalTotalEnergy = %f" % d.finalTotalEnergy
-    molecules = d.get_molecules()
-    print "molecules ",molecules
-    for mol in molecules:
-        print "mol is ",mol
-        #print "mol.title is ",mol.title
-        #if not mol.title:
-        for atom in mol.atom:
-            print "atom.coord are ",atom.coord
-        #mol.name = ed.graph.make_unique_name( mol.name )
-        #ed.graph.quick_mol_view( mol )
-        #ed.graph.append_data( mol )
-        #ed.graph.connect_model( mol )
-        #index += 1
-    l = d.get_geomoptsteps()
-    for step in range( len( l ) ):
-        print "step ",step
-
-    i = 0
-    for step in l:
-        print "step"
-        cycle = 0
-        for e in step['diisE']:
-            print "step %d cycle %d e is %E" % ( i, cycle, e )
-            cycle += 1
-        i += 1
-    
-    
-    
+    print "NEED TO CREATE THE TESTS FOR THIS FILE!"

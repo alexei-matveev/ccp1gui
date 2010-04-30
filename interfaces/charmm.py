@@ -1,9 +1,19 @@
 """CHARMM interface routines.
 At present this is limited to support for reading in .crd format files.
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
-from objects.zmatrix import *
+import unittest
+import string
+import objects.zmatrix
+
 from interfaces.fileio import FileIO
+from objects.periodic import sym2no
 
 charmm_map = {}
 
@@ -202,7 +212,7 @@ class CRDReader(FileIO):
         
         self.debug = 0
         
-        # capapbilties
+        # capabilties
         self.canRead = True
         self.canWrite = [ 'Zmatrix','Indexed' ]
 
@@ -266,7 +276,7 @@ class CRDReader(FileIO):
                 txt_weight = line[60:70]
 
                 if not model or (replica and txt_segid != old_segid):
-                    model = Zmatrix()
+                    model = objects.zmatrix.Zmatrix()
                     #model.title = root
                     model.title = self.name
                     #self.objects.append(model)
@@ -281,7 +291,7 @@ class CRDReader(FileIO):
                 y = float(txt_y)
                 z = float(txt_z)
 
-                a = ZAtom()
+                a = objects.zmatrix.ZAtom()
                 a.coord = [x,y,z]
 
                 trans = string.maketrans('a','a')
@@ -326,7 +336,76 @@ class CRDReader(FileIO):
         molecule.wrtcrd( self.filepath )
 
 
+class testCHARMM_IO(unittest.TestCase):
+    """Test CHARMM reader and writer"""
+
+    reader = writer = CRDReader()
+
+    def getMolecule(self):
+        """ Return a molecule suitable for testing the writers - could
+            just read one in, but this way we have more control over
+            exactly what the molecule contains
+        """
+
+        molecule = objects.zmatrix.Zmatrix()
+        molecule.title = "Test Molecule"
+        molecule.name = "Test1"
+        data = [
+            ['1.58890', '-1.44870', '-0.47000', 'C1', 'C', 6],
+            ['1.54300', '-2.25990', '0.77910', 'C2', 'C', 6],
+            ['2.21440', '-3.47410', '0.88040', 'C3', 'C', 6],
+            ['2.16940', '-4.22350', '2.03080', 'C4', 'C', 6],
+            ['1.45120', '-3.77740', '3.11890', 'C5', 'C', 6],
+            ['0.77320', '-2.58240', '3.03840', 'C6', 'C', 6],
+            ['0.82440', '-1.82660', '1.89060', 'C7', 'C', 6],
+            ['2.40210', '-1.69480', '-0.94010', 'H8', 'H', 1],
+            ['0.81370', '-1.61080', '-1.10630', 'H9', 'H', 1],
+            ['1.55340', '-0.51550', '-0.20780', 'H10', 'H', 1],
+            ['2.79760', '-3.75410', '0.13240', 'H11', 'H', 1],
+            ['2.62530', '-5.03180', '2.07500', 'H12', 'H', 1],
+            ['1.44160', '-4.26200', '3.93440', 'H13', 'H', 1],
+            ['0.18740', '-2.32460', '3.76300', 'H14', 'H', 1],
+            ['0.34860', '-0.96230', '1.79710', 'H15', 'H', 1]
+
+            ]
+
+        for d in data:
+            atom = objects.zmatrix.ZAtom()
+            x = float( d[0] )
+            y = float( d[1] )
+            z = float( d[2] )
+            atom.coord = [ x,y,z ]
+            atom.name = d[3]
+            atom.symbol = d[4]
+            molecule.add_atom( atom )
+            
+        return molecule
+
+
+    def testCRDRead(self):
+        """ """
+
+        molecules = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/original-linear-path.crd',
+            otype = 'molecules'
+            )
+
+        self.assertEqual( len(molecules[0].atom),24876)
+
+    def testCRDWrite(self):
+
+        """CHARMM CRD Write"""
+
+        mol = self.getMolecule()
+
+        filepath = os.getcwd()+'/test.crd'
+        self.writer.WriteFile( mol, filepath=filepath )
+
+        statinfo = os.stat( filepath )
+        self.assertEqual( statinfo.st_size,1099)
+        os.remove( filepath )
+
+
 if __name__ == "__main__":
-    o = CRDReader("../examples/neb_hf.crd")
-    print o.objects
+    unittest.main()
     

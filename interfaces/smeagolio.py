@@ -19,9 +19,16 @@
 #
 #
 # Read a data file output by Smeagol
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
 # import python modules
 import math
+import unittest
 
 # import local modules
 import objects.field
@@ -249,11 +256,30 @@ class SmeagolIO(FileIO):
 
       return field
 
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+class testSmeagol_IO(unittest.TestCase):
+    """Test whether we deal with Smeagol data"""
+
+    reader = SmeagolIO()
+
+    def testRead(self):
+        """ read in scalar data
+        """
+
+        fields = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/share/codes/ccp1gui/smeagol/Benz.short.rho',
+            otype = 'fields'
+            )
+
+        self.assertEqual( fields[0].dim[0] , 90)
+
 
 if ( __name__ == "__main__" ):
-   #fname = "/c/qcg/jmht/share/codes/ccp1gui/smeagol/Benz_shift.RHO.vtk"
-   fname = "/c/qcg/jmht/share/codes/ccp1gui/smeagol/Benz.short.RHO"
-   fttype = 'RHO'
-   s = SmeagolReader()
-   s.read( fname,ftype=fttype )
-    
+   unittest.main()

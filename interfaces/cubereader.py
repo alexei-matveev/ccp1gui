@@ -1,13 +1,22 @@
 """Reader for Gaussian Cube files
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
+import unittest
 
 ###from interfaces.units import *
 au_to_angstrom = 0.529177249
 
-from objects.zmatrix import *
-from objects.field import *
+from objects.zmatrix import Zmatrix,ZAtom
+from objects.field import Field
 from objects.periodic import z_to_el
 from fileio import FileIO
+import Scientific.Geometry.VectorModule
 
 class CubeIO(FileIO):
 
@@ -82,14 +91,14 @@ C     ALL COORDINATES ARE GIVEN IN ATOMIC UNITS.
             natoms = abs(natoms)
             if self.debug: "CubeIO reading orbital file"
         
-        field.origin = fac*Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
+        field.origin = fac*Scientific.Geometry.VectorModule.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
         # note that the Field object follows the punchfile (Fortran-style)
         # ordering so we reorder the axes
         for i in [0,1,2]:
             tmp = fp.readline().split()
             field.dim[2-i] = int(tmp[0])
             field.axis[2-i] = fac*float(field.dim[2-i]-1)* \
-                         Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
+                         Scientific.Geometry.VectorModule.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
         # move origin to centre of grid from corner
         for i in [0,1,2]:
             field.origin = field.origin + 0.5*field.axis[i]
@@ -172,12 +181,62 @@ C     ALL COORDINATES ARE GIVEN IN ATOMIC UNITS.
         #return (mol,field)
         self.molecules.append( mol )
         self.fields = self.fields + fields
+
+##########################################################
+#
+#
+# Unittesting stuff goes here
+#
+#
+##########################################################
+
+# new file from: http://www.stolaf.edu/academics/chemapps/jmol/docs/examples-11/data/dxy.cube
+
+class testCube_IO(unittest.TestCase):
+    """Test whether we can read a Gau$$ian cube file"""
+
+    reader = CubeIO()
+
+    def testRead1(self):
+        """ """
+        
+        fields = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/cube/dxy.cube',
+            otype = 'fields'
+            )
+
+        molecules = self.reader.GetObjects( 'molecules' )
+
+        self.assertEqual( len(molecules[0].atom),7)
+        self.assertEqual( len(fields[0].data),68921)
+
+    def testRead2(self):
+        """ """
+        
+        fields = self.reader.GetObjects(
+            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/cube/phoh.cube',
+            otype = 'fields'
+            )
+
+        molecules = self.reader.GetObjects( 'molecules' )
+
+        self.assertEqual( len(molecules[0].atom),7)
+        self.assertEqual( len(fields[0].data),68921)
+
+
+#     def testReadOrbitals(self):
+#         """ """
+        
+#         fields = self.reader.GetObjects(
+#             filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/cube/phoh.cube',
+#             otype = 'fields'
+#             )
+
+#         molecules = self.reader.GetObjects( 'molecules' )
+
+#         self.assertEqual( len(molecules[0].atom),13)
+#         self.assertEqual( len(fields),25)
+
         
 if __name__ == "__main__":
-
-    # new file from: http://www.stolaf.edu/academics/chemapps/jmol/docs/examples-11/data/dxy.cube
-    r = CubeIO()
-    objects = r.GetObjects( filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/cube/phoh.cube')
-
-    for o in objects:
-        o.list()
+    unittest.main()
