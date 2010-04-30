@@ -1,10 +1,18 @@
 #
 # unit tests for the ChemShell interface
 #
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
 import unittest
-import os
-from interfaces.chemshell import *
-from viewer.paths import gui_path
+import interfaces.chemshell
+import objects.zmatrix
 
 exdir=gui_path+os.sep+'examples'+os.sep
 
@@ -12,9 +20,9 @@ class ChemShellTestCase(unittest.TestCase):
     """ Batch tests of the ChemShell interface """
 
     def testMolproOptim(self):
-        calc = ChemShellCalc()
+        calc = interfaces.chemshell.ChemShellCalc()
         f = exdir + os.sep + 'water.zmt'
-        m = Zmatrix(file=f)
+        m = objects.zmatrix.Zmatrix(file=f)
         calc.set_input('mol_obj',m)
         #for t in  m.bonds_and_angles():
         #    print t
@@ -32,9 +40,9 @@ class ChemShellTestCase(unittest.TestCase):
 
 
     def testGAMESSUKOptim(self):
-        calc = ChemShellCalc()
+        calc = interfaces.chemshell.ChemShellCalc()
         f = exdir + os.sep + 'water.zmt'
-        m = Zmatrix(file=f)
+        m = objects.zmatrix.Zmatrix(file=f)
         calc.set_input('mol_obj',m)
         #for t in  m.bonds_and_angles():
         #    print t
@@ -62,8 +70,8 @@ def suite():
 
 if __name__ == "__main__":
 
-    from viewer.rc_vars import rc_vars
-    rc_vars['chemsh_script_dir']='/c/qcg/psh/ChemShell-3.2/chemsh/scripts'
+    import viewer.defaults
+    viewer.defaults.defaults.set_value('chemsh_script_dir','/c/qcg/psh/ChemShell-3.2/chemsh/scripts')
 
     if 0:
         # Run all tests in this module automatically
@@ -75,4 +83,3 @@ if __name__ == "__main__":
         myTestSuite.addTest(ChemShellTestCase("testMolproOptim"))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
-        pass
