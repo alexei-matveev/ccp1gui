@@ -22,20 +22,27 @@
 At present only interaction supported is kill.
 Still a lot of work to do under Unix.
 """
-import os
-import sys
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
 import time
+import re
+import string
+import cPickle # to pickle jobs
+
 import Tkinter
 import Pmw
-import sys
 
-import string
 import jobmanager
-from jobmanager.subprocess import *
-from jobmanager.job import *
-from jobmanager.jobeditor import *
-from jobmanager.jobthread import *
-import cPickle # to pickle jobs
+# jmht - looks like not needed
+#import jobmanager.ccp1gui_subprocess
+#from jobmanager.job import *
+#from jobmanager.jobeditor import *
+#from jobmanager.jobthread import *
 #
 #
 # Job Editor class
@@ -232,7 +239,7 @@ class JobEditor(Pmw.MegaToplevel):
             txt = '%-7d : %-20s : %-8s : %-10s : %s' % (i+1,job.host,job.name,job.status,yyy)
             items.append(txt)
 
-            if job.status == JOBSTATUS_FAILED:
+            if job.status == jobmanager.job.JOBSTATUS_FAILED:
                 txt = '*** ' + job.msg
                 items.append(txt)
                 if self.report_func:
@@ -263,17 +270,17 @@ class JobEditor(Pmw.MegaToplevel):
                 # done everything so remove from active jobs
                 #self.manager.RemoveJob(job)
 
-            elif job.status == JOBSTATUS_WARNING:
+            elif job.status == jobmanager.job.JOBSTATUS_WARNING:
                 if job.msg and job.popup:
                     warning_messages.append(job.msg)
                     job.popup=0
 
-##            if job.status == JOBSTATUS_OK:
+##            if job.status == jobmanager.job.JOBSTATUS_OK:
 ##                if job.msg and job.popup:
 ##                    info_messages.append(job.msg)
 ##                    job.popup=0
 
-            elif job.status == JOBSTATUS_DONE:
+            elif job.status == jobmanager.job.JOBSTATUS_DONE:
                 if job.msg and job.popup:
                     info_messages.append(job.msg)
                     job.popup=0
@@ -288,7 +295,7 @@ class JobEditor(Pmw.MegaToplevel):
                         #info_messages.append(str(e))
                         error_messages.append(str(e))                        
                         items.append(str(e))
-                        job.status = JOBSTATUS_FAILED
+                        job.status = jobmanager.job.JOBSTATUS_FAILED
                         job.msg = (str(e))
                         # delete to stop execution again
                         job.popup=0                        
@@ -347,8 +354,9 @@ class JobEditor(Pmw.MegaToplevel):
         jobs = self.manager.registered_jobs
         if len( jobs) > 0:
             for job in jobs:
-                if job.status not in [ JOBSTATUS_IDLE, JOBSTATUS_KILLED, JOBSTATUS_FAILED,
-                                       JOBSTATUS_STOPPED, JOBSTATUS_DONE, JOBSTATUS_SAVED ]:
+                if job.status not in [ jobmanager.job.JOBSTATUS_IDLE, jobmanager.job.JOBSTATUS_KILLED,
+                                       jobmanager.job.JOBSTATUS_FAILED, jobmanager.job.JOBSTATUS_STOPPED,
+                                       jobmanager.job.JOBSTATUS_DONE, jobmanager.job.JOBSTATUS_SAVED ]:
             
                     print "got jobs"
                     msg = "You still have jobs active! Please stop or kill the jobs with\n" +\
@@ -379,7 +387,7 @@ class JobEditor(Pmw.MegaToplevel):
             if job.thread.isAlive():
                 raise JobError,"This calculation is running already!"
 
-        JobThread(job).start()
+        jobmanager.jobthread.JobThread(job).start()
         
         if job not in self.manager.registered_jobs:
             self.manager.RegisterJob(job)
@@ -397,7 +405,7 @@ class JobEditor(Pmw.MegaToplevel):
             except JobError,e:
                 self.Error("Error stopping job: %s !\n%s" % (job.name,e) )
                 continue
-            if job.status != JOBSTATUS_STOPPED:
+            if job.status != jobmanager.job.JOBSTATUS_STOPPED:
                 self.Error("Error stopping job: %s!" % job.name )
                 continue
             # Clear out the thread - not sure if this the best place to do this.
@@ -411,7 +419,7 @@ class JobEditor(Pmw.MegaToplevel):
         if not jobs:
             return
         for job in jobs:
-            if job.status != JOBSTATUS_STOPPED:
+            if job.status != jobmanager.job.JOBSTATUS_STOPPED:
                 self.Error("Can only Start a stopped job!")
                 return
             print "jobmanager Starting job ",job.name
@@ -426,12 +434,12 @@ class JobEditor(Pmw.MegaToplevel):
         if not jobs:
             return
         for job in jobs:
-            if job.status != JOBSTATUS_STOPPED:
+            if job.status != jobmanager.job.JOBSTATUS_STOPPED:
                 self.Error( "Can only save a stopped job!" )
                 continue
             try:
                 self.pickle_job( job )
-                job.status = JOBSTATUS_SAVED
+                job.status = jobmanager.job.JOBSTATUS_SAVED
             except Exception,e:
                 self.Error( "Error pickling job:%s\n%s" % (job.name,e) )
                 continue
@@ -444,9 +452,10 @@ class JobEditor(Pmw.MegaToplevel):
             return
         
         for job in jobs:
-            if job.status not in [JOBSTATUS_STOPPED, JOBSTATUS_IDLE, JOBSTATUS_KILLED,
-                                  JOBSTATUS_FAILED, JOBSTATUS_STOPPED, JOBSTATUS_DONE,
-                                  JOBSTATUS_SAVED]:
+            if job.status not in [jobmanager.job.JOBSTATUS_STOPPED, jobmanager.job.JOBSTATUS_IDLE,
+                                  jobmanager.job.JOBSTATUS_KILLED, jobmanager.job.JOBSTATUS_FAILED,
+                                  jobmanager.job.JOBSTATUS_STOPPED, jobmanager.job.JOBSTATUS_DONE,
+                                  jobmanager.job.JOBSTATUS_SAVED]:
                 self.Error( "Error removing job: %s!\nCan only remove a completed job!" % job.name )
                 return
 
@@ -488,7 +497,7 @@ class JobEditor(Pmw.MegaToplevel):
     def pickle_job(self,job):
         """Pickle a stoppped Job"""
         
-        if job.status != JOBSTATUS_STOPPED:
+        if job.status != jobmanager.job.JOBSTATUS_STOPPED:
             self.Error( "Can only pickle a stopped job!" % job.name )
             return 1
         
@@ -504,7 +513,7 @@ class JobEditor(Pmw.MegaToplevel):
             job.calc.job = None # this either
         i=0
         for step in job.steps:
-            if step.type == PYTHON_CMD: # or these...
+            if step.type == jobmanager.job.PYTHON_CMD: # or these...
                 print "Job step is a PYTHON_CMD and cannot be pickled!"
                 job.steps[i] = None
             i+=1
@@ -554,22 +563,22 @@ def testit():
 
     if 0:
         job = jobmanager.ForegroundJob(name='test1')
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small.in')
-        job.add_step(PYTHON_CMD,'python cleanup',proc=sleepy)
-        job.add_step(RUN_GAMESSUK,'run gamess',jobname='small')
-        job.add_step(PYTHON_CMD,'python cleanup',proc=sleepy)
-        job.add_step(COPY_BACK_FILE,'recover punchfile',remote_filename='small.pun')
-        job.add_step(PYTHON_CMD,'python cleanup',proc=testpy)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename='small.in')
+        job.add_step(jobmanager.job.PYTHON_CMD,'python cleanup',proc=sleepy)
+        job.add_step(jobmanager.job.RUN_GAMESSUK,'run gamess',jobname='small')
+        job.add_step(jobmanager.job.PYTHON_CMD,'python cleanup',proc=sleepy)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover punchfile',remote_filename='small.pun')
+        job.add_step(jobmanager.job.PYTHON_CMD,'python cleanup',proc=testpy)
 
         manager.RegisterJob(job)
         job.run()
 
         job = ForegroundJob(name='test2')
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename='small.in')
-        job.add_step(PYTHON_CMD,'python cleanup',proc=sleepy)
-        job.add_step(RUN_GAMESSUK,'run gamess',jobname='small')
-        job.add_step(COPY_BACK_FILE,'recover punch',remote_filename='small.pun')
-        #job.add_step(PYTHON_CMD,'python cleanup',proc=testpy)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename='small.in')
+        job.add_step(jobmanager.job.PYTHON_CMD,'python cleanup',proc=sleepy)
+        job.add_step(jobmanager.job.RUN_GAMESSUK,'run gamess',jobname='small')
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover punch',remote_filename='small.pun')
+        #job.add_step(jobmanager.job.PYTHON_CMD,'python cleanup',proc=testpy)
 
         manager.RegisterJob(job)
         job.run()
@@ -577,11 +586,11 @@ def testit():
     if 0:
         job = jobmanager.BackgroundJob()
         manager.RegisterJob(job)
-        job.add_step(PYTHON_CMD,'sleepy',proc=sleepy)
+        job.add_step(jobmanager.job.PYTHON_CMD,'sleepy',proc=sleepy)
         #job.add_step(PYTHON_CMD,'crappy',proc=crappy)
         job_thread = JobThread(job)
         job_thread.start()
-        print 'XXX'
+        #print 'XXX'
 
         
     if 0:
@@ -599,9 +608,9 @@ def testit():
         rc_vars['myproxy_password'] = 'pythonGr1d'
         job = jobmanager.RMCSJob()
         manager.RegisterJob(job)
-        job.add_step(COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in')
-        job.add_step(RUN_APP,'run rmcs',stdin_file='c2001_a.in',stdout_file='c2001_a.out')
-        job.add_step(COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out')
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'add srb file',local_filename='c2001_a.in')
+        job.add_step(jobmanager.job.RUN_APP,'run rmcs',stdin_file='c2001_a.in',stdout_file='c2001_a.out')
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'Get srb results',local_filename='c2001_a.out')
         #job.run()
         
         job_thread = jobmanager.JobThread(job)
@@ -619,7 +628,7 @@ def testit():
         job.job_parameters['stdout'] = 'sleep.out'
         job.job_parameters['executable'] = 'sleep.sh'
         manager.RegisterJob(job)
-        job.add_step( RUN_APP,
+        job.add_step( jobmanager.job.RUN_APP,
                       "Growl test")
         job_thread = JobThread(job)
         try:
@@ -627,7 +636,7 @@ def testit():
         except Exception,e:
             print "Got Exception"
             sys.exit(1)
-        print 'XXX'
+        #print 'XXX'
 
 
     if 0:
@@ -640,13 +649,15 @@ def testit():
         #print 'XXX'
 
     if 1:
-        job = jobmanager.DummyJob()
+        job = jobmanager.job.DummyJob()
         manager.RegisterJob(job)
-        job.add_step(RUN_APP,'dummy')
+        job.add_step(jobmanager.job.RUN_APP,'dummy')
         #job.add_step(PYTHON_CMD,'crappy',proc=crappy)
-        job_thread = JobThread(job)
-        job_thread.start()
-        print 'XXX'
+        #job_thread = jobmanager.jobthread.JobThread(job)
+        #job_thread.start()
+        job_editor.start_job(job)
+        
+        #print 'XXX'
 
 
 if __name__ == "__main__":
@@ -656,7 +667,7 @@ if __name__ == "__main__":
     button.pack()
 
     manager = jobmanager.JobManager()
-    job_editor = jobmanager.JobEditor(root,manager)
+    job_editor = JobEditor(root,manager)
     job_editor.show()
     root.mainloop()
 
