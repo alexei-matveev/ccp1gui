@@ -32,6 +32,8 @@ if __name__ == "__main__":
     # that all the modules can be imported
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
 # import python modules
 import string
@@ -1304,6 +1306,11 @@ class testGAMESSUK_IO(unittest.TestCase):
         # Should return one trajectory object
         self.assertEqual( len(trajectories),1)
 
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(testGAMESSUK_IO)
 
 if __name__ == "__main__":
     unittest.main()

@@ -733,5 +733,16 @@ class testSpawnRemoteCmd(unittest.TestCase):
         tester=output[:3]
         self.assertEqual(tester,chkstr)
 
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    suite =  unittest.TestLoader().loadTestsFromTestCase(testSpawn)
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testSpawnRemoteProcess) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testPipeRemoteCmd) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testSpawnRemoteCmd) )
+    return suite
+
+
 if __name__ == "__main__":
     unittest.main()

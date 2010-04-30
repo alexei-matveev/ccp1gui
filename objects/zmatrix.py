@@ -40,6 +40,8 @@ if __name__ == "__main__":
     # that all the modules can be imported
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
 # Import Python modules
 import math
@@ -4777,6 +4779,7 @@ class testAutoZ(unittest.TestCase):
 
     def testAutoZ1(self):
         """Check autoz function"""
+        from interfaces.filepunch import PunchIO
         r = PunchIO()
         model = r.GetObjects(filepath=gui_path+'/examples/caffeine.pun')[0]
         model.autoz()
@@ -4862,13 +4865,21 @@ H -0.971426098735 1.68255935859 -0.684186262154
  
     def testCartesianImport(self):
         # check import function for pure cartestian system
+        from interfaces.filepunch import PunchIO
         r = PunchIO()
         model = r.GetObjects(filepath=gui_path+'/examples/metallo.c')[0]
         model2 = copy.deepcopy(model)
         model.import_geometry(model2)
 
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    suite =  unittest.TestLoader().loadTestsFromTestCase(testReadFromFile)
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testAutoZ) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testImportCart) )
+    return suite
 
 if __name__ == "__main__":
     # Only do import here to avoid circular import problem
-    from interfaces.filepunch import PunchIO
     unittest.main()

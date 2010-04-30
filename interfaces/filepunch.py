@@ -30,6 +30,8 @@ if __name__ == "__main__":
     import os,sys
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
 
 import copy
@@ -1246,7 +1248,7 @@ class PunchIO(fileio.FileIO):
 #
 ##########################################################
 
-class PunchIOTestCases(unittest.TestCase):
+class testPunchIO(unittest.TestCase):
     
     def testImport1(self):
         p = PunchIO()
@@ -1278,6 +1280,11 @@ class PunchIOTestCases(unittest.TestCase):
         objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"gamess_vect.pun")
         #self.assertTrue( isinstance(objs[1], objects.vibfreq.VibFreqSet) )
 
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(testPunchIO)
 
 if __name__ == "__main__":
 

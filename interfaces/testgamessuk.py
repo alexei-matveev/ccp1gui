@@ -22,7 +22,7 @@ class GAMESSUKTestCase(unittest.TestCase):
         """Cartesian heometry optimisation"""
         calc = gamessuk.GAMESSUKCalc()
         out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
-        m = objects.zmatrix.Zmatrix(file='../examples/water.zmt')
+        m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
         calc.set_input('mol_obj',m)
         calc.set_parameter('task','optimise')
 
@@ -46,8 +46,11 @@ class GAMESSUKTestCase(unittest.TestCase):
         print calc.results
         self.assertEqual(len(calc.results),4,"Failed to return Structure+2*List+File")
 
-def suite():
-    return unittest.TestLoader().loadTestsFromTestCase(GAMESSUKTestCase)
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(GAMESSUKTestCase)
 
 if __name__ == "__main__":
 

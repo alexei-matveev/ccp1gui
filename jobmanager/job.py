@@ -2918,7 +2918,10 @@ sixth line
         os.remove( self.stdout )
         os.remove( self.stderr )
 
-
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+    return unittest.TestLoader().loadTestsFromTestCase(JobTestCases)
     
 if __name__ == "__main__":
     unittest.main()

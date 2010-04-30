@@ -7,7 +7,8 @@ if __name__ == "__main__":
     # that all the modules can be imported
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
-
+else:
+    from viewer.paths import gui_path
 
 import unittest
 import viewer.vtkgraph
@@ -367,13 +368,13 @@ def testVectors():
     unittest.TextTestRunner().run(suite)
 
 def testMe():
-    """Return a test suite with all the tests that should be run by the main testing script"""
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
 
-    m = unittest.TestLoader().loadTestsFromTestCase(testMoleculeVisualisers)
-    f = unittest.TestLoader().loadTestsFromTestCase(testFieldVisualisers)
-    v = unittest.TestLoader().loadTestsFromTestCase(testVectorVisualisers)
-    
-    return unittest.TestSuite([m, f, v])
+    suite = unittest.TestLoader().loadTestsFromTestCase(testMoleculeVisualisers)
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testFieldVisualisers))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testVectorVisualisers))
+    return suite
 
 if __name__ == "__main__":
 

@@ -1375,6 +1375,20 @@ if openbabel:
 
             self.assertEqual( len(molecules[0].atom) , 24)
 
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    suite =  unittest.TestLoader().loadTestsFromTestCase(testMDL_IO)
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testMSICeriussII_IO) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testPDB_IO) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testSHELXTL_IO) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testSpartanInputIO) )
+    #suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testVTK_IO) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testXYZ_IO) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testZmatrixIO) )
+    return suite
+
 
 if __name__ == "__main__":
 

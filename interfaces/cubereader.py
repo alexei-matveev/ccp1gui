@@ -6,6 +6,8 @@ if __name__ == "__main__":
     # that all the modules can be imported
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
 import unittest
 
@@ -236,6 +238,12 @@ class testCube_IO(unittest.TestCase):
 
 #         self.assertEqual( len(molecules[0].atom),13)
 #         self.assertEqual( len(fields),25)
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(testCube_IO)
 
         
 if __name__ == "__main__":
