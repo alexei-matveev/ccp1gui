@@ -1,19 +1,27 @@
 #
 # unit tests for the MOLPRO interface
 #
-import unittest
-import os
-from molpro import *
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
-from viewer.paths import gui_path
+import unittest
+import molpro
+import objects.zmatrix
+
 
 class MolproTestCase(unittest.TestCase):
 
     def testHessian(self):
-        calc = MOLPROCalc()
+        calc = molpro.MOLPROCalc()
         calc.set_parameter('ana_hessian',1)
         out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
-        calc.set_input('mol_obj',Zmatrix(file='../examples/water.zmt'))
+        calc.set_input('mol_obj',objects.zmatrix.Zmatrix(file='../examples/water.zmt'))
         job = calc.makejob()
         #job.debug = 1
         job.run()

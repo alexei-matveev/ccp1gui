@@ -1,10 +1,18 @@
 #
 # unit tests for the GAMESS-UK interface
 #
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
 import unittest
-import os
-from gamessuk import *
-from viewer.paths import gui_path
+import gamessuk
+import objects.zmatrix
 
 exdir=gui_path+os.sep+'examples'+os.sep
 
@@ -12,9 +20,9 @@ class GAMESSUKTestCase(unittest.TestCase):
 
     def testOptx(self):
         """Cartesian heometry optimisation"""
-        calc = GAMESSUKCalc()
+        calc = gamessuk.GAMESSUKCalc()
         out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
-        m = Zmatrix(file='../examples/water.zmt')
+        m = objects.zmatrix.Zmatrix(file='../examples/water.zmt')
         calc.set_input('mol_obj',m)
         calc.set_parameter('task','optimise')
 
@@ -39,11 +47,11 @@ class GAMESSUKTestCase(unittest.TestCase):
         self.assertEqual(len(calc.results),4,"Failed to return Structure+2*List+File")
 
 def suite():
-    return unittest.TestLoader().loadTestsFromTestCase(GANESSUKTestCase)
+    return unittest.TestLoader().loadTestsFromTestCase(GAMESSUKTestCase)
 
 if __name__ == "__main__":
 
-    if 0:
+    if 1:
         # Run all tests in this module automatically
         unittest.main()
     else:

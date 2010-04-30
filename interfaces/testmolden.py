@@ -1,11 +1,19 @@
 #
 # unit tests for the MOLDEN interface
 #
-import unittest
-import os
-from molden import *
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
-from viewer.paths import gui_path
+import unittest
+import molden
+
+
 out=gui_path+os.sep+'examples'+os.sep+'methanol_sample.out'
 
 class MoldenTestCase(unittest.TestCase):
@@ -14,7 +22,7 @@ class MoldenTestCase(unittest.TestCase):
     def testDensity(self):
         if os.access('3dgridfile', os.R_OK):
             os.unlink('3dgridfile')
-        t=MoldenDriver(out)
+        t=molden.MoldenDriver(out)
         t.ComputePlot((1,2,3))
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
@@ -22,33 +30,15 @@ class MoldenTestCase(unittest.TestCase):
     def testOrbital(self):
         if os.access('3dgridfile', os.R_OK):
             os.unlink('3dgridfile')
-        t=MoldenDriver(out)
+        t=molden.MoldenDriver(out)
         t.ComputePlot((1,2,3),mo=5)
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
 
-
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(MoldenTestCase)
 
-
 if __name__ == "__main__":
 
-    if 1:
-        # Run all tests in this module automatically
-        unittest.main()
-    else:
-        # Build a test suite with required cases and run it
-
-        #myTestSuite = unittest.TestSuite()
-
-        #myTestSuite.addTest(testSpawn("testA"))
-        #myTestSuite.addTest(testSpawnRemoteProcess("testA"))
-        #myTestSuite.addTest(testSpawnRemoteProcess("testB"))
-        #myTestSuite.addTest(testPipeRemoteCmd("testA"))
-        #myTestSuite.addTest(testPipeRemoteCmd("testB"))
-
-        #runner = unittest.TextTestRunner()
-        #runner.run(myTestSuite)
-        pass
-    
+    # Run all the tests
+    unittest.main()    
