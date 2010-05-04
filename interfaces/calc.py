@@ -25,9 +25,9 @@ import jobmanager
 import traceback
 from viewer.paths import paths
 
-from interfaces.calced import *
-from Scientific.Geometry.VectorModule import *
-from Numeric import *
+#from interfaces.calced import *
+import Scientific.Geometry.VectorModule
+#from Numeric import *
 
 # see also jobman.py
 #BLANK     = " "
@@ -557,10 +557,11 @@ of any program using or generating them. The parameters however will be
         minz = minz  - border
         maxz = maxz  + border
 
-        field.origin = 0.5*Vector(minx+maxx,miny+maxy,minz+maxz)
-        field.axis[0] = Vector(maxx-minx,0.,0.)
-        field.axis[1] = Vector(0.,maxy-miny,0.)
-        field.axis[2] = Vector(0.,0.,maxz-minz)
+        #Scientific.Geometry.VectorModule.
+        field.origin = 0.5*Scientific.Geometry.VectorModule.Vector(minx+maxx,miny+maxy,minz+maxz)
+        field.axis[0] = Scientific.Geometry.VectorModule.Vector(maxx-minx,0.,0.)
+        field.axis[1] = Scientific.Geometry.VectorModule.Vector(0.,maxy-miny,0.)
+        field.axis[2] = Scientific.Geometry.VectorModule.Vector(0.,0.,maxz-minz)
         
     def store_results_to_gui(self):
         """This procedure scans the results of the calculation,
@@ -580,7 +581,7 @@ of any program using or generating them. The parameters however will be
         for o in self.results:
 
             # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
+            t1 = str(o.__class__).split('.')
             myclass = t1[len(t1)-1]
 
             if myclass == 'VibFreq' or \
@@ -687,8 +688,8 @@ class CalcError(RuntimeError):
            message = str(message)
        
        self.args = message
-       self.message = message
+       self.msg = message
        
     def __str__(self):
-        return self.message
+        return self.msg
 
