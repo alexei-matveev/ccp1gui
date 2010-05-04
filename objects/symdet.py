@@ -1,3 +1,12 @@
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
 import Numeric, LinearAlgebra
 import copy,math
 #,sys,quaternion
@@ -666,12 +675,12 @@ if __name__ == "__main__":
     mol = zmatrix.Zmatrix()
     mol.load_from_file( myfile )
 
-    print "mol is ",mol.atom
-    
     #mol.Symmetrise()
     #mol.toStandardOrientation()
 
-    print "Group is: %s" % mol.getSymmetry( thresh = 0.001)
+    label,generators = mol.getSymmetry(thresh = 0.001)
+    print "Label is: %s" % label
+    print "Generators are is: %s" % generators[0]
     
 
 # M = Molecule()
