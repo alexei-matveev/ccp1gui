@@ -44,6 +44,9 @@ import interfaces.cubereader
 testsuite.addTests(interfaces.cubereader.testMe())
 import interfaces.testgamessuk
 testsuite.addTests(interfaces.testgamessuk.testMe())
+import interfaces.am1calc
+testsuite.addTests(interfaces.am1calc.testMe())
+
 # Below still to do:
 #interfaces/testmolpro.py:import unittest
 #interfaces/testmolden.py:import unittest

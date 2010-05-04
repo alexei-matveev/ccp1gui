@@ -19,26 +19,28 @@
 #
 """Implements the interface to the AM1 code from Linkoping
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
-import os
-import string
-import sys
+import unittest
 
-import Tkinter
-import Pmw
-import tkFileDialog
 import viewer.help
+import jobmanager.job
 from objects import zmatrix
-
-from qm import *
-
+from qm import QMCalc,QMCalcEd
 from objects import am1
+from interfaces.calcmon import CalculationMonitor
 
+#import Tkinter
+#import Pmw
+#import tkFileDialog
 
-from interfaces.calcmon import *
-
-MENU_ENER  = "Energy"
-MENU_GRAD  = "Gradient"
 MENU_OPT   = "Geometry Optimisation"
 
 class AM1Calc(QMCalc):
@@ -51,7 +53,7 @@ class AM1Calc(QMCalc):
 
         QMCalc.__init__(self,**kw)
 
-        self.debug = 1
+        self.debug = 0
         self.generator = None
         self.optstep = 0 # to count optimisation steps
 
@@ -95,12 +97,12 @@ class AM1Calc(QMCalc):
         else:
             return None
 
-    def makejob(self,writeinput=1,graph=None):
+    #def makejob(self,writeinput=1,graph=None):
+    def makejob(self):
         """Prepare a job which will perform AM1 optimisation of a molecule
         """
 
-        if self.debug:
-            print "building AM1 job"
+        if self.debug: print "building AM1 job"
 
         #Get an editor instance to pop up tk-error widgets
         ed = self.get_editor()
@@ -109,7 +111,7 @@ class AM1Calc(QMCalc):
 
         # note that the sub-processes (pipe, spawn etc) are not used
         # in this case
-        job = jobmanager.LocalJob()
+        job = jobmanager.job.LocalJob()
 
         # Check we have parameters for this atom
         failed = self.check_avail_parameters()
@@ -131,13 +133,13 @@ class AM1Calc(QMCalc):
         if ed:
             job.add_monitor(ed.monitor)
 
-        job.add_step(PYTHON_CMD,'am1 optimisation',proc=self.runAM1,kill_cmd=self.killAM1)
+        job.add_step(jobmanager.job.PYTHON_CMD,'am1 optimisation',proc=self.runAM1,kill_cmd=self.killAM1)
         job.add_tidy(self.tidy)
         
         return job
 
     def killAM1(self):
-        self.KillFlag = JOBCMD_KILL
+        self.KillFlag = jobmanager.job.JOBCMD_KILL
         
     def endjob(self,graph):
         """This is executed in the slave thread when the job completes
@@ -178,11 +180,11 @@ class AM1Calc(QMCalc):
         for atom in mol.atom:
             Am1Mol.add( atom.name, atom.symbol,atom.coord[0], atom.coord[1], atom.coord[2] )
         if self.get_parameter( 'opt_method' ) == 'Newton':
-            print "Running quasi-newton optimization"
+            if self.debug: print "Running quasi-newton optimization"
             self.generator = Am1Mol.newton( self.get_parameter('fixed'),
                                        self.get_parameter('frozen_density') )
         elif self.get_parameter( 'opt_method' ) == 'Conjugate-gradient':
-            print "Running conjugate-gradient optimization"
+            if self.debug: print "Running conjugate-gradient optimization"
             self.generator = Am1Mol.conjugategradient( self.get_parameter('max_iter'),
                                                        self.get_parameter('gradient_threshold'),
                                                        self.get_parameter('energy_threshold'))
@@ -199,7 +201,7 @@ class AM1Calc(QMCalc):
 
         try:
             junk = self.generator.next()
-            print 'TEST',junk
+            if self.debug:print 'TEST',junk
             atoms, energy = junk
             
             tmp = zmatrix.Zmatrix()
@@ -222,9 +224,7 @@ class AM1Calc(QMCalc):
             
         self.optstep += 1
 
-        print "get_opt_step returning:"
-        print energy
-        #print newmol
+        if self.debug: print "get_opt_step returning: %s" % energy
         return tmp,energy
 
 
@@ -232,24 +232,25 @@ class AM1Calc(QMCalc):
         """ Run the AM1 Optimiser. This loops over each optimisation point updating the
             main window with the latest structure.
         """
-        print "Optimisation running"
+        if self.debug: print "Optimisation running"
         finished = None
         i=0
         while not finished:
-            print "Optimisation step: %d" % i
 
-            if self.KillFlag == JOBCMD_KILL:
+            if self.debug: print "Optimisation step: %d" % i
+
+            if self.KillFlag == jobmanager.job.JOBCMD_KILL:
                 # Kill the job 
                 print 'kill'
                 return 1,"Killed"
-            elif self.KillFlag == JOBCMD_CANCEL:
+            elif self.KillFlag == jobmanager.job.JOBCMD_CANCEL:
                 # Kill the job and revert.
                 print 'cancel'
             else:
                 newmol, energy = self.get_opt_step()
                 if newmol == None:
                     # We've finished so clean up and break out of the loop
-                    print "runAM1 finished optimisation."
+                    if self.debug: print "runAM1 finished optimisation."
                     finished=1
                     self.generator = None
                     break
@@ -267,7 +268,7 @@ class AM1CalcEd(QMCalcEd):
     """
     
     def __init__(self,root,calc,graph,**kw):
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         # there will eventually be just one of these
         self.calcMon = None
@@ -297,7 +298,7 @@ class AM1CalcEd(QMCalcEd):
         #    scheduling the job steps
         # the graph object is needed so that the job can include
         # the final load of results back into the GUI
-        job = self.calc.makejob(writeinput=writeinput,graph=self.graph)
+        job = self.calc.makejob()
 
         if not job:
             print 'could not create am1 job'
@@ -325,7 +326,7 @@ class AM1CalcEd(QMCalcEd):
             self.Error("This calculation is running already!")
             return
 
-        self.job_thread = JobThread(job)
+        self.job_thread = jobmanager.jobthread.JobThread(job)
 
         try:
             #self.CheckData()
@@ -338,7 +339,6 @@ class AM1CalcEd(QMCalcEd):
             #self.message["buttons"] = ("Dismiss")
             print 'exception'
             self.Error(str(e))
-        print 'job done'
 
 
     def monitor(self):
@@ -374,40 +374,69 @@ class AM1CalcEd(QMCalcEd):
             self.calc.killAM1()
 
 
+class AM1CalcTests(unittest.TestCase):
+
+    def makeCH2(self):
+        model = zmatrix.Zmatrix()
+        atom = zmatrix.ZAtom()
+        atom.symbol = 'C'
+        atom.name = 'C'
+        model.insert_atom(0,atom)
+        atom = zmatrix.ZAtom()
+        atom.symbol = 'H'
+        atom.name = 'H'
+        atom.coord = [ 1.,0.,0. ]
+        model.insert_atom(1,atom)
+        atom = zmatrix.ZAtom()
+        atom.symbol = 'H'
+        atom.name = 'H'
+        atom.coord = [ 1.,1.,0. ]
+        model.insert_atom(1,atom)
+        return model
+
+
+    def testCH2(self):
+        model = self.makeCH2()
+        calc = AM1Calc()
+        calc.set_input('mol_obj',model)
+        calc.set_defaults()
+        calc.runAM1()
+        finalE = calc.AM1Energies[-1]
+        self.assertAlmostEqual(-150.7306579594173,finalE)
+        
+    def testH20(self):
+        model = zmatrix.Zmatrix()
+        model.load_from_file(gui_path+os.sep+"examples"+os.sep+"water.zmt")
+        calc = AM1Calc()
+        calc.set_input('mol_obj',model)
+        calc.set_defaults()
+        calc.runAM1()
+        finalE = calc.AM1Energies[-1]
+        self.assertAlmostEqual(-348.51618349542707,finalE)
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(AM1CalcTests)
+
+
 if __name__ == "__main__":
 
-    #mystery error if the following statement is included
-    #from interfaces.gamessuk import *
-    from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
-
-    print 'x'
-    calc = AM1Calc()
-    calc.set_input('mol_obj',model)
-    #calc.set_defaults()
-    #calc.runAM1()
-
-    root=Tk()
     if 1:
+        unittest.main()
+    else:
+        model = zmatrix.Zmatrix()
+        model.load_from_file(gui_path+os.sep+"examples"+os.sep+"water.zmt")
+        calc = AM1Calc()
         calc.set_input('mol_obj',model)
-        jm = JobManager()
-        je = JobEditor(root,jm)
-        calc2 = copy.deepcopy(calc)
+        calc.set_defaults()
+
+        import Tkinter
+        root=Tkinter.Tk()
+        calc.set_input('mol_obj',model)
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(root,jm)
         vt = AM1CalcEd(root,calc,None,job_editor=je)
-        vt.Run()
-    root.mainloop()
+        #vt.Run()
+        root.mainloop()
