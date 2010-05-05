@@ -1,9 +1,10 @@
 """
 A utility to wrap up the PlotCanvas widget from Scientific Python
 """
-from Tkinter import *
-from Scientific.TkWidgets.TkPlotCanvas import *
+import Tkinter
+import Scientific.TkWidgets.TkPlotCanvas
 import Numeric
+import math
 
 
 t=['red','orange','yellow','green','blue','violet','black']
@@ -14,8 +15,8 @@ markcol=lincol
 
 
 def Plot2D(stuff):
-    window = Frame()
-    window.pack(fill=BOTH, expand=YES)
+    window = Tkinter.Frame()
+    window.pack(fill=Tkinter.BOTH, expand=Tkinter.YES)
 
     def select(value):
         c.select(value)
@@ -24,15 +25,15 @@ def Plot2D(stuff):
         select(value)
         print value
 
-    c = PlotCanvas(window, "300", "200", relief=SUNKEN, border=2,
+    c = Scientific.TkWidgets.TkPlotCanvas.PlotCanvas(window, "300", "200", relief=Tkinter.SUNKEN, border=2,
                    zoom = 1, select = display)
-    c.pack(side=TOP, fill=BOTH, expand=YES)
-    object = PlotGraphics(stuff)
+    c.pack(side=Tkinter.TOP, fill=Tkinter.BOTH, expand=Tkinter.YES)
+    object = Scientific.TkWidgets.TkPlotCanvas.PlotGraphics(stuff)
     #Button(window, text='Draw', command=lambda o=object:
     #       c.draw(o, 'automatic', 'automatic')).pack(side=LEFT)
-    Button(window, text='PostScript', command=lambda canv=c : canv.canvas.postscript(file='plot.ps')).pack(side=LEFT)
-    Button(window, text='Redraw', command=c.redraw).pack(side=LEFT)
-    Button(window, text='Quit', command=window.quit).pack(side=RIGHT)
+    Tkinter.Button(window, text='PostScript', command=lambda canv=c : canv.canvas.postscript(file='plot.ps')).pack(side=Tkinter.LEFT)
+    Tkinter.Button(window, text='Redraw', command=c.redraw).pack(side=Tkinter.LEFT)
+    Tkinter.Button(window, text='Quit', command=window.quit).pack(side=Tkinter.RIGHT)
     c.draw(object, 'automatic', 'automatic')
     window.mainloop()
 
@@ -41,15 +42,15 @@ def Plot2D(stuff):
 
 if __name__ == '__main__':
 
-    data1 = 2.*Numeric.pi*Numeric.arange(200)/200.
+    data1 = 2.*math.pi*Numeric.arange(200)/200.
     data1.shape = (100, 2)
     data1[:,1] = Numeric.sin(data1[:,0])
-    lines1 = PolyLine(data1, color='green')
-    pi = Numeric.pi
-    lines2 = PolyLine([(0., 0.), (pi/2., 1.), (pi, 0.), (3.*pi/2., -1),
+    lines1 = Scientific.TkWidgets.TkPlotCanvas.PolyLine(data1, color='green')
+    pi = math.pi
+    lines2 = Scientific.TkWidgets.TkPlotCanvas.PolyLine([(0., 0.), (pi/2., 1.), (pi, 0.), (3.*pi/2., -1),
                        (2.*pi, 0.)], color='red')
 
-    markers = PolyMarker([(0., 0.), (pi/2., 1.), (pi, 0.), (3.*pi/2., -1),
+    markers = Scientific.TkWidgets.TkPlotCanvas.PolyMarker([(0., 0.), (pi/2., 1.), (pi, 0.), (3.*pi/2., -1),
                           (2.*pi, 0.)], color='blue', fillcolor='blue', 
                          marker='triangle')
 
