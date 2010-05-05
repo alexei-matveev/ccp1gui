@@ -48,8 +48,8 @@ class AM1Calc(QMCalc):
     """
     def __init__(self, **kw):
 
-        print QMCalc
-        print AM1Calc
+        #print QMCalc
+        #print AM1Calc
 
         QMCalc.__init__(self,**kw)
 
@@ -65,7 +65,7 @@ class AM1Calc(QMCalc):
         
     def set_defaults( self ):
         """ Set up the default values for the calculation """
-        print 'set def'
+        #print 'set def'
 
         # these to reset for new opt
         self.molecules = []

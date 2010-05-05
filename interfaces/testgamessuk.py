@@ -21,7 +21,7 @@ class GAMESSUKTestCase(unittest.TestCase):
     def testOptx(self):
         """Cartesian heometry optimisation"""
         calc = gamessuk.GAMESSUKCalc()
-        out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
+        #out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
         m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
         calc.set_input('mol_obj',m)
         calc.set_parameter('task','optimise')

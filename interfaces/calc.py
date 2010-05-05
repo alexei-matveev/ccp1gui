@@ -128,7 +128,7 @@ of any program using or generating them. The parameters however will be
 
         self.set_name(name)
 
-        print 'NEW CALC',program, name
+        if self.debug: print 'NEW CALC',program, name
 
         self.set_title(title)
         self.set_job(None)
@@ -348,7 +348,7 @@ of any program using or generating them. The parameters however will be
         else:
             jobtype = self.get_parameter("submission")
 
-        print "jobtype is ",jobtype
+        if self.debug: print "jobtype is ",jobtype
 
             
         if jobtype == self.LOCALHOST:
