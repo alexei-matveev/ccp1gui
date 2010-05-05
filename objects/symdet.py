@@ -7,7 +7,10 @@ if __name__ == "__main__":
 else:
     from viewer.paths import gui_path
 
-import Numeric, LinearAlgebra
+
+import unittest
+
+#import Numeric, LinearAlgebra
 import copy,math
 #,sys,quaternion
 #from vector import Vector
@@ -40,7 +43,7 @@ class SymOp:
             self.order = 2*n
 
     def fixAngle(self):
-        q = self.q
+        q = self.q  
         if q[0] < 0:
             q[0] = -q[0]
             q[1] = -q[1]
@@ -660,28 +663,39 @@ class Vector:
         return abs(self-p)
 
 
+class SymdetTests(unittest.TestCase):
+
+    egdir=gui_path+os.sep+'examples'+os.sep
+
+    def XtestFeCO5(self):
+        """Test FeCO5"""
+        mol = zmatrix.Zmatrix()
+        mol.load_from_file(self.egdir+'feco5.zmt')
+        label,generators = mol.getSymmetry(thresh = 0.001)
+        print "Label is: %s" % label
+        print "Generators are is: %s" % generators[0]
+
+    def testH2O(self):
+        """Test H2O"""
+        mol = zmatrix.Zmatrix()
+        mol.load_from_file(self.egdir+'water.zmt')
+        label,generators = mol.getSymmetry(thresh = 0.001)
+        print "Label is: %s" % label
+        print "Generators are is: %s" % generators[0]
+
+
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(SymdetTests)
+
+
 if __name__ == "__main__":
-    import zmatrix, sys,os 
+    import zmatrix
+    unittest.main()
 
-    if len(sys.argv) == 1:
-        print "I need a file to test!"
-        sys.exit(1)
-        
-    myfile = sys.argv[1]
-    if  not os.access( myfile, os.R_OK ):
-        print "I need a file to test!"
-        sys.exit(1)
-        
-    mol = zmatrix.Zmatrix()
-    mol.load_from_file( myfile )
-
-    #mol.Symmetrise()
-    #mol.toStandardOrientation()
-
-    label,generators = mol.getSymmetry(thresh = 0.001)
-    print "Label is: %s" % label
-    print "Generators are is: %s" % generators[0]
-    
 
 # M = Molecule()
 # f = open('d6h.sym','r')
