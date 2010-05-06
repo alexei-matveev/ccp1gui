@@ -7,13 +7,12 @@ if __name__ == "__main__":
 else:
     from viewer.paths import gui_path
 
-
+# Import external modules
+import copy,math
 import unittest
 
-#import Numeric, LinearAlgebra
-import copy,math
 #,sys,quaternion
-#from vector import Vector
+import objects.vector
 
 global thresh
 thresh = 0.1
@@ -54,7 +53,7 @@ class SymOp:
         return self.q.angle()
             
     def transform(self, r):
-        return Vector(self.q.rotate(self.parity*r))
+        return objects.vector.Vector(self.q.rotate(self.parity*r))
 
     def getOrder(self):
         """Calculate the order of the operation by brute force, if
@@ -69,7 +68,7 @@ class SymOp:
         return self.order
 
     def compose(self, op2):
-        newop = SymOp(1,Vector(1,0,0))
+        newop = SymOp(1,objects.vector.Vector(1,0,0))
         newop.q = self.q*op2.q
         newop.parity = self.parity*op2.parity
         newop.order = None
@@ -102,12 +101,12 @@ class SymOp:
                 if self.isInversion():
                     return "i"
                 else:
-                    return "sigma" + str(Vector(self.q.c[1:]).normalized())
+                    return "sigma" + str(objects.vector.Vector(self.q.c[1:]).normal())
             else:
-                return "S%i" % n + str(Vector(self.q.c[1:]).normalized())
+                return "S%i" % n + str(objects.vector.Vector(self.q.c[1:]).normal())
         else:
             return "C%i" % n + str(self.q.c)
-            return "C%i" % n + str(Vector(self.q.c[1:]).normalized())
+            return "C%i" % n + str(objects.vector.Vector(self.q.c[1:]).normal())
 
     
 class SymGroup:
@@ -148,7 +147,7 @@ class SymGroup:
                 G2.addElement(op)
         # If i is in the group, make the other generators
         # be of even parity.
-        inv = SymOp(1,Vector(1,0,0),-1)
+        inv = SymOp(1,objects.vector.Vector(1,0,0),-1)
         if inv in gen:
             gen = copy.deepcopy(gen)
             for op in gen:
@@ -160,7 +159,7 @@ class SymGroup:
         """Return point group label"""
         if not gen:
             gen = self.generators()
-        inv = SymOp(1,Vector(1,0,0),-1)
+        inv = SymOp(1,objects.vector.Vector(1,0,0),-1)
         if inv in self.elements:
             has_inv = 1
         else:
@@ -254,7 +253,7 @@ class PointSet:
         self.indices = [-1]*len(pset)
         
     def addPoint(self, point, index = -1):
-        "Add a point (Vector) to the set."
+        "Add a point (objects.vector.Vector) to the set."
         self.pset.append(point)
         self.indices.append(index)
 
@@ -421,7 +420,7 @@ class Molecule:
         "pos is of type Vector"
         if not self.atomsets.has_key(label):
             self.atomsets[label] = PointSet()
-        self.atomsets[label].addPoint(Vector(pos),index)
+        self.atomsets[label].addPoint(objects.vector.Vector(pos),index)
 
     def hasSymmetry(self,op,testSame):
         print 'Testing',op,
@@ -454,14 +453,14 @@ class Molecule:
         axis = None
         other = None
         threedeg = None
-        invop = SymOp(1,Vector([1,0,0]),-1)
+        invop = SymOp(1,objects.vector.Vector([1,0,0]),-1)
         inv = 0
         if self.hasSymmetry(invop,testSame):
             G.addElement(invop)
             inv = 1
-        mom = [[eigvals[0],Vector(1,0,0)],
-               [eigvals[1],Vector(0,1,0)],
-               [eigvals[2],Vector(0,0,1)]]
+        mom = [[eigvals[0],objects.vector.Vector(1,0,0)],
+               [eigvals[1],objects.vector.Vector(0,1,0)],
+               [eigvals[2],objects.vector.Vector(0,0,1)]]
         # Do we have two zero eigenvalues?
         if abs(mom[0][0]) < eigrelthres and abs(mom[1][0]) < eigrelthres:
             print "Case 1"
@@ -607,13 +606,13 @@ class Quaternion:
         return 2*math.acos(self.c[0])
 
     def orthogonalTo(self,q,thres = 1e-6):
-	n1 = Vector(self.c[1],self.c[2],self.c[3]).normalized()
-	n2 = Vector(q.c[1],q.c[2],q.c[3]).normalized()
+	n1 = objects.vector.Vector(self.c[1],self.c[2],self.c[3]).normal()
+	n2 = objects.vector.Vector(q.c[1],q.c[2],q.c[3]).normal()
 	return abs(n1.dot(n2)) < thres
 
     def parallelTo(self,q,thres = 1e-6):
-	n1 = Vector(self.c[1],self.c[2],self.c[3]).normalized()
-	n2 = Vector(q.c[1],q.c[2],q.c[3]).normalized()
+	n1 = objects.vector.Vector(self.c[1],self.c[2],self.c[3]).normal()
+	n2 = objects.vector.Vector(q.c[1],q.c[2],q.c[3]).normal()
 	return abs(abs(n1.dot(n2)) - 1)  < thres
 
 def rotor(axis,angle):
@@ -622,46 +621,6 @@ def rotor(axis,angle):
     handed sense."""
     c = math.sin(angle/2)/math.sqrt(axis[0]**2 + axis[1]**2 + axis[2]**2)
     return Quaternion([math.cos(angle/2),c*axis[0],c*axis[1],c*axis[2]])
-
-class Vector:
-    def __init__(self, x = [0,0,0], y = None, z = None):
-        if y != None:
-            self.r = [x,y,z]
-        else:
-            self.r = copy.copy(x)
-    def __getitem__(self, i):
-        return self.r[i]    
-    def dot(self,v):
-        return self[0]*v[0] + self[1]*v[1] + self[2]*v[2]
-    def cross(self,v):
-        return Vector(self[1]*v[2] - self[2]*v[1],
-                      self[2]*v[0] - self[0]*v[2],
-                      self[0]*v[1] - self[1]*v[0])
-    def scaled(self,c):
-        return Vector(c*self[0],c*self[1],c*self[2])
-    def abs2(self):
-        return self[0]*self[0] + self[1]*self[1] + self[2]*self[2]
-    def __abs__(self):
-        return math.sqrt(self.abs2())
-    def normalized(self):
-        return self.scaled(1.0/math.sqrt(self.abs2()))
-    def __add__(self,v):
-        return Vector(self[0]+v[0],self[1]+v[1],self[2]+v[2])
-    def __sub__(self,v):
-        return Vector(self[0]-v[0],self[1]-v[1],self[2]-v[2])
-    def __str__(self):
-        return "(%.6f, %.6f, %.6f)" % (self.r[0],self.r[1],self.r[2])
-    def __rmul__(self,c):
-        return self.scaled(c)
-    def __mul__(self,c):
-        return self.scaled(c)
-    def __neg__(self):
-        return -1*self
-    def dist2(self,p):
-        return (self-p).abs2()
-    def dist(self,p):
-        return abs(self-p)
-
 
 class SymdetTests(unittest.TestCase):
 
