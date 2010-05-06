@@ -44,49 +44,54 @@ class testMoleculeVisualisers(unittest.TestCase):
             gui = viewer.vtkgraph.VtkGraph(tkroot)
             gui.load_from_file(gui_path+"/examples/feco5.zmt",display=0)
 
-            # Set the molecule and molvis we will be using for all tests
-            molecule = gui.loaded_mols()[0]
-            visualiser = gui.molecule_visualiser(gui.master,gui,molecule)
-
-            # Set to show nothing at first
-            visualiser.show_labels = 0
-            visualiser.show_spheres = 0
-            visualiser.show_sticks = 0
-            visualiser.show_wire = 0
-
+            # Set the molecule and gui we will be using for all tests
+            self.__class__.molecule=gui.loaded_mols()[0]
             self.__class__.gui=gui
-            self.__class__.visualiser=visualiser
-            self.__class__.molecule=molecule
 
+    def resetVisualiser(self,visualiser):
+        # Set to show nothing at first
+        visualiser.show_labels = 0
+        visualiser.show_spheres = 0
+        visualiser.show_sticks = 0
+        visualiser.show_wire = 0
+        return visualiser
 
     def testLabels(self):
         """Test the labels visualiser"""
         
-        self.visualiser.show_labels = 1
-        self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
-        self.visualiser.show_labels = 0
+        visualiser = self.gui.molecule_visualiser(self.gui.master,self.gui,self.molecule)
+        visualiser = self.resetVisualiser(visualiser)
+        visualiser.show_labels = 1
+        self.gui.visualise(self.molecule,visualiser,open_widget=1)
+        visualiser.Delete()
 
     def testSpheres(self):
         """Test the spheres visualiser"""
         
-        self.visualiser.show_spheres = 1
-        self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
-        self.visualiser.show_spheres = 0
+        visualiser = self.gui.molecule_visualiser(self.gui.master,self.gui,self.molecule)
+        visualiser = self.resetVisualiser(visualiser)
+        visualiser.show_spheres = 1
+        self.gui.visualise(self.molecule,visualiser,open_widget=1)
+        visualiser.Delete()
+
 
     def testSticks(self):
         """Test the sticks visualiser"""
         
-        self.visualiser.show_sticks = 1
-        self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
-        self.visualiser.show_sticks = 0
+        visualiser = self.gui.molecule_visualiser(self.gui.master,self.gui,self.molecule)
+        visualiser = self.resetVisualiser(visualiser)
+        visualiser.show_sticks = 1
+        self.gui.visualise(self.molecule,visualiser,open_widget=1)
+        visualiser.Delete()
 
     def testWire(self):
-        """Test the wire visualiser"""
+        """Test the wireframe visualiser"""
         
-        self.visualiser.show_wire = 1
-        self.gui.visualise(self.molecule,self.visualiser,open_widget=1)
-        self.visualiser.show_wire = 0
-
+        visualiser = self.gui.molecule_visualiser(self.gui.master,self.gui,self.molecule)
+        visualiser = self.resetVisualiser(visualiser)
+        visualiser.show_wire = 1
+        self.gui.visualise(self.molecule,visualiser,open_widget=1)
+        visualiser.Delete()
 
 
 class testFieldVisualisers(unittest.TestCase):
@@ -311,7 +316,7 @@ class testVectorVisualisers(unittest.TestCase):
         visualiser.Delete()
 
 
-    def FOOtestStreamtubes(self):
+    def XXXtestStreamtubes(self):
         """Test the streamlines plot displayed as tubes.
         Don't run this as it fails to allocate the required memory & then seg-faults
         Need to look into this...
@@ -382,12 +387,15 @@ if __name__ == "__main__":
     tkroot = Tkinter.Tk()
     tkroot.withdraw()
 
+    unittest.main()
+
     #testMolecules()
     #testFields()
     #testVectors() 
+
+    #myTestSuite = unittest.TestSuite()
+    #myTestSuite.addTest(testMoleculeVisualisers("testLabels"))
+    #runner = unittest.TextTestRunner()
+    #runner.run(myTestSuite)
     
-    m = unittest.TestLoader().loadTestsFromTestCase(testMoleculeVisualisers)
-    f = unittest.TestLoader().loadTestsFromTestCase(testFieldVisualisers)
-    v = unittest.TestLoader().loadTestsFromTestCase(testVectorVisualisers)
-    alltests = unittest.TestSuite([m, f, v])
-    unittest.TextTestRunner().run(alltests)
+    
