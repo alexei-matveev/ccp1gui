@@ -33,9 +33,6 @@ import viewer.help
 import string
 import time
 
-# From Konrad Hinsens scientific python
-import Scientific.Geometry.VectorModule
-
 from SimpleDialog import SimpleDialog
 import tkColorChooser
 from tkFileDialog import *
