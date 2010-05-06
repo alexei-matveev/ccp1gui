@@ -35,7 +35,13 @@ import jobmanager.job
 from objects import zmatrix
 from qm import QMCalc,QMCalcEd
 from objects import am1
-from interfaces.calcmon import CalculationMonitor
+
+# If this fails, then we don't have Scientific Python installed
+# and can't use the calculation monitor
+try:
+    from interfaces.calcmon import CalculationMonitor
+except ImportError:
+    CalculationMonitor=None
 
 #import Tkinter
 #import Pmw
@@ -165,7 +171,8 @@ class AM1Calc(QMCalc):
         if self.debug: print "AM1 tidy executing with code ",code
         
         ed = self.get_editor()
-        ed.calcMon.update()
+        if ed.calcMon:
+            ed.calcMon.update()
         ed.Info("Optimisation finished")
         
 
@@ -305,10 +312,11 @@ class AM1CalcEd(QMCalcEd):
             return
 
         # create a calculation monitor window
-        if not self.calcMon:
-            self.calcMon = CalculationMonitor(self.root,command=self.calcmon_ops)
-        self.calcMon.clear()
-        self.calcMon.show()
+        if CalculationMonitor:
+            if not self.calcMon:
+                self.calcMon = CalculationMonitor(self.root,command=self.calcmon_ops)
+            self.calcMon.clear()
+            self.calcMon.show()
             
         #self.AM1Lock = thread.allocate_lock()
 
@@ -357,8 +365,9 @@ class AM1CalcEd(QMCalcEd):
             self.calc.AM1Mol = None
 
             # Update graph widget
-            self.calcMon.update()
-            self.calcMon.show()
+            if CalculationMonitor:
+                self.calcMon.update()
+                self.calcMon.show()
 
     def calcmon_ops(self,operation,arguments):
         """ The operations that are passed to the calculation monitor.
