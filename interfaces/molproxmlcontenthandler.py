@@ -1,9 +1,9 @@
 import xml.sax
 import sys, StringIO
 from UserDict import UserDict
-from Scientific.Geometry.VectorModule import *
 from objects import zmatrix
 from objects import vibfreq
+import objects.vector
 
 # CML 1.01 Parser adapted to read molpro 2006.1 outputs into CCP1 GUI
 # taken from web page
@@ -156,7 +156,7 @@ class MolproXMLContentHandler(xml.sax.ContentHandler):
             disp = []
             count=0
             for i in range(0,n):
-                vec = Vector([ float(rr[count+0]) , float(rr[count+1]), float(rr[count+2]) ])
+                vec = objects.vector.Vector([ float(rr[count+0]) , float(rr[count+1]), float(rr[count+2]) ])
                 count = count + 3
                 disp.append(vec)
             self.tmpVibFreqSet.add_vib(disp,self.tmpFreq)

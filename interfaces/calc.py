@@ -26,7 +26,8 @@ import traceback
 from viewer.paths import paths
 
 #from interfaces.calced import *
-import Scientific.Geometry.VectorModule
+#import Scientific.Geometry.VectorModule
+import objects.vector
 #from Numeric import *
 
 # see also jobman.py
@@ -557,11 +558,10 @@ of any program using or generating them. The parameters however will be
         minz = minz  - border
         maxz = maxz  + border
 
-        #Scientific.Geometry.VectorModule.
-        field.origin = 0.5*Scientific.Geometry.VectorModule.Vector(minx+maxx,miny+maxy,minz+maxz)
-        field.axis[0] = Scientific.Geometry.VectorModule.Vector(maxx-minx,0.,0.)
-        field.axis[1] = Scientific.Geometry.VectorModule.Vector(0.,maxy-miny,0.)
-        field.axis[2] = Scientific.Geometry.VectorModule.Vector(0.,0.,maxz-minz)
+        field.origin = 0.5*objects.vector.Vector(minx+maxx,miny+maxy,minz+maxz)
+        field.axis[0] = objects.vector.Vector(maxx-minx,0.,0.)
+        field.axis[1] = objects.vector.Vector(0.,maxy-miny,0.)
+        field.axis[2] = objects.vector.Vector(0.,0.,maxz-minz)
         
     def store_results_to_gui(self):
         """This procedure scans the results of the calculation,

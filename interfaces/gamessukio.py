@@ -40,9 +40,6 @@ import string
 import re
 import unittest
 
-# import external modules
-import Scientific.Geometry.VectorModule
-
 # import internal modules
 from fileio import FileIO
 import objects.zmatrix
@@ -161,21 +158,16 @@ class GUKInputIO(FileIO):
                 return None
                 break
         
-            #line = string.strip( line )
             line=line.strip()
-            #line = string.lower( line )
             line=line.lower()
             
             if line:
                 # See if the line has commas in it, as GAMESS-UK supports this as a
                 # separator as well as whitespace
                 if re.compile(",").search( line ):
-                    #fields = string.split( line, ','  )
                     fields = line.split(',')
-                    #line = string.join( fields ) # Rejoin split line using space as separator
                     line = fields.join() # Rejoin split line using space as separator
                 else:
-                    #fields = string.split( line )                    
                     fields = line.split()                    
             else:
                 # ignore empty lines
@@ -214,7 +206,6 @@ class GUKInputIO(FileIO):
         #self.objects.append( model )
 
     
-#class GamessOutputReader:
 class GUKOutputIO( FileIO ):
     """ Read an GAMESS-UK output file and store information"""
     
@@ -454,8 +445,8 @@ class GUKOutputIO( FileIO ):
                 reading = 0
                 break
             else:
-                line = string.strip( line )
-                fields = string.split( line )
+                line = line.strip()
+                fields = line.split()
 
             if ( len( fields ) != 5 ):
                 reading = 0
@@ -1167,7 +1158,7 @@ class GUKOutputIO( FileIO ):
             t='v%-10.0f' % v.freq
             v.title = t
             for d in v.disp:
-                v.displacement.append(Vector(d))
+                v.displacement.append(objects.vector.Vector(d))
             del v.disp
 
     def _read_frequencies_hessian(self,line):

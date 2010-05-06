@@ -34,11 +34,10 @@ import unittest
 
 # import local modules
 import objects.field
+import objects.vector
 
 # import external modules
 import vtk # We create the VTK objects directly
-# From Konrad Hinsens scientific python
-import Scientific.Geometry.VectorModule
 from fileio import FileIO
 
 class SmeagolIO(FileIO):
@@ -239,20 +238,20 @@ class SmeagolIO(FileIO):
       field.vtkdata = vtkdata
 
       # Need to add axis, dimensions & origin as these are required by the CutSlice visulaliser
-      # NB: May need to use Scientific Vector? as currently these are only lists
+      # NB: May need to use Vector as currently these are only lists?
       field.dim = [ xDim, yDim, zDim ]
-      field.x = Scientific.Geometry.VectorModule.Vector( xLatVec )
+      field.x = objects.vector.Vector( xLatVec )
       #field.axis.append( field.x )
       field.axis[0] = field.x 
-      field.y = Scientific.Geometry.VectorModule.Vector( yLatVec )
+      field.y = objects.vector.Vector( yLatVec )
       #field.axis.append( field.y )
       field.axis[1] = field.y
-      field.z = Scientific.Geometry.VectorModule.Vector( zLatVec )
+      field.z = objects.vector.Vector( zLatVec )
       #field.axis.append( field.z )
       field.axis[2] = field.z 
-      #field.origin =Scientific.Geometry.VectorModule.Vector( origin )
+      #field.origin =objects.vector.Vector( origin )
       #jmht HACK - need to think about this
-      field.origin =Scientific.Geometry.VectorModule.Vector( [0.,0.,0.] )
+      field.origin =objects.vector.Vector( [0.,0.,0.] )
 
       
 

@@ -41,10 +41,9 @@ It is not yet clear what is the best way to resolve this
      required order
 """
 
-# From Konrad Hinsens scientific python
-from Scientific.Geometry.VectorModule import *
 from math import *
 from viewer.debug import deb
+import objects.vector
 # import Numeric
 
 #Note that it is not possible to add Scientific vectors and 3 element
@@ -63,12 +62,12 @@ class Field:
         ######self.mapping = []
         self.axis = []
         # just for convenience
-        self.x = Vector(1., 0., 0.)
-        self.y = Vector(0., 1., 0.)
-        self.z = Vector(0., 0., 1.)
+        self.x = objects.vector.Vector(1., 0., 0.)
+        self.y = objects.vector.Vector(0., 1., 0.)
+        self.z = objects.vector.Vector(0., 0., 1.)
 
         # default axis
-        self.origin = Vector([0., 0., 0.])
+        self.origin = objects.vector.Vector([0., 0., 0.])
         self.axis.append(self.x)
         self.axis.append(self.y)
         if nd == 3:
@@ -441,9 +440,9 @@ class Field:
             # vx along Z, choose Y
             # otherwise, choose Z
             if vx[0] < tol and vx[1] < tol:
-                tmp = Vector(0.,1.,0.)
+                tmp = objects.vector.Vector(0.,1.,0.)
             else:
-                tmp = Vector(0.,0.,1.)
+                tmp = objects.vector.Vector(0.,0.,1.)
             vyn = vx.cross(tmp).normal()
             vzn = vx.cross(vyn).normal()
         else:
@@ -522,7 +521,7 @@ class Field:
         s1, s2, s3  vectors for first rotation 
         """
 
-        local = Vector(ifrom*s1, ifrom*s2, ifrom*s3)
+        local = objects.vector.Vector(ifrom*s1, ifrom*s2, ifrom*s3)
         s = sin(rx *   0.00174532925199)
         c = cos(rx *   0.00174532925199)
 
@@ -706,14 +705,14 @@ class Field:
 
         fac = 0.529177249
         self.dim = [ nx, ny, nz ]
-        self.origin = fac * Vector(px, py, pz)
+        self.origin = fac * objects.vector.Vector(px, py, pz)
         self.axis = []
 
         # note swap of v1 and v2, this is empirical
 
-        self.axis.append(fac * ry * Vector(v2x,v2y,v2z))
-        self.axis.append(fac * rx * Vector(v1x,v1y,v1z))
-        self.axis.append(fac * rz * Vector(cx,cy,cz).normal())
+        self.axis.append(fac * ry * objects.vector.Vector(v2x,v2y,v2z))
+        self.axis.append(fac * rx * objects.vector.Vector(v1x,v1y,v1z))
+        self.axis.append(fac * rz * objects.vector.Vector(cx,cy,cz).normal())
         self.data = nx*ny*nz*[0.0]
         # Now pull records off the file until all done
         i = 0

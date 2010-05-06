@@ -33,18 +33,11 @@ else:
 import re
 import unittest
 
-# import external modules
-# the following line fails on linux, reason unclear at the moment
-#from Scientific.Geometry import VectorModule
-from Scientific.Geometry import *
-
 # import internal modules
 import objects.zmatrix
+import objects.vector
 from objects.periodic import z_to_el, sym2no, name_to_element
 from objects.zmatrix import Zmatrix
-
-# import external modules
-from Scientific.IO import PDB
 
 openbabel=None
 
@@ -533,12 +526,15 @@ class PDB_IO(FileIO):
 
         """
 
+        from Scientific.IO import PDB
+
         # Initialise base class
         FileIO.__init__(self,filepath=filepath,**kw)
 
         # List which types of object we can read/write
         self.canRead = True
         self.canWrite = [ 'Indexed', 'Zmatrix' ]
+
 
 
     def _ReadFile(self):
@@ -549,7 +545,6 @@ class PDB_IO(FileIO):
         model.title = self.name
         model.name = self.name
 
-        #from Scientific.IO import PDB
 
         conf = PDB.Structure(self.filepath)
         #print conf
@@ -598,7 +593,6 @@ class PDB_IO(FileIO):
     def _WriteMolecule(self,molecule):
         """PDB reader, based on Konrad Hinsens Scientific Python"""
 
-        from Scientific.IO import PDB
         pdbf = PDB.PDBFile(self.filepath,mode='w')
         for atom in molecule.atom:
             d = { 'position': atom.coord, 'name' : atom.name }
@@ -940,7 +934,7 @@ class VTK_IO(FileIO):
         field.dim = data.GetDimensions()
         #print data.GetDataDimension()
         origin =  data.GetOrigin()
-        field.origin = VectorModule.Vector( origin )
+        field.origin = objects.vector.Vector( origin )
         
         field.vtkdata = data
         field.title = self.name

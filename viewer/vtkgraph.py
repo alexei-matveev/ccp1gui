@@ -23,26 +23,28 @@ The viewer framework that this runs in is provided by
 a parent class TkMolView.
 
 """
+
+# Import Python modules
 import sys,re
 import math
 
+# Import our modules
 import chempy.cpv
-from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
-
 import vtk
 import viewer.vtkTkRenderWidgetP
-
 import viewer.main
+import generic.visualiser
+import objects.vector
+from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
 from viewer.debug import deb,trb
-
 from generic.graph import Graph
 from generic.colourmap import ColourMap
-import generic.visualiser
+
+# Import external modules
+import Numeric
 
 mol_select_key=1
 
-# From Konrad Hinsens scientific python
-import Scientific.Geometry.VectorModule
 
 def truncate_vec(tup,lim):
     len = tup[0]*tup[0] + tup[1]*tup[1] + tup[2]*tup[2]
@@ -1246,8 +1248,8 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                             draw = 1
 
                         if t.get_index() > a.get_index() and draw:
-                            r1 = Scientific.Geometry.VectorModule.Vector(a.coord)
-                            r2 = Scientific.Geometry.VectorModule.Vector(t.coord)
+                            r1 = objects.vector.Vector(a.coord)
+                            r2 = objects.vector.Vector(t.coord)
                             axis = r2-r1
                             center = 0.5*(r1+r2)
                             #print 'center', center, t.get_index(), a.get_index()
@@ -1262,7 +1264,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                                 # first move cylinder so that it overlap the target
                                 # direction in the projection down Z
 
-                                rot = Scientific.Geometry.VectorModule.Numeric.array([0.0,0.0,0.0])
+                                rot = Numeric.array([0.0,0.0,0.0])
 
                                 # Assume we start with z 
 
@@ -1274,7 +1276,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 
                                 else:
                                     ratio = axis[0] / axis[1]
-                                    angle = Scientific.Geometry.VectorModule.Numeric.arctan(ratio)*rad2deg
+                                    angle = Numeric.arctan(ratio)*rad2deg
 
                                 #print 'z angle',angle
                                 # sign convention is empirical
@@ -1287,7 +1289,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                                     angle = 90.0
                                 else:
                                     ratio = axis[2] / prj
-                                    angle = Scientific.Geometry.VectorModule.Numeric.arctan(ratio)*rad2deg
+                                    angle = Numeric.arctan(ratio)*rad2deg
                                     if axis[1] < 0:
                                         angle = -angle
 
@@ -2056,7 +2058,7 @@ class VtkIsoSurf(VtkCmapVis):
             else:
                 nz = 1
 
-            npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
+            npts = objects.vector.Vector(nx,ny,nz)
             #print 'dim',self.field.dim,'vec',npts
 
             self.data = vtk.vtkStructuredGrid()
@@ -2215,7 +2217,7 @@ class VtkVolVis:
         #
         self.data = vtk.vtkStructuredPoints()
         data = self.data
-        npts = Scientific.Geometry.VectorModule.Vector(field.dim[0],field.dim[1],field.dim[2])
+        npts = objects.vector.Vector(field.dim[0],field.dim[1],field.dim[2])
 
         # jmht - noticed that cube reader didn't have a mapping
         # and so this failed
@@ -2613,7 +2615,7 @@ class VtkSlice(VtkCmapVis_):
         """
 
         if self.debug: deb('convert slice data')
-        npts = Scientific.Geometry.VectorModule.Vector(field.dim[0],field.dim[1],1)
+        npts = objects.vector.Vector(field.dim[0],field.dim[1],1)
         self.vtkgrid = vtk.vtkStructuredGrid()
         self.vtkgrid.SetDimensions(npts[0],npts[1],1)
 
@@ -2990,7 +2992,7 @@ class VtkCutSliceVisualiser(generic.visualiser.CutSliceVisualiser,VtkSlice,VtkVi
             else:
                 nz = 1
 
-            npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
+            npts = objects.vector.Vector(nx,ny,nz)
 
 
             #print 'dim',self.field.dim,'vec',npts
@@ -3226,7 +3228,7 @@ class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
                 else:
                     nz = 1
 
-                npts = Scientific.Geometry.VectorModule.Vector(nx,ny,nz)
+                npts = objects.vector.Vector(nx,ny,nz)
                 #print 'dim',field.dim,'vec',npts
                 data = vtk.vtkStructuredGrid()
                 data.SetDimensions(npts[0],npts[1],npts[2])

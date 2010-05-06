@@ -51,15 +51,15 @@ import string
 import re
 import unittest
 
-# Import external modules
-import Numeric,LinearAlgebra
-# From Konrad Hinsens scientific python
-import  Scientific.Geometry.VectorModule
-
 # Import local modules
+import objects.vector
+import symdet
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv, atomic_number
-import symdet
+
+# Import external modules
+import Numeric,LinearAlgebra
+
 
 pi_over_180 = math.atan(1.0) / 45.0
 dtorad = pi_over_180
@@ -1398,8 +1398,7 @@ class Zmatrix(Indexed):
         if a.zorc == 'z':
             i1i = -999
             if i > 0 or 1:
-                if self.debug:
-                    print 'check a.i1',a.i1
+                if self.debug: print 'check a.i1',a.i1
                 i1 = a.i1
                 if i1 and i > 0:
                     i1i=i1.get_index()
@@ -1423,8 +1422,7 @@ class Zmatrix(Indexed):
                         elif i1i == -3:
                             i1 = fp2
                     except AttributeError:
-                        if self.debug:
-                            print ' i1 PASS'
+                        if self.debug: print ' i1 PASS'
                         pass
 
             i2i = -999
@@ -1594,7 +1592,7 @@ class Zmatrix(Indexed):
                     print
                 a.ok = 1
             else:
-                print 'skip calc for',i+1
+                if self.debug: print 'skip calc for',i+1
                 a.ok = 0
 
         return not ok
@@ -1729,7 +1727,7 @@ class Zmatrix(Indexed):
                     #atomi.conn.append[atomj]
                     #atomj.conn.append[atomi]
 
-        print 'connect: found ',count,' bonds'
+        if self.debug: print 'connect: found ',count,' bonds'
 
     def connect(self,scale=1.0,toler=0.5):
         """ Compute connectivity
@@ -1797,7 +1795,7 @@ class Zmatrix(Indexed):
                 except KeyError:
                     pass
 
-        print 'connect: found ',count,' bonds'
+        if self.debug: print 'connect: found ',count,' bonds'
         self.update_conn()
 
     def find_contacts(self,contact_scale=1.0,contact_toler=2.5,pr=0,list=None):
@@ -1894,7 +1892,7 @@ class Zmatrix(Indexed):
         if not pr:
             print ''
 
-        print 'connect: found ',count,' contacts'
+        if self.debug: print 'connect: found ',count,' contacts'
 
     def _permBox(self,ix):
         a,b,c = ix
@@ -1907,7 +1905,7 @@ class Zmatrix(Indexed):
 
     def apply_connect(self,new_bond):
         """apply a new bond table"""
-        print 'applying new_bond',new_bond,len(new_bond)
+        if self.debug: print 'applying new_bond',new_bond,len(new_bond)
         for b in new_bond:
             print b.index
         self.bond = new_bond
@@ -1915,7 +1913,7 @@ class Zmatrix(Indexed):
 
     def apply_atom_list(self,new_atom):
         """apply a new bond table"""
-        print 'applying new_atom',new_atom,len(new_atom)
+        if self.debug: print 'applying new_atom',new_atom,len(new_atom)
         self.atom = new_atom
         self.list()
 
@@ -1938,7 +1936,7 @@ class Zmatrix(Indexed):
             ###vz = Vector(self.cell[2])
             vz = self.cell[2]
         else:
-            vz = Vector(0., 0., 0.)
+            vz = objects.vector.Vector(0., 0., 0.)
             minz=0
             maxz=0
 
@@ -1958,7 +1956,7 @@ class Zmatrix(Indexed):
                         atom.conn = []
                         new = copy.deepcopy(atom)
                         self.atom.append(new)
-                        pos = Vector(atom.coord) + tranx + trany + tranz
+                        pos = objects.vector.Vector(atom.coord) + tranx + trany + tranz
                         new.coord[0] = pos[0]
                         new.coord[1] = pos[1]
                         new.coord[2] = pos[2]
@@ -1972,7 +1970,7 @@ class Zmatrix(Indexed):
                         new = copy.deepcopy(atom)
                         atom.linked_core=t
                         self.shell.append(new)
-                        pos = Vector(atom.coord) + tranx + trany + tranz
+                        pos = objects.vector.Vector(atom.coord) + tranx + trany + tranz
                         new.coord[0] = pos[0]
                         new.coord[1] = pos[1]
                         new.coord[2] = pos[2]
@@ -1981,10 +1979,10 @@ class Zmatrix(Indexed):
 
                     offset=offset+nat
                         
-
-        print 'extend: generated ',len(self.atom),' atoms'
-        if len(self.shell):
-            print 'and ',len(self.shell),' shells'
+        if self.debug:
+            print 'extend: generated ',len(self.atom),' atoms'
+            if len(self.shell):
+                print 'and ',len(self.shell),' shells'
 
     def hybridise(self,atom,hybridisation):
         """ Try and impose a given hybridisation on an atomic centre
@@ -4867,9 +4865,23 @@ H -0.971426098735 1.68255935859 -0.684186262154
         # check import function for pure cartestian system
         from interfaces.filepunch import PunchIO
         r = PunchIO()
-        model = r.GetObjects(filepath=gui_path+'/examples/metallo.c')[0]
+        model = r.GetObjects(filepath=gui_path+os.sep+'examples'+os.sep+'metallo.c')[0]
         model2 = copy.deepcopy(model)
         model.import_geometry(model2)
+
+class testOperations(unittest.TestCase):
+    """Test the different operations we can perform on molecules"""
+
+
+    def testExtend(self):
+        """Extend a periodic structure"""
+
+        from interfaces.filepunch import PunchIO
+        r = PunchIO()
+        model = r.GetObjects(filepath=gui_path+os.sep+'examples'+os.sep+'MgO.pun')[0]
+        model.extend(1,3,1,3,1,3)
+        self.assertEqual(216,len(model.atom))
+
 
 def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
@@ -4878,8 +4890,12 @@ def testMe():
     suite =  unittest.TestLoader().loadTestsFromTestCase(testReadFromFile)
     suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testAutoZ) )
     suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testImportCart) )
+    suite.addTests( unittest.TestLoader().loadTestsFromTestCase(testOperations) )
     return suite
 
 if __name__ == "__main__":
-    # Only do import here to avoid circular import problem
     unittest.main()
+    #myTestSuite = unittest.TestSuite()
+    #myTestSuite.addTest(testOperations("testExtend"))
+    #runner = unittest.TextTestRunner()
+    #runner.run(myTestSuite)

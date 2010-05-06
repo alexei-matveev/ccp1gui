@@ -18,7 +18,7 @@ from objects.zmatrix import Zmatrix,ZAtom
 from objects.field import Field
 from objects.periodic import z_to_el
 from fileio import FileIO
-import Scientific.Geometry.VectorModule
+import objects.vector
 
 class CubeIO(FileIO):
 
@@ -93,14 +93,14 @@ C     ALL COORDINATES ARE GIVEN IN ATOMIC UNITS.
             natoms = abs(natoms)
             if self.debug: "CubeIO reading orbital file"
         
-        field.origin = fac*Scientific.Geometry.VectorModule.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
+        field.origin = fac*objects.vector.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
         # note that the Field object follows the punchfile (Fortran-style)
         # ordering so we reorder the axes
         for i in [0,1,2]:
             tmp = fp.readline().split()
             field.dim[2-i] = int(tmp[0])
             field.axis[2-i] = fac*float(field.dim[2-i]-1)* \
-                         Scientific.Geometry.VectorModule.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
+                         objects.vector.Vector([float(tmp[1]),float(tmp[2]),float(tmp[3])])
         # move origin to centre of grid from corner
         for i in [0,1,2]:
             field.origin = field.origin + 0.5*field.axis[i]

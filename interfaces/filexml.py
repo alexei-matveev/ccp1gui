@@ -5,9 +5,10 @@ import os
 from _libpyagentx import *
 
 # import internal modules
+import objects.zmatrix
+import objects.vector
 from viewer.defaults import defaults
 from fileio import FileIO
-from objects.zmatrix import *
 from objects.vibfreq import *
         
 
@@ -224,7 +225,7 @@ class XML_IO(FileIO):
                     axSelectNext()
                     zv=axValue()
                     axSelectNext()
-                    vec=Vector([float(xv),float(yv),float(zv)])
+                    vec=objects.vector.Vector([float(xv),float(yv),float(zv)])
                     v.displacement.append(vec)
                 axDeselect()
                 noprop=axSelect("frequency");
@@ -275,7 +276,7 @@ class XML_IO(FileIO):
             self.xml_error=-1
             return -1
         
-        model = Zmatrix()
+        model = objects.zmatrix.Zmatrix()
         model.tidy=None
         
         trans = string.maketrans('a','a')
@@ -297,7 +298,7 @@ class XML_IO(FileIO):
             if(noprop):axDeselect()
             else: z=0.0
         
-            a = ZAtom()
+            a = objects.zmatrix.ZAtom()
             
             a.coord = [x*fac,y*fac,z*fac]
             

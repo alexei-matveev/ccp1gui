@@ -34,7 +34,7 @@ from   molpro     import *
 from   mndo       import *
 from   dl_poly    import *
 from viewer.defaults import defaults
-
+import objects.vector
 
 
 def extend_path(arg):
@@ -2075,7 +2075,7 @@ def chemshell_z_modes():
             dx = atom.coord[0] - ref.coord[0]
             dy = atom.coord[1] - ref.coord[1]
             dz = atom.coord[2] - ref.coord[2]
-            d = Vector(dx,dy,dz)
+            d = objects.vector.Vector(dx,dy,dz)
             print d
             v.displacement.append(d)
             v.freq = float(val)
@@ -2166,7 +2166,7 @@ def chemshell_c_modes():
         # extra field for ordering
         v.sorter=val
 
-        nullv = Vector(0.,0.,0.)
+        nullv = objects.vector.Vector(0.,0.,0.)
         for i in range(len(z.atom)):
             v.displacement.append(nullv)
 
@@ -2177,7 +2177,7 @@ def chemshell_c_modes():
             dx = vec[off]
             dy = vec[off+1]
             dz = vec[off+2]
-            d = Vector(dx,dy,dz)
+            d = objects.vector.Vector(dx,dy,dz)
             v.displacement[ia]=d
             v.freq = float(val)
             t='v%-10.5f' % v.freq
