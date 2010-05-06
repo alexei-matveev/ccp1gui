@@ -24,40 +24,31 @@
 #    out to be too slow
 #   
 
+import os,sys
 if __name__ == "__main__":
     # Need to add the gui directory to the python path so 
     # that all the modules can be imported
-    import os,sys
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
 else:
     from viewer.paths import gui_path
 
-
+import unittest # The testing for this file is contained within it at the bottom
 import copy
 import string
-import os
 
 import fileio
 import objects.zmatrix
 import objects.field
 import objects.vibfreq
 import objects.list
-
-# From Konrad Hinsens scientific python
-import Scientific.Geometry.VectorModule
-import Numeric
-
-# The testing for this file is contained within it at the bottom
-import unittest
-
+import objects.vector
 
 # The following imports are either not needed or don't trigger
 # any errors with the current unitttest cases
 #import objects.zme
 #from math  import *
 #from objects.units import *
-
 
 au_to_angstrom = 0.529177
 angstrom_to_au = 1.0/au_to_angstrom
@@ -72,10 +63,10 @@ class PunchIO(fileio.FileIO):
     """Load result objects from GAMESS-UK format punchfiles"""
     def __init__(self,**kw):
 
-        self.debug=1
         # Initialise Base Class
         fileio.FileIO.__init__(self,**kw)
 
+        #self.debug=1
         self.canRead = True
         self.canWrite = ['Zmatrix', 'Indexed']
 
@@ -184,6 +175,14 @@ class PunchIO(fileio.FileIO):
             pass
         f.close()
 
+    def _WriteMolecule(self,molecule,**kw):
+
+        """Output molecule in Punch format """
+        f = open(self.filepath,'w')
+        for txt in molecule.output_coords_block():
+            f.write(txt+'\n')
+        f.close()
+
     def rescan(self,file,object):
         if self.debug:
             print "> filepunch.py rescan"
@@ -191,14 +190,6 @@ class PunchIO(fileio.FileIO):
         f = open(self.filepath)
         while self.read_object(f,object=object) != End_of_File:
             pass
-        f.close()
-
-    def _WriteMolecule(self,molecule,**kw):
-
-        """Output molecule in Punch format """
-        f = open(self.filepath,'w')
-        for txt in molecule.output_coords_block():
-            f.write(txt+'\n')
         f.close()
 
     def read_object(self,f,object=None,subblocks=None):
@@ -223,8 +214,7 @@ class PunchIO(fileio.FileIO):
 
         if subblocks:
             if self.block_name not in subblocks:
-                if self.debug:
-                    print 'read_object returns, not a subblock'
+                if self.debug: print 'read_object returns, not a subblock'
                 # We don't need to call parse_header again
                 # next time as we have the info stored
                 self.skip_parse = 1
@@ -295,7 +285,9 @@ class PunchIO(fileio.FileIO):
 
         subbl = self.subblocks[self.block_name]
 
+        if self.debug: print "\n\nreading first subblock: %s\n\n" % subbl
         while self.read_object(f,object=tt,subblocks=subbl) == End_of_Block:
+            if self.debug: print "\n\nreading subsequent subblock: %s\n\n" % subbl
             pass
 
         try:
@@ -309,7 +301,7 @@ class PunchIO(fileio.FileIO):
         # self.objects.append(tt)
         # jmht - readers need to specify what objects they are returning
 
-        t1 = string.split(str(tt.__class__),'.')
+        t1 = str(tt.__class__).split('.')
         myclass = t1[len(t1)-1]
         if myclass == 'Indexed' or myclass == 'Zmatrix':
             self.molecules.append(tt)
@@ -330,7 +322,11 @@ class PunchIO(fileio.FileIO):
             self.objects.append(tt)
  
     def parse_header(self,f):
-        """Parse the next header on the file"""
+        """Parse the next header on the file.
+        This sets self.block_name, self.elements etc, so that the read_object method knows
+        what it is dealing with.
+
+        """
 
         if self.skip_parse:
             if self.debug: print 'parse_header skipped'
@@ -351,12 +347,12 @@ class PunchIO(fileio.FileIO):
             if len(line) == 0:
                 return 1
             header=line
-            if self.debug: print 'try parse header', line
+            if self.debug: print "try parse header: %s" % line
             a = string.split(header)
             if len(a) > 0:
                 self.cont = 0
                 for w in a:
-                    if self.debug: print 'word',w
+                    #if self.debug: print 'word',w
                     if w == '\\':
                         self.cont=1
                     else:
@@ -366,14 +362,11 @@ class PunchIO(fileio.FileIO):
                     line = f.readline()
                     a = string.split(line)
                     for w in a:
-                        if self.debug: print 'word',w
+                        #if self.debug: print 'word',w
                         words.append(w)
                 break
 
-        if self.debug: print 'now parse header', words
-
         self.header = words
-      
         tmp = []
         header = ""
         for a in words:
@@ -396,7 +389,7 @@ class PunchIO(fileio.FileIO):
 
         # sanity check so that stray lines to terminate read
         if header.strip()[0:5] != 'block':
-            print 'BAD HEADER'
+            print "BAD HEADER: %s" % header
             return 0
 
         while len(tmp):
@@ -458,7 +451,7 @@ class PunchIO(fileio.FileIO):
             #p = Atom()
             p = objects.zmatrix.ZAtom()
             line = f.readline()
-            rr = string.split(line)
+            rr = line.split()
             try:
                 p.coord = [ float(rr[1])*fac , float(rr[2])*fac, float(rr[3])*fac ]
             except ValueError:
@@ -467,14 +460,14 @@ class PunchIO(fileio.FileIO):
             p.symbol = string.translate(rr[0],trans,string.digits)
             # we are not trying to impose uniqueness here but
             # pymol gets a modified name
-            p.symbol = string.capitalize(p.symbol)
+            p.symbol = p.symbol.capitalize()
             p.name = rr[0]
             p.index = cnt
             cnt = cnt + 1
             tt.add_atom(p)
 
         # for structure sequences, this is also the first frame
-        t1 = string.split(str(tt.__class__),'.')
+        t1 = str(tt.__class__).split('.')
         myclass = t1[len(t1)-1]
         clone = tt.copy()
         if myclass == 'ZmatrixSequence':
@@ -497,9 +490,8 @@ class PunchIO(fileio.FileIO):
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
             #p = Atom()
-            p = ZAtom()
-            line = f.readline()
-            rr = string.split(line)
+            p = objects.zmatrix.ZAtom()
+            rr = f.readline().split()
             try:
                 p.coord = [ float(rr[1])*fac , float(rr[2])*fac, float(rr[3])*fac ]
             except ValueError:
@@ -508,7 +500,7 @@ class PunchIO(fileio.FileIO):
             p.symbol = string.translate(rr[0],trans,string.digits)
             # we are not trying to impose uniqueness here but
             # pymol gets a modified name
-            p.symbol = string.capitalize(p.symbol)
+            p.symbol = p.symbol.capitalize()
             p.partial_charge =  float(rr[4])
             # link shell to core
 ##         icore = int(rr[5]) - 1
@@ -543,9 +535,8 @@ class PunchIO(fileio.FileIO):
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
             #p = Atom()
-            p = ZAtom()
-            line = f.readline()
-            rr = string.split(line)
+            p = objects.zmatrix.ZAtom()
+            rr = f.readline().split()
             try:
                 p.coord = [ float(rr[1])*fac , float(rr[2])*fac, float(rr[3])*fac ]
             except ValueError:
@@ -554,7 +545,7 @@ class PunchIO(fileio.FileIO):
             p.symbol = string.translate(rr[0],trans,string.digits)
             # we are not trying to impose uniqueness here but
             # pymol gets a modified name
-            p.symbol = string.capitalize(p.symbol)
+            p.symbol = p.symbol.capitalize()
             p.name = rr[0]
             p.index = cnt
             cnt = cnt + 1
@@ -562,7 +553,7 @@ class PunchIO(fileio.FileIO):
 
         # We don't need to connect the additional structures for sequences
         # as this is done when we read in the first one
-        t1 = string.split(str(tt.__class__),'.')
+        t1 = str(tt.__class__).split('.')
         myclass = t1[len(t1)-1]
         if myclass != 'ZmatrixSequence':
             tt.connect()
@@ -571,7 +562,7 @@ class PunchIO(fileio.FileIO):
 
         for i in range(0,self.records):
             line = f.readline()
-            rr = string.split(line)
+            rr = line.split()
             a1 = tt.atom[int(rr[0])-1]
             a2 = tt.atom[int(rr[1])-1]
             tt.add_conn(a1,a2)
@@ -581,8 +572,8 @@ class PunchIO(fileio.FileIO):
         fac = au_to_angstrom
         for i in range(0,self.records):
             line = f.readline()
-            rr = string.split(line)
-            tt.cell.append(Scientific.Geometry.VectorModule.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]))
+            rr = line.split()
+            tt.cell.append(objects.vector.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]))
 
     def read_title(self,f,tt):
         if tt:
@@ -612,8 +603,8 @@ class PunchIO(fileio.FileIO):
         trans = string.maketrans('a','a')
         for i in range(0,self.records):
             #p = Atom()
-            p = ZAtom()
-            rr = string.split(f.readline())
+            p = objects.zmatrix.ZAtom()
+            rr = f.readline().split()
             p.coord = [ float(rr[1])*fac , float(rr[2])*fac, float(rr[3])*fac ]
             p.name = rr[0]
             p.symbol = 'bq'
@@ -631,7 +622,7 @@ class PunchIO(fileio.FileIO):
         brik.title = ''
         for i in range(0,self.records):
             r = f.readline()
-            brik.title = brik.title + string.rstrip(r)
+            brik.title = brik.title + r.rstrip()
 
     def read_grid_axes(self,f,brik):
         if not brik:
@@ -642,7 +633,7 @@ class PunchIO(fileio.FileIO):
         brik.dim = []
         # only take the no. of points
         for i in range(0,self.records):
-            rr = string.split(f.readline())
+            rr = f.readline().split()
             brik.dim.append(int(rr[0]))
         if self.debug:
             print 'dim', brik.dim
@@ -656,8 +647,7 @@ class PunchIO(fileio.FileIO):
         brik.mapping = []
         fac = au_to_angstrom
         for i in range(0,self.records):
-            txt = f.readline()
-            rr = string.split(txt)
+            rr = f.readline().split()
             if len(rr) == 6:
                 # correctly split
                 pass
@@ -671,12 +661,12 @@ class PunchIO(fileio.FileIO):
                 rr.append(txt[50:60])
 
             if i == 0:
-                brik.origin_corner = Scientific.Geometry.VectorModule.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ])
-                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.origin_corner = objects.vector.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ])
+                brik.mapping.append(objects.vector.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
             elif i == 1:
-                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.mapping.append(objects.vector.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
             elif i == 2:
-                brik.mapping.append(Scientific.Geometry.VectorModule.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
+                brik.mapping.append(objects.vector.Vector([ float(rr[3])*fac, float(rr[4])*fac, float(rr[5])*fac ]))
 
         if self.debug:
             print 'origin', brik.origin
@@ -733,8 +723,7 @@ class PunchIO(fileio.FileIO):
 
             elif len(brik.dim) == 1:
                 for x in range(brik.dim[0]):
-                    line = f.readline()
-                    line = line.split()
+                    line = f.readline().split()
                     for e in range(self.elements):
                         try:
                             d = float(line[e])
@@ -750,8 +739,7 @@ class PunchIO(fileio.FileIO):
                     if not y % 10:
                         print '....' + str(y),
                     for x in range(brik.dim[0]):
-                        line = f.readline()
-                        line = line.split()
+                        line = f.readline().split()
                         for e in range(self.elements):
                             try:
                                 d = float(line[e])
@@ -769,8 +757,7 @@ class PunchIO(fileio.FileIO):
                         print '....' + str(z),
                     for y in range(brik.dim[1]):
                         for x in range(brik.dim[0]):
-                            line = f.readline()
-                            line = line.split()
+                            line = f.readline().split()
                             for e in range(self.elements):
                                 try:
                                     d = float(line[e])
@@ -854,7 +841,7 @@ class PunchIO(fileio.FileIO):
                 v = float(txt[j])
                 v = v * fac
                 t.append(v)
-            brik.points.append(Scientific.Geometry.VectorModule.Vector(t))
+            brik.points.append(objects.vector.Vector(t))
 
 ##      d = [ dim[0]*3 ]
 ##      brik.points = zeros(d,Float)
@@ -912,7 +899,7 @@ class PunchIO(fileio.FileIO):
         disp = []
         for i in range(0,self.records):
             rr = string.split(f.readline())
-            vec = Scientific.Geometry.VectorModule.Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
+            vec =objects.vector.Vector([ float(rr[1]) , float(rr[2]), float(rr[3]) ])
             disp.append(vec)
 
         v = self.vfs.add_vib(disp)
@@ -956,7 +943,7 @@ class PunchIO(fileio.FileIO):
         for i in range(0,self.records):
 
             if self.debug: print 'read i',i
-            a = ZAtom()
+            a = objects.zmatrix.ZAtom()
             rr = string.split(f.readline())
 
             a.symbol = string.translate(rr[0],trans,string.digits)
@@ -1280,6 +1267,11 @@ class testPunchIO(unittest.TestCase):
         objs = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"gamess_vect.pun")
         #self.assertTrue( isinstance(objs[1], objects.vibfreq.VibFreqSet) )
 
+    def testImport7(self):
+        p = PunchIO()
+        mol = p.GetObjects(filepath=gui_path+os.sep+"examples"+os.sep+"MgO.pun")[0]
+        self.assertEqual(8,len(mol.shell))
+
 def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
     gui testing framework."""
@@ -1290,6 +1282,6 @@ if __name__ == "__main__":
 
     unittest.main()
     #myTestSuite = unittest.TestSuite()
-    #myTestSuite.addTest(PunchIOTestCases("testImport1"))
+    #myTestSuite.addTest(testPunchIO("testImport7"))
     #runner = unittest.TextTestRunner()
     #runner.run(myTestSuite)
