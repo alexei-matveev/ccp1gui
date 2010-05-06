@@ -527,6 +527,7 @@ class PDB_IO(FileIO):
         """
 
         from Scientific.IO import PDB
+        self.PDB=PDB
 
         # Initialise base class
         FileIO.__init__(self,filepath=filepath,**kw)
@@ -546,7 +547,7 @@ class PDB_IO(FileIO):
         model.name = self.name
 
 
-        conf = PDB.Structure(self.filepath)
+        conf = self.PDB.Structure(self.filepath)
         #print conf
         i=0
         import string
@@ -593,7 +594,7 @@ class PDB_IO(FileIO):
     def _WriteMolecule(self,molecule):
         """PDB reader, based on Konrad Hinsens Scientific Python"""
 
-        pdbf = PDB.PDBFile(self.filepath,mode='w')
+        pdbf = self.PDB.PDBFile(self.filepath,mode='w')
         for atom in molecule.atom:
             d = { 'position': atom.coord, 'name' : atom.name }
             pdbf.writeLine('ATOM',d)
