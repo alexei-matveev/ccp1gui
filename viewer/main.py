@@ -83,20 +83,6 @@ http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351"""
         print whereget
         sys.exit(-1)
 
-    # Scientific
-    try:
-        import Scientific
-    except ImportError:
-        print header
-        print """
-We are sorry but the CCP1GUI cannot run on your system as
-you do not appear to have Scientific Python installed. For more
-information on installing Scientific Python, please visit:
-
-http://starship.python.net/~hinsen/ScientificPython/"""
-        print whereget
-        sys.exit(-1)
-
     # Pmw
     try:
         import Pmw
@@ -138,7 +124,6 @@ http://public.kitware.com/VTK/get-software.php"""
     print '============='
     print 'VTK version',vtk.vtkVersion.GetVTKVersion(),' from ',vtk.__file__ 
     print Numeric.__file__
-    print Scientific.__file__
     #print Pmw.__file__
     print "CCP1GUI directory: ",paths['gui']
     print
@@ -174,14 +159,15 @@ from interfaces.chemshell import *
 from interfaces.dl_poly import *
 from interfaces.mopac import *
 from interfaces.mndo import *
-from interfaces.am1calc import *
 from interfaces.dalton import *
 from interfaces.charmm import *
 from interfaces.smeagol import *
+import interfaces.am1calc
 
 from viewer.selections2 import *
 
 import objects
+
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
 
@@ -189,7 +175,6 @@ from viewer.slavethread import *
 from jobmanager.jobeditor import *
 from viewer.toolpanel import *
 
-import interfaces.am1calc, interfaces.calcmon
 from objects import symed, symdet
 import thread
 from viewer.defaults import defaults
@@ -1810,9 +1795,9 @@ you would like to extract the frame from."""
 
             if clean_code == 'AM1 (built-in)':
 
-                calc = AM1Calc()
+                calc = interfaces.am1calc.AM1Calc()
                 calc.set_input('mol_obj',mol)
-                ed = AM1CalcEd(root,calc,self,job_editor=self.job_editor)
+                ed = interfaces.am1calc.AM1CalcEd(root,calc,self,job_editor=self.job_editor)
 
             elif clean_code == 'MNDO':
 
