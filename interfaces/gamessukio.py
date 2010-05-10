@@ -36,8 +36,9 @@ else:
     from viewer.paths import gui_path
 
 # import python modules
-import string
 import re
+import copy
+import string
 import unittest
 
 # import internal modules
@@ -214,10 +215,9 @@ class GUKOutputIO( FileIO ):
         # Initialise base class
         FileIO.__init__(self,filepath=filepath,**kw)
         
-        self.debug = None
+        self.debug = 0
         self.title = None
         self.type = 'Gamess-UK output'
-        self.name = ''
         self.date = ''
         self.time = ''
         self.nelec = 0
@@ -260,7 +260,10 @@ class GUKOutputIO( FileIO ):
 #         self.variables_value = {}
 #         self.variables_units = {}
 #         self.variables_hessian = {}
-        self.normalModes = []
+
+# Don't use vibrations list as we return a vibration set
+#        self.vibrations = []
+        self.vibration_sets = []
         self.TransitionFrequencies = []
         self.TransitionDipoles     = []
         self.TransitionStrengths   = []
@@ -285,11 +288,9 @@ class GUKOutputIO( FileIO ):
 #       The three methods below are redundant now
 #        self.manage['nuclear_coords'] = ( re.compile('^ *nuclear coordinates') , self._read_nuclear_coordinates )
 #        self.manage['atomic_coords'] = ( re.compile('^ *\* *atom  *atomic  *coord') , self._read_molecular_geometry )
-        self.manage['input_zmatrix'] = ( re.compile(' >>>>> zmatrix',re.IGNORECASE) , self._read_input_zmatrix )
-#        self.manage['input_zmatrix2'] = ( re.compile('^ *input z-matrix') , self._read_input_zmatrix2 )
+        self.manage['input_zmatrix'] = ( re.compile(' >>>>> zmat',re.IGNORECASE) , self._read_input_zmatrix )
         self.manage['variables'] = ( re.compile('^ *variable *value *hessian') , self._read_variables )
         self.manage['zmatrix_auto'] = ( re.compile('^ *automatic z-matrix generation') , self._read_zmatrix_auto )
-#jmht1 z-matrix (angstroms and degrees)
         self.manage['zmatrix2'] = ( re.compile('^ *z-matrix \(angstroms and degrees\)') , self._read_zmatrix2 )
         self.manage['symm_geom'] = ( re.compile('^ *\*     atom   atomic                coordinates') , self._read_orient_geom )
         self.manage['nuclear_energy'] = ( re.compile('^ *nuclear energy *=') , self._read_energies )
@@ -424,12 +425,13 @@ class GUKOutputIO( FileIO ):
             optimiser and creates new molecules from them.
         """
 
+        # This should now be done in _read_runtype
         # Find which point of the optimisation we are at
-        point = int(line.split()[1])
-        if point == 0:
-            # First optimisation point so add a trajectory object
-            # we then append all further molecules to this
-            self.trajectories.append( objects.zmatrix.ZmatrixSequence() )
+        #point = int(line.split()[1])
+        #if point == 0:
+        #    # First optimisation point so add a trajectory object
+        #    # we then append all further molecules to this
+        #    self.trajectories.append( objects.zmatrix.ZmatrixSequence() )
             
         # skip to start of coordinates
         while ( line and not line[3:5] == "==" ):
@@ -491,7 +493,7 @@ class GUKOutputIO( FileIO ):
         line = self.fd.readline()
         line = self.fd.readline()
 
-        # Get the last model
+        # Get the last model - there should prob only be one
         if ( len( self.molecules ) > 0 ):
             old_model = self.molecules[-1]
         
@@ -531,7 +533,9 @@ class GUKOutputIO( FileIO ):
         # Update the molecule somehow...
         new_model.calculate_coordinates()
 
-        self.molecules.append( new_model )
+        # Add this molecule to the latest trajectory object
+        self.trajectories[-1].add_molecule( new_model )
+
 
 #  OLD CODE THAT JUST APPENDED THE VARIABLES
 #         line = self.fd.readline()
@@ -585,6 +589,7 @@ class GUKOutputIO( FileIO ):
             create the molecule
             We need to convert evrything to lower case as GUK prints variables as lower case
         """
+        if self.debug: print "_read_input_zmatrix"
         self.zmatrix = 1
         zmat = []
         zmat.append( line[7:].lower() ) # always strip the ' >>>>> ' off
@@ -763,7 +768,7 @@ class GUKOutputIO( FileIO ):
             under "geometry angstrom all"
         """
         if not self.zmatrix_auto:
-            if self.debug: print "## not reading zmatrix2 ##"
+            if self.debug: print "## not reading zmatrix2 as not zmatrix_auto##"
             return
 
         zmat_buffer = [] # Buffer to hold zmatrix
@@ -897,7 +902,19 @@ class GUKOutputIO( FileIO ):
     #end def
 
     def _read_runtype(self,line):
-        self.runtypes.append(line.split()[3])
+        """Read the runtype and do any preparations we might need for parsing this runtype."""
+
+        runtype=line.split()[3]
+
+        if self.debug: print "_read_runtype setting parameters for: %s " % runtype
+
+        self.runtypes.append(runtype)
+        
+        #
+        # Here we set certain things depending on the runtype
+        if runtype == "optimize" or runtype == "optxyz":
+            self.trajectories.append( objects.zmatrix.ZmatrixSequence() )
+            
     #end def
 
     def _read_date(self,line):
@@ -1030,15 +1047,24 @@ class GUKOutputIO( FileIO ):
 
     def _read_normal_modes_force(self,line):
         """Read the normal modes of a force calculation"""
-        ncols = 9
-        mol = self.molecules[-1]
-        n = len( mol.atom )
-        maxroot = n*3
-        line = self.fd.readline()
 
+
+        mol = self.molecules[-1]
+
+        # Create a vibfreqset object to hold all the vibrations
+        vfs = objects.vibfreq.VibFreqSet()
+        vfs.title = "Vibrations of: %s" % self.name
+        vfs.reference = mol
+
+        ncols = 9
+        n = mol.get_nondum()
+        maxroot = n*3
+
+        vibrations=[]
+        line = self.fd.readline()
         #Create a zero normal mode
         for root in range(1,maxroot+1):       
-            v = VibFreq(root)
+            v = objects.vibfreq.VibFreq(root)
             v.reference = mol
             v.disp = []
             for cnt in range(0,n):
@@ -1052,7 +1078,7 @@ class GUKOutputIO( FileIO ):
                 vec = [0.0, 0.0, 0.0]
                 v.disp.append(vec)
             #end for cnt
-            self.normalModes.append(v)
+            vibrations.append(v)
         #end for root
         root = 0
         for root1 in range(1, maxroot+1, ncols): #Step through in columns of 8
@@ -1066,7 +1092,7 @@ class GUKOutputIO( FileIO ):
             line = self.fd.readline()
             line = re.sub('[0-9]-[0-9]',_spliteformat,line)
             for f in line.split():         # split the frequencies up and store in the
-                self.normalModes[root].freq = float(f)
+                vibrations[root].freq = float(f)
                 root += 1
             #end for f
             line = self.fd.readline()
@@ -1082,55 +1108,77 @@ class GUKOutputIO( FileIO ):
                 sl = line.split()
                 for j in range(root1, root7+1):
                     k += 1
-                    ###self.normalModes[j-1].atoms[iat-1].coord[ixyz] = float(sl[k])
-                    self.normalModes[j-1].disp[iat-1][ixyz] = float(sl[k])
+                    ###self.vibrations[j-1].atoms[iat-1].coord[ixyz] = float(sl[k])
+                    vibrations[j-1].disp[iat-1][ixyz] = float(sl[k])
                 #end for j
             #end for i
         # end for root
-        self._vectorise_disp()
+
+        for v in vibrations:
+            v.displacement = []
+            for d in v.disp:
+                v.displacement.append(objects.vector.Vector(d))
+            del v.disp
+            vfs.add_vib(v)
+
+        # now add to vibfreqset
+        self.vibration_sets.append(vfs)
+
     #end def
         
     def _read_normal_modes_hessian(self,line):
         """Read the normal modes of a hessian calculation"""
-        ncols = 8
+
+        if self.debug: print "_read_normal_modes_hessian: %s" % line
+
+        # The reference molecule: optimsed structure
         mol = self.molecules[-1]
-        natoms = len( mol.atom )
+
+        # Create a vibfreqset object to hold all the vibrations
+        vfs = objects.vibfreq.VibFreqSet()
+        vfs.title = "Vibrations of: %s" % self.name
+        vfs.reference = mol
+        
+        ncols = 8
+        natoms = mol.get_nondum()
         maxroot = natoms*3
+
+
+        vibrations=[]
         #Create a zero normal mode
         for root in range(1,maxroot+1):
-            v = VibFreq(root)
+            v = objects.vibfreq.VibFreq(root)
             v.reference = mol
             v.disp = []
             for cnt in range(0,natoms):
                 p = objects.zmatrix.ZAtom()
-##                p.coord = [ 0.0, 0.0, 0.0 ]
-##                p.name  = mol.atom[cnt].name
-##                p.index = mol.atom[cnt].index
-##                p.name  = mol.atom[cnt].name
-##                p.symbol = mol.atom[cnt].symbol
-##                v.atoms.append(p)
                 vec = [0.0, 0.0, 0.0]
                 v.disp.append(vec)
             #end for
-            self.normalModes.append(v)
+            vibrations.append(v)
         #endif
-        line = self.fd.readline()
+
+        
+        line = self.fd.readline() # skip "===============" line
         root = 0
         for root1 in range(1, maxroot+1, ncols):
             root7 = root1 + ncols - 1
             root7 = min(maxroot,root7)
-            line = self.fd.readline()
-            line = self.fd.readline()
-            line = self.fd.readline()
-            line = self.fd.readline()
-            line = self.fd.readline()
-            line = self.fd.readline()
+
+            # Skip 6 lines to col header with frequencies
+            for i in range(6):
+                line = self.fd.readline()
+
             for f in line.split():
-                self.normalModes[root].freq = float(f)
+                #self.vibrations[root].freq = float(f)
+                vibrations[root].freq = float(f)
                 root += 1
             #end for f
+            
+            # Skip 2 lines to where data matrix starts
             line = self.fd.readline()
             line = self.fd.readline()
+
             for i in range(1,maxroot+1):
                 line = self.fd.readline()
                 k = 0
@@ -1142,28 +1190,28 @@ class GUKOutputIO( FileIO ):
                 sl = line.split()
                 for j in range(root1, root7+1):
                     k += 1
-                    ###self.normalModes[j-1].atoms[iat-1].coord[ixyz] = float(sl[k])
-                    self.normalModes[j-1].disp[iat-1][ixyz] = float(sl[k])
+                    ###self.vibrations[j-1].atoms[iat-1].coord[ixyz] = float(sl[k])
+                    #print "self.vibrations[%d-1].disp[%d-1].coord[%d] = float(sl[%d])" %(j,iat,ixyz,k)
+                    vibrations[j-1].disp[iat-1][ixyz] = float(sl[k])
                 #end for j
             #end for i
         # end for root
-        self._vectorise_disp()
 
-    def _vectorise_disp(self):
-        """Convert vib freq displacements from lists to vectors
-        (need a 2 stage process as we cant set an individual component
-        of a vector)"""
-        for v in self.normalModes:
+
+        for v in vibrations:
             v.displacement = []
-            t='v%-10.0f' % v.freq
-            v.title = t
             for d in v.disp:
                 v.displacement.append(objects.vector.Vector(d))
             del v.disp
+            vfs.add_vib(v)
+
+        # now add to vibfreqset
+        self.vibration_sets.append(vfs)
+
 
     def _read_frequencies_hessian(self,line):
         """Read the frequencies from a hessian calculation"""
-        print "Reading frequencies..."
+        if self.debug: print "_read_frequencies_hessian"
         
         line = self.fd.readline()
         line = self.fd.readline()
@@ -1187,6 +1235,8 @@ class GUKOutputIO( FileIO ):
 
     def _read_frequencies_force(self,line):
         """Read the frequencies from a force calculation"""
+
+        if self.debug: print "_read_frequencies_force: %s " % line
         self.transitionFrequencies = []
         self.transitionDipoles = []
         self.transitionStrengths = []
@@ -1196,14 +1246,15 @@ class GUKOutputIO( FileIO ):
         ncoords = natoms*3
         nfreq = ncoords - 6    #there will be a problem here if we have a large linear molecule
         nf = 0
-        freq_re = re.compile('^ *frequencies ----')
-        freq_end =  re.compile('={50}')
+        freq_re = re.compile(' frequencies ----')
+        freq_end =  re.compile(' ={50}')
 
         while nf<nfreq:
             #print "line is ",line
-            if freq_end.match( line):
-                print "Error in gamessoutputreader._read_frequencies_force"
-                print "End of frequencies section before all frequencies have been read!"
+            if freq_end.match( line ):
+                if self.debug: 
+                    print "Error in gamessoutputreader._read_frequencies_force"
+                    print "End of frequencies section before all frequencies have been read!"
                 return
             elif freq_re.match( line ):
                 line = re.sub('[0-9]-[0-9]',_spliteformat,line)                
@@ -1214,7 +1265,7 @@ class GUKOutputIO( FileIO ):
                         print "Error in gamessoutputreader._read_frequencies_force"
                         print "Offending line is: %s\n" % line
                 
-                nf = len(self.transitionFrequencies)
+                nf = len(self.transitionFrequencies)                
                 if nf>=nfreq:
                     break
                 
@@ -1285,17 +1336,69 @@ class GUKOutputIO( FileIO ):
 class testGAMESSUK_IO(unittest.TestCase):
     """Test whether we can read a GAMESS-UK Output file"""
 
-    def testOutputOPTXY(self):
+    egdir=gui_path+os.sep+'examples'+os.sep
+
+    def testOutputOptimize(self):
         """ """
         
         reader = GUKOutputIO()
         trajectories = reader.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/gamessuk/DFT_opt.exti4a1.3-21G.8x4.out',
+            filepath=self.egdir+'UHF_opt.pyridine.8x4.out',
             otype = 'trajectories'
             )
 
         # Should return one trajectory object
         self.assertEqual( len(trajectories),1)
+
+
+
+    def testOutputOptimizeHessian(self):
+        """ """
+        
+        reader = GUKOutputIO()
+        objects = reader.GetObjects(
+            filepath=self.egdir+'SECD_opt.pyridine.6-31G-dp.8x4.out'
+            )
+
+        self.assertEqual( len(objects), 3 )
+        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+        self.assertEqual( reader.GetClass( objects[1] ), 'ZmatrixSequence' )
+        vfs=objects[2]
+        self.assertEqual( reader.GetClass( vfs ), 'VibFreqSet' )
+        self.assertEqual( vfs.vibs[9].freq, 719.94 )
+
+
+    def testOutputSurf(self):
+        """ """
+        
+        reader = GUKOutputIO()
+        objects = reader.GetObjects(
+            filepath=self.egdir+'gamess_surf.out'
+            )
+
+        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+
+    def testOutputVect(self):
+        """ """
+        
+        reader = GUKOutputIO()
+        objects = reader.GetObjects(
+            filepath=self.egdir+'gamess_vect.out'
+            )
+
+        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+
+    def testOutputVect3D(self):
+        """ """
+        
+        reader = GUKOutputIO()
+        objects = reader.GetObjects(
+            filepath=self.egdir+'gamess_vect3d.out'
+            )
+
+        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+
+
 
 def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
