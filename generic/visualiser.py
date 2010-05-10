@@ -1303,7 +1303,7 @@ class VibrationVisualiser(MoleculeVisualiser):
         self.angle = self.angle +  self.angle_increment
         fac = self.scale * math.sin(self.angle)
         #print 'Displacement angle,scale = ',self.angle,fac
-        for i in range(len(self.molecule.atom)):
+        for i in range(self.molecule.get_nondum()):
             a = self.molecule.atom[i]
             r = self.mol2.atom[i]
             d = self.vib.displacement[i]
