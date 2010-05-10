@@ -2032,7 +2032,6 @@ class VectorVisualiser(DataVisualiser):
         else:
             self.sample_grid = VECTOR_SAMPLE_ALL
 
-
     def _make_dialog(self, **kw):
 
         #print 'vectorvis.make_dialog'
@@ -2083,7 +2082,8 @@ class VectorVisualiser(DataVisualiser):
                                                    label_text = 'Sample at:',
                                                    menubutton_textvariable = self.sample_var,
                                                    items = ['dum'],
-                                                   menubutton_width = 10)
+                                                   menubutton_width = 10,
+                                                   )
 
             self.sample_grid_menu.pack(side='top')
             self.update_sample_grid_choice()
@@ -2490,7 +2490,7 @@ class VectorVisualiser(DataVisualiser):
         items.append('Internal 2D')
 
         for o in self.graph.data_list:
-            t1 = string.split(str(o.__class__),'.')
+            t1 = str(o.__class__).split('.')
             myclass = t1[len(t1)-1]
             if myclass == 'Field':
                 items.append(o.name)
@@ -2594,13 +2594,13 @@ class VectorVisualiser(DataVisualiser):
         else:
             self.sample_grid = None
             for o in self.graph.data_list:
-                t1 = string.split(str(o.__class__),'.')
+                t1 = str(o.__class__).split('.')
                 myclass = t1[len(t1)-1]
                 if myclass == 'Field':
                     if o.name == v:
                         self.sample_grid = o
             if self.sample_grid is None:
-                print 'Problem locating sampling grid'
+                raise AttributeError("VectorVisualiser: problem locating sampling grid")
 
         if self.grid_editor is not None:
             # transform the grid, but do not trigger the the build that
