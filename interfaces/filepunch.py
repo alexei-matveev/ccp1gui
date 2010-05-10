@@ -301,8 +301,7 @@ class PunchIO(fileio.FileIO):
         # self.objects.append(tt)
         # jmht - readers need to specify what objects they are returning
 
-        t1 = str(tt.__class__).split('.')
-        myclass = t1[len(t1)-1]
+        myclass = self.GetClass(tt)
         if myclass == 'Indexed' or myclass == 'Zmatrix':
             self.molecules.append(tt)
         elif myclass == 'ZmatrixSequence':
@@ -467,8 +466,7 @@ class PunchIO(fileio.FileIO):
             tt.add_atom(p)
 
         # for structure sequences, this is also the first frame
-        t1 = str(tt.__class__).split('.')
-        myclass = t1[len(t1)-1]
+        myclass = self.GetClass(tt)
         clone = tt.copy()
         if myclass == 'ZmatrixSequence':
             #jmht - need to connect here as otherwise all the child structures
@@ -553,8 +551,7 @@ class PunchIO(fileio.FileIO):
 
         # We don't need to connect the additional structures for sequences
         # as this is done when we read in the first one
-        t1 = str(tt.__class__).split('.')
-        myclass = t1[len(t1)-1]
+        myclass = self.GetClass(tt)
         if myclass != 'ZmatrixSequence':
             tt.connect()
       
