@@ -10,9 +10,12 @@ if __name__ == "__main__":
 else:
     from viewer.paths import gui_path
 
-import unittest
 import viewer.vtkgraph
 import generic.visualiser
+
+import time
+import unittest
+
 
 class testMoleculeVisualisers(unittest.TestCase):
     """Test the different visualisers for Molecules"""
@@ -279,6 +282,7 @@ class testVectorVisualisers(unittest.TestCase):
         
         visualiser.show_hedgehog=1
         self.gui.visualise(f,visualiser,open_widget=1)
+        #self.gui.mainloop()
 
         # Destroy it
         visualiser.Delete()
@@ -354,6 +358,50 @@ class testVectorVisualisers(unittest.TestCase):
 
 
 
+class testVibrationVisualisers(unittest.TestCase):
+    """Test the different visualisers for Vibrations"""
+
+    gui=None
+
+    def setUp(self):
+        """
+
+        """
+
+        if not self.__class__.gui:
+            
+            global tkroot
+            gui = viewer.vtkgraph.VtkGraph(tkroot)
+            gui.load_from_file(gui_path+"/examples/ethane_vib.pun",display=0)
+
+            # Delete the molecule
+            m = gui.loaded_mols()[0]
+            gui.delete_obj(m)
+
+            self.__class__.gui=gui
+
+
+    def testVibrationSet(self):
+        """Test the Vibration visualiser.
+        This is horribly hacky, but it at least tests the basic functionality
+        """
+
+        # Get the vibration set object
+        v = self.gui.data_list[0]
+
+        # Create the visualiser
+        visualiser=self.gui.vibration_set_visualiser(self.gui.master,self.gui,v)
+        self.gui.visualise(v,visualiser,open_widget=1)
+        visualiser.start_ani()
+        for i in range(10):
+            visualiser.nextframe()
+            time.sleep(0.1)
+        #self.gui.mainloop()
+
+        # Destroy it
+        visualiser.Delete()
+
+
 def testMolecules():
     """Routine to test just the molecule visualisers"""
 
@@ -379,6 +427,7 @@ def testMe():
     suite = unittest.TestLoader().loadTestsFromTestCase(testMoleculeVisualisers)
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testFieldVisualisers))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testVectorVisualisers))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testVibrationVisualisers))
     return suite
 
 if __name__ == "__main__":
@@ -394,7 +443,7 @@ if __name__ == "__main__":
     #testVectors() 
 
     #myTestSuite = unittest.TestSuite()
-    #myTestSuite.addTest(testMoleculeVisualisers("testLabels"))
+    #myTestSuite.addTest(testVibrationVisualisers("testVibrationSet"))
     #runner = unittest.TextTestRunner()
     #runner.run(myTestSuite)
     
