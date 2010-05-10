@@ -3,14 +3,10 @@ try:
 except ImportError:
     _Numeric=None
 
-_Numeric=None
-
 def isAvailable():
     """Return True or False depending on whether we have numeric functionality"""
     if _Numeric: return True
     return False
-    
-
 
 # arctan?
 
