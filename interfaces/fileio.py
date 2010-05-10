@@ -36,6 +36,7 @@ import unittest
 # import internal modules
 import objects.zmatrix
 import objects.vector
+import objects.field
 from objects.periodic import z_to_el, sym2no, name_to_element
 from objects.zmatrix import Zmatrix
 
@@ -925,6 +926,8 @@ class VTK_IO(FileIO):
         #field.vtkdata = reader.GetStructuredPointsOutput()
 
         data = reader.GetOutput()
+        # Need to update so that the data gets pulled through.
+        data.Update()
         if not data:
             raise Exception,"VTK_IO no data found while reading file: %s" % self.filepath
 
@@ -1169,7 +1172,7 @@ class testCML(IOTestCase):
 
     def testRead(self):
         """CML Reader Test"""
-        fil=self.egdir+'caffeine.cml'
+        fil=self.egdir+'cs2a.cml'
         molecules = self.reader.GetObjects(filepath=fil,otype = 'molecules')
         self.assertEqual( len(molecules[0].atom),14)
 
@@ -1194,7 +1197,7 @@ class testMDL_IO(IOTestCase):
         """ """
 
         molecules = self.reader.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/nsc2dmol.mol',
+            filepath=self.egdir+'nsc2dmol.mol',
             otype = 'molecules'
             )
         # Should return 13 atoms
@@ -1207,6 +1210,8 @@ class testMSICeriussII_IO(IOTestCase):
     def setUp(self):
         """Set the reader for all these filetypes"""
         self.writer = MSICeriusII_IO()
+
+        # MSI40Cerius2.car
 
     def testWrite(self):
         """ """
@@ -1231,7 +1236,7 @@ class testPDB_IO(IOTestCase):
         """ """
 
         molecules = self.IO.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/pg_kaptein1.pdb',
+            filepath=self.egdir+'pg_kaptein1.pdb',
             otype = 'molecules'
             )
 
@@ -1282,7 +1287,7 @@ class testSpartanInputIO(IOTestCase):
         """
 
         molecules = self.reader.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/infile.spinput',
+            filepath=self.egdir+'infile.spinput',
             otype = 'molecules'
             )
         self.assertEqual( len(molecules[0].atom) , 68)
@@ -1300,7 +1305,7 @@ class testVTK_IO(IOTestCase):
         """
 
         fields = self.reader.GetObjects(
-            filepath='/home/jmht/VTK/VTKData/Data/ironProt.vtk',
+            filepath=self.egdir+'ironProt.vtk',
             otype = 'fields'
             )
 
@@ -1318,7 +1323,7 @@ class testXYZ_IO(IOTestCase):
         """
 
         molecules = self.reader.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/toluene.xyz',
+            filepath=self.egdir+'toluene.xyz',
             otype = 'molecules'
             )
 
