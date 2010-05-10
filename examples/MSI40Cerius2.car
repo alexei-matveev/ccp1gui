@@ -1,0 +1,978 @@
+# MSI CERIUS2 DataModel File Version 4 0
+(1 Model
+  (A C Label molecule)
+ (2 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (0.000285 -0.551373 1.160061))
+ (A C Label o)
+)
+ (3 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-1.526883 -0.230688 0.827541))
+ (A C Label si)
+)
+ (4 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (1.527596 -0.230619 0.827292))
+ (A C Label si)
+)
+ (5 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.834931 1.270159 1.234714))
+ (A C Label o)
+)
+ (6 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.802361 -0.436130 -0.708552))
+ (A C Label o)
+)
+ (7 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-2.405260 -1.221476 1.735460))
+ (A C Label o)
+)
+ (8 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.834629 1.269229 1.234725))
+ (A C Label o)
+)
+ (9 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.803191 -0.436230 -0.708041))
+ (A C Label o)
+)
+ (10 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (2.406493 -1.221292 1.735213))
+ (A C Label o)
+)
+ (11 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-2.380611 2.738813 0.952885))
+ (A C Label si)
+)
+ (12 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-2.384563 -0.899075 -2.105222))
+ (A C Label si)
+)
+ (13 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-3.755528 -2.047270 1.904352))
+ (A C Label si)
+)
+ (14 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (2.380115 2.738285 0.953479))
+ (A C Label si)
+)
+ (15 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (2.384180 -0.899063 -2.105295))
+ (A C Label si)
+)
+ (16 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (3.755635 -2.047658 1.904305))
+ (A C Label si)
+)
+ (17 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.762484 3.335025 -0.374620))
+ (A C Label o)
+)
+ (18 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-3.941517 2.684998 0.818413))
+ (A C Label o)
+)
+ (19 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.933464 3.644746 2.185768))
+ (A C Label o)
+)
+ (20 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.868997 -2.359417 -2.445928))
+ (A C Label o)
+)
+ (21 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.886976 0.071647 -3.259193))
+ (A C Label o)
+)
+ (22 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-3.960149 -0.862174 -2.053645))
+ (A C Label o)
+)
+ (23 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-4.989135 -1.109890 1.639649))
+ (A C Label o)
+)
+ (24 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-3.807153 -2.561227 3.405042))
+ (A C Label o)
+)
+ (25 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-3.797141 -3.259201 0.905967))
+ (A C Label o)
+)
+ (26 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.763064 3.334359 -0.375083))
+ (A C Label o)
+)
+ (27 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (3.942712 2.685062 0.818171))
+ (A C Label o)
+)
+ (28 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.934154 3.644857 2.184672))
+ (A C Label o)
+)
+ (29 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.867587 -2.359021 -2.445908))
+ (A C Label o)
+)
+ (30 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.885621 0.071508 -3.260070))
+ (A C Label o)
+)
+ (31 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (3.960092 -0.862645 -2.054782))
+ (A C Label o)
+)
+ (32 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (3.806030 -2.561438 3.404874))
+ (A C Label o)
+)
+ (33 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (3.796045 -3.259201 0.905517))
+ (A C Label o)
+)
+ (34 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (4.988405 -1.110900 1.639631))
+ (A C Label o)
+)
+ (35 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-1.529446 3.821634 -1.852106))
+ (A C Label si)
+)
+ (36 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-5.516910 2.694797 0.977630))
+ (A C Label si)
+)
+ (37 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-1.541000 5.064179 2.786902))
+ (A C Label si)
+)
+ (38 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-1.541892 -3.879501 -2.164019))
+ (A C Label si)
+)
+ (39 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-1.537300 1.478170 -3.885364))
+ (A C Label si)
+)
+ (40 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-5.526967 -0.923488 -2.058557))
+ (A C Label si)
+)
+ (41 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-6.147713 -0.298249 0.926756))
+ (A C Label si)
+)
+ (42 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-4.423170 -3.541671 4.510178))
+ (A C Label si)
+)
+ (43 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (-3.721701 -4.471426 -0.095137))
+ (A C Label si)
+)
+ (44 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (1.530015 3.821026 -1.851503))
+ (A C Label si)
+)
+ (45 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (5.516801 2.694556 0.977702))
+ (A C Label si)
+)
+ (46 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (1.542492 5.064568 2.786282))
+ (A C Label si)
+)
+ (47 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (1.541582 -3.879737 -2.163859))
+ (A C Label si)
+)
+ (48 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (1.536176 1.478039 -3.885345))
+ (A C Label si)
+)
+ (49 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (5.525758 -0.923304 -2.058998))
+ (A C Label si)
+)
+ (50 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (4.423193 -3.542504 4.510417))
+ (A C Label si)
+)
+ (51 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (3.721456 -4.471724 -0.095364))
+ (A C Label si)
+)
+ (52 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "14 Si")
+ (A D XYZ (6.148208 -0.298169 0.926081))
+ (A C Label si)
+)
+ (53 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-1.882812 2.636875 -2.851172))
+ (A C Label o)
+)
+ (54 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (0.000851 4.278357 -2.012203))
+ (A C Label o)
+)
+ (55 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-6.051260 1.240825 1.331336))
+ (A C Label o)
+)
+ (56 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (0.000471 5.350186 2.558542))
+ (A C Label o)
+)
+ (57 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-2.360284 -4.409158 -0.912030))
+ (A C Label o)
+)
+ (58 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-0.000045 -4.060411 -1.846250))
+ (A C Label o)
+)
+ (59 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (0.000550 1.517297 -4.323796))
+ (A C Label o)
+)
+ (60 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (-6.074952 -0.449439 -0.652880))
+ (A C Label o)
+)
+ (61 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (1.882768 2.636186 -2.851366))
+ (A C Label o)
+)
+ (62 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (6.051621 1.239654 1.330432))
+ (A C Label o)
+)
+ (63 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (2.360448 -4.409266 -0.912001))
+ (A C Label o)
+)
+ (64 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "8 O")
+ (A D XYZ (6.074921 -0.450322 -0.652495))
+ (A C Label o)
+)
+ (65 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-2.339448 4.947262 -2.156590))
+ (A C Label h)
+)
+ (66 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-6.121363 3.126831 -0.232067))
+ (A C Label h)
+)
+ (67 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-5.922339 3.532580 2.049829))
+ (A C Label h)
+)
+ (68 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-1.835118 5.020770 4.174118))
+ (A C Label h)
+)
+ (69 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-2.274197 6.100209 2.147617))
+ (A C Label h)
+)
+ (70 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-1.891988 -4.602427 -3.334305))
+ (A C Label h)
+)
+ (71 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-2.297799 1.653534 -5.071901))
+ (A C Label h)
+)
+ (72 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-5.984139 -2.241110 -2.322543))
+ (A C Label h)
+)
+ (73 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-6.072978 -0.085540 -3.068164))
+ (A C Label h)
+)
+ (74 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-7.404451 -0.757157 1.402320))
+ (A C Label h)
+)
+ (75 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-5.841766 -3.553974 4.456870))
+ (A C Label h)
+)
+ (76 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-3.966118 -3.080785 5.773101))
+ (A C Label h)
+)
+ (77 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-3.930645 -4.854725 4.281478))
+ (A C Label h)
+)
+ (78 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-3.754780 -5.691288 0.630938))
+ (A C Label h)
+)
+ (79 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (-4.815599 -4.424800 -0.999043))
+ (A C Label h)
+)
+ (80 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (2.339290 4.947595 -2.157155))
+ (A C Label h)
+)
+ (81 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (6.121549 3.126844 -0.232710))
+ (A C Label h)
+)
+ (82 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (5.922511 3.532403 2.049026))
+ (A C Label h)
+)
+ (83 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (1.835442 5.020611 4.174767))
+ (A C Label h)
+)
+ (84 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (2.275509 6.100024 2.147572))
+ (A C Label h)
+)
+ (85 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (1.891607 -4.601900 -3.334401))
+ (A C Label h)
+)
+ (86 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (2.296917 1.654282 -5.071467))
+ (A C Label h)
+)
+ (87 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (5.982727 -2.241320 -2.323183))
+ (A C Label h)
+)
+ (88 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (6.072879 -0.087787 -3.067678))
+ (A C Label h)
+)
+ (89 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (3.966122 -3.081382 5.772133))
+ (A C Label h)
+)
+ (90 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (3.930569 -4.854262 4.282317))
+ (A C Label h)
+)
+ (91 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (5.842057 -3.554332 4.456134))
+ (A C Label h)
+)
+ (92 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (3.755384 -5.691666 0.630876))
+ (A C Label h)
+)
+ (93 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (4.814906 -4.425287 -1.000061))
+ (A C Label h)
+)
+ (94 Atom
+ (A D QuasiCharge -9999.000000)
+ (A I ACL "1 H")
+ (A D XYZ (7.403839 -0.758181 1.402324))
+ (A C Label h)
+)
+ (95 Bond
+ (A O Atom1 3)
+ (A O Atom2 2)
+ )
+ (96 Bond
+ (A O Atom1 4)
+ (A O Atom2 2)
+ )
+ (97 Bond
+ (A O Atom1 5)
+ (A O Atom2 3)
+ )
+ (98 Bond
+ (A O Atom1 6)
+ (A O Atom2 3)
+ )
+ (99 Bond
+ (A O Atom1 7)
+ (A O Atom2 3)
+ )
+ (100 Bond
+ (A O Atom1 8)
+ (A O Atom2 4)
+ )
+ (101 Bond
+ (A O Atom1 9)
+ (A O Atom2 4)
+ )
+ (102 Bond
+ (A O Atom1 10)
+ (A O Atom2 4)
+ )
+ (103 Bond
+ (A O Atom1 11)
+ (A O Atom2 5)
+ )
+ (104 Bond
+ (A O Atom1 12)
+ (A O Atom2 6)
+ )
+ (105 Bond
+ (A O Atom1 13)
+ (A O Atom2 7)
+ )
+ (106 Bond
+ (A O Atom1 14)
+ (A O Atom2 8)
+ )
+ (107 Bond
+ (A O Atom1 15)
+ (A O Atom2 9)
+ )
+ (108 Bond
+ (A O Atom1 16)
+ (A O Atom2 10)
+ )
+ (109 Bond
+ (A O Atom1 17)
+ (A O Atom2 11)
+ )
+ (110 Bond
+ (A O Atom1 18)
+ (A O Atom2 11)
+ )
+ (111 Bond
+ (A O Atom1 19)
+ (A O Atom2 11)
+ )
+ (112 Bond
+ (A O Atom1 20)
+ (A O Atom2 12)
+ )
+ (113 Bond
+ (A O Atom1 21)
+ (A O Atom2 12)
+ )
+ (114 Bond
+ (A O Atom1 22)
+ (A O Atom2 12)
+ )
+ (115 Bond
+ (A O Atom1 23)
+ (A O Atom2 13)
+ )
+ (116 Bond
+ (A O Atom1 24)
+ (A O Atom2 13)
+ )
+ (117 Bond
+ (A O Atom1 25)
+ (A O Atom2 13)
+ )
+ (118 Bond
+ (A O Atom1 26)
+ (A O Atom2 14)
+ )
+ (119 Bond
+ (A O Atom1 27)
+ (A O Atom2 14)
+ )
+ (120 Bond
+ (A O Atom1 28)
+ (A O Atom2 14)
+ )
+ (121 Bond
+ (A O Atom1 29)
+ (A O Atom2 15)
+ )
+ (122 Bond
+ (A O Atom1 30)
+ (A O Atom2 15)
+ )
+ (123 Bond
+ (A O Atom1 31)
+ (A O Atom2 15)
+ )
+ (124 Bond
+ (A O Atom1 32)
+ (A O Atom2 16)
+ )
+ (125 Bond
+ (A O Atom1 33)
+ (A O Atom2 16)
+ )
+ (126 Bond
+ (A O Atom1 34)
+ (A O Atom2 16)
+ )
+ (127 Bond
+ (A O Atom1 35)
+ (A O Atom2 17)
+ )
+ (128 Bond
+ (A O Atom1 36)
+ (A O Atom2 18)
+ )
+ (129 Bond
+ (A O Atom1 37)
+ (A O Atom2 19)
+ )
+ (130 Bond
+ (A O Atom1 38)
+ (A O Atom2 20)
+ )
+ (131 Bond
+ (A O Atom1 39)
+ (A O Atom2 21)
+ )
+ (132 Bond
+ (A O Atom1 40)
+ (A O Atom2 22)
+ )
+ (133 Bond
+ (A O Atom1 41)
+ (A O Atom2 23)
+ )
+ (134 Bond
+ (A O Atom1 42)
+ (A O Atom2 24)
+ )
+ (135 Bond
+ (A O Atom1 43)
+ (A O Atom2 25)
+ )
+ (136 Bond
+ (A O Atom1 44)
+ (A O Atom2 26)
+ )
+ (137 Bond
+ (A O Atom1 45)
+ (A O Atom2 27)
+ )
+ (138 Bond
+ (A O Atom1 46)
+ (A O Atom2 28)
+ )
+ (139 Bond
+ (A O Atom1 47)
+ (A O Atom2 29)
+ )
+ (140 Bond
+ (A O Atom1 48)
+ (A O Atom2 30)
+ )
+ (141 Bond
+ (A O Atom1 49)
+ (A O Atom2 31)
+ )
+ (142 Bond
+ (A O Atom1 50)
+ (A O Atom2 32)
+ )
+ (143 Bond
+ (A O Atom1 51)
+ (A O Atom2 33)
+ )
+ (144 Bond
+ (A O Atom1 52)
+ (A O Atom2 34)
+ )
+ (145 Bond
+ (A O Atom1 53)
+ (A O Atom2 39)
+ )
+ (146 Bond
+ (A O Atom1 53)
+ (A O Atom2 35)
+ )
+ (147 Bond
+ (A O Atom1 54)
+ (A O Atom2 44)
+ )
+ (148 Bond
+ (A O Atom1 54)
+ (A O Atom2 35)
+ )
+ (149 Bond
+ (A O Atom1 55)
+ (A O Atom2 41)
+ )
+ (150 Bond
+ (A O Atom1 55)
+ (A O Atom2 36)
+ )
+ (151 Bond
+ (A O Atom1 56)
+ (A O Atom2 46)
+ )
+ (152 Bond
+ (A O Atom1 56)
+ (A O Atom2 37)
+ )
+ (153 Bond
+ (A O Atom1 57)
+ (A O Atom2 38)
+ )
+ (154 Bond
+ (A O Atom1 57)
+ (A O Atom2 43)
+ )
+ (155 Bond
+ (A O Atom1 58)
+ (A O Atom2 38)
+ )
+ (156 Bond
+ (A O Atom1 58)
+ (A O Atom2 47)
+ )
+ (157 Bond
+ (A O Atom1 59)
+ (A O Atom2 48)
+ )
+ (158 Bond
+ (A O Atom1 59)
+ (A O Atom2 39)
+ )
+ (159 Bond
+ (A O Atom1 60)
+ (A O Atom2 41)
+ )
+ (160 Bond
+ (A O Atom1 60)
+ (A O Atom2 40)
+ )
+ (161 Bond
+ (A O Atom1 61)
+ (A O Atom2 48)
+ )
+ (162 Bond
+ (A O Atom1 61)
+ (A O Atom2 44)
+ )
+ (163 Bond
+ (A O Atom1 62)
+ (A O Atom2 52)
+ )
+ (164 Bond
+ (A O Atom1 62)
+ (A O Atom2 45)
+ )
+ (165 Bond
+ (A O Atom1 63)
+ (A O Atom2 47)
+ )
+ (166 Bond
+ (A O Atom1 63)
+ (A O Atom2 51)
+ )
+ (167 Bond
+ (A O Atom1 64)
+ (A O Atom2 52)
+ )
+ (168 Bond
+ (A O Atom1 64)
+ (A O Atom2 49)
+ )
+ (169 Bond
+ (A O Atom1 65)
+ (A O Atom2 35)
+ )
+ (170 Bond
+ (A O Atom1 66)
+ (A O Atom2 36)
+ )
+ (171 Bond
+ (A O Atom1 67)
+ (A O Atom2 36)
+ )
+ (172 Bond
+ (A O Atom1 68)
+ (A O Atom2 37)
+ )
+ (173 Bond
+ (A O Atom1 69)
+ (A O Atom2 37)
+ )
+ (174 Bond
+ (A O Atom1 70)
+ (A O Atom2 38)
+ )
+ (175 Bond
+ (A O Atom1 71)
+ (A O Atom2 39)
+ )
+ (176 Bond
+ (A O Atom1 72)
+ (A O Atom2 40)
+ )
+ (177 Bond
+ (A O Atom1 73)
+ (A O Atom2 40)
+ )
+ (178 Bond
+ (A O Atom1 74)
+ (A O Atom2 41)
+ )
+ (179 Bond
+ (A O Atom1 75)
+ (A O Atom2 42)
+ )
+ (180 Bond
+ (A O Atom1 76)
+ (A O Atom2 42)
+ )
+ (181 Bond
+ (A O Atom1 77)
+ (A O Atom2 42)
+ )
+ (182 Bond
+ (A O Atom1 78)
+ (A O Atom2 43)
+ )
+ (183 Bond
+ (A O Atom1 79)
+ (A O Atom2 43)
+ )
+ (184 Bond
+ (A O Atom1 80)
+ (A O Atom2 44)
+ )
+ (185 Bond
+ (A O Atom1 81)
+ (A O Atom2 45)
+ )
+ (186 Bond
+ (A O Atom1 82)
+ (A O Atom2 45)
+ )
+ (187 Bond
+ (A O Atom1 83)
+ (A O Atom2 46)
+ )
+ (188 Bond
+ (A O Atom1 84)
+ (A O Atom2 46)
+ )
+ (189 Bond
+ (A O Atom1 85)
+ (A O Atom2 47)
+ )
+ (190 Bond
+ (A O Atom1 86)
+ (A O Atom2 48)
+ )
+ (191 Bond
+ (A O Atom1 87)
+ (A O Atom2 49)
+ )
+ (192 Bond
+ (A O Atom1 88)
+ (A O Atom2 49)
+ )
+ (193 Bond
+ (A O Atom1 89)
+ (A O Atom2 50)
+ )
+ (194 Bond
+ (A O Atom1 90)
+ (A O Atom2 50)
+ )
+ (195 Bond
+ (A O Atom1 91)
+ (A O Atom2 50)
+ )
+ (196 Bond
+ (A O Atom1 92)
+ (A O Atom2 51)
+ )
+ (197 Bond
+ (A O Atom1 93)
+ (A O Atom2 51)
+ )
+ (198 Bond
+ (A O Atom1 94)
+ (A O Atom2 52)
+ )
+)
