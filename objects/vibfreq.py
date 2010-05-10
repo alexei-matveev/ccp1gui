@@ -33,24 +33,34 @@ class VibFreqSet:
       for v in self.vibs:
          print v.title,
 
-   def add_vib(self,disp,freq=None):
+   def add_vib(self,object,freq=None):
       """convenience function to add a new vibration making sure the
       title is unique (if not, the selector widget won't work..)"""
-      v = VibFreq(self.vib_count)
+
+      myclass = str(object.__class__).split('.')[-1]
+      if not myclass == "VibFreq":
+         v = VibFreq(self.vib_count)
+         v.displacement=object
+      else:
+         v = object
+
+      if freq:
+         self.set_freq(v,freq)
+
+      if not v.title:
+         self.set_title(v)
+
       self.vib_count = self.vib_count+1
       self.vibs.append(v)
-      v.displacement=disp
-      if freq is not None:
-         self.set_freq(v,freq)
-      else:
-         v.title='v #'+str(self.vib_count)
-         v.freq = -1
       return v
 
    def set_freq(self, v, freq):
       v.freq = freq
+      self.set_title(v)
+
+   def set_title(self, v):
       for discriminator in [ '', '_2', '_3', '_4', '_6','_7','_8']:
-         title = 'v'+str(freq)+discriminator
+         title = 'v'+str(v.freq)+discriminator
          try:
             self.vibtitles.index(title)
          except ValueError:
@@ -58,13 +68,16 @@ class VibFreqSet:
       v.title = title
       self.vibtitles.append(title)
 
+
+
 class VibFreq:
    def __init__(self,index):
       self.index=index
       self.name=None
       self.reference = None
-      self.freq=0.0
-      self.title="v???"
+      #self.freq=0.0
+      self.freq=None
+      self.title=None
 
    def get_name(self):
       return self.title
