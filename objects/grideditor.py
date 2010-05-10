@@ -19,6 +19,16 @@
 #
 """A set of Tk widgets to edit the grid axes of Field object"""
 
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
+
 import Pmw
 import Tkinter
 import copy
