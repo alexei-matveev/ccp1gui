@@ -25,10 +25,7 @@ import jobmanager
 import traceback
 from viewer.paths import paths
 
-#from interfaces.calced import *
-#import Scientific.Geometry.VectorModule
 import objects.vector
-#from Numeric import *
 
 # see also jobman.py
 #BLANK     = " "

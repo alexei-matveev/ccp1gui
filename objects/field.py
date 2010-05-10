@@ -41,10 +41,10 @@ It is not yet clear what is the best way to resolve this
      required order
 """
 
-from math import *
+#from math import *
+import math
 from viewer.debug import deb
 import objects.vector
-# import Numeric
 
 #Note that it is not possible to add Scientific vectors and 3 element
 #Numeric arrays using +, but they can be easily interconverted and can be
@@ -278,7 +278,7 @@ class Field:
 
     def summary(self):
         """Build up a string with a summary of the field"""
-        summary = """"""
+        summary = """ """
         summary+='Field Object: %s\n' % self.get_name()
         summary+='Axis aligned: %s\n' % self.axis_aligned()
         try:
@@ -522,23 +522,23 @@ class Field:
         """
 
         local = objects.vector.Vector(ifrom*s1, ifrom*s2, ifrom*s3)
-        s = sin(rx *   0.00174532925199)
-        c = cos(rx *   0.00174532925199)
+        s = math.sin(rx *   0.00174532925199)
+        c = math.cos(rx *   0.00174532925199)
 
         to = [ 0.,0.,0.]
         to[0] = local[0]
         to[1] = local[1] * c + local[2] * -s
         to[2] = local[2] * c + local[1] * s
 
-        s = sin(ry * 0.00174532925199)
-        c = cos(ry * 0.00174532925199)
+        s = math.sin(ry * 0.00174532925199)
+        c = math.cos(ry * 0.00174532925199)
 
         t = to[0]
         to[0] = to[0] * c + to[2] * -s
         to[2] = to[2] * c + t * s
 
-        s = sin(rz * 0.00174532925199)
-        c = cos(rz * 0.00174532925199)
+        s = math.sin(rz * 0.00174532925199)
+        c = math.cos(rz * 0.00174532925199)
 
         t = to[0]
         to[0] = to[0] * c + to[1] * s
@@ -560,16 +560,16 @@ class Field:
         # If we are using a vtk data structure, use that to work it out
         # using their functions
         elif self.vtkdata:
-            print "vtkdata"
+            if self.debug: print "minmax using vtkdata"
             scalars = self.vtkdata.GetPointData().GetScalars()
             if scalars:
-                print "vtk got scalars"
+                if self.debug: print "vtk got scalars"
                 # Get the range of the 0th componebt
                 mini,maxi = scalars.GetRange()
             else:
                 vectors = self.vtkdata.GetPointData().GetVectors()
                 if vectors:
-                    print "got vectors"
+                    if self.debug: print "got vectors"
                     # Get the min and max of each component
                     min1,max1 =  vectors.GetRange(0)
                     min2,max2 =  vectors.GetRange(1)
@@ -580,7 +580,7 @@ class Field:
                     maxi = max(max1,max2)
                     maxi = max(maxi,max3)
                 else:
-                    print "field minmax error gettig vtk min max!"
+                    print "field minmax error getting vtk min max!"
 
         # Brute force - trundle through and try and work it out
         else:

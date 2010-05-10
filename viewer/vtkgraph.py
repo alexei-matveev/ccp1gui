@@ -35,13 +35,12 @@ import viewer.vtkTkRenderWidgetP
 import viewer.main
 import generic.visualiser
 import objects.vector
+import objects.numeric
+
 from objects.periodic import colours,rcov,rvdw,rgb_min,rgb_max
 from viewer.debug import deb,trb
 from generic.graph import Graph
 from generic.colourmap import ColourMap
-
-# Import external modules
-import Numeric
 
 mol_select_key=1
 
@@ -1264,7 +1263,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                                 # first move cylinder so that it overlap the target
                                 # direction in the projection down Z
 
-                                rot = Numeric.array([0.0,0.0,0.0])
+                                rot = objects.numeric.array([0.0,0.0,0.0])
 
                                 # Assume we start with z 
 
@@ -1276,7 +1275,8 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 
                                 else:
                                     ratio = axis[0] / axis[1]
-                                    angle = Numeric.arctan(ratio)*rad2deg
+                                    #angle = objects.numeric.arctan(ratio)*rad2deg
+                                    angle = math.atan(ratio)*rad2deg
 
                                 #print 'z angle',angle
                                 # sign convention is empirical
@@ -1289,7 +1289,8 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                                     angle = 90.0
                                 else:
                                     ratio = axis[2] / prj
-                                    angle = Numeric.arctan(ratio)*rad2deg
+                                    #jmht angle = objects.numeric.arctan(ratio)*rad2deg
+                                    angle = math.atan(ratio)*rad2deg
                                     if axis[1] < 0:
                                         angle = -angle
 
@@ -2031,10 +2032,10 @@ class VtkIsoSurf(VtkCmapVis):
                     offset = offset+1
 
             #print self.field.lvl
-            #tmp = Numeric.reshape(Numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
+            #tmp = objects.numeric.reshape(objects.numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
             #print tmp
             #tmp = self.field.lvl
-            #tmp = Numeric.reshape(self.field.lvl,(-1,))
+            #tmp = objects.numeric.reshape(self.field.lvl,(-1,))
             #data_array.SetFloatArray(tmp,bigsize,1)
 
             data.GetPointData().SetScalars(data_array)
@@ -2279,10 +2280,10 @@ class VtkVolVis:
                     ioff=ioff+1
 
         #print field.lvl
-        #tmp = Numeric.reshape(Numeric.transpose(field.lvl,[2,1,0]),(-1,))
+        #tmp = objects.numeric.reshape(objects.numeric.transpose(field.lvl,[2,1,0]),(-1,))
         #print tmp
         #tmp = field.lvl
-        #tmp = Numeric.reshape(field.lvl,(-1,))
+        #tmp = objects.numeric.reshape(field.lvl,(-1,))
         #data_array.SetFloatArray(tmp,bigsize,1)
 
         data.GetPointData().SetScalars(data_array)
@@ -2963,10 +2964,10 @@ class VtkCutSliceVisualiser(generic.visualiser.CutSliceVisualiser,VtkSlice,VtkVi
                     offset = offset+1
 
             #print self.field.lvl
-            #tmp = Numeric.reshape(Numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
+            #tmp = objects.numeric.reshape(objects.numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
             #print tmp
             #tmp = self.field.lvl
-            #tmp = Numeric.reshape(self.field.lvl,(-1,))
+            #tmp = objects.numeric.reshape(self.field.lvl,(-1,))
             #data_array.SetFloatArray(tmp,bigsize,1)
 
             data.GetPointData().SetScalars(data_array)
@@ -3193,10 +3194,10 @@ class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
                     offset = offset+1
 
             #print self.field.lvl
-            #tmp = Numeric.reshape(Numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
+            #tmp = objects.numeric.reshape(objects.numeric.transpose(self.field.lvl,[2,1,0]),(-1,))
             #print tmp
             #tmp = self.field.lvl
-            #tmp = Numeric.reshape(self.field.lvl,(-1,))
+            #tmp = objects.numeric.reshape(self.field.lvl,(-1,))
             #data_array.SetFloatArray(tmp,bigsize,1)
 
             data.GetPointData().SetScalars(data_array)

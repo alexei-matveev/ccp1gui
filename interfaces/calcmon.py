@@ -4,7 +4,6 @@ A widget to plot the progress of an energy calculation/geometry optimisation
 import Tkinter
 import Pmw
 from Scientific.TkWidgets import TkPlotCanvas
-import Numeric
 import viewer.initialisetk
 
 

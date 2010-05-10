@@ -1,8 +1,8 @@
 # By Patrik Jakobsson and Ulf Ekstrom 2005-2007.
 from __future__ import generators
 
-import Numeric
-import LinearAlgebra
+import objects.numeric
+import objects.linalg
 import math
 
 # Evaluation variables
@@ -422,7 +422,7 @@ class Molecule:
       I = I + orbA[5]*orbB[5]*overlap_prime(nA,1,'pz',zA,nB,1,'pz',zB,R)			
       return I
     n = len(self.orbitals)
-    S = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    S = objects.numeric.array((((0.0,)*n,)*n))
     # Calculate overlap for atom 'part' only
     if part != -1:
       for orb in self.atoms[part].orbitals:
@@ -433,7 +433,7 @@ class Molecule:
       return S
     # Else, calculate for all atoms
     n = len(self.orbitals)
-    S = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    S = objects.numeric.array((((0.0,)*n,)*n))
     for i in range(n):
       S[i][i] = 1.0
       for j in range(n)[(i+1):]:
@@ -568,8 +568,8 @@ class Molecule:
     ##
   def get_g_and_h(self):
     n = len(self.orbitals)
-    g = Numeric.array((((0,)*n,)*n),Numeric.Float)
-    h = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    g = objects.numeric.array((((0.0,)*n,)*n))
+    h = objects.numeric.array((((0.0,)*n,)*n))
     for i in range(n):
       for j in range(n):
         ## a and b must reside on the same atom
@@ -610,7 +610,7 @@ class Molecule:
     def f2(R):
       return 0.0
     n = len(self.orbitals)
-    V = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    V = objects.numeric.array((((0.0,)*n,)*n))
     for i in range(n):
       for j in range(n):
         for B in range(len(self.atoms)):
@@ -627,7 +627,7 @@ class Molecule:
     ##		
   def EH(self):
     n = len(self.orbitals)
-    F = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    F = objects.numeric.array((((0.0,)*n,)*n))
     for i in range(n):
       U = Us[self.atoms[self.orbitals[i].atom].symbol]
       if(self.orbitals[i].ot != 0):
@@ -692,7 +692,7 @@ class Molecule:
   
     # Calculate the two electron part of the fock matrix F
     n = len(self.orbitals)
-    F = Numeric.array((((0,)*n,)*n),Numeric.Float)
+    F = objects.numeric.array((((0.0,)*n,)*n))
   
     for i in range(n):
       for j in range(i,n):
@@ -750,8 +750,8 @@ class Molecule:
 
   def get_P(self,F):
     Fp = F+self.H
-    Energy , C = LinearAlgebra.Heigenvectors(Fp)
-    C = Numeric.transpose(C)
+    Energy , C = objects.linalg.Heigenvectors(Fp)
+    C = objects.numeric.transpose(C)
     if 0:
       print 'Eigenvalues:',Energy
       print 'Orbitals:'
@@ -759,7 +759,7 @@ class Molecule:
     self.eig = Energy
     self.mo = C
     n = len(self.orbitals)
-    P = Numeric.zeros((n,n)) * 0.0
+    P = objects.numeric.zeros((n,n)) * 0.0
     for i in range(n):
       for j in range(n):
         P[i][j] = 0.0
@@ -789,7 +789,7 @@ class Molecule:
           H[j][i]=H[i][j]
       self.H = H
       return
-    H = Numeric.zeros((n,n)) * 0.0
+    H = objects.numeric.zeros((n,n)) * 0.0
     for j in range(n):
       for i in range(j,n):
         S = 0.0
@@ -933,8 +933,8 @@ class Molecule:
   def gradient(self,fixed = -1):
     self.get_E()
     n = len(self.atoms)
-    grad = Numeric.array(((0,)*3*n,),Numeric.Float)
-    grad = Numeric.reshape(grad,(3*n,1))
+    grad = objects.numeric.array(((0.0,)*3*n,))
+    grad = objects.numeric.reshape(grad,(3*n,1))
     for a in range(n):
       if fixed != -1 and fixed[a] == 1:
         grad[3*a:3*a+3] = 0.0
@@ -952,8 +952,8 @@ class Molecule:
   def fd_gradient(self,fixed = -1,fourpoint = 0):
     self.get_E()
     n = len(self.atoms)
-    grad = Numeric.array(((0,)*3*n,),Numeric.Float)
-    grad = Numeric.reshape(grad,(3*n,1))
+    grad = objects.numeric.array(((0.0,)*3*n,))
+    grad = objects.numeric.reshape(grad,(3*n,1))
     for a in range(n):
 #      if a==0:
 #        grad[3*a:3*a+3] = 0.0
@@ -983,8 +983,8 @@ class Molecule:
   def fd_hessian(self,fixed=-1):
     self.get_E()
     n = len(self.atoms)
-    hess = Numeric.array(((0,)*(3*n)**2,),Numeric.Float)
-    hess = Numeric.reshape(hess,(3*n,3*n))
+    hess = objects.numeric.array(((0.0,)*(3*n)**2,))
+    hess = objects.numeric.reshape(hess,(3*n,3*n))
     for a in range(n):
       if fixed != -1 and fixed[a] == 1:
         hess[3*a:3*a+3][1:3*n] = 0.0
@@ -1011,8 +1011,8 @@ class Molecule:
     E = self.get_E()
     P = self.P
     n = len(self.atoms)
-    hess = Numeric.array(((0,)*(3*n)**2,),Numeric.Float)
-    hess = Numeric.reshape(hess,(3*n,3*n))
+    hess = objects.numeric.array(((0.0,)*(3*n)**2,))
+    hess = objects.numeric.reshape(hess,(3*n,3*n))
     for a in range(3*n):
       atoma=a/3
       if fixed != -1 and fixed[atoma] == 1:
@@ -1072,8 +1072,8 @@ class Molecule:
 
   def pos(self):
     n = len(self.atoms)
-    r = Numeric.array(((0,)*3*n,),Numeric.Float)
-    r = Numeric.reshape(r,(3*n,1))
+    r = objects.numeric.array(((0.0,)*3*n,))
+    r = objects.numeric.reshape(r,(3*n,1))
     for i in range(n):
       r[3*i] = self.atoms[i].x
       r[3*i+1] = self.atoms[i].y
@@ -1176,8 +1176,8 @@ class Molecule:
           go = g
           g = self.fd_gradient(fourpoint=0)
           a = self.atoms[1]
-          n = float(Numeric.matrixmultiply(Numeric.transpose(g),g)) - float(Numeric.matrixmultiply(Numeric.transpose(g),go)) 
-          d = float(Numeric.matrixmultiply(Numeric.transpose(go),go))
+          n = float(objects.numeric.matrixmultiply(objects.numeric.transpose(g),g)) - float(objects.numeric.matrixmultiply(objects.numeric.transpose(g),go)) 
+          d = float(objects.numeric.matrixmultiply(objects.numeric.transpose(go),go))
           beta=n/d
           dn = -g + beta*do
           do = dn
@@ -1205,8 +1205,8 @@ class Molecule:
     N = 0                                                                                                       
                                                                                                                   
     n = len(self.atoms)*3                                                                                        
-    Bc = Numeric.array(((0,)*(n)**2,),Numeric.Float)                                                                            
-    Bc = Numeric.reshape(Bc,(n,n))                                                                                      
+    Bc = objects.numeric.array(((0.0,)*(n)**2,))                                                                            
+    Bc = objects.numeric.reshape(Bc,(n,n))                                                                                      
     for i in range(n):                                                                                          
       Bc[i][i] = 10.0                                                                                           
     E1 = self.get_E()                                                                                            
@@ -1218,12 +1218,12 @@ class Molecule:
       rp = self.pos()                                                                                            
       sc = rp - rc # geometry difference                                                                        
       yc = gp - gc # gradient difference                                                                        
-      t1 = 1.0/float(Numeric.matrixmultiply(Numeric.transpose(yc),sc))*Numeric.matrixmultiply(yc,Numeric.transpose(yc))                         
-      n2 = Numeric.matrixmultiply(Numeric.matrixmultiply(Bc,sc),Numeric.matrixmultiply(Numeric.transpose(sc),Bc))                               
-      d2 = float(Numeric.matrixmultiply(Numeric.transpose(sc),Numeric.matrixmultiply(Bc,sc)))                                           
+      t1 = 1.0/float(objects.numeric.matrixmultiply(objects.numeric.transpose(yc),sc))*objects.numeric.matrixmultiply(yc,objects.numeric.transpose(yc))                         
+      n2 = objects.numeric.matrixmultiply(objects.numeric.matrixmultiply(Bc,sc),objects.numeric.matrixmultiply(objects.numeric.transpose(sc),Bc))                               
+      d2 = float(objects.numeric.matrixmultiply(objects.numeric.transpose(sc),objects.numeric.matrixmultiply(Bc,sc)))                                           
       Bp = Bc + t1 - n2/d2                # Update the Hessian                                                  
       # Now we have the gradient and the estimated Hessian.                                                     
-      sN = -Numeric.matrixmultiply(inverse(Bp),gp) # The quasi-Newton step                                              
+      sN = -objects.numeric.matrixmultiply(inverse(Bp),gp) # The quasi-Newton step                                              
       steplen = min(0.2+0.25*N,1.0)        # This make the step larger as the number of iterations              
                                            #  and thus the precision of the estimation increases                
                                            # After a few cycles, a full step is taken                           
@@ -1242,7 +1242,7 @@ class Molecule:
       print "Convergence resolution reached"                                                                    
 #    if norm(rp-rc)/len(rp-rc) <= 0.0001:                                                                        
 #      print "Displacement limit reached"                                                                        
-    if abs(float(Numeric.matrixmultiply(Numeric.transpose(yc),yc))) < 0.01:                                                     
+    if abs(float(objects.numeric.matrixmultiply(objects.numeric.transpose(yc),yc))) < 0.01:                                                     
       print "Gradient change too small"                                                                         
     self.linesearch_quadratic(E0,-gp)                                                                            
     E1 = self.get_E()                                                                                            

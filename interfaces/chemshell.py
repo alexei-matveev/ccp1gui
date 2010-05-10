@@ -27,14 +27,18 @@ import time
 import string
 import tkFileDialog
 
-from   calc       import *
+
+from viewer.defaults import defaults
+import objects.vector
+import objects.numeric
+import objects.linalg
+
 import filepunch
+from   calc       import *
 from   gamessuk   import *
 from   molpro     import *
 from   mndo       import *
 from   dl_poly    import *
-from viewer.defaults import defaults
-import objects.vector
 
 
 def extend_path(arg):
@@ -2014,7 +2018,6 @@ def chemshell_z_modes():
     h = p.GetObjects()[0]
 
     # Convert hessian data to a Numeric array
-    from Numeric import array
     t = []
     start = 0
     n = h.dimensions[0]
@@ -2022,12 +2025,11 @@ def chemshell_z_modes():
         stop = start + n 
         t.append(h.data[start:stop])
         start = start + n
-    h.array = array(t)
+    h.array = objects.numeric.array(t)
     #print h.array
 
     # Generate evals and evecs
-    from LinearAlgebra import eigenvectors
-    eval,evec = eigenvectors(h.array)
+    eval,evec = objects.linalg.eigenvectors(h.array)
     #print 'eval',eval
     #print 'evec',evec
 
@@ -2106,7 +2108,6 @@ def chemshell_c_modes():
     h = p.GetObjects()[0]
 
     # Convert hessian data to a Numeric array
-    from Numeric import array
     t = []
     start = 0
     n = h.dimensions[0]
@@ -2114,12 +2115,11 @@ def chemshell_c_modes():
         stop = start + n 
         t.append(h.data[start:stop])
         start = start + n
-    h.array = array(t)
+    h.array = objects.numeric.array(t)
     #print h.array
 
     # Generate evals and evecs
-    from LinearAlgebra import eigenvectors
-    eval,evec = eigenvectors(h.array)
+    eval,evec = objects.linalg.eigenvectors(h.array)
     #print 'eval',eval
     #print 'evec',evec
 

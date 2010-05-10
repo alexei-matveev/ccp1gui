@@ -53,13 +53,11 @@ import unittest
 
 # Import local modules
 import objects.vector
+import objects.numeric
+import objects.linalg
 import symdet
 from objects.periodic import rcov, sym2no, atomic_mass, name_to_element, get_bond_length
 from chempy import cpv, atomic_number
-
-# Import external modules
-import Numeric,LinearAlgebra
-
 
 pi_over_180 = math.atan(1.0) / 45.0
 dtorad = pi_over_180
@@ -4296,7 +4294,7 @@ class Zmatrix(Indexed):
             return r
 
     def inertialTensor(self, origin = [0.0,0.0,0.0]):
-        I = Numeric.reshape(Numeric.array((0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)),(3,3))
+        I = objects.numeric.reshape(objects.numeric.array((0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)),(3,3))
         for a in self.atom:
             try:
                 m = a.get_mass()
@@ -4318,7 +4316,7 @@ class Zmatrix(Indexed):
         """Return a matrix with the eigenvectors of the
         inertial tensor, calculated with the given origin."""
         I = self.inertialTensor( origin )
-        valvec = LinearAlgebra.Heigenvectors(I)
+        valvec = objects.linalg.Heigenvectors(I)
         res = []
         for i in range(3):
             res.append([valvec[0][i],[valvec[1][i][0],
@@ -4339,7 +4337,7 @@ class Zmatrix(Indexed):
     def getMomentsOfInertia(self):
         """ Get the eigenvalues of the axes. """
         I = self.inertialTensor()
-        valvec = LinearAlgebra.eigenvectors(I)
+        valvec = objects.linalg.eigenvectors(I)
         res = []
         for i in range(3):
             res.append(valvec[0][i])

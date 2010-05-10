@@ -69,20 +69,6 @@ http://tkinter.unpythonic.net/wiki/How_20to_20install_20Tkinter"""
         print whereget
         sys.exit(-1)
 
-    # Numeric
-    try:
-        import Numeric
-    except ImportError:
-        print header
-        print """
-We are sorry but the CCP1GUI cannot run on your system as
-you do not appear to have Numeric Python installed. For more
-information on installing Numeric Python, please visit:
-
-http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351"""
-        print whereget
-        sys.exit(-1)
-
     # Pmw
     try:
         import Pmw
@@ -123,15 +109,12 @@ http://public.kitware.com/VTK/get-software.php"""
     print 'Module paths:'
     print '============='
     print 'VTK version',vtk.vtkVersion.GetVTKVersion(),' from ',vtk.__file__ 
-    print Numeric.__file__
     #print Pmw.__file__
     print "CCP1GUI directory: ",paths['gui']
     print
 
 import stat
-#from math import fabs, cos, sin, pi, sqrt, floor
 import math
-#from string import strip, split, atof
 from tkFileDialog import *
 from tkSimpleDialog import *
 import tkColorChooser
@@ -175,7 +158,7 @@ from viewer.slavethread import *
 from jobmanager.jobeditor import *
 from viewer.toolpanel import *
 
-from objects import symed, symdet
+from objects import symed
 import thread
 from viewer.defaults import defaults
 
