@@ -21,12 +21,12 @@
 May need further work...
 """
 
+# Import Python modules
+import math
 
+# Import our modules
+import objects.zmatrix
 #from chempy.brick import Brick
-from objects.zmatrix import *
-from Numeric import *
-import string
-from math  import *
 
 class VibFreq:
    def __init__(self,index):
@@ -58,9 +58,9 @@ class MoldenReader:
          if   a[0:15] == '[Molden Format]':
             punch.pop(0)
          elif a[0:7]  == '[Atoms]':
-            if string.find(a,'Angs',7) > 0:
+            if a.find('Angs',7) > 0:
                factor = 1.0/0.529177249
-            elif string.find(a,'AU',7) > 0:
+            elif a.find('AU',7) > 0:
                factor = 1.0
             else:
                factor = 1.0
@@ -89,10 +89,10 @@ class MoldenReader:
             self.read_skip(punch)
          elif a[0:12] == '[GEOMETRIES]':
             factor = 1.0/0.529177249
-            if string.find(a,'XYZ',12) > 0:
+            if a.find('XYZ',12) > 0:
                punch.pop(0)
                self.read_geoms(punch,factor)
-            elif string.find(a,'ZMAT',12) > 0:
+            elif a.find('ZMAT',12) > 0:
                punch.pop(0)
                self.read_skip(punch)
             else:
@@ -120,11 +120,11 @@ class MoldenReader:
          elif subhead[0] == '[':
             return tt
          list.pop(0)
-         rr = string.split(subhead)
-         p = Atom()
+         rr = subhead.split()
+         p = objects.zmatrix.Atom()
          p.coord = [ float(rr[3])*fac , float(rr[4])*fac, float(rr[5])*fac ]
-         p.symbol = string.capitalize(rr[0]) 
-         p.name = p.symbol + string.zfill(cnt+1,2)
+         p.symbol = rr[0].capitalize()
+         p.name = p.symbol + str(cnt+1).zfill(c2)
          p.index = int(rr[1])
          cnt = cnt + 1
          tt.add_atom(p)
@@ -137,17 +137,17 @@ class MoldenReader:
          a = list[0]
          if a[0] == '[':
             return 
-         assert string.atoi(a) == numat, "Number of atoms not the same [ATOMS] and [GEOMETRIES]"
+         assert int(a) == numat, "Number of atoms not the same [ATOMS] and [GEOMETRIES]"
          list.pop(0)
          list.pop(0)
          tt = Indexed()
          tt.atom = []
          for i in range(0,numat):
             q  = self.coordinates.atom[i]
-            rr = string.split(list[0])
+            rr = list[0].split()
             p  = Atom()
             p.coord  = [ float(rr[1])*fac, float(rr[2])*fac, float(rr[3])*fac]
-            p.symbol = string.capitalize(rr[0])
+            p.symbol = rr[0].capitalize()
             p.name   = q.name
             p.index  = q.index
             tt.add_atom(p)
@@ -187,13 +187,13 @@ class MoldenReader:
             brik.title = ''
             for i in range(0,self.records):
                r = list.pop(0)
-               brik.title = brik.title + string.rstrip(r)
+               brik.title = brik.title + r.rstrip()
          elif self.name == 'grid_axes':
             list.pop(0)
             cnt = 0
             brik.dim = []
             for i in range(0,self.records):
-               rr = string.split(list.pop(0))
+               rr = list.pop(0).split()
                brik.dim.append(int(rr[0]))
             print 'dim', brik.dim
          elif self.name == 'grid_mapping':
@@ -201,7 +201,7 @@ class MoldenReader:
             brik.range = []
             fac = 0.529177
             for i in range(0,self.records):
-               rr = string.split(list.pop(0))
+               rr = list.pop(0).split()
                if i == 0:
                   brik.origin = [ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]
                   brik.range.append((float(rr[3])-float(rr[0]))*fac)
@@ -231,11 +231,11 @@ class MoldenReader:
          cnt = 0
          v = VibFreq(self.index)
          for i in range(0,self.records):
-               p = Atom()
-               rr = string.split(list.pop(0))
+               p = objects.zmatrix.Atom()
+               rr = list.pop(0).split()
                p.coord = [ float(rr[1]) , float(rr[2]), float(rr[3]) ]
-               p.symbol = string.capitalize(rr[0])
-               p.name = p.symbol + string.zfill(i,2)
+               p.symbol = rr[0].capitalize()
+               p.name = p.symbol + str(i).zfill(2)
                p.index = cnt
                cnt = cnt + 1
                v.atoms.append(p)
@@ -250,4 +250,3 @@ class MoldenReader:
             if v.index == self.index:
                v.freq = float(tt)
          return None
-
