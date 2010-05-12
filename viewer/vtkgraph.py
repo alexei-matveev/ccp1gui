@@ -603,7 +603,6 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         # 2 = celldata array
         self.contact_type = 2
         
-        self.debug=1
         if self.debug:
             deb("making sphere list of %d atoms with sphere type: %d" % (len(self.molecule.atom),self.sphere_type))
 
