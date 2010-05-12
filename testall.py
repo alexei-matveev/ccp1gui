@@ -1,4 +1,7 @@
-"""Script to run all the current CCP1GUI tests"""
+#!/usr/bin/python
+#
+#Script to run all the current CCP1GUI tests
+#
 
 import unittest
 
