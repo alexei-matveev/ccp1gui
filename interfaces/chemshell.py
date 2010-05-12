@@ -136,7 +136,7 @@ class ChemShellCalc(Calc):
 
         job_name = self.get_parameter("job_name")
 
-        print 'JOB_NAME',job_name
+        #print 'JOB_NAME',job_name
 
         file = open(job_name+'.c','w')
         wrcon = self.get_parameter('export_connectivity')
@@ -166,11 +166,12 @@ class ChemShellCalc(Calc):
                 file.write(a)
             file.close()
 
+
         #
         #  Need to decide what kind of job run - hardwire to
         #  LocalJob for now
         #
-        job = jobmanager.LocalJob()
+        job = jobmanager.job.LocalJob()
         job.name = job_name
         job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
         job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
@@ -179,10 +180,8 @@ class ChemShellCalc(Calc):
         ed = self.get_editor()
         # connect up the monitor to load structure back
         if ed:
-            print 'add_mon'
+            #print 'add_mon'
             job.add_monitor(ed.monitor)
-        else:
-            print 'DONT add_mon'            
         
         if sys.platform[:3] == 'win':
 
@@ -238,7 +237,7 @@ class ChemShellCalc(Calc):
                 extend_path(chemsh_script_dir)
 
             t = os.environ['PATH']
-            print t
+            #print t
 
             job.add_step(RUN_APP,'run ChemShell',
                          local_command='chemsh',
@@ -255,11 +254,11 @@ class ChemShellCalc(Calc):
         This function is executed in the main thread if the job
         completes satisfactorily
         """
-        print 'endjob code=',job_status_code
+        if self.debug: print 'endjob code=',job_status_code
 
         job_name = self.get_parameter("job_name")
 
-        print 'self.outfile is',self.outfile
+        if self.debug: print 'self.outfile is',self.outfile
         file = open(self.outfile,'r')
         self.ReadOutput(file)
         file.close()
@@ -279,7 +278,7 @@ class ChemShellCalc(Calc):
             raise JobError, "No molecular structure in Punchfile - check output"
 
     def set_qm_code(self,code):
-        print code,  self.get_parameter("qmcode")
+        #print code,  self.get_parameter("qmcode")
         oldcode = self.get_parameter("qmcode")
         if oldcode == code:
             return
@@ -289,7 +288,7 @@ class ChemShellCalc(Calc):
 
     def create_qm_calc(self):
         code = self.get_parameter("qmcode")
-        print 'QM code', code
+        if self.debug: print 'QM code', code
         if code == "gamess":
             self.qmcalc = GAMESSUKCalc()
         elif code == "mopac":
@@ -369,7 +368,7 @@ class ChemShellCalc(Calc):
         if not filename:
             filename = self.getInputFilename()
 
-        print 'opening',filename
+        if self.debug: print 'opening',filename
 
         file = open(filename,'w')
 
@@ -589,7 +588,7 @@ class ChemShellCalc(Calc):
                "FT97"  : "rhf", "UFT97" : "uhf" }
 
             theory = self.qmcalc.get_theory()
-            print 'Current theory', theory
+            if self.debug: print 'Current theory', theory
             file.write("set hamiltonian         " + translate_hamiltonian[theory] + '\n')
 
 ##      set bas  self.qmcalc.get_input("basis")
@@ -1871,7 +1870,7 @@ class ChemShellCalcEd(CalcEd):
         set visibility of controls depending in which type of calculation
         is requested
         """
-        print '__set_calctype', self.calc.get_parameter('calctype')
+        if self.debug: print '__set_calctype', self.calc.get_parameter('calctype')
 
         self.calctype_tool.ReadWidget()
 
