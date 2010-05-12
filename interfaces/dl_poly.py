@@ -39,7 +39,6 @@ class Dl_PolyHISTORYFile(File):
 class DLPOLYCalc(MMCalc):
     """DLPOLY specifics."""
     def __init__(self,title="untitled"):
-        print self
         MMCalc.__init__(self,"DLPOLY",title)
 
         self.set_parameter("task","energy")
