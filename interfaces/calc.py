@@ -625,7 +625,7 @@ of any program using or generating them. The parameters however will be
                 print o.bonds_and_angles()
             try:
                 oldo.import_geometry(o,update_constants=0)
-            except ImportGeometryError:
+            except objects.zmatrix.ImportGeometryError:
                 warn=1
                 copycontents(oldo,o)
 
