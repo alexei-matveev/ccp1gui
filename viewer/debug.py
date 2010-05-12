@@ -18,15 +18,21 @@
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 """Manage debug output from the gui"""
+
+
+import Tkinter
+import traceback
+
 widget=None
 lines=0
 max_lines=10
-import Tkinter
-import traceback
+
 def deb(txt):
     """Output the debug text"""
     global widget
     global lines, max_lines
+
+    txt=deb_format(txt)
     if widget:
         widget.insert(Tkinter.AtEnd(),txt+'\n')
         widget.see(Tkinter.AtEnd())
@@ -59,3 +65,20 @@ def trb():
 def deb_setwidget(mywidget):
     global widget
     widget=mywidget
+
+def deb_format(itext):
+    prefix="DEBUG>> "
+
+    dtext=""
+    if type(itext) is list:
+        for t in itext:
+            dtext=dtext+"\n"+prefix+t
+    elif type(itext) is str:
+        dtext=prefix+itext
+    else:
+        raise TypeError("deb_format: unsupported type!")
+
+    return dtext
+
+#if __name__=="__main__":
+#    print deb_format(["hello there","I'm some text"])
