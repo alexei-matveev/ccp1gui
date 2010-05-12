@@ -29,9 +29,8 @@ import sys,re
 import math
 
 # Import our modules
-import chempy.cpv
 import vtk
-import viewer.vtkTkRenderWidgetP
+import viewer.vtkTkRenderWidgetCCP1GUI
 import viewer.main
 import generic.visualiser
 import objects.vector
@@ -123,6 +122,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         # settings made in the section above
         viewer.main.TkMolView.__init__(self, parent) 
 
+
         global sel
         sel = self.sel()
         #
@@ -137,7 +137,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
 
         if self.render_in_tk == 1:
             # create vtkTkRenderWidget
-            self.pane = viewer.vtkTkRenderWidgetP.vtkTkRenderWidget(self.interior(), stereo=self.stereo)
+            self.pane = viewer.vtkTkRenderWidgetCCP1GUI.vtkTkRenderWidgetCCP1GUI(self.interior(), stereo=self.stereo)
             renwin = self.pane.GetRenderWindow()
             self._set_stereo( renwin ) # See if we are using stereo
             self.ren = vtk.vtkRenderer()
@@ -155,7 +155,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
             # create an interactor
             self.iren = vtk.vtkRenderWindowInteractor()
             self.iren.SetRenderWindow(renwin)
-            self.pane = vtk.vtkTkRenderWidget(self.interior())
+            self.pane = viewer.vtkTkRenderWidgetCCP1GUI.vtkTkRenderWidgetCCP1GUI(self.interior())
             if self.stereo:
                 renwin.SetStereoCapableWindow()
             self.renwin = renwin
@@ -181,7 +181,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
 
 
         # create vtkTkRenderWidget
-        self.pane2d = viewer.vtkTkRenderWidgetP.vtkTkRenderWidget(self.window2d.interior())
+        self.pane2d = viewer.vtkTkRenderWidgetCCP1GUI.vtkTkRenderWidgetCCP1GUI(self.window2d.interior())
         self.pane2d.pack(side = 'top', expand=1, fill = 'both',padx=3, pady=3)
         self.ren2d = vtk.vtkRenderer()
         renwin = self.pane2d.GetRenderWindow()
@@ -218,7 +218,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
             self.pane.Render()
         else:
             self.renwin.Render()    
-        self.pane2d.Render(trace=0)
+        self.pane2d.Render()
 
 
     def save_image(self, renderWindow, filename, format=None, quality=None  ):
@@ -320,18 +320,19 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         # This is called from the event callback, and provides the molecule ID
         self.picked_mol = mol
         if self.debug:
-            deb('mypick1 done')
+            deb("mypick1 done, setting picked_mol to: %s" % mol )
 
     def mypick2(self,but):
         """Handle a pick event"""
         if self.debug:
-            trb()
+            #trb()
             deb('mypick2 entered, self.picked_atomic_actor =' + str(self.picked_atomic_actor))
             deb('                 self.picked_mol =' + str(self.picked_mol))
 
         global sel
 
         if not self.picked_mol:
+            if self.debug: deb("mypick2 not self.picked_mol")
             # we didn't hit anything, clear selection
             if but == 1:
                 sel.clear()
@@ -357,6 +358,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
             atom = self.picked_atom
         else:
             i = self.pane.GetPicker().GetPointId()
+            deb("mypick2 picked point: %d" % i)
             atom = self.picked_mol.atom[i]
 
         #print 'Picked atom',atom.get_index()+ 1,'in ',self.picked_mol.title
@@ -601,8 +603,9 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         # 2 = celldata array
         self.contact_type = 2
         
+        self.debug=1
         if self.debug:
-            print 'making sphere list of ', len(self.molecule.atom),' atoms'
+            deb("making sphere list of %d atoms with sphere type: %d" % (len(self.molecule.atom),self.sphere_type))
 
         if self.show_spheres:
             if self.sphere_type == 0:
@@ -1054,7 +1057,6 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                     if draw:
                         np = np + 1
 
-                #print 'points', np
                 p = vtk.vtkPoints()
 
                 zvals = vtk.vtkIntArray()
@@ -1226,7 +1228,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                     act.GetProperty().SetColor(r,g,b)
                     self.sphere_actors.append(act)
 
-                #print 'made polydata with ', len(bonds), ' lines', len(orphans), 'vertices'
+                if self.debug: deb("made polydata with %d lines %d vertices" % (len(bonds),len(orphans)))
 
         if self.show_sticks:
             if self.stick_type == 0:
