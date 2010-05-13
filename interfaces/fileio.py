@@ -91,8 +91,8 @@ class FileIO:
             # Set the above structures from the filepath
             self._ParseFilepath( filepath )
         
-        self.read = None # Indicate whether the file has been read - only need
-                         # to do this once
+        self.haveread = None # Indicate whether the file has been read so that we only parse it once
+                             # Once we have read the file the name of the file goes here
 
 
         # List of which objects can be read/written by fileIO objects
@@ -127,6 +127,12 @@ class FileIO:
         self.name,ext = os.path.splitext( self.filename )
         self.ext = ext.lower()
 
+    def _ResetObjects(self):
+        """Clear out the list of any objects we may have read on a previous read"""
+        for o in self.objectTypes:
+            if hasattr( self, o ):
+                setattr( self, o, [] )
+
     def CanRead( self ):
         """Return whether we can read this type of file"""
 
@@ -137,7 +143,7 @@ class FileIO:
         Determine if we can write a particular file type
         """
 
-        myclass = self.GetClass( dataobj )
+        myclass = dataobj.GetClass()
         if myclass in self.canWrite:
             return True
         else:
@@ -153,7 +159,7 @@ class FileIO:
         if debug:
             self.debug=1
 
-        if not self.read:
+        if not self.haveread or self.haveread != filepath:
             self.ReadFile( filepath=filepath,**kw )
         
         if otype:
@@ -175,18 +181,23 @@ class FileIO:
                         
             if self.debug: print "GetObjects returning all objects",objects
             return objects
-        
+    
     def ReadFile(self, filepath=None, **kw ):
         """
         """
-        if not self.read:
+        if not self.haveread or self.haveread != filepath:
             if filepath:
                 self._ParseFilepath( filepath )
-                
+
+            if not self.filepath:
+                raise IOError("FileIO needs a file to read!")
+            
+            self._ResetObjects()
             self._ReadFile(**kw)
-            self.read = 1
+            self.haveread = self.filepath
+                
         else:
-            print 'skipping ',filepath,' as data loaded already'
+            print 'ReadFile skipping ',filepath,' as data loaded already'
 
     def _ReadFile( self, **kw):
         """
@@ -213,7 +224,7 @@ class FileIO:
         if format:
             self.format = format
             
-        myclass = self.GetClass( dataobj )
+        myclass = dataobj.GetClass()
 
         if myclass == 'Indexed' or myclass == 'Zmatrix':
             self.WriteMolecule( dataobj, **kw )
@@ -248,15 +259,6 @@ class FileIO:
         Write out a molecule to file
         """
         assert 0!=0, "FileIO _WriteMolecule should have been overloaded."
-
-
-    def GetClass(self,object):
-        """ Return an object's class
-             take the last field of the class specification
-        """
-        t1 = str(object.__class__).split('.')
-        myclass = t1[len(t1)-1]
-        return myclass
 
 
 ###############################################################################
@@ -932,7 +934,7 @@ class VTK_IO(FileIO):
             raise Exception,"VTK_IO no data found while reading file: %s" % self.filepath
 
         if not data.GetClassName() == 'vtkStructuredPoints':
-            raise Exception,"VTK_IO someone needs to tell me how to read something other than Stuctured Points!"
+            raise Exception,"VTK_IO someone needs to tell me how to read something other than Structured Points!"
 
 
         field.dim = data.GetDimensions()
