@@ -20,8 +20,9 @@
 """A container class for normal modes and associated the vibrational
 frequencies.
 """
+import objects.object
 
-class VibFreqSet:
+class VibFreqSet(objects.object.CCP1GUI_Data):
    def __init__(self):
       self.vibs = []
       self.title = 'Normal Modes'
@@ -70,7 +71,7 @@ class VibFreqSet:
 
 
 
-class VibFreq:
+class VibFreq(objects.object.CCP1GUI_Data):
    def __init__(self,index):
       self.index=index
       self.name=None

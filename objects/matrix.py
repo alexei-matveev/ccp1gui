@@ -20,7 +20,8 @@
 #
 #
 #
-class Matrix:
+import objects.object
+class Matrix(objects.object.CCP1GUI_Data):
     def __init__(self,nd=3):
         self.data = None
         self.dimensions = []

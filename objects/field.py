@@ -45,12 +45,13 @@ It is not yet clear what is the best way to resolve this
 import math
 from viewer.debug import deb
 import objects.vector
+import objects.object
 
 #Note that it is not possible to add Scientific vectors and 3 element
 #Numeric arrays using +, but they can be easily interconverted and can be
 #used as arguments to dot, add
 
-class Field:
+class Field(objects.object.CCP1GUI_Data):
 
     def __init__(self,nd=3):
         self.data = None

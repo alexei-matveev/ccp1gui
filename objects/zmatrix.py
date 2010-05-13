@@ -52,6 +52,7 @@ import re
 import unittest
 
 # Import local modules
+import objects.object
 import objects.vector
 import objects.numeric
 import objects.linalg
@@ -82,7 +83,7 @@ class ImportGeometryError(exceptions.Exception):
     def __init__(self,msg=None):
         self.msg = msg
 
-class Atom:
+class Atom(objects.object.CCP1GUI_Data):
     def __init__(self):
         self.symbol             = 'X'
         self.name                = ''
@@ -237,7 +238,7 @@ class Bond:
         pass
 
 
-class Indexed:
+class Indexed(objects.object.CCP1GUI_Data):
     def __init__(self):
         self.atom = []
 

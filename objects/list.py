@@ -1,9 +1,12 @@
-class List:
+import objects.object
+
+class List(objects.object.CCP1GUI_Data):
 
     def __init__(self,type):
         self.type = type
         self.title = "List of " + type
         self.data = []
+
     def get_name(self):
         return self.title
 

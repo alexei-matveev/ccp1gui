@@ -1361,10 +1361,10 @@ class testGAMESSUK_IO(unittest.TestCase):
             )
 
         self.assertEqual( len(objects), 3 )
-        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
-        self.assertEqual( reader.GetClass( objects[1] ), 'ZmatrixSequence' )
+        self.assertEqual( objects[0].GetClass(), 'Zmatrix' )
+        self.assertEqual( objects[1].GetClass() , 'ZmatrixSequence' )
         vfs=objects[2]
-        self.assertEqual( reader.GetClass( vfs ), 'VibFreqSet' )
+        self.assertEqual( vfs.GetClass(), 'VibFreqSet' )
         self.assertEqual( vfs.vibs[9].freq, 719.94 )
 
 
@@ -1376,7 +1376,7 @@ class testGAMESSUK_IO(unittest.TestCase):
             filepath=self.egdir+'gamess_surf.out'
             )
 
-        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+        self.assertEqual( objects[0].GetClass(), 'Zmatrix' )
 
     def testOutputVect(self):
         """ """
@@ -1386,7 +1386,7 @@ class testGAMESSUK_IO(unittest.TestCase):
             filepath=self.egdir+'gamess_vect.out'
             )
 
-        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+        self.assertEqual( objects[0].GetClass(), 'Zmatrix' )
 
     def testOutputVect3D(self):
         """ """
@@ -1396,7 +1396,7 @@ class testGAMESSUK_IO(unittest.TestCase):
             filepath=self.egdir+'gamess_vect3d.out'
             )
 
-        self.assertEqual( reader.GetClass( objects[0] ), 'Zmatrix' )
+        self.assertEqual( objects[0].GetClass(), 'Zmatrix' )
 
 
 

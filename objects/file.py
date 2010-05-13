@@ -1,5 +1,6 @@
 """ A wrapper for a file so it can be passed around 
 """
+import objects.object
 
 GAMESSUK_INPUT = 1
 GAMESSUK_OUTPUT = 2
@@ -11,7 +12,7 @@ MOLPRO_XML = 13
 
 MOLDEN_WFN = 21
 
-class File:
+class File(objects.object.CCP1GUI_Data):
 
     def __init__(self,filename,type=None):
         self.filename = filename
