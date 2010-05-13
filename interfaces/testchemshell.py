@@ -11,6 +11,7 @@ else:
     from viewer.paths import gui_path
 
 import unittest
+import shutil
 import interfaces.chemshell
 import objects.zmatrix
 
@@ -77,9 +78,40 @@ class ChemShellTestCase(unittest.TestCase):
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
 
+class ChemShellModeVis(unittest.TestCase):
+    """ Batch tests of the ChemShell Mode visualiser (reader part  not the actual visualistion)"""
+
+    cdir=exdir+os.sep+'chemsh_mode_visualisation'
+
+    def testZOpt(self):
+
+        shutil.copyfile(self.cdir+os.sep+'zopt.z_vis.keep',self.cdir+os.sep+'zopt.z_vis')
+        shutil.copyfile(self.cdir+os.sep+'zopt.hessian',self.cdir+os.sep+'newopt.h_vis')
+
+        vfs=interfaces.chemshell.chemshell_z_modes(directory=self.cdir)[0]
+
+        self.assertAlmostEqual(1.069801728,vfs.vibs[2].freq)
+        
+        os.remove(self.cdir+os.sep+'zopt.z_vis')
+        os.remove(self.cdir+os.sep+'newopt.h_vis')
+        
+    def testCOpt(self):
+
+        shutil.copyfile(self.cdir+os.sep+'copt.c_vis.keep',self.cdir+os.sep+'copt.c_vis')
+        shutil.copyfile(self.cdir+os.sep+'copt.hessian',self.cdir+os.sep+'newopt.h_vis')
+
+        vfs=interfaces.chemshell.chemshell_c_modes(directory=self.cdir)[0]
+
+        self.assertAlmostEqual(-0.0008933,vfs.vibs[2].freq)
+        
+        os.remove(self.cdir+os.sep+'copt.c_vis')
+        os.remove(self.cdir+os.sep+'newopt.h_vis')
+
+
 def testMe():
         suite = unittest.TestSuite()
         suite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
+        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
         return suite
 
 if __name__ == "__main__":
@@ -103,7 +135,8 @@ if __name__ == "__main__":
     else:
         # Build a test suite with required cases and run it
         myTestSuite = unittest.TestSuite()
-        myTestSuite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
-        myTestSuite.addTest(ChemShellTestCase("testMolproOptim"))
+        #myTestSuite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
+        #myTestSuite.addTest(ChemShellTestCase("testMolproOptim"))
+        myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
