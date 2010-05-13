@@ -1152,8 +1152,7 @@ class TkMolView(Pmw.MegaToplevel):
         """Return a list of all molecules currently loaded"""
         mols = []
         for o in self.data_list:
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=o.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix':
             ####or myclass =='ZmatrixSequence':
                 mols.append(o)
@@ -1163,8 +1162,7 @@ class TkMolView(Pmw.MegaToplevel):
         """Return a list of all molecule sequences currently loaded"""
         mols = []
         for o in self.data_list:
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=o.GetClass()
             if myclass =='ZmatrixSequence':
                 mols.append(o)
         return mols
@@ -1173,8 +1171,7 @@ class TkMolView(Pmw.MegaToplevel):
         """Return a list of all field objects currently loaded"""
         fields = []
         for o in self.data_list:
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=o.GetClass()
             if myclass == 'Field':
                 fields.append(o)
         return fields
@@ -1387,7 +1384,7 @@ you would like to extract the frame from."""
         ex.title = 'Frame '+str(current_frame+1)+' of '+ seq.title
         ex.name = self.make_unique_name( ex.title )
         self.append_data(ex);
-        self.quick_mol_view([ex])
+        self.quick_obj_view(ex,'molecule')
 
     def delete_atom(self,unselected=None):
         """ Delete the selected atoms for the selected molecules, unless the unselected
@@ -2228,9 +2225,7 @@ you would like to extract the frame from."""
             #    creates the visualiser, and also registers it in self.vis_dict
             # 
 
-            t1 = string.split(str(obj.__class__),'.')
-            myclass = t1[len(t1)-1]
-
+            myclass=obj.GetClass()
             #print 'MYCLASS',myclass
 
             if myclass == 'Indexed' or myclass == 'Zmatrix':
@@ -2247,27 +2242,26 @@ you would like to extract the frame from."""
 
             if myclass == 'Field' :
                 if obj.dimensions() == 3:
-                    if 1:
-                        if obj.ndd == 1:
-                            # scalar visualiser tools
-                            cascade.add_command(
-                                label="New Orbital View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,'orbital',open_widget=1))
-                            cascade.add_command(
-                                label="New Density View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,'density',open_widget=1))
-                            cascade.add_command(
-                                 label="Density Volume Visualisation View",command=\
-                                    lambda s=self,obj=obj: s.visualise(obj,'volume_density',open_widget=1))
-                            cascade.add_command(
-                                label="Orbital Volume Visualisation View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,'volume_orbital',open_widget=1))
-                            cascade.add_command(
-                                label="New Cut Slice View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,'cut_slice',open_widget=1))
-                            cascade.add_command(
-                                label="New Colour Surface View",command=\
-                                   lambda s=self,obj=obj: s.visualise(obj,'colour_surface',open_widget=1))
+                    if obj.ndd == 1:
+                        # scalar visualiser tools
+                        cascade.add_command(
+                            label="New Orbital View",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,'orbital',open_widget=1))
+                        cascade.add_command(
+                            label="New Density View",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,'density',open_widget=1))
+                        cascade.add_command(
+                             label="Density Volume Visualisation View",command=\
+                                lambda s=self,obj=obj: s.visualise(obj,'volume_density',open_widget=1))
+                        cascade.add_command(
+                            label="Orbital Volume Visualisation View",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,'volume_orbital',open_widget=1))
+                        cascade.add_command(
+                            label="New Cut Slice View",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,'cut_slice',open_widget=1))
+                        cascade.add_command(
+                            label="New Colour Surface View",command=\
+                               lambda s=self,obj=obj: s.visualise(obj,'colour_surface',open_widget=1))
 
                 if obj.dimensions() == 2:
                     if self.slice_visualiser:
@@ -2619,40 +2613,56 @@ you would like to extract the frame from."""
         self.__update_data_list()
         self.data_dialog.show()
 
-    def quick_mol_view(self,mols,noshow=None):
-        """create a default image of a molecule and include it
-        in the tables (vis_dict, vis_list)
+
+    def quick_obj_view(self,objects, toview, noshow=None, open=None):
+        """Create a default image of those supplied object(s) that are of the type
+        listed in the toview list (or string)  and include them in the tables (vis_dict, vis_list)
+
         Then attempt to fit everything on screen
-        jmht - added noshow flag to build but not show the molecule
-               this is needed where we read a long list of molecules
-               into the gui but don't want to render them initially
+
+        The open flag determines whether we open the visualiser dialogue
+
+        Use the noshow flag to build but not show the objects - this is needed where we 
+        read a long list of objects into the gui but don't want to render them initially
         """
-        for mol in mols:
-            vis = self.molecule_visualiser(self.master,self,mol)
-            t = id(mol)
+
+        if type(objects) != list:
+            objects=[objects]
+
+        if type(toview) != list:
+            toview=[toview]
+
+        visdict={} # dict mapping objects to visualisers
+        if 'molecule' in toview:
+            for obj in objects:
+                myclass=obj.GetClass()
+                if myclass == 'Zmatrix' or myclass == 'Zmatrix':
+                    visdict[obj] =  self.get_visualiser( obj, 'molecule' )
+
+        if 'trajectory' in toview:
+            for obj in objects:
+                if obj.GetClass() == 'ZmatrixSequence':
+                    visdict[obj] =  self.get_visualiser( obj, 'trajectory' )
+        
+        if 'vibration_set' in toview:
+            for obj in objects:
+                if obj.GetClass() == 'VibFreqSet':
+                    visdict[obj] =  self.get_visualiser( obj, 'vibration_set' )
+
+        for obj,vis in visdict.items():
+            t = id(obj)
             self.vis_dict[t] = [vis]
             self.vis_list.append(vis)
             self.__update_vis_list()
             if noshow:
-                vis._build(object=mol)
+                vis._build(object=obj)
             else:
                 vis.Show(update=0)
+            if open:
+                vis.Open()
+
         self.fit_to_window()
 
-    def quick_trajectory_view(self,trajectories):
-        """create a default image of a trajectory and include it
-        in the tables (vis_dict, vis_list)
-        Then attempt to fit everything on screen
-        """
-        for trajectory in trajectories:
-            vis = self.trajectory_visualiser(self.master,self,trajectory)
-            t = id(trajectory)
-            self.vis_dict[t] = [vis]
-            self.vis_list.append(vis)
-            self.__update_vis_list()
-            vis.Show(update=0)
-        self.fit_to_window()
-        
 
     def build_distance_dialog(self,include_xyz=0):
         """Create a dialog which we will use to 
@@ -2876,8 +2886,7 @@ you would like to extract the frame from."""
 
         for ix in targets:
             o  = self.data_list[ix]
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=o.GetClass()
             if myclass == 'Indexed':
                 self.connect_model(o)
             elif myclass == 'Zmatrix':
@@ -2895,8 +2904,7 @@ you would like to extract the frame from."""
 
         for ix in targets:
             o  = self.data_list[ix]
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=o.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 self.edit_coords(o)
             else:
@@ -2979,57 +2987,10 @@ you would like to extract the frame from."""
         # If it's not a string we assume it's a visualiser
         if type(visualiser) != types.StringType:
             visualiser=visualiser
-
-        elif visualiser == 'molecule':
-            visualiser=self.molecule_visualiser(self.master,self,object)
-
-        elif visualiser == 'trajectory':
-            visualiser=self.trajectory_visualiser(self.master,self,object)
-
-        elif visualiser == 'orbital':
-            visualiser=self.orbital_visualiser(self.master,self,object)
-
-        elif visualiser == 'density':
-            visualiser=self.density_visualiser(self.master,self,object)
-
-        elif visualiser == 'volume_density':
-            visualiser=self.volume_density_visualiser(self.master,self,object)
-
-        elif visualiser == 'volume_orbital':
-            visualiser=self.volume_orbital_visualiser(self.master,self,object)
-
-        elif visualiser == 'cut_slice':
-            visualiser=self.cut_slice_visualiser(self.master,self,object)
-
-        elif visualiser == 'colour_surface':
-            visualiser=self.colour_surface_visualiser(self.master,self,object)
-
-        elif visualiser == 'slice':
-            visualiser=self.slice_visualiser(self.master,self,object)
-
-        elif visualiser == 'vector':
-            visualiser=self.vector_visualiser(self.master,self,object)
-
-        elif visualiser == 'irregular_data':
-            visualiser=self.irregular_data_visualiser(self.master,self,object)
-
-        elif visualiser == 'vibration':
-            visualiser=self.vibration_visualiser(self.master,self,object)
-
-        elif visualiser == 'vibration_set':
-            visualiser=self.vibration_set_visualiser(self.master,self,object)
-
-        elif visualiser == 'wavefunction':
-            visualiser=self.wavefunction_visualiser(self.master,self,object)
-
-        elif visualiser == 'dlpoly_trajectory':
-            visualiser=self.trajectory_visualiser(self.master,self,object,type='DLPOLYHISTORY')
-            
         else:
-            raise KeyError("No visualiser of type: %s found!" % visualiser)
+            visualiser=self.get_visualiser(object,visualiser)
 
-        t1 = string.split(str(object.__class__),'.')
-        myclass = t1[len(t1)-1]
+        myclass=object.GetClass()
         t = id(object)
 
         try:
@@ -3047,6 +3008,60 @@ you would like to extract the frame from."""
         # self.__update_data_list()
         visualiser.Show()
         return visualiser
+
+    def get_visualiser(self, object, vistype ):
+        """Return a visualiser of type vistype for viewing the supplied object.
+        """
+        if vistype == 'molecule':
+            visualiser=self.molecule_visualiser(self.master,self,object)
+
+        elif vistype == 'trajectory':
+            visualiser=self.trajectory_visualiser(self.master,self,object)
+
+        elif vistype == 'orbital':
+            visualiser=self.orbital_visualiser(self.master,self,object)
+
+        elif vistype == 'density':
+            visualiser=self.density_visualiser(self.master,self,object)
+
+        elif vistype == 'volume_density':
+            visualiser=self.volume_density_visualiser(self.master,self,object)
+
+        elif vistype == 'volume_orbital':
+            visualiser=self.volume_orbital_visualiser(self.master,self,object)
+
+        elif vistype == 'cut_slice':
+            visualiser=self.cut_slice_visualiser(self.master,self,object)
+
+        elif vistype == 'colour_surface':
+            visualiser=self.colour_surface_visualiser(self.master,self,object)
+
+        elif vistype == 'slice':
+            visualiser=self.slice_visualiser(self.master,self,object)
+
+        elif vistype == 'vector':
+            visualiser=self.vector_visualiser(self.master,self,object)
+
+        elif vistype == 'irregular_data':
+            visualiser=self.irregular_data_visualiser(self.master,self,object)
+
+        elif vistype == 'vibration':
+            visualiser=self.vibration_visualiser(self.master,self,object)
+
+        elif vistype == 'vibration_set':
+            visualiser=self.vibration_set_visualiser(self.master,self,object)
+
+        elif vistype == 'wavefunction':
+            visualiser=self.wavefunction_visualiser(self.master,self,object)
+
+        elif vistype == 'dlpoly_trajectory':
+            visualiser=self.trajectory_visualiser(self.master,self,object,type='DLPOLYHISTORY')
+            
+        else:
+            raise KeyError("No visualiser of type: %s found!" % vistype)
+        
+        return visualiser
+
 
     def graphics(self):
         """Open a new window with all the graphics controls """
@@ -3236,7 +3251,7 @@ you would like to extract the frame from."""
         trajectories = []
         for o in objects:
             
-            myclass = self.get_class( o )
+            myclass = o.GetClass()
             #print 'import_view_objects: obj',o
             #print 'class ',myclass
 
@@ -3292,8 +3307,7 @@ you would like to extract the frame from."""
             #self.file_dict[t] = file
                 
         if display:
-            self.quick_mol_view(mols)
-            self.quick_trajectory_view(trajectories)
+            self.quick_obj_view(objects,['molecule','trajectory','vibration_set'],open=1)
 
         # add to any open dialogs
         self.__update_data_list()
@@ -3546,17 +3560,6 @@ you would like to extract the frame from."""
             self.error("Error writing file: %s\n%s\nPlease see the terminal for more info" %( filepath, e))
             return
 
-
-
-    def get_class(self,object):
-        """ Return an object's class
-             take the last field of the class specification
-        """
-        #t1 = string.split(str(object.__class__),'.')
-        t1 = str(object.__class__).split('.')
-        myclass = t1[len(t1)-1]
-        return myclass
-
     def make_unique_name(self,name,title=None):
 
         old_names = self.get_names()
@@ -3599,8 +3602,7 @@ you would like to extract the frame from."""
         if all:
             undo = []
             for d in self.data_list:
-                t1 = string.split(str(d.__class__),'.')
-                myclass = t1[len(t1)-1]
+                myclass=d.GetClass()
                 if myclass == 'Indexed' or myclass == 'Zmatrix':
                     # NEED TO UPDATE BOND before this
                     d.update_bonds()
@@ -3627,8 +3629,7 @@ you would like to extract the frame from."""
         models = []
         if all:
             for d in self.data_list:
-                t1 = string.split(str(d.__class__),'.')
-                myclass = t1[len(t1)-1]
+                myclass=d.GetClass()
                 if myclass == 'Indexed' or myclass == 'Zmatrix':
                     models.append(d)
         else:
@@ -3736,7 +3737,7 @@ you would like to extract the frame from."""
             print 'obj already loaded'
         else:
             print 'loading new obj'
-            self.quick_mol_view([obj])
+            self.quick_obj_view(obj,'molecule')
             self.append_data(obj)
             
         tt = id(obj)
@@ -3850,7 +3851,7 @@ you would like to extract the frame from."""
         i.hybridise(new,'sp3')
 
         self.append_data(i)
-        vis = self.quick_mol_view([i])
+        vis = self.quick_obj_view(i,'molecule')
         # We will need the editing tools
         self.toolwidget.show()
 
@@ -3933,7 +3934,7 @@ you would like to extract the frame from."""
     def get_names(self,molecules_only=0):
         list = []
         for d in self.data_list:
-            myclass = self.get_class( d )            
+            myclass = d.GetClass()
             if (not molecules_only) or (myclass == 'Indexed' or myclass == 'Zmatrix'):
                 list.append(d.name)
         return list
@@ -3945,8 +3946,7 @@ you would like to extract the frame from."""
         """
         print 'viewer: load_from_graph',name
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=d.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 ############or myclass == 'ZmatrixSequence':
                 #if name == d.name or name == str(id(d)):
@@ -3971,8 +3971,7 @@ you would like to extract the frame from."""
 
         # Look for a structure with the matching name
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=d.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix' :
                 if self.debug:
                     print 'Name check in viewer',d.name
@@ -3984,7 +3983,6 @@ you would like to extract the frame from."""
             # are re-enabled
             self.warn("Structure imported " + obj.name + "\n This is not an update of an existing structure, Loading as new model ")
             self.import_objects([obj])
-            #self.quick_mol_view([obj])
             return
 
         elif tobj == obj:
@@ -4092,8 +4090,7 @@ you would like to extract the frame from."""
         #print 'data list', self.data_list
 
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=d.GetClass()
             #print 'class', myclass
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 #print 'check name ', d.name
@@ -4111,8 +4108,7 @@ you would like to extract the frame from."""
         """Load the selected atoms from molecule name"""
         #PS still work to do here to replace use of name with object id
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=d.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if name == d.name:
                     mol = d
@@ -4128,8 +4124,7 @@ you would like to extract the frame from."""
         #PS still work to do here to replace use of name with object id
         print 'set_selection',name,atoms
         for d in self.data_list:
-            t1 = string.split(str(d.__class__),'.')
-            myclass = t1[len(t1)-1]
+            myclass=d.GetClass()
             if myclass == 'Indexed' or myclass == 'Zmatrix':
                 if name == d.name:
                     mol = d
@@ -4295,10 +4290,7 @@ you would like to extract the frame from."""
         p.scan(file)
         for o in p.objects:
 
-            # take the last field of the class specification
-            t1 = string.split(str(o.__class__),'.')
-            myclass = t1[len(t1)-1]
-
+            myclass=o.GetClass()
             o.name = self.make_unique_name(root,o.title)
 
             if myclass == 'VibFreq' :
@@ -4308,7 +4300,7 @@ you would like to extract the frame from."""
                 # will need to organise together with other results
                 # assume overwrite for now
                 self.append_data(o)
-                self.quick_mol_view([o])
+                self.quick_obj_view(o,'molecule')
 
         self.__update_data_list()
 
