@@ -28,13 +28,25 @@ from interfaces.chemshell import chemshell_z_modes, chemshell_c_modes
 
 global get_chemshell_z_modes
 def get_chemshell_z_modes(gui):
-    gui.data_list = gui.data_list + chemshell_z_modes()
+    o=chemshell_z_modes()
+    gui.import_view_objects(o, name=None, display=1 )
 
 global get_chemshell_c_modes
 def get_chemshell_c_modes(gui):
-    gui.data_list = gui.data_list + chemshell_c_modes()
-
-menu.add_command(label='Load ChemShell Zopt Modes', underline=0,command=lambda s=self: get_chemshell_z_modes(s) )
-menu.add_command(label='Load ChemShell Copt Modes', underline=0,command=lambda s=self: get_chemshell_c_modes(s) )
+    o=chemshell_c_modes()
+    gui.import_view_objects(o, name=None, display=1 )
 
 
+self.menuBar.addmenu('ChemShell Mode Vis.', 'Visualise Chemshell Hessian Modes')
+
+self.menuBar.addmenuitem('ChemShell Mode Vis.',
+                          'command',
+                          'Load Zopt Modes from file zopt.z_vis',
+                          command=lambda s=self: get_chemshell_z_modes(s),
+                          label='Load Zopt Modes')
+
+self.menuBar.addmenuitem('ChemShell Mode Vis.',
+                          'command',
+                          'Load Copt Modes from file copt.c_vis',
+                          command=lambda s=self: get_chemshell_c_modes(s),
+                          label='Load Copt Modes')
