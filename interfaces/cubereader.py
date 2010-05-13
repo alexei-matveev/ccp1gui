@@ -9,16 +9,17 @@ if __name__ == "__main__":
 else:
     from viewer.paths import gui_path
 
+import copy
 import unittest
 
-###from interfaces.units import *
-au_to_angstrom = 0.529177249
-
+import objects.vector
 from objects.zmatrix import Zmatrix,ZAtom
 from objects.field import Field
 from objects.periodic import z_to_el
 from fileio import FileIO
-import objects.vector
+
+###from interfaces.units import *
+au_to_angstrom = 0.529177249
 
 class CubeIO(FileIO):
 
