@@ -20,13 +20,16 @@ class MolproTestCase(unittest.TestCase):
     def testHessian(self):
         calc = molpro.MOLPROCalc()
         calc.set_parameter('ana_hessian',1)
-        out=gui_path+os.sep+'examples'+os.sep+'water.zmt'
-        calc.set_input('mol_obj',objects.zmatrix.Zmatrix(file='../examples/water.zmt'))
+        infile=gui_path+os.sep+'examples'+os.sep+'water.zmt'
+        calc.set_input('mol_obj',objects.zmatrix.Zmatrix(file=infile))
+
         job = calc.makejob()
         #job.debug = 1
-        job.run()
+        ret=job.run()
+        self.assertEqual(0,ret,"Error running job!")
+
         calc.endjob(0)
-        print calc.results
+        #print calc.results
         self.assertEqual(len(calc.results),3,"Failed to return Structure+Vibrations+MoldenFile")
 
 
@@ -34,6 +37,10 @@ def suite():
     return unittest.TestLoader().loadTestsFromTestCase(MolproTestCase)
 
 if __name__ == "__main__":
+
+    # Make sure we can find the exectuable
+    molpro_dir='/c/ccg/share/software/molpro/molpro2006.1/bin'
+    os.environ['PATH']=os.environ['PATH']+os.pathsep+molpro_dir
 
     if 0:
         # Run all tests in this module automatically
