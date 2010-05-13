@@ -40,6 +40,7 @@ import string
 import fileio
 import objects.zmatrix
 import objects.field
+import objects.matrix
 import objects.vibfreq
 import objects.list
 import objects.vector
@@ -76,6 +77,7 @@ class PunchIO(fileio.FileIO):
 
         self.objects=[]
         self.normal=[]
+
         self.title=None
         self.readers = {}
 
@@ -224,7 +226,6 @@ class PunchIO(fileio.FileIO):
             if self.readers[self.block_name]:
                 if self.debug:
                     print 'calling known reader for ', self.block_name
-                    print self.block_name
 
                 self.readers[self.block_name](f,object)
                 #except Exception,e:
@@ -252,21 +253,22 @@ class PunchIO(fileio.FileIO):
                 # to edit it 
                 tt = objects.zmatrix.Zmatrix()
                 #tt.title='unknown'
-                tt.title = self.block_name
+                tt.title = self.name+'_'+self.block_name
             # This is a hack so the VibFreq instances have a reference structure
             self.fragment = tt
             tt.tidy = self.tidy_frag
          
         elif self.block_name == 'fragment.sequence':
             if self.debug: print 'New frag (seq)'
-            tt = ZmatrixSequence()
-            tt.title = tt.title+ ' ' +self.block_name
+            tt = objects.zmatrix.ZmatrixSequence()
+            tt.title = self.name+ '_' +self.block_name
 
         elif self.block_name == 'zmatrix':
-            if self.debug: print 'New zmatrix frag'
-            tt = Zmatrix()
+            tt = objects.zmatrix.Zmatrix()
             #tt.title='unknown'
-            tt.title=self.block_name
+            # For title use filename
+            tt.title=self.name+'_'+self.block_name
+            if self.debug: print "New zmatrix: %s" % tt.title
             tt.variables = []
             tt.constants = []
             tt.tidy = self.tidy_z
@@ -274,14 +276,14 @@ class PunchIO(fileio.FileIO):
         elif self.block_name == 'data' or self.block_name == 'field':
             if self.debug: print 'New Field'
             tt = objects.field.Field()
-            tt.title='unknown'
+            tt.title=self.name+'_'+self.block_name
             # Start with an irregular grid 
             del tt.dim 
 
         elif self.block_name == 'matrix':
             if self.debug: print 'New Matrix'
-            tt = Matrix()
-            tt.title='unknown'
+            tt = objects.matrix.Matrix()
+            tt.title=self.name+'_'+self.block_name
 
         subbl = self.subblocks[self.block_name]
 
@@ -301,7 +303,7 @@ class PunchIO(fileio.FileIO):
         # self.objects.append(tt)
         # jmht - readers need to specify what objects they are returning
 
-        myclass = self.GetClass(tt)
+        myclass = tt.GetClass()
         if myclass == 'Indexed' or myclass == 'Zmatrix':
             self.molecules.append(tt)
         elif myclass == 'ZmatrixSequence':
@@ -466,7 +468,7 @@ class PunchIO(fileio.FileIO):
             tt.add_atom(p)
 
         # for structure sequences, this is also the first frame
-        myclass = self.GetClass(tt)
+        myclass = tt.GetClass()
         clone = tt.copy()
         if myclass == 'ZmatrixSequence':
             #jmht - need to connect here as otherwise all the child structures
@@ -519,7 +521,7 @@ class PunchIO(fileio.FileIO):
       
         global frame_count
         frame_count = frame_count + 1
-        tt = Zmatrix()
+        tt = objects.zmatrix.Zmatrix()
         try:
             tt.title = oldtt.title + ' frame ' + str(frame_count)
         except AttributeError:
@@ -551,7 +553,7 @@ class PunchIO(fileio.FileIO):
 
         # We don't need to connect the additional structures for sequences
         # as this is done when we read in the first one
-        myclass = self.GetClass(tt)
+        myclass = tt.GetClass()
         if myclass != 'ZmatrixSequence':
             tt.connect()
       
@@ -573,20 +575,21 @@ class PunchIO(fileio.FileIO):
             tt.cell.append(objects.vector.Vector([ float(rr[0])*fac, float(rr[1])*fac, float(rr[2])*fac ]))
 
     def read_title(self,f,tt):
-        if tt:
-            tt.title=None
+
         for i in range(0,self.records):
-            r = string.strip(f.readline())
-            # this title is not a lot of use at the moment
-            if( not self.title):
-                self.title =  r
-            else:
-                self.title =  self.title + r
-            if tt:
-                if( not tt.title):
-                    tt.title =  r
+            r = string.strip(f.readline())            
+            if len(r):
+                # this title is not a lot of use at the moment
+                if( not self.title):
+                    self.title =  r
                 else:
-                    tt.title =  tt.title + r
+                    self.title =  self.title+' '+r
+
+                    if tt:
+                        if( not tt.title):
+                            tt.title =  r
+                        else:
+                            tt.title =  tt.title + r
 
     def read_atom_charges(self,f,tt):
         for i in range(0,self.records):
@@ -915,16 +918,14 @@ class PunchIO(fileio.FileIO):
         return None
 
     def read_zmatrix_title(self,f,tt):
-        if tt:
-            tt.title=None
         for i in range(0,self.records):
-            r = f.readline()
-            r = string.strip(r)
-            if tt:
-                if( not tt.title):
-                    tt.title =  r
-                else:
-                    tt.title =  tt.title + r
+            r = string.strip(f.readline())            
+            if len(r):
+                if tt:
+                    if( not tt.title):
+                        tt.title =  r
+                    else:
+                        tt.title =  tt.title + r
 
     def read_zmatrix_zatoms(self,f,tt):
         if not tt:
@@ -1058,7 +1059,7 @@ class PunchIO(fileio.FileIO):
 
     def read_zmatrix_constants(self,f,tt):
         for i in range(self.records):
-            v = ZVar()
+            v = objects.zmatrix.ZVar()
             tt.constants.append(v)
             rr = string.split(f.readline())
             v.name = rr[0]
@@ -1068,7 +1069,7 @@ class PunchIO(fileio.FileIO):
 
     def read_zmatrix_variables(self,f,tt):
         for i in range(self.records):
-            v = ZVar()
+            v = objects.zmatrix.ZVar()
             tt.variables.append(v)
             rr = string.split(f.readline())
             v.name = rr[0]
