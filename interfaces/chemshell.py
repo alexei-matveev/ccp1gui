@@ -32,6 +32,7 @@ from viewer.defaults import defaults
 import objects.vector
 import objects.numeric
 import objects.linalg
+import objects.vibfreq
 
 import filepunch
 from   calc       import *
@@ -1998,23 +1999,26 @@ def fcomp(a,b):
         return -1
     return 0
 
-def chemshell_z_modes():
+def chemshell_z_modes(directory=None):
 
     # First load the zmatrix defining the coordinate system
-    p = filepunch.PunchIO(debug=1)
-    if p.ReadFile("zopt.z_vis"):
-        print 'ERROR - zmatrix needed in file zopt.z_vis'
-        return 1
+    p = filepunch.PunchIO(debug=0)
 
-    z = p.GetObjects()[0]
+    if not directory:
+        directory=os.getcwd()
+
+    try:
+        z=p.GetObjects(filepath=directory+os.sep+"zopt.z_vis")[0]
+    except IOError:
+        raise IOError("A zmatrix is needed in the file zopt.z_vis in the directory: %s" % directory )
+        return 1
 
     # And the hessian matrix defining the normal modes
-    p = filepunch.PunchIO(debug=1)
-    if p.ReadFile("newopt.h_vis"):
-        print 'ERROR - internal coordinate hessian needed in file newopt.h_vis'
+    try:
+        h=p.GetObjects(filepath=directory+os.sep+"newopt.h_vis")[0]
+    except IOError:
+        raise IOError("Internal coordinates are needed in the file newopt.h_vis in the directory: %s" % directory )
         return 1
-
-    h = p.GetObjects()[0]
 
     # Convert hessian data to a Numeric array
     t = []
@@ -2043,7 +2047,7 @@ def chemshell_z_modes():
 
     scale = 0.5
 
-    vs=VibFreqSet()
+    vs=objects.vibfreq.VibFreqSet()
     vs.reference=z2
     vs.title = "modes of " + z2.title
     vs.name = "modes of " + z2.title
@@ -2066,7 +2070,7 @@ def chemshell_z_modes():
         # Compute new coordinates
         z.calculate_coordinates()
         # Create a vibrational freq structure
-        v = VibFreq(i)
+        v = objects.vibfreq.VibFreq(i)
         v.displacement = []
         # extra field for ordering
         v.sorter=val
@@ -2091,20 +2095,25 @@ def chemshell_z_modes():
 
     return [vs]
 
-def chemshell_c_modes():
+def chemshell_c_modes(directory=None):
 
     # First load the structure defining the coordinate system
-    p = filepunch.PunchIO()
-    if p.ReadFile("copt.c_vis"):
-        print 'ERROR - cartesian coordinates needed in file copt.c_vis'
-        return 1
-    z = p.GetObjects()[0]
+    p = filepunch.PunchIO(debug=0)
 
-    p = filepunch.PunchIO()
-    if p.ReadFile("newopt.h_vis"):
-        print 'ERROR - cartesian hessian needed in file newopt.h_vis'
+    if not directory:
+        directory=os.getcwd()
+
+    try:
+        z=p.GetObjects(filepath=directory+os.sep+"copt.c_vis")[0]
+    except IOError:
+        raise IOError("Cartesian coordinates are needed in the file copt.c_vis in the directory: %s" % directory )
         return 1
-    h = p.GetObjects()[0]
+
+    #try:
+    h=p.GetObjects(filepath=directory+os.sep+"newopt.h_vis")[0]
+    #except IOError:
+    #    raise IOError("Cartesian hessian needed in the file newopt.h_vis in the directory: %s" % directory )
+    #    return 1
 
     # Convert hessian data to a Numeric array
     t = []
@@ -2148,7 +2157,7 @@ def chemshell_c_modes():
     else:
         active_atoms = range(len(z.atom))
 
-    vs=VibFreqSet()
+    vs=objects.vibfreq.VibFreqSet()
     vs.reference=z2
     vs.title = "modes of " + z2.title
     vs.name = "modes of " + z2.title
@@ -2159,7 +2168,7 @@ def chemshell_c_modes():
         vec = evec[i]
 
         # Create a vibrational freq structure
-        v = VibFreq(i)
+        v = objects.vibfreq.VibFreq(i)
         v.reference = z2
         v.displacement = []
         # extra field for ordering
