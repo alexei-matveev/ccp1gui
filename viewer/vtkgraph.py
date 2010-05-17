@@ -76,7 +76,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         self.sphere_type = 2
         self.line_type = 2
         self.label_type = 0
-        self.stick_type = 0
+        self.stick_type = 2
         self.show_selection_by_dots = 1
         self.show_selection_by_colour = 1
         # Set stereo visualiser options.
@@ -207,7 +207,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         sy = 500
         #self.master.geometry("%dx%d+%d+%d" % (sx,sy,20,20))
         self.restore_saved_jobs()
-        
+
     def fit_to_window(self):
         self.pane.ResetToFit(0,0)
 
@@ -303,6 +303,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         except KeyError:
             pass
 
+
     def mypick(self,obj,atom,x,y):
         """Handle atomic pick
         Bound using AddObserver to the atom representation actors
@@ -313,14 +314,14 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         self.picked_atom = atom
         self.picked_atomic_actor = 1
 
-    def mypick1(self,mol,obj,event):
-        """Handle Wireframe pick
-        Bound using AddObserver to the wireframe
+    def mypick1(self,molecule,actor,event):
+        """Handle Wireframe,Sphere2 pick
+        Bound using AddObserver to the actor
         """
         # This is called from the event callback, and provides the molecule ID
-        self.picked_mol = mol
+        self.picked_mol = molecule
         if self.debug:
-            deb("mypick1 done, setting picked_mol to: %s" % mol )
+            deb("mypick1 done, setting picked_mol to: %s" % molecule )
 
     def mypick2(self,but):
         """Handle a pick event"""
@@ -357,9 +358,30 @@ class VtkGraph(viewer.main.TkMolView,Graph):
             self.picked_atomic_actor = 0
             atom = self.picked_atom
         else:
-            i = self.pane.GetPicker().GetPointId()
-            deb("mypick2 picked point: %d" % i)
-            atom = self.picked_mol.atom[i]
+            atomid=-1
+            if self.sphere_type==2:
+                # Try and determine the atomid from the InputPointIds of the vtkGlyph3D
+                # currently this is only used with sphere_type=2
+                picker=self.pane.GetPicker()
+                pointid=picker.GetPointId()
+                p3ds = picker.GetProp3Ds()
+                n = p3ds.GetNumberOfItems()
+                if n> 0:
+                    for i in range(n):
+                        p = p3ds.GetItemAsObject(i)
+                        if hasattr(p,'mytype') and p.mytype=="molsphere2":
+                            polydata=p.GetMapper().GetInput()
+                            points=polydata.GetPointData().GetArray("InputPointIds")
+                            atomid = points.GetValue(pointid)
+
+            if atomid<0:
+                # This branch either if a sphere actor wasn't picked with sphere_type2 or
+                # we aren't using sphere_type2
+                atomid = pointid
+
+            if self.debug:deb("mypick2 picked point: %d" % atomid)
+
+            atom = self.picked_mol.atom[atomid]
 
         #print 'Picked atom',atom.get_index()+ 1,'in ',self.picked_mol.title
         if but == 1:
@@ -556,6 +578,10 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                 print 'mol build_ new obj'
             self.molecule = object
 
+        # might not need to clear this on each pass, as it only needs to be cleared when
+        # the molecule changes, but will do so for now
+        self.molecule_polydata=None
+
         self.molecule.reindex()
 
         t = vtk.vtkLookupTable()
@@ -603,834 +629,40 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         # 2 = celldata array
         self.contact_type = 2
         
-        if self.debug:
-            deb("making sphere list of %d atoms with sphere type: %d" % (len(self.molecule.atom),self.sphere_type))
-
+        # Spheres
         if self.show_spheres:
             if self.sphere_type == 0:
-
-                for a in self.molecule.atom:
-
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-
-                    if draw:
-
-                        try:
-                            z = a.get_number()
-                            r,g,b = colours[z]
-                        except Exception:
-                            z = 0
-                            r,g,b = (1.,1.,1.)
-
-                        # create the sphere
-                        s = vtk.vtkSphereSource()
-
-                        s.SetThetaResolution(self.graph.mol_sphere_resolution)
-                        s.SetPhiResolution(self.graph.mol_sphere_resolution)
-                        
-                        if self.sphere_table == generic.visualiser.COV_RADII:
-                            fac = 0.529177 * rcov[z] * self.sphere_scale
-                        else:
-                            fac = rvdw[z] * self.sphere_scale
-
-                        #fac = rcov[z] / 2.0
-                        # to show cylinders....
-                        #fac = fac / 3.0
-                        s.SetRadius(fac)
-
-                        # create the mapper
-                        m = vtk.vtkPolyDataMapper()
-                        m.SetInput(s.GetOutput())
-
-                        # create the actor
-                        act = vtk.vtkActor()
-                        self.sphere_actors.append(act)
-                        act.SetMapper(m)
-                        act.GetProperty().SetColor(r,g,b)
-
-                        act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
-                        act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
-                        act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
-                        act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
-
-                        x = a.coord[0]
-                        y = a.coord[1]
-                        zz = a.coord[2]
-
-                        act.SetPosition(x,y,zz)
-                        # this seems to work
-                        act.AddObserver(
-                            'PickEvent', \
-                            lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-
+                self._build_sphere_type0()
             elif self.sphere_type == 1:
+                self._build_sphere_type1()
+            elif self.sphere_type == 2:
+                self._build_sphere_type2()
 
-                app = vtk.vtkAppendPolyData()
-                for a in self.molecule.atom:
-                    try:
-                        z = a.get_number()
-                    except Exception:
-                        z = 0
-                    r,g,b = colours[z]
+        # Labels
+        if self.show_labels:
+            self._build_labels()
 
-                    # create the sphere
-                    s = vtk.vtkSphereSource()
- 
-                    s.SetThetaResolution(self.graph.mol_sphere_resolution)
-                    s.SetPhiResolution(self.graph.mol_sphere_resolution)
-
-                    fac = rcov[z] * self.sphere_scale
-                    # to show cylinders....
-                    # fac = fac / 3.0
-                    s.SetRadius(fac)
-
-                    x = a.coord[0]
-                    y = a.coord[1]
-                    zz = a.coord[2]
-                    s.SetCenter([x,y,zz])
-
-                    app.AddInput(s.GetOutput())
-
-                # create the mapper
-                m = vtk.vtkPolyDataMapper()
-                m.SetInput(app.GetOutput())
-
-                # create the actor
-                act = vtk.vtkLODActor()
-                self.sphere_actors.append(act)
-                act.SetMapper(m)
-                act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
-                act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
-                act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
-                act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
-
-
-        # LABELS
-        if self.show_labels:            
-            for a in self.molecule.atom:
-                if self.selection_key:
-                    draw = a.visible[self.selection_key]
-                else:
-                    draw = 1
-                if draw:
-                    # Try and work out the label
-                    try:
-                        if self.label_with == 'symbol':
-                            txt = a.symbol
-                        elif self.label_with == 'name':
-                            txt = a.name
-
-                        elif self.label_with == 'mulliken charge':
-                            val = self.molecule.get_atom_charge(a.get_index(),'Mulliken')
-                            if val:
-                                txt = "%f" % (val,)
-                                while txt[-1:] == '0':
-                                    txt = txt[:-1]
-                            else:
-                                txt = '---'
-
-                        elif self.label_with == 'lowdin charge':
-                            val = self.molecule.get_atom_charge(a.get_index(),'Lowdin')
-                            if val:
-                                txt = "%f" % (val,)
-                                while txt[-1:] == '0':
-                                    txt = txt[:-1]
-                            else:
-                                txt = '---'
-
-                        elif self.label_with == 'potential derived charge':
-                            val = self.molecule.get_atom_charge(a.get_index(),'PDC')
-                            if val:
-                                txt = "%f" % (val,)
-                                while txt[-1:] == '0':
-                                    txt = txt[:-1]
-                            else:
-                                txt = '---'
-
-                        elif self.label_with == 'charge':
-                            txt = "%f" % (a.partial_charge,)
-                            while txt[-1:] == '0':
-                                txt = txt[:-1]
-                        elif self.label_with == 'atom no.':
-                            txt = "%d" % (a.get_index()+1,)
-                        else:
-                            txt = a.name + '(' + str(a.get_index() + 1) + ')'
-                    except AttributeError:
-                        txt = '--'
-                        
-                    # Now got the label as txt
-                    if self.label_type == 0:
-                        # 3D Actors
-                        s = vtk.vtkVectorText()
-                        s.SetText(txt)
-
-                        m = vtk.vtkPolyDataMapper()
-                        m.SetInput(s.GetOutput())
-
-                        act = vtk.vtkFollower()
-                        self.label_actors.append(act)
-                        act.SetMapper(m)
-
-                        red = self.label_rgb[0] / 255.0
-                        green = self.label_rgb[1] / 255.0
-                        blue = self.label_rgb[2] / 255.0
-                        act.GetProperty().SetColor(red,green,blue)
-                        act.SetCamera(self.graph.pane._CurrentCamera)
-                        act.SetScale(self.label_scale,self.label_scale,self.label_scale)
-                        x = a.coord[0]
-                        y = a.coord[1]
-                        zz = a.coord[2]
-                        act.PickableOn()
-                        act.SetPosition(x,y,zz)
-                        act.AddObserver(
-                            'PickEvent', \
-                            lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-                    elif self.label_type == 1:
-                        # 2D Actors
-                        # create the mapper
-                        m = vtk.vtkTextMapper()
-                        m.SetInput(txt)
-                        #print 'label scale',self.label_scale
-                        #size = int(20.0*self.label_scale)
-                        #m.SetFontSize(size)
-
-                        # create the actor
-                        #act = vtkScaledTextActor() # deprecated
-                        act = vtk.vtkTextActor()
-                        act.ScaledTextOn()
-                        self.label_actors.append(act)
-                        act.SetMapper(m)
-                        act.GetPositionCoordinate().SetCoordinateSystemToWorld();
-
-                        # Set the label size
-                        h = self.label_scale/3
-                        w = self.label_scale/3
-                        act.SetHeight(h) #Defaults seems to be 0.5
-                        act.SetWidth(w)#Defaults seems to be 0.5
-
-                        # Try and centre the labels
-                        #act.SetAlignmentPoint(2)
-                        #x = a.coord[0] - w
-                        #y = a.coord[1] - h
-                        x = a.coord[0]
-                        y = a.coord[1]
-                        zz = a.coord[2]
-
-                        act.GetPositionCoordinate().SetValue(x,y,zz);
-                        #act.SetScale(self.label_scale,self.label_scale,self.label_scale)
-                        act.PickableOff()
-                        # act.AddObserver(
-                        #    'PickEvent', \
-                        #    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-
-                        red = self.label_rgb[0] / 255.0
-                        green = self.label_rgb[1] / 255.0
-                        blue = self.label_rgb[2] / 255.0
-                        act.GetTextProperty().SetColor(red,green,blue)
-
+        # Wire
         if self.show_wire:
-            # Lines
-            line_count = 0
-            rad2deg = 180./math.pi
-            if self.line_type == 0:
-                # 2 linesource objects per bond with their own actors
-                orphans = []
-                for a in self.molecule.atom:
-                    try:
-                        c = a.conn
-                    except AttributeError:
-                        c = []
-
-                    if len(c) == 0:
-                        orphans.append(a)
-
-                    for t in c:
-
-                        if self.selection_key:
-                            draw = t.visible[self.selection_key] and a.visible[self.selection_key]
-                        else:
-                            draw = 1
-
-                        if t.get_index() > a.get_index() and draw:
-
-                            start = Vector(a.coord)
-                            end = Vector(t.coord)
-                            mid = 0.5*(start+end)
-
-                            try:
-                                z = a.get_number()
-                            except Exception:
-                                z = 0
-                            r,g,b = colours[z]
-
-                            s = vtk.vtkLineSource()
-                            s.SetPoint1(start)
-                            s.SetPoint2(mid)
-                            m = vtk.vtkPolyDataMapper()
-
-                            m.SetInput(s.GetOutput())
-                            act = vtk.vtkActor()
-                            act.SetMapper(m)
-                            act.GetProperty().SetColor(r,g,b)
-                            act.GetProperty().SetLineWidth(self.graph.mol_line_width)
-                            act.AddObserver(
-                                'PickEvent', \
-                                lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-
-                            self.wire_actors.append(act)
-
-                            line_count = line_count + 1
-
-                            try:
-                                z = t.get_number()
-                            except Exception:
-                                z = 0
-                            r,g,b = colours[z]
-
-                            s = vtk.vtkLineSource()
-                            s.SetPoint1(mid)
-                            s.SetPoint2(end)
-                            m = vtk.vtkPolyDataMapper()
-                            m.SetInput(s.GetOutput())
-                            act = vtk.vtkActor()
-                            act.SetMapper(m)
-                            act.GetProperty().SetColor(r,g,b)
-                            act.GetProperty().SetLineWidth(self.graph.mol_line_width)
-                            act.AddObserver(
-                                'PickEvent', \
-                                lambda x,y,s=self,obj=self.molecule,atom=t : s.graph.mypick(obj,atom,x,y) )
-                            self.wire_actors.append(act)
-                            line_count = line_count + 1
-
-                if self.debug:
-                    print 'orphans',len(orphans)
-
-                for a in orphans:
-
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-
-                    if draw:
-
-                        try:
-                            z = a.get_number()
-                        except Exception:
-                            z = 0
-                        r,g,b = colours[z]
-
-                        s = vtk.vtkPointSource()
-                        s.SetNumberOfPoints(1)
-                        s.SetRadius(0.0)
-                        s.SetCenter(a.coord)
-                        m = vtk.vtkPolyDataMapper()
-                        m.SetInput(s.GetOutput())
-                        act = vtk.vtkActor()
-                        act.SetMapper(m)
-                        act.GetProperty().SetColor(r,g,b)
-                        act.GetProperty().SetPointSize(self.graph.mol_point_size)
-                        act.AddObserver(
-                            'PickEvent', \
-                            lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
-                        self.wire_actors.append(act)
-                        line_count = line_count + 1
-
-
-                for a in self.molecule.shell:
-
-                    aa =  a.linked_core
-                    if self.selection_key:
-                        draw = aa.visible[self.selection_key]
-                    else:
-                        draw = 1
-
-                    if draw:
-
-                        r,g,b = (0.7,0.0,0.7)
-
-                        s = vtk.vtkPointSource()
-                        s.SetNumberOfPoints(1)
-                        s.SetRadius(0.0)
-                        s.SetCenter(a.coord)
-                        m = vtk.vtkPolyDataMapper()
-                        m.SetInput(s.GetOutput())
-                        act = vtk.vtkActor()
-                        act.SetMapper(m)
-                        act.GetProperty().SetColor(r,g,b)
-                        act.GetProperty().SetPointSize(self.graph.mol_point_size)
-                        act.AddObserver(
-                            'PickEvent', \
-                            lambda x,y,s=self,obj=self.molecule,atom=aa : s.graph.mypick(obj,atom,x,y) )
-                        self.wire_actors.append(act)
-                        line_count = line_count + 1
-
-
-            elif self.line_type == 1:
-                # use linesource but append into a single polydata
-                app = vtk.vtkAppendPolyData()
-                for a in self.molecule.atom:
-                    try:
-                        c = a.conn
-                    except AttributeError:
-                        c = []
-                    for t in c:
-                        if t.get_index() > a.get_index():
-
-                            start = Vector(a.coord)
-                            end = Vector(t.coord)
-                            mid = 0.5*(start+end)
-
-                            try:
-                                z = a.get_number()
-                            except Exception:
-                                z = 0
-                            r,g,b = colours[z]
-
-                            s = vtk.vtkLineSource()
-                            s.SetPoint1(start)
-                            s.SetPoint2(mid)
-
-                            app.AddInput(s.GetOutput())
-
-                            line_count = line_count + 1
-
-                            try:
-                                z = t.get_number() -1
-                            except Exception:
-                                z = 0
-                            r,g,b = colours[z]
-
-                            s = vtk.vtkLineSource()
-                            s.SetPoint1(mid)
-                            s.SetPoint2(end)
-
-                            app.AddInput(s.GetOutput())
-
-                            line_count = line_count + 1
-
-                # create the mapper
-                m = vtk.vtkPolyDataMapper()
-                m.SetInput(app.GetOutput())
-
-                # create the actor
-                act = vtk.vtkActor()
-                self.wire_actors.append(act)
-                act.SetMapper(m)
-
-                act.AddObserver(
-                    'PickEvent', \
-                    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(x,y) )
-
-
-        if self.show_wire or (self.sphere_type == 2 and self.show_spheres ) :
-
-            if self.line_type == 2:
-                # construct points, cell data etc
-                # includes spheres if sphere_type == 2
-                # the best option for large molecules but so far colouring/scaling
-                # balls is a problem
-
-                np = 0
-                mapper = []
-                orphans = []
-                for a in self.molecule.atom:
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-                    if draw:
-                        mapper.append(np)
-                        np = np + 1
-                    else:
-                        mapper.append(-1)
-                for a in self.molecule.shell:
-                    if self.selection_key:
-                        aa =  a.linked_core
-                        draw = aa.visible[self.selection_key]
-                    else:
-                        draw = 1
-                    if draw:
-                        np = np + 1
-
-                p = vtk.vtkPoints()
-
-                zvals = vtk.vtkIntArray()
-                zvals.SetName('z')
-                zvals.SetNumberOfComponents(1)
-                zvals.SetNumberOfTuples(np)
-
-                hackrad = vtk.vtkFloatArray()
-                hackrad.SetName('sizevecs')
-                hackrad.SetNumberOfComponents(3)
-                hackrad.SetNumberOfTuples(np)
-
-                p.SetNumberOfPoints(np)
-                bonds = []
-                self.molecule.reindex()
-
-                i=0
-                np = 0
-                for a in self.molecule.atom:
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-                    if draw:
-                        p.SetPoint(np,a.coord[0], a.coord[1], a.coord[2])
-                        try:
-                            z = a.get_number()
-                        except Exception:
-                            z = 0
-                        zvals.SetTuple1(np,z)
-
-                        
-                        if self.sphere_table == generic.visualiser.COV_RADII:
-                            fac = 0.529177 * rcov[z] * self.sphere_scale
-                        else:
-                            fac = rvdw[z] * self.sphere_scale
-
-                        # this 5 is empirical
-			#   print 'setting size',z,rcov[z]
-                        r = fac*5
-                        hackrad.SetTuple3(np,r,r,r)
-                        i=i+1
-
-                        try:
-                            c = a.conn
-                        except AttributeError:
-                            c = []
-
-                        if len(c) == 0:
-                            orphans.append(np)
-
-                        for t in c:
-                            if t.get_index() > a.get_index():
-                                if self.selection_key:
-                                    draw = t.visible[self.selection_key]
-                                else:
-                                    draw = 1
-                                if draw:
-                                    bonds.append([mapper[a.get_index()], mapper[t.get_index()]])
-                        np = np + 1
-
-                for a in self.molecule.shell:
-                    if self.selection_key:
-                        aa =  a.linked_core
-                        draw = aa.visible[self.selection_key]
-                    else:
-                        draw = 1
-                    if draw:
-                        p.SetPoint(np,a.coord[0], a.coord[1], a.coord[2])
-                        orphans.append(np)
-                        zvals.SetTuple1(np,105)
-
-                        # dummy radius for shells
-                        fac = 0.529177 * 0.5 * self.sphere_scale
-                        r = fac*5
-                        hackrad.SetTuple3(np,r,r,r)
-
-                        np = np + 1
-
-                l = vtk.vtkCellArray()
-                nb = len(bonds)
-                l.Allocate(nb,nb)
-                for b in bonds:
-                    l.InsertNextCell(2)
-                    l.InsertCellPoint(b[0])
-                    l.InsertCellPoint(b[1])
-
-                v = vtk.vtkCellArray()
-                nv = len(orphans)
-                v.Allocate(nv,nv)
-                for o in orphans:
-                    v.InsertNextCell(1)
-                    v.InsertCellPoint(o)
-
-                poly = vtk.vtkPolyData()
-                poly.SetPoints(p)
-                poly.SetLines(l)
-                poly.SetVerts(v)
-
-                # seems only one of these is needed, not sure which is best
-                # SetScalars seems compatible with copying xyzmolreader code (at
-                # least the colouring works for mode 2)
-                #poly.GetPointData().AddArray(zvals)
-                poly.GetPointData().SetScalars(zvals)
-                poly.GetPointData().SetVectors(hackrad)
-
-                self.zvals = zvals
-                self.poly = poly
-
-                m = vtk.vtkPolyDataMapper()
-                self.map = m
-                m.SetInput(poly)
-
-                # the extra +1 is empirical so that
-                # an integer index of 104 gets top colour in the list
-                m.SetScalarRange(rgb_min, rgb_max+1)
-                m.SetLookupTable(self.colour_table)
-                m.SetScalarModeToUsePointFieldData()
-                m.ColorByArrayComponent('z',0)
-
-                act = vtk.vtkActor()
-                act.SetMapper(m)
-                act.GetProperty().SetLineWidth(self.graph.mol_line_width)
-                act.GetProperty().SetPointSize(self.graph.mol_point_size)
-
-                self.wire_actors.append(act)
-
-                act.AddObserver(
-                    'PickEvent', \
-                    lambda x,y,s=self,obj=self.molecule : s.graph.mypick1(obj,x,y) )
-
-                if self.sphere_type == 2:
-
-                    s = vtk.vtkSphereSource()
-
-                    s.SetThetaResolution(self.graph.mol_sphere_resolution)
-                    s.SetPhiResolution(self.graph.mol_sphere_resolution)
-
-                    g = vtk.vtkGlyph3D()
-                    g.SetInput(poly)
-                    g.SetSource(s.GetOutput())
-                    g.SetScaleFactor(0.4)
-                    #g.SetColorModeToColorByScalar()
-                    #g.SetScaleModeToDataScalingOff()
-                    #from xyz
-                    g.SetColorMode(1)
-                    g.SetScaleMode(2)
-
-                    m = vtk.vtkPolyDataMapper()
-                    m.SetInput(g.GetOutput())
-                    m.SetLookupTable(self.colour_table)
-                    m.SetScalarRange(rgb_min,rgb_max+1)
-                    # from xyz
-                    m.SetScalarVisibility(1)
-                    m.UseLookupTableScalarRangeOff()
-                    act = vtk.vtkActor()
-                    act.SetMapper(m)
-                    act.PickableOff()
-
-                    act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
-                    act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
-                    act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
-                    act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
-
-                    tmp = 0.5
-                    r = tmp
-                    g = tmp
-                    b = tmp
-                    act.GetProperty().SetColor(r,g,b)
-                    self.sphere_actors.append(act)
-
-                if self.debug: deb("made polydata with %d lines %d vertices" % (len(bonds),len(orphans)))
-
+            if self.line_type==0:
+                self._build_wire_type0()
+            elif self.line_type==1:
+                self._build_wire_type1()
+            elif self.line_type==2:
+                self._build_wire_type2()
+
+        # Sticks
         if self.show_sticks:
             if self.stick_type == 0:
-                # Cylinders
-                line_count = 0
-                rad2deg = 180./math.pi
-                for a in self.molecule.atom:
-                    try:
-                        c = a.conn
-                    except AttributeError:
-                        c = []
-
-                    for t in c:
-
-                        if self.selection_key:
-                            draw = t.visible[self.selection_key] and a.visible[self.selection_key]
-                        else:
-                            draw = 1
-
-                        if t.get_index() > a.get_index() and draw:
-                            r1 = objects.vector.Vector(a.coord)
-                            r2 = objects.vector.Vector(t.coord)
-                            axis = r2-r1
-                            center = 0.5*(r1+r2)
-                            #print 'center', center, t.get_index(), a.get_index()
-                            #print 'axis',axis
-
-                            blength = axis.length()
-                            # print 'blength ',blength
-                            if blength > 0.0001:
-
-                                axis = axis/blength
-                                # Angles will be applied z, x, y in the cylinders local frame
-                                # first move cylinder so that it overlap the target
-                                # direction in the projection down Z
-
-                                rot = objects.numeric.array([0.0,0.0,0.0])
-
-                                # Assume we start with z 
-
-                                if axis[1] == 0.0:
-                                    if axis[0] < 0:
-                                        angle = -90.0
-                                    else:
-                                        angle = 90.0                                        
-
-                                else:
-                                    ratio = axis[0] / axis[1]
-                                    #angle = objects.numeric.arctan(ratio)*rad2deg
-                                    angle = math.atan(ratio)*rad2deg
-
-                                #print 'z angle',angle
-                                # sign convention is empirical
-                                rot[2] = -angle
-
-                                # Get angle of target direction relative to yx plane
-                                # and rotate about the local x axis
-                                prj = math.sqrt(axis[0]*axis[0] + axis[1]*axis[1])
-                                if prj ==  0.0:
-                                    angle = 90.0
-                                else:
-                                    ratio = axis[2] / prj
-                                    #jmht angle = objects.numeric.arctan(ratio)*rad2deg
-                                    angle = math.atan(ratio)*rad2deg
-                                    if axis[1] < 0:
-                                        angle = -angle
-
-                                if self.debug:
-                                    print 'prj, axis[2], x angle',prj, axis[2], angle
-                                rot[0] = angle
-
-                                # we dont need a y rotation (cylinder axis)
-                                rot[1] = 0.0
-
-                                s = vtk.vtkCylinderSource()
-
-                                # using radius values of less that 1 appear to
-                                # produce very dark sided cylinders
-                                # using 1.0 is OK, width is scaled using the SetScale method
-                                # of the corresponding actor
-                                s.SetRadius(1.0)
-                                s.SetResolution(self.graph.mol_cylinder_resolution)
-                                m = vtk.vtkPolyDataMapper()
-                                m.SetInput(s.GetOutput())
-                                act = vtk.vtkActor()
-                                act.SetMapper(m)
-                                red = self.cyl_rgb[0] / 255.0
-                                green = self.cyl_rgb[1] / 255.0
-                                blue = self.cyl_rgb[2] / 255.0
-                                act.GetProperty().SetColor(red,green,blue)
-                                act.GetProperty().SetDiffuse(self.graph.mol_cylinder_diffuse)
-                                act.GetProperty().SetAmbient(self.graph.mol_cylinder_ambient)
-                                act.GetProperty().SetSpecular(self.graph.mol_cylinder_specular)
-                                act.GetProperty().SetSpecularPower(self.graph.mol_cylinder_specular_power)
-                                act.SetPosition(center[0],center[1],center[2])
-                                act.SetScale(self.cyl_width,blength,self.cyl_width)
-
-                                act.SetOrientation(rot[0],rot[1],rot[2])
-
-                                self.stick_actors.append(act)
-                                line_count = line_count + 1
-
-                if self.debug:
-                    print 'made list of ', line_count, ' cylinders'
-
-
+                self._build_sticks_type0()
             elif self.stick_type == 2:
+                self._build_sticks_type2()
 
-                ## jmht - this broken - poly is unreferenced - not sure if this ever worked
-
-                Tube= vtk.vtkTubeFilter()
-                ####Tube.SetInputConnection(readerGetOutputPort())
-                Tube.SetInput(poly)
-                Tube.SetNumberOfSides(16)
-                Tube.SetCapping(0)
-
-                fac = self.cyl_width
-                Tube.SetRadius(fac)
-                Tube.SetVaryRadius(0)
-                Tube.SetRadiusFactor(10)
-
-                m= vtk.vtkPolyDataMapper()
-                ###m.SetInputConnection(TubeGetOutputPort())
-                m.SetInput(Tube.GetOutput())
-
-                # not sure what this does
-                m.SetImmediateModeRendering(1)
-
-                if self.colour_cyl:
-                    m.UseLookupTableScalarRangeOff()
-                    m.SetScalarModeToDefault()
-                    m.SetLookupTable(self.colour_table)
-                    m.SetScalarRange(rgb_min,rgb_max+1)
-                    red = 1.0
-                    green = 1.0
-                    blue = 1.0
-                else:
-                    m.SetScalarVisibility(0)
-                    red = self.cyl_rgb[0] / 255.0
-                    green = self.cyl_rgb[1] / 255.0
-                    blue = self.cyl_rgb[2] / 255.0
-
-                act= vtk.vtkActor()
-                act.SetMapper(m)
-                act.GetProperty().SetRepresentationToSurface()
-                act.GetProperty().SetInterpolationToGouraud()
-
-                act.GetProperty().SetAmbient(self.graph.mol_cylinder_ambient)
-                act.GetProperty().SetDiffuse(self.graph.mol_cylinder_diffuse)
-                act.GetProperty().SetSpecular(self.graph.mol_cylinder_specular)
-                act.GetProperty().SetSpecularPower(self.graph.mol_cylinder_specular_power)
-                ##act.GetProperty().SetSpecularColor(1,1,1)
-                act.GetProperty().SetColor(red,green,blue)
-                act.PickableOff()
-
-                self.stick_actors.append(act)
-
+        # Contacts
         if self.show_contacts:
-            if self.contact_type == 2:
+            self._build_contacts()
 
-                self.molecule.find_contacts(self.graph.contact_scale,
-                                            self.graph.contact_toler)
-
-                p = vtk.vtkPoints()
-                n = len(self.molecule.atom)
-                p.SetNumberOfPoints(n)
-                for a in self.molecule.atom:
-
-                    if self.selection_key:
-                        draw = a.visible[self.selection_key]
-                    else:
-                        draw = 1
-                    if draw:
-                        p.SetPoint(a.get_index(),a.coord[0], a.coord[1], a.coord[2])
-
-                l = vtk.vtkCellArray()
-                nb = len(self.molecule.contacts)
-                l.Allocate(nb,nb)
-                for c in self.molecule.contacts:
-                    if self.debug:
-                        print c.index
-                    if c.index[0] > c.index[1]:
-                        if self.selection_key:
-                            draw = self.molecule.atom[c.index[0]].visible[self.selection_key] and  self.molecule.atom[c.index[1]].visible[self.selection_key] 
-                        else:
-                            draw = 1
-                        if draw:
-                            l.InsertNextCell(2)
-                            l.InsertCellPoint(c.index[0])
-                            l.InsertCellPoint(c.index[1])
-                poly = vtk.vtkPolyData()
-                poly.SetPoints(p)
-                poly.SetLines(l)
-
-                m = vtk.vtkPolyDataMapper()
-                m.SetInput(poly)
-                act = vtk.vtkActor()
-                act.SetMapper(m)
-                act.GetProperty().SetLineWidth(1)
-                act.GetProperty().SetColor(1.0,1.0,1.0)
-                self.contact_actors.append(act)
-                #print 'made contact polydata with ', len(self.molecule.contacts), ' lines'
-
+        #
         if self.show_wire and self.line_type == 2:
             # Apply selection highlighting by poking into zvals array
             #
@@ -1474,6 +706,898 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 
         # set current visibility
         self.status = generic.visualiser.BUILT
+
+
+    def _get_molecule_polydata(self):
+        """ Generate vtkPolyData with points corresponding to the atom positions, 
+            lines to the bonds and vertices to any orphans.
+            The polydata is used by spheres of type 2, sticks of type 1 and wireframe
+            of linetype 2.
+            As we only want to generate this data once on each render, we save the data in
+            the variable self.molecule_polydata, which needs to be cleared at the end of each
+            rendering pass - I think - might be a more efficient way to do that"""
+
+        if self.molecule_polydata:
+            return self.molecule_polydata
+        else:
+            # construct points, cell data etc
+            # includes spheres if sphere_type == 2
+            # the best option for large molecules but so far colouring/scaling
+            # balls is a problem
+
+            np = 0
+            mapper = []
+            orphans = []
+            for a in self.molecule.atom:
+                if self.selection_key:
+                    draw = a.visible[self.selection_key]
+                else:
+                    draw = 1
+                if draw:
+                    mapper.append(np)
+                    np = np + 1
+                else:
+                    mapper.append(-1)
+            for a in self.molecule.shell:
+                if self.selection_key:
+                    aa =  a.linked_core
+                    draw = aa.visible[self.selection_key]
+                else:
+                    draw = 1
+                if draw:
+                    np = np + 1
+
+            p = vtk.vtkPoints()
+
+            zvals = vtk.vtkIntArray()
+            zvals.SetName('z')
+            zvals.SetNumberOfComponents(1)
+            zvals.SetNumberOfTuples(np)
+
+            hackrad = vtk.vtkFloatArray()
+            hackrad.SetName('sizevecs')
+            hackrad.SetNumberOfComponents(3)
+            hackrad.SetNumberOfTuples(np)
+
+            p.SetNumberOfPoints(np)
+            bonds = []
+            self.molecule.reindex()
+
+            i=0
+            np = 0
+            for a in self.molecule.atom:
+                if self.selection_key:
+                    draw = a.visible[self.selection_key]
+                else:
+                    draw = 1
+                if draw:
+                    p.SetPoint(np,a.coord[0], a.coord[1], a.coord[2])
+                    try:
+                        z = a.get_number()
+                    except Exception:
+                        z = 0
+                    zvals.SetTuple1(np,z)
+
+                    if self.sphere_table == generic.visualiser.COV_RADII:
+                        fac = 0.529177 * rcov[z] * self.sphere_scale
+                    else:
+                        fac = rvdw[z] * self.sphere_scale
+
+                    # this 5 is empirical
+                    #   print 'setting size',z,rcov[z]
+                    r = fac*5
+                    hackrad.SetTuple3(np,r,r,r)
+                    i=i+1
+
+                    try:
+                        c = a.conn
+                    except AttributeError:
+                        c = []
+
+                    if len(c) == 0:
+                        orphans.append(np)
+
+                    for t in c:
+                        if t.get_index() > a.get_index():
+                            if self.selection_key:
+                                draw = t.visible[self.selection_key]
+                            else:
+                                draw = 1
+                            if draw:
+                                bonds.append([mapper[a.get_index()], mapper[t.get_index()]])
+                    np = np + 1
+
+            for a in self.molecule.shell:
+                if self.selection_key:
+                    aa =  a.linked_core
+                    draw = aa.visible[self.selection_key]
+                else:
+                    draw = 1
+                if draw:
+                    p.SetPoint(np,a.coord[0], a.coord[1], a.coord[2])
+                    orphans.append(np)
+                    zvals.SetTuple1(np,105)
+
+                    # dummy radius for shells
+                    fac = 0.529177 * 0.5 * self.sphere_scale
+                    r = fac*5
+                    hackrad.SetTuple3(np,r,r,r)
+
+                    np = np + 1
+
+            l = vtk.vtkCellArray()
+            nb = len(bonds)
+            l.Allocate(nb,nb)
+            for b in bonds:
+                l.InsertNextCell(2)
+                l.InsertCellPoint(b[0])
+                l.InsertCellPoint(b[1])
+
+            v = vtk.vtkCellArray()
+            nv = len(orphans)
+            v.Allocate(nv,nv)
+            for o in orphans:
+                v.InsertNextCell(1)
+                v.InsertCellPoint(o)
+
+            poly = vtk.vtkPolyData()
+            poly.SetPoints(p)
+            poly.SetLines(l)
+            poly.SetVerts(v)
+
+            # seems only one of these is needed, not sure which is best
+            # SetScalars seems compatible with copying xyzmolreader code (at
+            # least the colouring works for mode 2)
+            #poly.GetPointData().AddArray(zvals)
+            poly.GetPointData().SetScalars(zvals)
+            poly.GetPointData().SetVectors(hackrad)
+
+            self.zvals = zvals            
+            self.molecule_polydata = poly
+
+            if self.debug: deb("made polydata with %d lines %d vertices" % (len(bonds),len(orphans)))
+            return self.molecule_polydata
+
+
+    def _build_sphere_type0(self):
+        """Build the spheres of type 0"""
+
+        if not self.show_spheres and self.sphere_type==0:
+            return
+
+        for a in self.molecule.atom:
+
+            if self.selection_key:
+                draw = a.visible[self.selection_key]
+            else:
+                draw = 1
+
+            if draw:
+
+                try:
+                    z = a.get_number()
+                    r,g,b = colours[z]
+                except Exception:
+                    z = 0
+                    r,g,b = (1.,1.,1.)
+
+                # create the sphere
+                s = vtk.vtkSphereSource()
+
+                s.SetThetaResolution(self.graph.mol_sphere_resolution)
+                s.SetPhiResolution(self.graph.mol_sphere_resolution)
+
+                if self.sphere_table == generic.visualiser.COV_RADII:
+                    fac = 0.529177 * rcov[z] * self.sphere_scale
+                else:
+                    fac = rvdw[z] * self.sphere_scale
+
+                #fac = rcov[z] / 2.0
+                # to show cylinders....
+                #fac = fac / 3.0
+                s.SetRadius(fac)
+
+                # create the mapper
+                m = vtk.vtkPolyDataMapper()
+                m.SetInput(s.GetOutput())
+
+                # create the actor
+                act = vtk.vtkActor()
+                self.sphere_actors.append(act)
+                act.SetMapper(m)
+                act.GetProperty().SetColor(r,g,b)
+
+                act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
+                act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
+                act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
+                act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
+
+                x = a.coord[0]
+                y = a.coord[1]
+                zz = a.coord[2]
+
+                act.SetPosition(x,y,zz)
+                # this seems to work
+                act.AddObserver(
+                    'PickEvent', \
+                    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+
+    def _build_sphere_type1(self):
+        """Build sphers of type 1"""
+
+        if not self.show_spheres and self.sphere_type==1:
+            return
+
+        app = vtk.vtkAppendPolyData()
+        for a in self.molecule.atom:
+            try:
+                z = a.get_number()
+            except Exception:
+                z = 0
+            r,g,b = colours[z]
+
+            # create the sphere
+            s = vtk.vtkSphereSource()
+
+            s.SetThetaResolution(self.graph.mol_sphere_resolution)
+            s.SetPhiResolution(self.graph.mol_sphere_resolution)
+
+            fac = rcov[z] * self.sphere_scale
+            # to show cylinders....
+            # fac = fac / 3.0
+            s.SetRadius(fac)
+
+            x = a.coord[0]
+            y = a.coord[1]
+            zz = a.coord[2]
+            s.SetCenter([x,y,zz])
+
+            app.AddInput(s.GetOutput())
+
+        # create the mapper
+        m = vtk.vtkPolyDataMapper()
+        m.SetInput(app.GetOutput())
+
+        # create the actor
+        act = vtk.vtkLODActor()
+        self.sphere_actors.append(act)
+        act.SetMapper(m)
+        act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
+        act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
+        act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
+        act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
+
+    def _build_sphere_type2(self):
+        """Build spheres of type 2"""
+
+        if not self.show_spheres and self.sphere_type==2:
+            return
+
+        poly=self._get_molecule_polydata()
+        
+        s = vtk.vtkSphereSource()
+
+        s.SetThetaResolution(self.graph.mol_sphere_resolution)
+        s.SetPhiResolution(self.graph.mol_sphere_resolution)
+
+        g = vtk.vtkGlyph3D()
+        g.SetInput(poly)
+        g.SetSource(s.GetOutput())
+        g.SetScaleFactor(0.4)
+        #g.SetColorModeToColorByScalar()
+        #g.SetScaleModeToDataScalingOff()
+        #from xyz
+        g.SetColorMode(1)
+        g.SetScaleMode(2)
+
+        #Need to generate point ids so that we can determine which atom was picked
+        g.GeneratePointIdsOn()
+
+        m = vtk.vtkPolyDataMapper()
+        m.SetInput(g.GetOutput())
+        m.SetLookupTable(self.colour_table)
+        m.SetScalarRange(rgb_min,rgb_max+1)
+        # from xyz
+        m.SetScalarVisibility(1)
+        m.UseLookupTableScalarRangeOff()
+        act = vtk.vtkActor()
+        act.SetMapper(m)
+
+        #act.PickableOff()
+
+        act.GetProperty().SetDiffuse(self.graph.mol_sphere_diffuse)
+        act.GetProperty().SetAmbient(self.graph.mol_sphere_ambient)
+        act.GetProperty().SetSpecular(self.graph.mol_sphere_specular)
+        act.GetProperty().SetSpecularPower(self.graph.mol_sphere_specular_power)
+
+        tmp = 0.5
+        r = tmp
+        g = tmp
+        b = tmp
+        act.GetProperty().SetColor(r,g,b)
+
+        # Set mytype so that we can query this when we are picked (see mypick2)
+        act.mytype="molsphere2"
+
+        act.AddObserver(
+            'PickEvent', \
+                lambda x,y,s=self,obj=self.molecule: s.graph.mypick1(obj,x,y) )
+
+        self.sphere_actors.append(act)
+
+
+    def _build_labels(self):
+        """Build the labels of types 0 and 1"""
+
+        if not self.show_labels:
+            return
+
+        for a in self.molecule.atom:
+            if self.selection_key:
+                draw = a.visible[self.selection_key]
+            else:
+                draw = 1
+            if draw:
+                # Try and work out the label
+                try:
+                    if self.label_with == 'symbol':
+                        txt = a.symbol
+                    elif self.label_with == 'name':
+                        txt = a.name
+
+                    elif self.label_with == 'mulliken charge':
+                        val = self.molecule.get_atom_charge(a.get_index(),'Mulliken')
+                        if val:
+                            txt = "%f" % (val,)
+                            while txt[-1:] == '0':
+                                txt = txt[:-1]
+                        else:
+                            txt = '---'
+
+                    elif self.label_with == 'lowdin charge':
+                        val = self.molecule.get_atom_charge(a.get_index(),'Lowdin')
+                        if val:
+                            txt = "%f" % (val,)
+                            while txt[-1:] == '0':
+                                txt = txt[:-1]
+                        else:
+                            txt = '---'
+
+                    elif self.label_with == 'potential derived charge':
+                        val = self.molecule.get_atom_charge(a.get_index(),'PDC')
+                        if val:
+                            txt = "%f" % (val,)
+                            while txt[-1:] == '0':
+                                txt = txt[:-1]
+                        else:
+                            txt = '---'
+
+                    elif self.label_with == 'charge':
+                        txt = "%f" % (a.partial_charge,)
+                        while txt[-1:] == '0':
+                            txt = txt[:-1]
+                    elif self.label_with == 'atom no.':
+                        txt = "%d" % (a.get_index()+1,)
+                    else:
+                        txt = a.name + '(' + str(a.get_index() + 1) + ')'
+                except AttributeError:
+                    txt = '--'
+
+                # Now got the label as txt
+                if self.label_type == 0:
+                    # 3D Actors
+                    s = vtk.vtkVectorText()
+                    s.SetText(txt)
+
+                    m = vtk.vtkPolyDataMapper()
+                    m.SetInput(s.GetOutput())
+
+                    act = vtk.vtkFollower()
+                    self.label_actors.append(act)
+                    act.SetMapper(m)
+
+                    red = self.label_rgb[0] / 255.0
+                    green = self.label_rgb[1] / 255.0
+                    blue = self.label_rgb[2] / 255.0
+                    act.GetProperty().SetColor(red,green,blue)
+                    act.SetCamera(self.graph.pane._CurrentCamera)
+                    act.SetScale(self.label_scale,self.label_scale,self.label_scale)
+                    x = a.coord[0]
+                    y = a.coord[1]
+                    zz = a.coord[2]
+                    act.PickableOn()
+                    act.SetPosition(x,y,zz)
+                    act.AddObserver(
+                        'PickEvent', \
+                        lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+                elif self.label_type == 1:
+                    # 2D Actors
+                    # create the mapper
+                    m = vtk.vtkTextMapper()
+                    m.SetInput(txt)
+                    #print 'label scale',self.label_scale
+                    #size = int(20.0*self.label_scale)
+                    #m.SetFontSize(size)
+
+                    # create the actor
+                    #act = vtkScaledTextActor() # deprecated
+                    act = vtk.vtkTextActor()
+                    act.ScaledTextOn()
+                    self.label_actors.append(act)
+                    act.SetMapper(m)
+                    act.GetPositionCoordinate().SetCoordinateSystemToWorld();
+
+                    # Set the label size
+                    h = self.label_scale/3
+                    w = self.label_scale/3
+                    act.SetHeight(h) #Defaults seems to be 0.5
+                    act.SetWidth(w)#Defaults seems to be 0.5
+
+                    # Try and centre the labels
+                    #act.SetAlignmentPoint(2)
+                    #x = a.coord[0] - w
+                    #y = a.coord[1] - h
+                    x = a.coord[0]
+                    y = a.coord[1]
+                    zz = a.coord[2]
+
+                    act.GetPositionCoordinate().SetValue(x,y,zz);
+                    #act.SetScale(self.label_scale,self.label_scale,self.label_scale)
+                    act.PickableOff()
+                    # act.AddObserver(
+                    #    'PickEvent', \
+                    #    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+
+                    red = self.label_rgb[0] / 255.0
+                    green = self.label_rgb[1] / 255.0
+                    blue = self.label_rgb[2] / 255.0
+                    act.GetTextProperty().SetColor(red,green,blue)
+
+
+
+    def _build_wire_type0(self):
+        """Build wire of type 0"""
+
+        if not self.build_wire and self.line_type==0:
+            return
+
+        line_count = 0
+        rad2deg = 180./math.pi
+        # 2 linesource objects per bond with their own actors
+        orphans = []
+        for a in self.molecule.atom:
+            try:
+                c = a.conn
+            except AttributeError:
+                c = []
+
+            if len(c) == 0:
+                orphans.append(a)
+
+            for t in c:
+
+                if self.selection_key:
+                    draw = t.visible[self.selection_key] and a.visible[self.selection_key]
+                else:
+                    draw = 1
+
+                if t.get_index() > a.get_index() and draw:
+
+                    start = Vector(a.coord)
+                    end = Vector(t.coord)
+                    mid = 0.5*(start+end)
+
+                    try:
+                        z = a.get_number()
+                    except Exception:
+                        z = 0
+                    r,g,b = colours[z]
+
+                    s = vtk.vtkLineSource()
+                    s.SetPoint1(start)
+                    s.SetPoint2(mid)
+                    m = vtk.vtkPolyDataMapper()
+
+                    m.SetInput(s.GetOutput())
+                    act = vtk.vtkActor()
+                    act.SetMapper(m)
+                    act.GetProperty().SetColor(r,g,b)
+                    act.GetProperty().SetLineWidth(self.graph.mol_line_width)
+                    act.AddObserver(
+                        'PickEvent', \
+                        lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+
+                    self.wire_actors.append(act)
+
+                    line_count = line_count + 1
+
+                    try:
+                        z = t.get_number()
+                    except Exception:
+                        z = 0
+                    r,g,b = colours[z]
+
+                    s = vtk.vtkLineSource()
+                    s.SetPoint1(mid)
+                    s.SetPoint2(end)
+                    m = vtk.vtkPolyDataMapper()
+                    m.SetInput(s.GetOutput())
+                    act = vtk.vtkActor()
+                    act.SetMapper(m)
+                    act.GetProperty().SetColor(r,g,b)
+                    act.GetProperty().SetLineWidth(self.graph.mol_line_width)
+                    act.AddObserver(
+                        'PickEvent', \
+                        lambda x,y,s=self,obj=self.molecule,atom=t : s.graph.mypick(obj,atom,x,y) )
+                    self.wire_actors.append(act)
+                    line_count = line_count + 1
+
+        if self.debug:
+            print 'orphans',len(orphans)
+
+        for a in orphans:
+
+            if self.selection_key:
+                draw = a.visible[self.selection_key]
+            else:
+                draw = 1
+
+            if draw:
+
+                try:
+                    z = a.get_number()
+                except Exception:
+                    z = 0
+                r,g,b = colours[z]
+
+                s = vtk.vtkPointSource()
+                s.SetNumberOfPoints(1)
+                s.SetRadius(0.0)
+                s.SetCenter(a.coord)
+                m = vtk.vtkPolyDataMapper()
+                m.SetInput(s.GetOutput())
+                act = vtk.vtkActor()
+                act.SetMapper(m)
+                act.GetProperty().SetColor(r,g,b)
+                act.GetProperty().SetPointSize(self.graph.mol_point_size)
+                act.AddObserver(
+                    'PickEvent', \
+                    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+                self.wire_actors.append(act)
+                line_count = line_count + 1
+
+
+        for a in self.molecule.shell:
+
+            aa =  a.linked_core
+            if self.selection_key:
+                draw = aa.visible[self.selection_key]
+            else:
+                draw = 1
+
+            if draw:
+
+                r,g,b = (0.7,0.0,0.7)
+
+                s = vtk.vtkPointSource()
+                s.SetNumberOfPoints(1)
+                s.SetRadius(0.0)
+                s.SetCenter(a.coord)
+                m = vtk.vtkPolyDataMapper()
+                m.SetInput(s.GetOutput())
+                act = vtk.vtkActor()
+                act.SetMapper(m)
+                act.GetProperty().SetColor(r,g,b)
+                act.GetProperty().SetPointSize(self.graph.mol_point_size)
+                act.AddObserver(
+                    'PickEvent', \
+                    lambda x,y,s=self,obj=self.molecule,atom=aa : s.graph.mypick(obj,atom,x,y) )
+                self.wire_actors.append(act)
+                line_count = line_count + 1
+
+
+    def _build_wire_type1(self):
+
+        if not self.build_wire and self.line_type==1:
+            return
+
+        line_count = 0
+        rad2deg = 180./math.pi
+
+        # use linesource but append into a single polydata
+        app = vtk.vtkAppendPolyData()
+        for a in self.molecule.atom:
+            try:
+                c = a.conn
+            except AttributeError:
+                c = []
+            for t in c:
+                if t.get_index() > a.get_index():
+
+                    start = Vector(a.coord)
+                    end = Vector(t.coord)
+                    mid = 0.5*(start+end)
+
+                    try:
+                        z = a.get_number()
+                    except Exception:
+                        z = 0
+                    r,g,b = colours[z]
+
+                    s = vtk.vtkLineSource()
+                    s.SetPoint1(start)
+                    s.SetPoint2(mid)
+
+                    app.AddInput(s.GetOutput())
+
+                    line_count = line_count + 1
+
+                    try:
+                        z = t.get_number() -1
+                    except Exception:
+                        z = 0
+                    r,g,b = colours[z]
+
+                    s = vtk.vtkLineSource()
+                    s.SetPoint1(mid)
+                    s.SetPoint2(end)
+
+                    app.AddInput(s.GetOutput())
+
+                    line_count = line_count + 1
+
+        # create the mapper
+        m = vtk.vtkPolyDataMapper()
+        m.SetInput(app.GetOutput())
+
+        # create the actor
+        act = vtk.vtkActor()
+        self.wire_actors.append(act)
+        act.SetMapper(m)
+
+        act.AddObserver(
+            'PickEvent', \
+            lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(x,y) )
+
+
+    def _build_wire_type2(self):
+        """Build spheres of type 2"""
+        if not self.show_wire and self.line_type==2:
+            return
+
+        poly = self._get_molecule_polydata()
+        m = vtk.vtkPolyDataMapper()
+        m.SetInput(poly)
+
+        # the extra +1 is empirical so that
+        # an integer index of 104 gets top colour in the list
+        m.SetScalarRange(rgb_min, rgb_max+1)
+        m.SetLookupTable(self.colour_table)
+        m.SetScalarModeToUsePointFieldData()
+        m.ColorByArrayComponent('z',0)
+
+        act = vtk.vtkActor()
+        act.SetMapper(m)
+        act.GetProperty().SetLineWidth(self.graph.mol_line_width)
+        act.GetProperty().SetPointSize(self.graph.mol_point_size)
+
+        self.wire_actors.append(act)
+
+        act.AddObserver(
+            'PickEvent', \
+            lambda x,y,s=self,obj=self.molecule : s.graph.mypick1(obj,x,y) )
+
+    def _build_sticks_type0(self):
+        """Build sticks of type0"""
+
+        if not self.show_sticks and self.stick_type==0:
+            return
+
+        # Cylinders
+        line_count = 0
+        rad2deg = 180./math.pi
+        for a in self.molecule.atom:
+            try:
+                c = a.conn
+            except AttributeError:
+                c = []
+
+            for t in c:
+
+                if self.selection_key:
+                    draw = t.visible[self.selection_key] and a.visible[self.selection_key]
+                else:
+                    draw = 1
+
+                if t.get_index() > a.get_index() and draw:
+                    r1 = objects.vector.Vector(a.coord)
+                    r2 = objects.vector.Vector(t.coord)
+                    axis = r2-r1
+                    center = 0.5*(r1+r2)
+                    #print 'center', center, t.get_index(), a.get_index()
+                    #print 'axis',axis
+
+                    blength = axis.length()
+                    # print 'blength ',blength
+                    if blength > 0.0001:
+
+                        axis = axis/blength
+                        # Angles will be applied z, x, y in the cylinders local frame
+                        # first move cylinder so that it overlap the target
+                        # direction in the projection down Z
+
+                        rot = objects.numeric.array([0.0,0.0,0.0])
+
+                        # Assume we start with z 
+
+                        if axis[1] == 0.0:
+                            if axis[0] < 0:
+                                angle = -90.0
+                            else:
+                                angle = 90.0                                        
+
+                        else:
+                            ratio = axis[0] / axis[1]
+                            #angle = objects.numeric.arctan(ratio)*rad2deg
+                            angle = math.atan(ratio)*rad2deg
+
+                        #print 'z angle',angle
+                        # sign convention is empirical
+                        rot[2] = -angle
+
+                        # Get angle of target direction relative to yx plane
+                        # and rotate about the local x axis
+                        prj = math.sqrt(axis[0]*axis[0] + axis[1]*axis[1])
+                        if prj ==  0.0:
+                            angle = 90.0
+                        else:
+                            ratio = axis[2] / prj
+                            #jmht angle = objects.numeric.arctan(ratio)*rad2deg
+                            angle = math.atan(ratio)*rad2deg
+                            if axis[1] < 0:
+                                angle = -angle
+
+                        if self.debug:
+                            print 'prj, axis[2], x angle',prj, axis[2], angle
+                        rot[0] = angle
+
+                        # we dont need a y rotation (cylinder axis)
+                        rot[1] = 0.0
+
+                        s = vtk.vtkCylinderSource()
+
+                        # using radius values of less that 1 appear to
+                        # produce very dark sided cylinders
+                        # using 1.0 is OK, width is scaled using the SetScale method
+                        # of the corresponding actor
+                        s.SetRadius(1.0)
+                        s.SetResolution(self.graph.mol_cylinder_resolution)
+                        m = vtk.vtkPolyDataMapper()
+                        m.SetInput(s.GetOutput())
+                        act = vtk.vtkActor()
+                        act.SetMapper(m)
+                        red = self.cyl_rgb[0] / 255.0
+                        green = self.cyl_rgb[1] / 255.0
+                        blue = self.cyl_rgb[2] / 255.0
+                        act.GetProperty().SetColor(red,green,blue)
+                        act.GetProperty().SetDiffuse(self.graph.mol_cylinder_diffuse)
+                        act.GetProperty().SetAmbient(self.graph.mol_cylinder_ambient)
+                        act.GetProperty().SetSpecular(self.graph.mol_cylinder_specular)
+                        act.GetProperty().SetSpecularPower(self.graph.mol_cylinder_specular_power)
+                        act.SetPosition(center[0],center[1],center[2])
+                        act.SetScale(self.cyl_width,blength,self.cyl_width)
+
+                        act.SetOrientation(rot[0],rot[1],rot[2])
+
+                        self.stick_actors.append(act)
+                        line_count = line_count + 1
+
+            #if self.debug:
+            #    print 'made list of ', line_count, ' cylinders'
+
+    def _build_sticks_type2(self):
+        if not self.show_sticks and self.stick_type==2:
+            return
+
+        poly = self._get_molecule_polydata()
+
+        Tube= vtk.vtkTubeFilter()
+        ####Tube.SetInputConnection(readerGetOutputPort())
+        Tube.SetInput(poly)
+        Tube.SetNumberOfSides(16)
+        Tube.SetCapping(0)
+
+        fac = self.cyl_width
+        Tube.SetRadius(fac)
+        Tube.SetVaryRadius(0)
+        Tube.SetRadiusFactor(10)
+
+        m= vtk.vtkPolyDataMapper()
+        ###m.SetInputConnection(TubeGetOutputPort())
+        m.SetInput(Tube.GetOutput())
+
+        # not sure what this does
+        m.SetImmediateModeRendering(1)
+
+        if self.colour_cyl:
+            m.UseLookupTableScalarRangeOff()
+            m.SetScalarModeToDefault()
+            m.SetLookupTable(self.colour_table)
+            m.SetScalarRange(rgb_min,rgb_max+1)
+            red = 1.0
+            green = 1.0
+            blue = 1.0
+        else:
+            m.SetScalarVisibility(0)
+            red = self.cyl_rgb[0] / 255.0
+            green = self.cyl_rgb[1] / 255.0
+            blue = self.cyl_rgb[2] / 255.0
+
+        act= vtk.vtkActor()
+        act.SetMapper(m)
+        act.GetProperty().SetRepresentationToSurface()
+        act.GetProperty().SetInterpolationToGouraud()
+
+        act.GetProperty().SetAmbient(self.graph.mol_cylinder_ambient)
+        act.GetProperty().SetDiffuse(self.graph.mol_cylinder_diffuse)
+        act.GetProperty().SetSpecular(self.graph.mol_cylinder_specular)
+        act.GetProperty().SetSpecularPower(self.graph.mol_cylinder_specular_power)
+        ##act.GetProperty().SetSpecularColor(1,1,1)
+        act.GetProperty().SetColor(red,green,blue)
+        act.PickableOff()
+
+        self.stick_actors.append(act)
+
+    def _build_contacts(self):
+        """Build contacts"""
+
+        if not self.show_contacts and self.contact_type == 2:
+            return 
+
+        self.molecule.find_contacts(self.graph.contact_scale,
+                                    self.graph.contact_toler)
+
+        p = vtk.vtkPoints()
+        n = len(self.molecule.atom)
+        p.SetNumberOfPoints(n)
+        for a in self.molecule.atom:
+
+            if self.selection_key:
+                draw = a.visible[self.selection_key]
+            else:
+                draw = 1
+            if draw:
+                p.SetPoint(a.get_index(),a.coord[0], a.coord[1], a.coord[2])
+
+        l = vtk.vtkCellArray()
+        nb = len(self.molecule.contacts)
+        l.Allocate(nb,nb)
+        for c in self.molecule.contacts:
+            if self.debug:
+                print c.index
+            if c.index[0] > c.index[1]:
+                if self.selection_key:
+                    draw = self.molecule.atom[c.index[0]].visible[self.selection_key] and  self.molecule.atom[c.index[1]].visible[self.selection_key] 
+                else:
+                    draw = 1
+                if draw:
+                    l.InsertNextCell(2)
+                    l.InsertCellPoint(c.index[0])
+                    l.InsertCellPoint(c.index[1])
+        poly = vtk.vtkPolyData()
+        poly.SetPoints(p)
+        poly.SetLines(l)
+
+        m = vtk.vtkPolyDataMapper()
+        m.SetInput(poly)
+        act = vtk.vtkActor()
+        act.SetMapper(m)
+        act.GetProperty().SetLineWidth(1)
+        act.GetProperty().SetColor(1.0,1.0,1.0)
+        self.contact_actors.append(act)
+        #print 'made contact polydata with ', len(self.molecule.contacts), ' lines'
+
+
 
 ####    def sel_show(self,atoms):
 
