@@ -45,7 +45,7 @@ class vtkTkRenderWidgetCCP1GUI(vtk.tk.vtkTkRenderWidget.vtkTkRenderWidget):
         self.near = None
         self.far = None
 
-        self.debug=1
+        self.debug=0
 
         # Override the default bindings with some of our own
         self.UpdateBindings()
@@ -120,7 +120,6 @@ class vtkTkRenderWidgetCCP1GUI(vtk.tk.vtkTkRenderWidget.vtkTkRenderWidget):
             windowY = self.winfo_height()
             picker.Pick(x,(windowY - y - 1),0.0,renderer)
 
-            deb("Pick returns: %s" % picker.GetPointId() )
             self.handlepick(but)
             
             assembly = picker.GetAssembly()
