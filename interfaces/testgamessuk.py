@@ -13,10 +13,11 @@ else:
 import unittest
 import gamessuk
 import objects.zmatrix
+import jobmanager
 
 exdir=gui_path+os.sep+'examples'+os.sep
 
-class GAMESSUKTestCase(unittest.TestCase):
+class GAMESSUKCalcTestCases(unittest.TestCase):
 
     def testOptx(self):
         """Cartesian heometry optimisation"""
@@ -25,42 +26,66 @@ class GAMESSUKTestCase(unittest.TestCase):
         m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
         calc.set_input('mol_obj',m)
         calc.set_parameter('task','optimise')
-
-        #
-        # hard work setting the basis set
-        #
-#         calc.basis_manager.set_molecule(m)
-#         calc.basis_manager.assign_default_basis('sto3g')
-#         calc.basis_manager.apply_default_assignment()
-#         print calc.basis_manager.basis_summary_by_atom()
-## we need to generate the output from the manager and store it
-## this would be done by the ReadWidgets 
-#         bas = calc.basis_manager.output()
-#         calc.set_parameter('basis',bas)
         calc.set_parameter('default_basis','sto3g')
-
         job = calc.makejob()
         #job.debug = 1
         job.run()
         job.tidy(0)
-        print calc.results
+        #print calc.results
         self.assertEqual(len(calc.results),4,"Failed to return Structure+2*List+File")
+        
+
+class GAMESSUKCalcEdTestCases(unittest.TestCase):
+    
+    """We just check we can fire up the calculation editor and run a calculation.
+       We don't check for results, just that there are no exceptions raised"""
+
+    def testOptx(self):
+        """Cartesian heometry optimisation"""
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+        calc = gamessuk.GAMESSUKCalc()
+        m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',gamessuk.MENU_OPT)
+        calc.set_parameter('default_basis','sto3g')
+        #job = calc.makejob()
+        #job.debug = 1
+
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = gamessuk.GAMESSUKCalcEd(tkroot,calc,None,job_editor=je)
+        vt.Run()
+
 
 def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
     gui testing framework."""
 
-    return  unittest.TestLoader().loadTestsFromTestCase(GAMESSUKTestCase)
+    suite = unittest.TestLoader().loadTestsFromTestCase(GAMESSUKCalcTestCases)
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(GAMESSUKCalcEdTestCases))
+    return suite
 
 if __name__ == "__main__":
 
-    if 1:
+    # Make sure we can find the exectuable
+    os.environ['GAMESS_EXE']='/home/jmht/Documents/GAMESS-UK.gnu/bin/gamess'
+
+    import Tkinter
+    tkroot = Tkinter.Tk()
+    tkroot.withdraw()
+
+    if 0:
         # Run all tests in this module automatically
         unittest.main()
     else:
         # Build a test suite with required cases and run it
         myTestSuite = unittest.TestSuite()
-        myTestSuite.addTest(GAMESSUKTestCase("testOptx"))
+        myTestSuite.addTest(GAMESSUKCalcTestCases("testOptx"))
+        myTestSuite.addTest(GAMESSUKCalcEdTestCases("testOptx"))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
 

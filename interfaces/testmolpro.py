@@ -13,9 +13,10 @@ else:
 import unittest
 import molpro
 import objects.zmatrix
+import Tkinter
+import jobmanager
 
-
-class MolproTestCase(unittest.TestCase):
+class MolproCalcTestCases(unittest.TestCase):
 
     def testHessian(self):
         calc = molpro.MOLPROCalc()
@@ -32,6 +33,23 @@ class MolproTestCase(unittest.TestCase):
         #print calc.results
         self.assertEqual(len(calc.results),3,"Failed to return Structure+Vibrations+MoldenFile")
 
+class MolproCalcEdTestCases(unittest.TestCase):
+
+    """We just check we can fire up the calculation editor and run a calculation.
+       We don't check for results, just that there are no exceptions raised"""    
+
+    def testScf(self):
+        root = Tkinter.Tk()
+        calc = molpro.MOLPROCalc()
+        infile=gui_path+os.sep+'examples'+os.sep+'water.zmt'
+        calc.set_input('mol_obj',objects.zmatrix.Zmatrix(file=infile))
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(root,jm)
+        vt = molpro.MOLPROCalcEd(root,calc,None,job_editor=je)
+        # invoke via calculation editor
+        vt.Run()
+        #root.mainloop()
+
 
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(MolproTestCase)
@@ -39,16 +57,17 @@ def suite():
 if __name__ == "__main__":
 
     # Make sure we can find the exectuable
-    molpro_dir='/c/ccg/share/software/molpro/molpro2006.1/bin'
+    molpro_dir='/c/ccg/share/software/molpro/molpro2008.2/bin'
     os.environ['PATH']=os.environ['PATH']+os.pathsep+molpro_dir
 
-    if 0:
+    if 1:
         # Run all tests in this module automatically
         unittest.main()
     else:
         # Build a test suite with required cases and run it
         myTestSuite = unittest.TestSuite()
-        myTestSuite.addTest(MolproTestCase("testHessian"))
+        #myTestSuite.addTest(MolproCalcTestCases("testHessian"))
+        myTestSuite.addTest(MolproCalcEdTestCases("testScf"))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
 

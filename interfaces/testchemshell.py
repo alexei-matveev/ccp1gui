@@ -14,10 +14,11 @@ import unittest
 import shutil
 import interfaces.chemshell
 import objects.zmatrix
+import jobmanager
 
 exdir=gui_path+os.sep+'examples'+os.sep
 
-class ChemShellTestCase(unittest.TestCase):
+class ChemShellCalcTestCase(unittest.TestCase):
     """ Batch tests of the ChemShell interface """
 
     def testMolproOptim(self):
@@ -78,6 +79,37 @@ class ChemShellTestCase(unittest.TestCase):
         check = os.access('3dgridfile', os.R_OK)
         self.assertEqual(check,1,"No 3dgridfile generated")
 
+
+class ChemShellCalcEdTestCases(unittest.TestCase):
+    
+    """We just check we can fire up the calculation editor and run a calculation.
+       We don't check for results, just that there are no exceptions raised"""
+
+    def testGAMESSUKOptim(self):
+        """GAMESSUK Optimisation"""
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+
+        calc = interfaces.chemshell.ChemShellCalc()        
+        f = exdir + os.sep + 'water.zmt'
+        m = objects.zmatrix.Zmatrix(file=f)
+        calc.set_input('mol_obj',m)
+        #for t in  m.bonds_and_angles():
+        #    print t
+        calc.set_parameter('task','optimise')
+        calc.set_qm_code('gamess')
+        calc.create_qm_calc()
+        calc.qmcalc.set_parameter('default_basis','sto3g')
+
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = interfaces.chemshell.ChemShellCalcEd(tkroot,calc,None,job_editor=je)
+        vt.Run()
+
+
 class ChemShellModeVis(unittest.TestCase):
     """ Batch tests of the ChemShell Mode visualiser (reader part  not the actual visualistion)"""
 
@@ -112,6 +144,7 @@ def testMe():
         suite = unittest.TestSuite()
         suite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
         suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
+        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTestCases))
         return suite
 
 if __name__ == "__main__":
@@ -129,14 +162,19 @@ if __name__ == "__main__":
     viewer.defaults.defaults.set_value('chemsh_script_dir', chemsh_script_dir)
     os.environ['PATH']=os.environ['PATH']+os.pathsep+rungamess_dir
 
+    import Tkinter
+    tkroot=Tkinter.Tk()
+    tkroot.withdraw()
+
     if 0:
         # Run all tests in this module automatically
         unittest.main()
     else:
         # Build a test suite with required cases and run it
         myTestSuite = unittest.TestSuite()
-        #myTestSuite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
-        #myTestSuite.addTest(ChemShellTestCase("testMolproOptim"))
+        myTestSuite.addTest(ChemShellCalcTestCase("testGAMESSUKOptim"))
+        #myTestSuite.addTest(ChemShellCalcTestCase("testMolproOptim"))
         myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
+        myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTestCases))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
