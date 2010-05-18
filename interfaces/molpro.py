@@ -20,40 +20,49 @@
 """Implements the MOLPRO specific calculation (Calc) and
 calculation editor (CalcEd) classes
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
-import os
 import string
-import sys
 
+# may need:
+# setenv LD_PRELOAD /usr/lib/libexpat.so
+# see  http://sourceforge.net/tracker/index.php?func=detail&aid=1075984&group_id=5470&atid=105470
+import xml.sax
+
+# Import our modules
+import objects.field
+import jobmanager
+import viewer.help
+import qm
+import calc
+import objects.file
+import qmtools
+import tools
+
+from viewer.paths import paths,find_exe
+from molproxmlcontenthandler import MolproXMLContentHandler
+
+
+# Import external modules
 import Tkinter
 import Pmw
 import tkFileDialog
-import viewer.help
 
-from qm import *
-from tools import *
-from qmtools import *
-from filepunch import *
-from jobmanager import *
-from viewer.paths import paths,find_exe
-from objects.file import *
-
-# may need
-# setenv LD_PRELOAD /usr/lib/libexpat.so
-# see  http://sourceforge.net/tracker/index.php?func=detail&aid=1075984&group_id=5470&atid=105470
-
-import xml.sax
-from molproxmlcontenthandler import MolproXMLContentHandler
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
 MENU_OPT   = "Geometry Optimisation"
 
-class MOLPROCalc(QMCalc):
+class MOLPROCalc(qm.QMCalc):
     """MOLPRO specifics."""
     def __init__(self, **kw):
 
-        apply(QMCalc.__init__,(self,),kw)
+        qm.QMCalc.__init__(self,**kw)
 
         self.debug=1
 
@@ -169,14 +178,14 @@ class MOLPROCalc(QMCalc):
         self.set_parameter('opt_rfo',0)
         self.set_parameter('opt_rfomode','on')
 
-        field = Field()
+        field = objects.field.Field()
         field.dim[0] = 11
         field.dim[1] = 11
         field.dim[2] = 11
         self.set_parameter('grid',field)
         self.field_sized=0
 
-        self.basis_manager = BasisManager()
+        self.basis_manager = qmtools.BasisManager()
         
         #Set up the keyword basis sets for MOLPRO
         m = self.basis_manager
@@ -426,13 +435,13 @@ class MOLPROCalc(QMCalc):
         job.clear_steps()
 
         # Now we have the jobs, add the steps to it
-        job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
-        job.add_step(DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
-        job.add_step(DELETE_FILE,'remove old Molden',remote_filename=job_name+'.molden',kill_on_error=0)
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old output',remote_filename=job_name+'.out',kill_on_error=0)
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old XML',remote_filename=job_name+'.xml',kill_on_error=0)
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old Molden',remote_filename=job_name+'.molden',kill_on_error=0)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename=job_name+'.in')
 
         # Block of code to tweak the job depending on how it is being run
-        if jobtype == LOCALHOST:
+        if jobtype == jobmanager.job.LOCALHOST:
 
             # First see if a default executable was found in the job
             molpro_exe=job.get_parameter('executable')
@@ -445,9 +454,9 @@ class MOLPROCalc(QMCalc):
                     msg='Cannot find an executable to run!\n'+\
                         'Please make sure an executable is in your path or use the\n'+\
                         'the job tab to set the path to the executable.'
-                    raise CalcError(msg)
+                    raise calc.CalcError(msg)
         else:
-            raise CalcError("Runing Molpro currently only supported for local resources!")
+            raise calc.CalcError("Runing Molpro currently only supported for local resources!")
         
         
         if self.debug: print 'Using MOLPRO path ' + molpro_exe
@@ -460,13 +469,13 @@ class MOLPROCalc(QMCalc):
         if sys.platform[:3] == 'win':
             stdout_file=job_name+'.out'
 
-        job.add_step(RUN_APP,
+        job.add_step(jobmanager.job.RUN_APP,
                      'run molpro',
                      local_command=molpro_exe,
                      local_command_args=local_command_args,
                      stdout_file=stdout_file)
         
-        job.add_step(COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=job_name+'.out')
         job.add_tidy(self.endjob)
         return job
 
@@ -504,7 +513,7 @@ class MOLPROCalc(QMCalc):
         print  'Parsed %s objects' % ( len(self.results) )
 
         # Add the molden file to the results for orbital viewing
-        o = File(job_name+'.molden',type=MOLDEN_WFN)
+        o = objects.file.File(job_name+'.molden',type=objects.file.MOLDEN_WFN)
         self.results.append(o)
 
         # Load the results into the gui
@@ -1033,7 +1042,7 @@ class MOLPROCalc(QMCalc):
                         file.write('%s=%s' % (tag,basis_keyword[0])) #  only 1 keyword
                     elif ass_type == 'TYPE.EXPL':
                         # NOT CODED YET FOR MOLPRO
-                        raise CalcError,"explict basis set input not coded yet"
+                        raise calc.CalcError("explict basis set input not coded yet")
                         b.list()
                         for shell in b.shells:
                             file.write('%s %s\n' % (shell.type, tag))
@@ -1083,10 +1092,10 @@ class MOLPROCalc(QMCalc):
 
 homolumoa = 0
 
-class MOLPROCalcEd(QMCalcEd):
+class MOLPROCalcEd(qm.QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        qm.QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         # Associate helpfile with widget
         viewer.help.sethelp(self,'MoleculeTab')
@@ -1159,11 +1168,11 @@ class MOLPROCalcEd(QMCalcEd):
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
         
-        self.submission_policies = [ LOCALHOST, "Globus","Nordugrid" ]
+        self.submission_policies = [ jobmanager.job.LOCALHOST, "Globus","Nordugrid" ]
 
 
         #Create the tools used in the Molecule tab - spin & charge created in QM.
-        self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
+        self.task_tool = tools.SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
         self.balloon.bind( self.task_tool.widget, 'Specify the type of calculation to run.' )
         
         #Used to specify task
@@ -1174,7 +1183,7 @@ class MOLPROCalcEd(QMCalcEd):
                                              command = self.__CheckSpin)
         self.balloon.bind( self.checkspin_widget, 'Check if the spin is consistent for the molecule' )
         
-        self.symmetry_tool = BooleanTool(self,'symmetry','Use Symmetry')
+        self.symmetry_tool = tools.BooleanTool(self,'symmetry','Use Symmetry')
         self.balloon.bind( self.symmetry_tool.widget, 'Turn on the use of symmetry during the calculation' )
 
         mol_obj = self.calc.get_input('mol_obj')
@@ -1183,53 +1192,53 @@ class MOLPROCalcEd(QMCalcEd):
 
         self.basis_manager = self.calc.basis_manager
         
-        self.basis_tool = BasisTool(self,'basis','ECP','default_basis',
+        self.basis_tool = qmtools.BasisTool(self,'basis','ECP','default_basis',
                                     molecule=mol_obj,basis_manager=self.basis_manager)
 
         #Create the tools used in the Theory tab
         #self.guess_tool = MolproGuessTool(self,self.__guesscommand)
-        self.guessoption_tool = SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
+        self.guessoption_tool = tools.SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
                                                  self.__guesstype)
         self.balloon.bind( self.guessoption_tool.widget, 'Determine how the initial vectors for the guess are computed' )
-        self.guessatoms_tool = SelectOptionTool(self,'guess_comp',None,self.compute_options)
-        self.guesssection1_tool = IntegerTool(self,'guess_sect1','Section a',0)
-        self.guesssection2_tool = IntegerTool(self,'guess_sect2','Section b',0)
-        self.guessgetqblock1_tool = IntegerTool(self,'getq_block1','File Block a',0)
-        self.guessgetqblock2_tool = IntegerTool(self,'getq_block2','File Block b',0)
-        self.guessgetqsection1_tool = IntegerTool(self,'getq_sect1','File Section a',0)
-        self.guessgetqsection2_tool = IntegerTool(self,'getq_sect2','File Section b',0)
+        self.guessatoms_tool = tools.SelectOptionTool(self,'guess_comp',None,self.compute_options)
+        self.guesssection1_tool = tools.IntegerTool(self,'guess_sect1','Section a',0)
+        self.guesssection2_tool = tools.IntegerTool(self,'guess_sect2','Section b',0)
+        self.guessgetqblock1_tool = tools.IntegerTool(self,'getq_block1','File Block a',0)
+        self.guessgetqblock2_tool = tools.IntegerTool(self,'getq_block2','File Block b',0)
+        self.guessgetqsection1_tool = tools.IntegerTool(self,'getq_sect1','File Section a',0)
+        self.guessgetqsection2_tool = tools.IntegerTool(self,'getq_sect2','File Section b',0)
         
-        self.scfmethod_tool = SelectOptionTool(self,'scf_method',
+        self.scfmethod_tool = tools.SelectOptionTool(self,'scf_method',
                                                'SCF Method',
                                                self.scf_methods[self.tasktoolvalue],
                                                self.__scfmethod)
-        self.scfmaxcycles_tool = IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
+        self.scfmaxcycles_tool = tools.IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
         self.balloon.bind( self.scfmaxcycles_tool.widget, 'Maximum permitted number of SCF cycles' )
-        self.scfthreshold_tool = IntegerTool(self,'scf_threshold','Threshold',3)
+        self.scfthreshold_tool = tools.IntegerTool(self,'scf_threshold','Threshold',3)
         self.balloon.bind( self.scfthreshold_tool.widget, 'Consider the SCF converged when Energy change is less than 10x(-n) this number' )
 
-        self.scfbypass_tool = BooleanTool(self,'scf_bypass', 'Bypass SCF')
+        self.scfbypass_tool = tools.BooleanTool(self,'scf_bypass', 'Bypass SCF')
         self.balloon.bind( self.scfbypass_tool.widget, 'Eschew SCF calculation. Read integrals and vectors from dumpfile instead' )
 
-        self.scflevelinit_tool = FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
-        self.scflevelit_tool = IntegerTool(self,'scf_level_it','Cycle to change on',1)
-        self.scflevelfinal_tool = FloatTool(self,'scf_level_final','Final Levelshifter Value',0.0)
+        self.scflevelinit_tool = tools.FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
+        self.scflevelit_tool = tools.IntegerTool(self,'scf_level_it','Cycle to change on',1)
+        self.scflevelfinal_tool = tools.FloatTool(self,'scf_level_final','Final Levelshifter Value',0.0)
         
 
-        self.postscfmethod_tool = SelectOptionTool(self,'postscf_method',
+        self.postscfmethod_tool = tools.SelectOptionTool(self,'postscf_method',
                                                    'Method',
                                                    self.postscf_methods[self.tasktoolvalue])
 
 
         #Create the tools for the DFT tab
-        self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
-        self.dftaccuracy_tool = SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
+        self.dftfunctional_tool = tools.SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
+        self.dftaccuracy_tool = tools.SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
         self.balloon.bind( self.dftaccuracy_tool.widget, 'Specify a quadrature grid designed to achieve a particular accuracy' )
-        self.dftweightscheme_tool = SelectOptionTool(self,'dft_weights',
+        self.dftweightscheme_tool = tools.SelectOptionTool(self,'dft_weights',
                                                      'DFT weighting scheme',
                                                      self.dft_weights)
 
-        self.dftradial_tool = MenuCounterTool(self,
+        self.dftradial_tool = tools.MenuCounterTool(self,
                                               'dft_radialgrid',
                                              'Radial Grid',
                                              self.dft_radialgrids,
@@ -1239,7 +1248,7 @@ class MOLPROCalcEd(QMCalcEd):
                                              )
         self.radialgrid = self.dftradial_tool.firstmenu.getvalue()
         
-        self.dftangular_tool = MenuCounterMenuTool(self,
+        self.dftangular_tool = tools.MenuCounterMenuTool(self,
                                                    'dft_angulargrid',
                                                    'Angular Grid',
                                                    self.dft_angulargrids,
@@ -1252,58 +1261,58 @@ class MOLPROCalcEd(QMCalcEd):
                                                    )
         self.angulargrid = self.dftangular_tool.firstmenu.getvalue()
 
-        self.dftjfit_tool = BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
+        self.dftjfit_tool = tools.BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
         self.balloon.bind( self.dftjfit_tool.widget, 'Evaluate the Coulomb energy with an auxilary basis set' )
-        self.dftjbas_tool = SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
+        self.dftjbas_tool = tools.SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
         self.balloon.bind( self.dftjbas_tool.widget, 'Select the auxilary fitting basis' )
-        self.dftschwarz_tool = IntegerTool(self,'dft_schwarz','Schwarz cutoff')
+        self.dftschwarz_tool = tools.IntegerTool(self,'dft_schwarz','Schwarz cutoff')
         self.balloon.bind( self.dftschwarz_tool.widget, 'Reduce the number of 3e integrals by setting Schwarz tolerance to 10x-(n)' )
 
         #Create the tools used in the Properties tab
-        self.homolumo_tool = BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
-        self.homolumo1_tool = BooleanTool(self, 'ana_homolumo1', 'HOMO1/LUMO1')
-        self.homolumo2_tool = BooleanTool(self, 'ana_homolumo2', 'HOMO2/LUMO2')
-        self.homolumo3_tool = BooleanTool(self, 'ana_homolumo2', 'HOMO3/LUMO3')
-        self.homolumo4_tool = BooleanTool(self, 'ana_homolumo4', 'HOMO4/LUMO4') 
-        self.homolumo5_tool = BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
+        self.homolumo_tool = tools.BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
+        self.homolumo1_tool = tools.BooleanTool(self, 'ana_homolumo1', 'HOMO1/LUMO1')
+        self.homolumo2_tool = tools.BooleanTool(self, 'ana_homolumo2', 'HOMO2/LUMO2')
+        self.homolumo3_tool = tools.BooleanTool(self, 'ana_homolumo2', 'HOMO3/LUMO3')
+        self.homolumo4_tool = tools.BooleanTool(self, 'ana_homolumo4', 'HOMO4/LUMO4') 
+        self.homolumo5_tool = tools.BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
        
-        self.chargeden_tool = BooleanTool(self, 'ana_chargeden', 'Charge Density')
+        self.chargeden_tool = tools.BooleanTool(self, 'ana_chargeden', 'Charge Density')
         self.balloon.bind ( self.chargeden_tool.widget, 'Calculate the charge density and import the results back for display' )
-        self.diffden_tool = BooleanTool(self, 'ana_diffden', 'Difference Density')
-        self.potential_tool = BooleanTool(self, 'ana_potential', 'Potential')
+        self.diffden_tool = tools.BooleanTool(self, 'ana_diffden', 'Difference Density')
+        self.potential_tool = tools.BooleanTool(self, 'ana_potential', 'Potential')
         self.balloon.bind ( self.potential_tool.widget, 'Calculate the electrostatic potential and import the results back for display' )                
-        self.chargedengrad_tool = BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
-        self.spinden_tool = BooleanTool(self, 'ana_spinden', 'Spin Density')
-        self.frequencies_tool = BooleanTool(self, 'ana_frequencies', 'Finite Difference')
+        self.chargedengrad_tool = tools.BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
+        self.spinden_tool = tools.BooleanTool(self, 'ana_spinden', 'Spin Density')
+        self.frequencies_tool = tools.BooleanTool(self, 'ana_frequencies', 'Finite Difference')
         self.balloon.bind( self.frequencies_tool.widget, 'Calculate force constants numerically' )
-        self.hessian_tool = BooleanTool(self, 'ana_hessian', "Analytic")
+        self.hessian_tool = tools.BooleanTool(self, 'ana_hessian', "Analytic")
         self.balloon.bind( self.hessian_tool.widget, 'Calculate the force constants analytically' )
 
         #Create the tools used in the Optimisation tab
-        self.optcoords_tool = SelectOptionTool(self,'optimiser', 'Opt. Coords',
+        self.optcoords_tool = tools.SelectOptionTool(self,'optimiser', 'Opt. Coords',
                                                self.optcoord_opts, self.__selectcoords)
-        self.find_ts_tool = BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
- #       self.optmethod_tool = SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
+        self.find_ts_tool = tools.BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
+ #       self.optmethod_tool = tools.SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
 
-        self.optmaxcyc1_tool = IntegerTool(self,'max_opt_step','Energy evaluations',0)
-        self.optmaxcyc2_tool = IntegerTool(self,'max_opt_line','Line searches',0)
-        self.optxtol_tool = FloatTool(self,'opt_conv_thsld','Convergence Thresh.',0.0)        
-        self.optstepmax_tool = FloatTool(self,'max_opt_step_len','Max. Step size',0.0)        
-        self.optvalue_tool = FloatTool(self,'opt_value','Turning Point Accuracy',0.0)
+        self.optmaxcyc1_tool = tools.IntegerTool(self,'max_opt_step','Energy evaluations',0)
+        self.optmaxcyc2_tool = tools.IntegerTool(self,'max_opt_line','Line searches',0)
+        self.optxtol_tool = tools.FloatTool(self,'opt_conv_thsld','Convergence Thresh.',0.0)        
+        self.optstepmax_tool = tools.FloatTool(self,'max_opt_step_len','Max. Step size',0.0)        
+        self.optvalue_tool = tools.FloatTool(self,'opt_value','Turning Point Accuracy',0.0)
 
-        self.optjorg_tool = BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
+        self.optjorg_tool = tools.BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
                                         self.__optjorgensen)
-        self.optpowell_tool = BooleanTool(self,'opt_powell','Use Powell Hessian update')
-        self.optbfgs_tool = SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
+        self.optpowell_tool = tools.BooleanTool(self,'opt_powell','Use Powell Hessian update')
+        self.optbfgs_tool = tools.SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
                                              self.optbfgs_opts)
-        self.optminhess_tool = FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
-        self.optmaxhess_tool = FloatTool(self,'opt_max_hess','Max. Hessian Eigenvalue')
-        self.optrfo_tool = MenuAndBooleanTool(self,'opt_rfo','opt_rfomode',
+        self.optminhess_tool = tools.FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
+        self.optmaxhess_tool = tools.FloatTool(self,'opt_max_hess','Max. Hessian Eigenvalue')
+        self.optrfo_tool = tools.MenuAndBooleanTool(self,'opt_rfo','opt_rfomode',
                                               'Use Rational Function Optimisation',
                                               'RFO Mode',self.optrfo_opts)
 
         #Create the tools used for the Job tab
-        self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
+        self.jobname_tool = tools.TextFieldTool(self,'job_name','Job Name')
         self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' )
         # See LayoutTK for the job submission tools
         self.LayoutToolsTk()
@@ -1746,7 +1755,7 @@ class MOLPROCalcEd(QMCalcEd):
         self.homolumo4_tool.widget.pack(in_=page.mogroup.interior())
         self.homolumo5_tool.widget.pack(in_=page.mogroup.interior())
 
-        f = Frame(page.grgroup.interior())
+        f = Tkinter.Frame(page.grgroup.interior())
         f.pack(expand='yes',fill='x',side='left')
         page.group2 = Pmw.Group(f,tag_text="Density and Potential")
         page.group2.pack(expand='yes',fill='x',side='top')
@@ -1836,7 +1845,7 @@ class MOLPROCalcEd(QMCalcEd):
         # Job submission
         self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
         self.submission_frame.pack()
-        self.submission_tool = SelectOptionTool(self,
+        self.submission_tool = tools.SelectOptionTool(self,
                                                 'submission',
                                                 'Job Submission',
                                                 self.submission_policies,

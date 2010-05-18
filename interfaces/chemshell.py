@@ -25,6 +25,7 @@ import sys
 import os
 import time
 import string
+import math
 import tkFileDialog
 
 
@@ -174,9 +175,9 @@ class ChemShellCalc(Calc):
         #
         job = jobmanager.job.LocalJob()
         job.name = job_name
-        job.add_step(DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
-        job.add_step(DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename=job_name+'.chm')
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old output',remote_filename=job_name+'.log',kill_on_error=0)
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old punch',remote_filename=job_name+'.pun',kill_on_error=0)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename=job_name+'.chm')
 
         ed = self.get_editor()
         # connect up the monitor to load structure back
@@ -211,7 +212,7 @@ class ChemShellCalc(Calc):
 #                chemshell_exe='"C:/chemsh/bin/chemshprog.exe"'
                 chemshell_exe='"E:/chemsh/bin/chemshprog.exe"'                
                 print 'Using ChemShell path ' + chemshell_exe
-                job.add_step(RUN_APP,'run ChemShell',
+                job.add_step(jobmanager.job.RUN_APP,'run ChemShell',
                              local_command=chemshell_exe,
                              stdin_file=self.infile,
                              stdout_file=self.outfile)
@@ -222,7 +223,7 @@ class ChemShellCalc(Calc):
                 # when started without a parent bash shell it seems not too
                 # have not established why yet)
                 #
-                job.add_step(RUN_APP,'run ChemShell',
+                job.add_step(jobmanager.job.RUN_APP,'run ChemShell',
                              use_bash=1,
                              local_command='chemsh',
                              local_command_args=[self.infile],
@@ -240,13 +241,13 @@ class ChemShellCalc(Calc):
             t = os.environ['PATH']
             #print t
 
-            job.add_step(RUN_APP,'run ChemShell',
+            job.add_step(jobmanager.job.RUN_APP,'run ChemShell',
                          local_command='chemsh',
                          local_command_args=[self.infile],
                          stdout_file=self.outfile)
 
-        job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
-        job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
         job.add_tidy(self.endjob)
         return job
 

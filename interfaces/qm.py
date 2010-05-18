@@ -23,20 +23,21 @@
 #
 ########################################################################
 
-from calc    import *
-from calced  import *
+import calc
+import calced
+import tools
 
-class QMCalc(Calc):
+class QMCalc(calc.Calc):
     """Quantum chemistry specifics."""
     def __init__(self,**kw):
-        apply(Calc.__init__,(self,),kw)
+        calc.Calc.__init__(self,**kw)
 
-class QMCalcEd(CalcEd):
+class QMCalcEd(calced.CalcEd):
 
     def __init__(self,root,calc,graph,**kw):
         """Initialise a QM calculation editor. First initialise the base 
            class and then do our own stuff."""
-        apply(CalcEd.__init__, (self,root,calc,graph), kw)
+        calced.CalcEd.__init__(self,root,calc,graph,**kw)
         
         self.CreateEditMenu(self.menu)
         self.CreateViewMenu(self.menu)
@@ -45,8 +46,8 @@ class QMCalcEd(CalcEd):
         self.basissets = []
 
         # Create some default tools
-        self.charge_tool = IntegerTool(self,'charge','Charge')
-        self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
+        self.charge_tool = tools.IntegerTool(self,'charge','Charge')
+        self.spin_tool = tools.IntegerTool(self,'spin','Spin Multiplity',mini=0)
         
     def __CreateStatusFrame(self,parent):
         """Create a small frame to present status unformation """
@@ -61,7 +62,7 @@ class QMCalcEd(CalcEd):
     def Reload(self,**kw):
         """Reload the structure, same as base class except basis
         manager is updated"""
-        apply(CalcEd.Reload, (self,), kw)        
+        calced.CalcEd.Reload(self,**kw)        
         try:
             self.basis_manager.new_molecule()
             self.basis_tool.UpdateWidget()

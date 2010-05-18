@@ -81,7 +81,7 @@ of any program using or generating them. The parameters however will be
         self.debug_slave = 0
 
         user = getpass.getuser()
-        self.LOCALHOST = socket.gethostname()
+        self.LOCALHOST = jobmanager.job.LOCALHOST
 
 ##         self.jobopt    = { "hostname"  : "localhost",
 ##                            "directory" : ".",
@@ -689,4 +689,8 @@ class CalcError(RuntimeError):
        
     def __str__(self):
         return self.msg
+
+class EditError(RuntimeError):
+    def __init__(self,args=None):
+        self.args = args
 

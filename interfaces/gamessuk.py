@@ -34,28 +34,32 @@ import Tkinter
 import Pmw
 import tkFileDialog
 
-from jobmanager import *
-from interfaces.qm import *
-from interfaces.tools import *
-from interfaces.qmtools import *
+import re
+import jobmanager
+import interfaces.qm
+import interfaces.tools
+import interfaces.qmtools
+import interfaces.calc
+import objects.file
+import objects.list
+import viewer.help
+import basis.basismanager
+
 from interfaces.gamessukio import GUKOutputIO
 from interfaces.filepunch import PunchIO
-from objects.file import *
-from objects.list import *
 from viewer.defaults import defaults
 from viewer.paths import find_exe
-import viewer.help
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
 MENU_OPT   = "Geometry Optimisation"
 
 
-class GAMESSUKCalc(QMCalc):
+class GAMESSUKCalc(interfaces.qm.QMCalc):
     """GAMESS-UK specifics."""
     def __init__(self, **kw):
 
-        QMCalc.__init__(self,**kw)
+        interfaces.qm.QMCalc.__init__(self,**kw)
         
         self.debug = 1
         self.set_parameter("task",MENU_ENER)
@@ -178,14 +182,14 @@ class GAMESSUKCalc(QMCalc):
         self.set_parameter('opt_rfomode','on')
         
         # Default parameters for the grid
-        field = Field()
+        field = objects.field.Field()
         field.dim[0] = 21
         field.dim[1] = 21
         field.dim[2] = 21
         self.set_parameter('grid',field)
         self.field_sized=0
 
-        self.basis_manager = BasisManager()
+        self.basis_manager = basis.basismanager.BasisManager()
 
         self.rungamess = None
         
@@ -429,6 +433,7 @@ or use the existing file (No)?" % inputfile )
                         self.WriteInput(filename=inputfile)
                     except Exception,e:
                         ed.Error("Error writing input file!\n%s" % e)
+                        print e
                         return None
                 else:
                     # Using old input file so just pass
@@ -438,6 +443,7 @@ or use the existing file (No)?" % inputfile )
                     self.WriteInput(filename=inputfile)
                 except Exception,e:
                     ed.Error("Error writing input file!\n%s" % e)
+                    print e
                     return None
         else:
             if not os.access( inputfile, os.R_OK):
@@ -465,7 +471,7 @@ or use the existing file (No)?" % inputfile )
         local_command_args = None
 
         # Block of code to tweak the job depending on how it is being run
-        if jobtype == LOCALHOST:
+        if jobtype == jobmanager.job.LOCALHOST:
             
             # stdin_file & remote_stdin must be the same or it gets deleted
             remote_stdin  = stdin_file
@@ -487,7 +493,7 @@ or use the existing file (No)?" % inputfile )
                           "Alternatively, set the environment variable GAMESS_EXE to point to\n"+\
                           "the binary, or put the gamess binary in your path."
                 #ed.Error(msg)
-                raise CalcError,msg
+                raise interfaces.calc.CalcError(msg)
             
             # See if we are keeping any files and set environment variables / get the rungamess string
             if self.rungamess:
@@ -524,28 +530,28 @@ or use the existing file (No)?" % inputfile )
             #stdin_file = None
 
         job.clear_steps()
-        job.add_step( DELETE_FILE,
+        job.add_step( jobmanager.job.DELETE_FILE,
                       'remove old output',
                       remote_filename=stdout_file,
                       kill_on_error=0)
-        job.add_step( DELETE_FILE,
+        job.add_step( jobmanager.job.DELETE_FILE,
                       'remove old punch',
                       remote_filename=remote_punch,
                       kill_on_error=0)
-        job.add_step( COPY_OUT_FILE,
+        job.add_step( jobmanager.job.COPY_OUT_FILE,
                       'transfer input',
                       local_filename=stdin_file,
                       remote_filename=remote_stdin)
-        job.add_step( RUN_APP,
+        job.add_step( jobmanager.job.RUN_APP,
                       job_desc,
                       stdin_file = stdin_file,
                       stdout_file = stdout_file,
                       stderr_file=stderr_file,
                       local_command = local_command,
                       local_command_args = local_command_args)
-        job.add_step(COPY_BACK_FILE,'recover stderr',local_filename=stderr_file,remote_filename=stderr_file)
-        job.add_step(COPY_BACK_FILE,'recover log',remote_filename=stdout_file)
-        job.add_step(COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover stderr',local_filename=stderr_file,remote_filename=stderr_file)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=stdout_file)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover punch',local_filename=local_punch,remote_filename=remote_punch)
         job.add_tidy(self.endjob)
 
         return job
@@ -560,7 +566,7 @@ or use the existing file (No)?" % inputfile )
         
         # Always set the working directory to the current directory and see if we can find
         # an excutable
-        if job.jobtype == LOCALHOST:
+        if job.jobtype == jobmanager.job.LOCALHOST:
             if not job.get_parameter( 'local_directory' ):
                 job.set_parameter( 'local_directory', self.get_parameter('directory') )
             if not job.get_parameter( 'executable' ):
@@ -609,18 +615,18 @@ or use the existing file (No)?" % inputfile )
         fil = directory+os.sep+job_name+'.pun'
         code = self._ReadPunch(fil)
         if code != 0:
-            raise JobError, "Could not process punch file "+fil
+            raise jobmanager.job.JobError("Could not process punch file "+fil)
 
         # Include a reference to the output file itself, for use by Molden
         # relative path should work here (better on windows, molden doesnt
         # tolerate embedded spaces)
-        o = File(job_name+'.out',type=GAMESSUK_OUTPUT)
+        o = objects.file.File(job_name+'.out',type=objects.file.GAMESSUK_OUTPUT)
         self.results.append(o)
 
         # Load the results up - will present a dialog
         code = self.store_results_to_gui()
         if code:
-            raise JobError, "No molecular structure in Punchfile - check output"
+            raise jobmanager.job.JobError("No molecular structure in Punchfile - check output")
 
     def get_executable_from_job(self,job):
         """
@@ -1859,10 +1865,10 @@ or use the existing file (No)?" % inputfile )
 
 homolumoa = 0
 
-class GAMESSUKCalcEd(QMCalcEd):
+class GAMESSUKCalcEd(interfaces.qm.QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        QMCalcEd.__init__(self,root,calc,graph,**kw)
+        interfaces.qm.QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         # Associate helpfile with widget
         viewer.help.sethelp(self,'MoleculeTab')
@@ -1947,10 +1953,10 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.optbfgs_opts = ["default","BFGS","BFGSX"]
         self.optrfo_opts = ["on","off"]
         #self.submission_policies = [ LOCALHOST, "SSH", "Loadleveler", "RMCS", "Nordugrid", "Globus"]
-        self.submission_policies = [ LOCALHOST, "SSH", "RMCS", "Nordugrid", "Globus"]
+        self.submission_policies = [ jobmanager.job.LOCALHOST, "SSH", "RMCS", "Nordugrid", "Globus"]
         
         #Create the tools used in the Molecule tab - spin & charge created in QM.
-        self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
+        self.task_tool = interfaces.tools.SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
         self.balloon.bind( self.task_tool.widget, 'Specify the type of calculation to run.' )
         
         #Used to specify task
@@ -1961,7 +1967,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                                              command = self.__CheckSpin)
         self.balloon.bind( self.checkspin_widget, 'Check if the spin is consistent for the molecule' )
         
-        self.symmetry_tool = BooleanTool(self,'symmetry','Use Symmetry')
+        self.symmetry_tool = interfaces.tools.BooleanTool(self,'symmetry','Use Symmetry')
         self.balloon.bind( self.symmetry_tool.widget, 'Turn on the use of symmetry during the calculation' )
 
         mol_obj = self.calc.get_input('mol_obj')
@@ -1970,52 +1976,52 @@ class GAMESSUKCalcEd(QMCalcEd):
 
         self.basis_manager = self.calc.basis_manager
         
-        self.basis_tool = BasisTool(self,'basis','ECP','default_basis',
+        self.basis_tool = interfaces.qmtools.BasisTool(self,'basis','ECP','default_basis',
                                     molecule=mol_obj,basis_manager=self.basis_manager)
 
         #Create the tools used in the Theory tab
         #self.guess_tool = GamessGuessTool(self,self.__guesscommand)
-        self.guessoption_tool = SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
+        self.guessoption_tool = interfaces.tools.SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
                                                  self.__guesstype)
         self.balloon.bind( self.guessoption_tool.widget, 'Determine how the initial vectors for the guess are computed' )
-        self.guessatoms_tool = SelectOptionTool(self,'guess_comp',None,self.compute_options)
-        self.guesssection1_tool = IntegerTool(self,'guess_sect1','Section a',0)
-        self.guesssection2_tool = IntegerTool(self,'guess_sect2','Section b',0)
-        self.guessgetqblock1_tool = IntegerTool(self,'getq_block1','File Block a',0)
-        self.guessgetqblock2_tool = IntegerTool(self,'getq_block2','File Block b',0)
-        self.guessgetqsection1_tool = IntegerTool(self,'getq_sect1','File Section a',0)
-        self.guessgetqsection2_tool = IntegerTool(self,'getq_sect2','File Section b',0)
+        self.guessatoms_tool = interfaces.tools.SelectOptionTool(self,'guess_comp',None,self.compute_options)
+        self.guesssection1_tool = interfaces.tools.IntegerTool(self,'guess_sect1','Section a',0)
+        self.guesssection2_tool = interfaces.tools.IntegerTool(self,'guess_sect2','Section b',0)
+        self.guessgetqblock1_tool = interfaces.tools.IntegerTool(self,'getq_block1','File Block a',0)
+        self.guessgetqblock2_tool = interfaces.tools.IntegerTool(self,'getq_block2','File Block b',0)
+        self.guessgetqsection1_tool = interfaces.tools.IntegerTool(self,'getq_sect1','File Section a',0)
+        self.guessgetqsection2_tool = interfaces.tools.IntegerTool(self,'getq_sect2','File Section b',0)
 
-        self.scfmethod_tool = SelectOptionTool(self,'scf_method',
+        self.scfmethod_tool = interfaces.tools.SelectOptionTool(self,'scf_method',
                                                'SCF Method',
                                                self.scf_methods[self.tasktoolvalue],
                                                self.__scfmethod)
-        self.scfmaxcycles_tool = IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
+        self.scfmaxcycles_tool = interfaces.tools.IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
         self.balloon.bind( self.scfmaxcycles_tool.widget, 'Maximum permitted number of SCF cycles' )
-        self.scfthreshold_tool = IntegerTool(self,'scf_threshold','Threshold',3)
+        self.scfthreshold_tool = interfaces.tools.IntegerTool(self,'scf_threshold','Threshold',3)
         self.balloon.bind( self.scfthreshold_tool.widget, 'Consider the SCF converged when Energy change is less than 10x(-n) this number' )
 
-        self.scfbypass_tool = BooleanTool(self,'scf_bypass', 'Bypass SCF')
+        self.scfbypass_tool = interfaces.tools.BooleanTool(self,'scf_bypass', 'Bypass SCF')
         self.balloon.bind( self.scfbypass_tool.widget, 'Eschew SCF calculation. Read integrals and vectors from dumpfile instead' )
 
-        self.scflevelinit_tool = FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
-        self.scflevelit_tool = IntegerTool(self,'scf_level_it','Cycle to change on',1)
-        self.scflevelfinal_tool = FloatTool(self,'scf_level_final','Final Levelshifter Value',0.0)
+        self.scflevelinit_tool = interfaces.tools.FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
+        self.scflevelit_tool = interfaces.tools.IntegerTool(self,'scf_level_it','Cycle to change on',1)
+        self.scflevelfinal_tool = interfaces.tools.FloatTool(self,'scf_level_final','Final Levelshifter Value',0.0)
         
 
-        self.postscfmethod_tool = SelectOptionTool(self,'postscf_method',
+        self.postscfmethod_tool = interfaces.tools.SelectOptionTool(self,'postscf_method',
                                                    'Method',
                                                    self.postscf_methods[self.tasktoolvalue])
 
         #Create the tools for the DFT tab
-        self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
-        self.dftaccuracy_tool = SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
+        self.dftfunctional_tool = interfaces.tools.SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
+        self.dftaccuracy_tool = interfaces.tools.SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
         self.balloon.bind( self.dftaccuracy_tool.widget, 'Specify a quadrature grid designed to achieve a particular accuracy' )
-        self.dftweightscheme_tool = SelectOptionTool(self,'dft_weights',
+        self.dftweightscheme_tool = interfaces.tools.SelectOptionTool(self,'dft_weights',
                                                      'DFT weighting scheme',
                                                      self.dft_weights)
 
-        self.dftradial_tool = MenuCounterTool(self,
+        self.dftradial_tool = interfaces.tools.MenuCounterTool(self,
                                               'dft_radialgrid',
                                              'Radial Grid',
                                              self.dft_radialgrids,
@@ -2025,7 +2031,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                                               )
         self.radialgrid = self.dftradial_tool.firstmenu.getvalue()
         
-        self.dftangular_tool = MenuCounterMenuTool(self,
+        self.dftangular_tool = interfaces.tools.MenuCounterMenuTool(self,
                                                    'dft_angulargrid',
                                                    'Angular Grid',
                                                    self.dft_angulargrids,
@@ -2038,105 +2044,105 @@ class GAMESSUKCalcEd(QMCalcEd):
                                                    )
         self.angulargrid = self.dftangular_tool.firstmenu.getvalue()
 
-        self.dftjfit_tool = BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
+        self.dftjfit_tool = interfaces.tools.BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
         self.balloon.bind( self.dftjfit_tool.widget, 'Evaluate the Coulomb energy with an auxilary basis set' )
-        self.dftjbas_tool = SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
+        self.dftjbas_tool = interfaces.tools.SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
         self.balloon.bind( self.dftjbas_tool.widget, 'Select the auxilary fitting basis' )
-        self.dftschwarz_tool = IntegerTool(self,'dft_schwarz','Schwarz cutoff')
+        self.dftschwarz_tool = interfaces.tools.IntegerTool(self,'dft_schwarz','Schwarz cutoff')
         self.balloon.bind( self.dftschwarz_tool.widget, 'Reduce the number of 3e integrals by setting Schwarz tolerance to 10x-(n)' )
 
         #Create the tools used in the Properties tab
-        self.homolumo_tool = BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
-        self.homolumo1_tool = BooleanTool(self, 'ana_homolumo1', 'HOMO1/LUMO1')
-        self.homolumo2_tool = BooleanTool(self, 'ana_homolumo2', 'HOMO2/LUMO2')
-        self.homolumo3_tool = BooleanTool(self, 'ana_homolumo3', 'HOMO3/LUMO3')
-        self.homolumo4_tool = BooleanTool(self, 'ana_homolumo4', 'HOMO4/LUMO4') 
-        self.homolumo5_tool = BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
+        self.homolumo_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
+        self.homolumo1_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo1', 'HOMO1/LUMO1')
+        self.homolumo2_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo2', 'HOMO2/LUMO2')
+        self.homolumo3_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo3', 'HOMO3/LUMO3')
+        self.homolumo4_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo4', 'HOMO4/LUMO4') 
+        self.homolumo5_tool = interfaces.tools.BooleanTool(self, 'ana_homolumo5', 'HOMO5/LUMO5')
        
-        self.chargeden_tool = BooleanTool(self, 'ana_chargeden', 'Charge Density')
+        self.chargeden_tool = interfaces.tools.BooleanTool(self, 'ana_chargeden', 'Charge Density')
         self.balloon.bind ( self.chargeden_tool.widget, 'Calculate the charge density and import the results back for display' )
-        self.diffden_tool = BooleanTool(self, 'ana_diffden', 'Difference Density')
-        self.pdc_tool = BooleanTool(self, 'ana_pdc', 'Potential Derived Charges',self.__pdc)
+        self.diffden_tool = interfaces.tools.BooleanTool(self, 'ana_diffden', 'Difference Density')
+        self.pdc_tool = interfaces.tools.BooleanTool(self, 'ana_pdc', 'Potential Derived Charges',self.__pdc)
 
-        self.pdc_surf_dens_1_tool = FloatTool(self,'surf_dens_1','First Density isovalue',0.0)
-        self.pdc_surf_dens_2_tool = FloatTool(self,'surf_dens_2','Second Density isovalue',0.0)
-        self.pdc_charge_constraint_tool = FloatTool(self,'pdc_charge_constraint','Total Charge Constraint')
+        self.pdc_surf_dens_1_tool = interfaces.tools.FloatTool(self,'surf_dens_1','First Density isovalue',0.0)
+        self.pdc_surf_dens_2_tool = interfaces.tools.FloatTool(self,'surf_dens_2','Second Density isovalue',0.0)
+        self.pdc_charge_constraint_tool = interfaces.tools.FloatTool(self,'pdc_charge_constraint','Total Charge Constraint')
 
-        self.potential_tool = BooleanTool(self, 'ana_potential', 'Potential')
+        self.potential_tool = interfaces.tools.BooleanTool(self, 'ana_potential', 'Potential')
         self.balloon.bind ( self.potential_tool.widget, 'Calculate the electrostatic potential and import the results back for display' )                
-        self.chargedengrad_tool = BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
-        self.spinden_tool = BooleanTool(self, 'ana_spinden', 'Spin Density')
-        self.frequencies_tool = BooleanTool(self, 'ana_frequencies', 'Finite Difference')
+        self.chargedengrad_tool = interfaces.tools.BooleanTool(self, 'ana_chargedengrad', 'Gradient Density')
+        self.spinden_tool = interfaces.tools.BooleanTool(self, 'ana_spinden', 'Spin Density')
+        self.frequencies_tool = interfaces.tools.BooleanTool(self, 'ana_frequencies', 'Finite Difference')
         self.balloon.bind( self.frequencies_tool.widget, 'Calculate force constants numerically' )
-        self.hessian_tool = BooleanTool(self, 'ana_hessian', "Analytic")
+        self.hessian_tool = interfaces.tools.BooleanTool(self, 'ana_hessian', "Analytic")
         self.balloon.bind( self.hessian_tool.widget, 'Calculate the force constants analytically' )
 
         #Create the tools used in the Optimisation tab
-        self.optcoords_tool = SelectOptionTool(self,'optimiser', 'Opt. Coords',
+        self.optcoords_tool = interfaces.tools.SelectOptionTool(self,'optimiser', 'Opt. Coords',
                                                self.optcoord_opts, self.__selectcoords)
-        self.find_ts_tool = BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
- #       self.optmethod_tool = SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
+        self.find_ts_tool = interfaces.tools.BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
+ #       self.optmethod_tool = interfaces.tools.SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
 
-        self.optmaxcyc1_tool = IntegerTool(self,'max_opt_step','Energy evaluations',0)
-        self.optmaxcyc2_tool = IntegerTool(self,'max_opt_line','Line searches',0)
-        self.optxtol_tool = FloatTool(self,'opt_conv_thsld','Convergence Thresh.',0.0)        
-        self.optstepmax_tool = FloatTool(self,'max_opt_step_len','Max. Step size',0.0)        
-        self.optvalue_tool = FloatTool(self,'opt_value','Turning Point Accuracy',0.0)
+        self.optmaxcyc1_tool = interfaces.tools.IntegerTool(self,'max_opt_step','Energy evaluations',0)
+        self.optmaxcyc2_tool = interfaces.tools.IntegerTool(self,'max_opt_line','Line searches',0)
+        self.optxtol_tool = interfaces.tools.FloatTool(self,'opt_conv_thsld','Convergence Thresh.',0.0)        
+        self.optstepmax_tool = interfaces.tools.FloatTool(self,'max_opt_step_len','Max. Step size',0.0)        
+        self.optvalue_tool = interfaces.tools.FloatTool(self,'opt_value','Turning Point Accuracy',0.0)
 
-        self.optjorg_tool = BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
+        self.optjorg_tool = interfaces.tools.BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
                                         self.__optjorgensen)
-        self.optpowell_tool = BooleanTool(self,'opt_powell','Use Powell Hessian update')
-        self.hessian_option_tool = BooleanTool(self,'pre_ts_hess','Precompute Analytical Hessian')
-        self.optbfgs_tool = SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
+        self.optpowell_tool = interfaces.tools.BooleanTool(self,'opt_powell','Use Powell Hessian update')
+        self.hessian_option_tool = interfaces.tools.BooleanTool(self,'pre_ts_hess','Precompute Analytical Hessian')
+        self.optbfgs_tool = interfaces.tools.SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
                                              self.optbfgs_opts)
-        self.optminhess_tool = FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
-        self.optmaxhess_tool = FloatTool(self,'opt_max_hess','Max. Hessian Eigenvalue')
-        self.optrfo_tool = MenuAndBooleanTool(self,'opt_rfo','opt_rfomode',
+        self.optminhess_tool = interfaces.tools.FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
+        self.optmaxhess_tool = interfaces.tools.FloatTool(self,'opt_max_hess','Max. Hessian Eigenvalue')
+        self.optrfo_tool = interfaces.tools.MenuAndBooleanTool(self,'opt_rfo','opt_rfomode',
                                               'Use Rational Function Optimisation',
                                               'RFO Mode',self.optrfo_opts)
 
         #Create the tools used for the Job tab
-        self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
+        self.jobname_tool = interfaces.tools.TextFieldTool(self,'job_name','Job Name')
         self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' ) 
         #self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
         #self.balloon.bind( self.workingdirectory_tool.widget, 'Specify where the calculation will be run from' )
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+        self.submission_tool = interfaces.tools.SelectOptionTool(self,'submission','Job Submission',
                                                 self.submission_policies)
 #                                                self.change_submission_policy)
-#        self.executable_tool = FileTool(self,'gamessuk_program','GAMESS-UK program', action='open', command=self.update_runmethod )
+#        self.executable_tool = interfaces.tools.FileTool(self,'gamessuk_program','GAMESS-UK program', action='open', command=self.update_runmethod )
 
         #Create the tools used in the Restart Group
-        self.ed0keep_tool = BooleanTool(self, 'ed0_keep', 'specify',
+        self.ed0keep_tool = interfaces.tools.BooleanTool(self, 'ed0_keep', 'specify',
                                         command=lambda s=self: s.__keepfile('ed0'))
-        self.ed0path_tool = ChangeDirectoryTool(self,'ed0_path','')
-        self.ed2keep_tool = BooleanTool(self, 'ed2_keep', 'keep',
+        self.ed0path_tool = interfaces.tools.ChangeDirectoryTool(self,'ed0_path','')
+        self.ed2keep_tool = interfaces.tools.BooleanTool(self, 'ed2_keep', 'keep',
                                         command=lambda s= self: s.__keepfile('ed2'))
         self.balloon.bind( self.ed2keep_tool.widget, 'Save the integral file' )
-        self.ed2name_tool = BooleanTool (self, 'ed2_specify','specify ',
+        self.ed2name_tool = interfaces.tools.BooleanTool (self, 'ed2_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed2'))
         self.balloon.bind( self.ed2name_tool.widget, 'Toggle saving with the default name or a user-specified one' )        
-        self.ed2path_tool = FileTool(self,'ed2_path','',
+        self.ed2path_tool = interfaces.tools.FileTool(self,'ed2_path','',
                                       filetypes=[('Mainfiles','*.ed2'), ('All files','*.*')])
-        self.ed3keep_tool = BooleanTool(self, 'ed3_keep', 'keep',
+        self.ed3keep_tool = interfaces.tools.BooleanTool(self, 'ed3_keep', 'keep',
                                         command=lambda s = self: s.__keepfile('ed3'))
         self.balloon.bind( self.ed3keep_tool.widget, 'Save the dump file - required to restart calculations' )
-        self.ed3name_tool = BooleanTool (self, 'ed3_specify','specify ',
+        self.ed3name_tool = interfaces.tools.BooleanTool (self, 'ed3_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed3'))
         self.balloon.bind( self.ed3name_tool.widget, 'Toggle saving with the default name or a user-specified one' )
-        self.ed3path_tool = FileTool(self,'ed3_path','',
+        self.ed3path_tool = interfaces.tools.FileTool(self,'ed3_path','',
                                      filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')])
-        self.ed7keep_tool = BooleanTool(self, 'ed7_keep', 'keep',
+        self.ed7keep_tool = interfaces.tools.BooleanTool(self, 'ed7_keep', 'keep',
                                         command=lambda s = self: s.__keepfile('ed7'))
         self.balloon.bind( self.ed7keep_tool.widget, 'Save the scratch file' )        
-        self.ed7name_tool = BooleanTool (self, 'ed7_specify','specify ',
+        self.ed7name_tool = interfaces.tools.BooleanTool (self, 'ed7_specify','specify ',
                                          command=lambda s=self: s.__keepfile('ed7'))
         self.balloon.bind( self.ed7name_tool.widget, 'Toggle saving with the default name or a user-specified one' )
-        self.ed7path_tool = FileTool(self,'ed7_path','',
+        self.ed7path_tool = interfaces.tools.FileTool(self,'ed7_path','',
                                       filetypes=[('Tempfiles','*.ed7'), ('All files','*.*')])
-        self.ed14keep_tool = BooleanTool(self, 'ed14_keep', 'specify',
+        self.ed14keep_tool = interfaces.tools.BooleanTool(self, 'ed14_keep', 'specify',
                                         command=lambda s=self: s.__keepfile('ed14'))
         self.balloon.bind( self.ed14keep_tool.widget, 'Specify a \'foreign\' dumpfile for a restart calculation' )        
-        self.ed14path_tool = FileTool(self,'ed14_path','',
+        self.ed14path_tool = interfaces.tools.FileTool(self,'ed14_path','',
                                       filetypes=[('Dumpfiles','*.ed3'), ('All files','*.*')],
                                       action="open")
 
@@ -2727,10 +2733,10 @@ class GAMESSUKCalcEd(QMCalcEd):
         page.grgroup = Pmw.Group(page,tag_text="Graphical options")
         page.grgroup.pack(expand='yes',fill='x')
 
-        f = Frame(page.grgroup.interior())
+        f = Tkinter.Frame(page.grgroup.interior())
         f.pack(expand='yes',fill='x',side='left')
 
-        f1 = Frame(f)
+        f1 = Tkinter.Frame(f)
         f1.pack(fill='x',side='top')
 
         page.mogroup = Pmw.Group(f1,tag_text="Orbital Plots")
@@ -2751,7 +2757,7 @@ class GAMESSUKCalcEd(QMCalcEd):
         self.spinden_tool.widget.pack(in_=page.group2.interior())
 
         # a bit of padding
-        Frame(page.group2.interior(),height=22,width=1).pack()
+        Tkinter.Frame(page.group2.interior(),height=22,width=1).pack()
 
         page.pdcgroup = Pmw.Group(page,tag_text="Potential Derived Charges")
         page.pdcgroup.pack(expand='yes',fill='x')
@@ -2765,7 +2771,7 @@ class GAMESSUKCalcEd(QMCalcEd):
                          self.pdc_surf_dens_2_tool.widget,
                          self.pdc_charge_constraint_tool.widget])
 
-        f2 = Frame(f)
+        f2 = Tkinter.Frame(f)
         f2.pack(fill='x',side='top')
         page.editgrid_button = Tkinter.Button(f2,command=self.edit_grid)
         page.editgrid_button.config(text="Edit Grid")

@@ -368,8 +368,8 @@ class TkMolView(Pmw.MegaToplevel):
         self.debug_window.withdraw()
         self.debug_window.userdeletefunc(lambda s=self: s.debug_window.withdraw())
 
-        self.job_manager = JobManager()
-        self.job_editor = JobEditor(parent,self.job_manager)
+        self.job_manager = jobmanager.JobManager()
+        self.job_editor = jobmanager.jobeditor.JobEditor(parent,self.job_manager)
         #self.job_editor.userdeletefunc(lambda s=self: s.job_editor.withdraw())
         self.job_editor.withdraw()
 

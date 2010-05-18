@@ -17,6 +17,14 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
+
 import exceptions
 import os
 import re
@@ -29,19 +37,19 @@ import Pmw
 import Tkinter
 import tkFileDialog
 
-from interfaces.calc import *
-from interfaces.tools import *
-from interfaces.inputeditor import *
+import interfaces.calc
+import interfaces.tools
+import interfaces.inputeditor
 from interfaces.jobed import RMCSEditor,NordugridEditor,GlobusEditor,LocalJobEditor
 
-from objects.zme import *
-from objects.grideditor import *
+import objects.zme
+import objects.grideditor
 
-from jobmanager import *
-from jobmanager.job import *
+import jobmanager
+import jobmanager.job
 
 from viewer.initialisetk import initialiseTk
-
+ 
 
 Create = 0
 Raise  = 1
@@ -77,7 +85,7 @@ class CalcEd(Pmw.MegaToplevel):
                  **kw):
 
         if calc.get_editor():
-            raise EditError, "Editor open already"
+            raise interfaces.calc.EditError("Editor open already")
         else:
             calc.set_editor(self)
 
@@ -240,9 +248,9 @@ class CalcEd(Pmw.MegaToplevel):
         
         self.CreateNotebook()
         
-        self.title_tool = TitleTool(self)
-        #self.charge_tool = IntegerTool(self,'charge','Charge')
-        #self.spin_tool = IntegerTool(self,'spin','Spin Multiplity',mini=0)
+        self.title_tool = interfaces.tools.TitleTool(self)
+        #self.charge_tool = interfaces.tools.IntegerTool(self,'charge','Charge')
+        #self.spin_tool = interfaces.tools.IntegerTool(self,'spin','Spin Multiplity',mini=0)
 
 
 
@@ -277,7 +285,7 @@ class CalcEd(Pmw.MegaToplevel):
             self.calc.field_sized = 1
 
         self.grid_vis = None
-        window=GridEditor(self.root, field, command=self.view_grid, exitcommand=self.done_view_grid)
+        window=objects.grideditor.GridEditor(self.root, field, command=self.view_grid, exitcommand=self.done_view_grid)
         window.show()
         self.root.update()
         window.reposition()
@@ -819,7 +827,7 @@ class CalcEd(Pmw.MegaToplevel):
                     #
                     self.Error("No molecules to choose from present in viewer.\n" +
                                "Please load a structure and retry.")
-                    raise EditError,"No molecular structures present!"
+                    raise interfaces.calc.EditError("No molecular structures present!")
                 elif len(mol_list) == 1:
                     #
                     # Select the 1 molecule present...
@@ -847,7 +855,7 @@ class CalcEd(Pmw.MegaToplevel):
                     if self.result.get() == 'OK':
                         mol_name = self.var.get()
                     else:
-                        raise EditError,"No molecular structure selected!"
+                        raise interfaces.calc.EditError("No molecular structure selected!")
 
             self.calc.set_input("mol_name",mol_name)
             #print 'reload called from selectmolecule'
@@ -960,7 +968,7 @@ class CalcEd(Pmw.MegaToplevel):
         else:
             hostlist=[]
             
-        if jobtype == LOCALHOST:
+        if jobtype == jobmanager.job.LOCALHOST:
             self.jobsub_editor = LocalJobEditor(
                                             self.interior(),
                                             job,
@@ -1068,17 +1076,12 @@ class CalcEd(Pmw.MegaToplevel):
         return self.dialogresult
         
 
-
-class EditError(RuntimeError):
-    def __init__(self,args=None):
-        self.args = args
-
-
 if __name__ == "__main__":
 
-    from gamessuk import *
-    from zmatrix import *
-    from jobmanager import *
+    import Tkinter
+    from gamessuk import GAMESSUKCalc,GAMESSUKCalcEd
+    from objects.zmatrix import Zmatrix,ZAtom
+    import jobmanager
     model = Zmatrix()
     atom = ZAtom()
     atom.symbol = 'C'
@@ -1090,7 +1093,7 @@ if __name__ == "__main__":
     atom.coord = [ 1.,0.,0. ]
     model.insert_atom(1,atom)
 
-    root=Tk()
+    root=Tkinter.Tk()
     calc = GAMESSUKCalc()
 
     for x in calc.__dict__.keys():
@@ -1121,7 +1124,7 @@ if __name__ == "__main__":
     fobj.close()
 
     calc.set_input('mol_obj',model)
-    jm = JobManager()
-    je = JobEditor(root,jm)
+    jm = jobmanager.JobManager()
+    je = jobmanager.jobeditor.JobEditor(root,jm)
     vt = GAMESSUKCalcEd(root,calc,None,job_editor=je)
     root.mainloop()
