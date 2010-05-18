@@ -147,7 +147,7 @@ from interfaces.charmm import *
 from interfaces.smeagol import *
 import interfaces.am1calc
 
-from viewer.selections2 import *
+import viewer.selections2
 
 import objects
 
@@ -387,7 +387,7 @@ class TkMolView(Pmw.MegaToplevel):
         self.FileMenu2d()
 
         global sel
-        sel = SelectionManager()
+        sel = viewer.selections2.SelectionManager()
 
         # Paul debug
         self.job_editor.mainobj = self
