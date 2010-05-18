@@ -207,7 +207,7 @@ class SelectOptionTool(Tool):
     """A tool for selecting one of several mutually exclusive options
     """
     def __init__(self,editor,parameter,label_text,items,command=None,**kw):
-        apply(Tool.__init__, (self,editor), kw)
+        Tool.__init__(self,editor,**kw)
         self.label_text = label_text
         self.parameter = parameter
         self.packparent = None
