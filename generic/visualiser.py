@@ -1925,7 +1925,7 @@ class ColourSurfaceVisualiser(IsoSurfaceVisualiser):
         
 class GridVisualiser(Visualiser):
     def __init__(self, root, graph, obj, **kw):
-        aVisualiser.__init__(self, root, graph, obj, **kw)
+        Visualiser.__init__(self, root, graph, obj, **kw)
         self.field = obj
 
 
