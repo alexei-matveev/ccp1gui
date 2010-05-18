@@ -1726,7 +1726,7 @@ class Zmatrix(Indexed):
                     #atomi.conn.append[atomj]
                     #atomj.conn.append[atomi]
 
-        if self.debug: print 'connect: found ',count,' bonds'
+        if self.debug: print 'connect_old: found ',count,' bonds'
 
     def connect(self,scale=1.0,toler=0.5):
         """ Compute connectivity
@@ -1744,7 +1744,7 @@ class Zmatrix(Indexed):
         Box3 = {}
         boxSize=2
 
-        #print 'Pass 0'
+        if self.debug: print 'Pass 0'
         rmax = 0.0
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1755,7 +1755,7 @@ class Zmatrix(Indexed):
 
         boxSize=2*rmax*scale+toler+0.1
 
-        #print 'Pass 0','box size=',boxSize
+        if self.debug: print 'Pass 0','box size=',boxSize
 
         for i in range(len(self.atom)):
             atomi = self.atom[i]
@@ -1785,8 +1785,9 @@ class Zmatrix(Indexed):
                             atomj = self.atom[j]
                             dist0 = scale*(atomi.rad+atomj.rad) + toler
                             dist = cpv.distance(atomi.coord,atomj.coord)
-                            #print dist, dist0
                             if dist <= dist0:
+                                if self.debug:
+                                    print "Connecting (%s)->(%s) as %f is < %f" % (atomi,atomj,dist,dist0)
                                 count = count + 1
                                 b = Bond()
                                 b.index=[atomi.get_index(), atomj.get_index()]
@@ -2554,23 +2555,20 @@ class Zmatrix(Indexed):
             print 'Adding fragment',fragment, 'to atom',atom.get_index()
             self.zlist()
 
-        print 'Connections',atom.conn
+        if self.debug: print 'Connections',atom.conn
         if not i1_tmp:
             i1_tmp = atom.conn[0]
+        if self.debug: print 'first atom i1=',i1_tmp
 
-            print 'first atom i1=',i1_tmp
-
-        print 'I2 LOOP'
+        if self.debug: print 'I2 LOOP'
         if not i2_tmp:
             i2_tmp = self._find_i2(atom,i1_tmp,check=NO_CHECK,check_i3=0)
+        if self.debug:print 'first atom i2=',i2_tmp
 
-            print 'first atom i2=',i2_tmp
-
-        print 'I3 LOOP'
+        if self.debug: print 'I3 LOOP'
         if not i3_tmp:
             i3_tmp = self._find_i3(atom,i1_tmp,i2_tmp,check=NO_CHECK)
-
-            print 'first atom i3=',i2_tmp
+        if self.debug: print 'first atom i3=',i3_tmp
 
 
         iref[-1] = i1_tmp
@@ -2599,9 +2597,10 @@ class Zmatrix(Indexed):
         # replace the target atom
         f = fragment_lib[fragment].copy()
 
-        f.calculate_coordinates()
-        f.connect()
-        f.update_conn()
+        #jmht can't do this here as the zmatrix definitions are incomplete
+        #f.calculate_coordinates()
+        #f.connect()
+        #f.update_conn()
 
         if self.debug:
             print 'chosen frag is ',f.title
@@ -2657,6 +2656,8 @@ class Zmatrix(Indexed):
         self.reindex()
         self.update_bonds()
         self.calculate_coordinates()
+        # jmht - connect here as the definitions are now correct
+        self.connect()
 
         return (0,'')
 
@@ -4511,7 +4512,7 @@ class Zfragment(Zmatrix):
     """Class for holding bits of molecules with internal coordinate information
     """
     def __init__(self, **kw):
-        apply(Zmatrix.__init__, (self,), kw)
+        Zmatrix.__init__(self,**kw)
         self.is_frag = 1
 
     def add(self,sym,i1,i2,i3,r,theta,phi):
