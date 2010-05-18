@@ -34,7 +34,7 @@ import tkFileDialog
 
 # import internal modules
 import calc, calced
-import jobmanager
+from jobmanager.job import LOCALHOST
 import tools
 import viewer.help
 from viewer.defaults import defaults
@@ -42,8 +42,6 @@ from viewer.paths import paths
 #from interfaces import smeagolreader
 from smeagolio import SmeagolIO
 
-
-LOCALHOST = socket.gethostname()
 
 
 class SMEAGOLCalc(calc.Calc):

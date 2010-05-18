@@ -20,10 +20,18 @@
 """Implements the Dalton specific calculation (Calc) and
    calculation editor (CalcEd) classes
 """
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
-import os
+# Import python modules
+import unittest
 import string
-import sys
 import copy
 
 import Tkinter
@@ -31,17 +39,19 @@ import Pmw
 import tkFileDialog
 import viewer.help
 
-from qm import *
-from tools import *
-from qmtools import *
-#from filepunch import *
-from jobmanager import *
+import qm
+import calc
+import tools
+import qmtools
+import jobmanager
+import objects
+
+from daltonio import DaltonIO
 from viewer.paths import paths,find_exe
 from viewer.defaults import defaults
 
 from objects.periodic import *
-#from daltonoutputreader import DaltonOutputReader
-from daltonio import DaltonIO
+
 
 MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
@@ -65,11 +75,11 @@ def fortranfloat( sfloat ):
     return f
    
 
-class DALTONCalc(QMCalc):
+class DALTONCalc(qm.QMCalc):
     """Dalton specifics."""
     def __init__(self, **kw):
 
-        apply(QMCalc.__init__,(self,),kw)
+        qm.QMCalc.__init__(self,**kw)
 
         #self.set_parameter("task",MENU_ENER)
         self.debug = 1
@@ -135,7 +145,7 @@ class DALTONCalc(QMCalc):
         self.set_parameter( 'preopt', 0 )
         self.set_parameter( 'preopt_basis', "STO-3G" )
 
-        field = Field()
+        field = objects.field.Field()
         field.dim[0] = 11
         field.dim[1] = 11
         field.dim[2] = 11
@@ -143,7 +153,7 @@ class DALTONCalc(QMCalc):
         self.field_sized=0
 
         
-        self.basis_manager = BasisManager()
+        self.basis_manager = qmtools.BasisManager()
         # Build up list of all basis sets supported by element
         self. __setup_keyword_basis()
 
@@ -311,21 +321,21 @@ class DALTONCalc(QMCalc):
         print "got script from job: ",dalton_script
         # Get the script to run the job
         if not dalton_script:
-            raise CalcError,"Cannot run the calculation as no executable!\nPlease either put the dalton script in your path or use the job tab to set the path"
+            raise calc.CalcError("Cannot run the calculation as no executable!\nPlease either put the dalton script in your path or use the job tab to set the path")
 
         try:
             os.chdir(workdir) #Run job in the specified directory
             print "job running from ",workdir
         except Exception,e:
-            raise CalcError,"Cannot cd to working directory: %s\n%s" % (workdir,e)
+            raise CalcError("Cannot cd to working directory: %s\n%s" % (workdir,e))
 
-        if jobtype == LOCALHOST:
+        if jobtype == jobmanager.job.LOCALHOST:
             # We purge Windows here and assume that all other platforms are o.k.
             if sys.platform[:3] == 'win':
                 ed.Error("Dalton on Windows?!? - I think not... :-)")
                 return None
         else:
-            raise CalcError,"dalton makejob - unsupported jobtype: %s" % jobtype
+            raise CalcError("dalton makejob - unsupported jobtype: %s" % jobtype)
         
         # Now need to build up the arguments to the dalton script depending on what
         # options the user has chosen. These are built up as a list
@@ -369,7 +379,7 @@ class DALTONCalc(QMCalc):
             print "calc set_job_defaults"
 
         # Always set the working directory to the directory parameter of the calc
-        if job.jobtype == LOCALHOST:
+        if job.jobtype == jobmanager.job.LOCALHOST:
             if not job.get_parameter( 'local_directory' ):
                 job.set_parameter( 'local_directory', self.get_parameter('directory') )
 
@@ -774,10 +784,10 @@ class DALTONCalc(QMCalc):
 
 
 
-class DALTONCalcEd(QMCalcEd):
+class DALTONCalcEd(qm.QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        qm.QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         # Associate helpfile with widget
         viewer.help.sethelp(self,'MoleculeTab')
@@ -873,10 +883,10 @@ class DALTONCalcEd(QMCalcEd):
         #self.optbfgs_opts = ["default","BFGS","BFGSX"]
         #self.optrfo_opts = ["on","off"]
 
-        self.submission_policies = [ LOCALHOST, "SSH","Nordugrid", "Globus"]
+        self.submission_policies = [ jobmanager.job.LOCALHOST, "SSH","Nordugrid", "Globus"]
 
         #Create the tools used in the Molecule tab title, spin & charge created in QM.
-        self.comment_tool = TextFieldTool(self,'comment','Comment', width=50 )
+        self.comment_tool = tools.TextFieldTool(self,'comment','Comment', width=50 )
         
         #self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=None)
 
@@ -886,14 +896,14 @@ class DALTONCalcEd(QMCalcEd):
         self.checkspin_widget = Tkinter.Button(self.interior(),
                                              text = 'Check Spin',
                                              command = self.__CheckSpin)
-        self.symmetry_tool = BooleanTool(self,'symmetry','Use Symmetry')
+        self.symmetry_tool = tools.BooleanTool(self,'symmetry','Use Symmetry')
 
         mol_obj = self.calc.get_input('mol_obj')
         # need to propagate the default basis back
 
         self.basis_manager = self.calc.basis_manager
         
-        self.basis_tool = BasisTool(self,'basis','ECP','default_basis',
+        self.basis_tool = qmtools.BasisTool(self,'basis','ECP','default_basis',
                                     molecule=mol_obj,basis_manager=self.basis_manager)
 
 
@@ -910,32 +920,32 @@ class DALTONCalcEd(QMCalcEd):
         self.methodtools['DFT'] = self.dfttools
 
 
-        self.method_tool = SelectOptionTool(self,'method',
+        self.method_tool = tools.SelectOptionTool(self,'method',
                                                'Method',
                                                self.methods,
                                                self.__changemethod)
-        self.geomopt_tool = BooleanTool(self,'geomopt','Optimise Geometry',self.__optgeom )
-        self.direct_tool = BooleanTool(self,'direct','Direct')
+        self.geomopt_tool = tools.BooleanTool(self,'geomopt','Optimise Geometry',self.__optgeom )
+        self.direct_tool = tools.BooleanTool(self,'direct','Direct')
 
         # Will we need a huge list with every possible tool?
         # HF tools
-        self.diismaxcyc_tool = IntegerTool(self,'diis_maxcyc','Max. DIIS cycles',0)
+        self.diismaxcyc_tool = tools.IntegerTool(self,'diis_maxcyc','Max. DIIS cycles',0)
         self.balloon.bind( self.diismaxcyc_tool.widget, 'Max. number of SCF convergence cycles that will be undertaken' )
         self.hftools['diismaxcyc'] = self.diismaxcyc_tool
-        self.scfthreshold_tool = FloatTool(self,'scf_thresh','Threshold',mini=0.0, maxi = 1)
+        self.scfthreshold_tool = tools.FloatTool(self,'scf_thresh','Threshold',mini=0.0, maxi = 1)
         self.hftools['scfthresh'] = self.scfthreshold_tool
-        self.guess_tool = SelectOptionTool( self, 'guess', 'Guess Vectors', self.guess )
+        self.guess_tool = tools.SelectOptionTool( self, 'guess', 'Guess Vectors', self.guess )
         self.hftools['guess'] = self.guess_tool
 
         # DFT tools
-        self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
+        self.dftfunctional_tool = tools.SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
         self.dfttools['dftfunctional'] = self.dftfunctional_tool
-        self.dftaccuracy_tool = SelectOptionTool(self,'dft_accuracy','Grid setting',self.dft_grids)
+        self.dftaccuracy_tool = tools.SelectOptionTool(self,'dft_accuracy','Grid setting',self.dft_grids)
         self.dfttools['dftaccuracy'] = self.dftaccuracy_tool
-#        self.dftweightscheme_tool = SelectOptionTool(self,'dft_weights',
+#        self.dftweightscheme_tool = tools.SelectOptionTool(self,'dft_weights',
 #                                                     'DFT weighting scheme',
 #                                                     self.dft_weights)
-        self.dftpartitioning_tool = SelectOptionTool(self,'dft_partitioning',
+        self.dftpartitioning_tool = tools.SelectOptionTool(self,'dft_partitioning',
                                                      'DFT partitioning scheme',
                                                      self.dft_partitioning)
         self.dfttools['dftpartitioning'] = self.dftpartitioning_tool
@@ -951,22 +961,22 @@ class DALTONCalcEd(QMCalcEd):
 
 
         # Create all the tools for controlling geometry optimisations
-        self.optorder_tool = SelectOptionTool( self, 'opt_order', 'Order of the optimisation', self.optorder )
+        self.optorder_tool = tools.SelectOptionTool( self, 'opt_order', 'Order of the optimisation', self.optorder )
         self.balloon.bind( self.optorder_tool.widget, 'Calculate analytical Hessian matrix at each step (second order) or not (first order)' )
-        self.optiter_tool = IntegerTool( self,'opt_iter', 'Max Iterations', 0 )
+        self.optiter_tool = tools.IntegerTool( self,'opt_iter', 'Max Iterations', 0 )
         self.balloon.bind( self.optiter_tool.widget, 'Max. number of geometry optimisation steps that will be taken' )
-        self.optconv_tool = SelectOptionTool( self, 'opt_conv',
+        self.optconv_tool = tools.SelectOptionTool( self, 'opt_conv',
                                               'Conversion Control',
                                               self.opt_conv,
                                               self.__optconv )
         self.balloon.bind( self.optconv_tool.widget, 'Specify the convergence criteria for the geometry optimisation' )
         
-        self.optconvE_tool = FloatTool(self,'opt_convE','Energy',mini=0.0, maxi = 1.0E-6)
-        self.optconvgrad_tool = FloatTool(self,'opt_convgrad','Gradient',mini=0.0, maxi = 1.0E-5)
-        self.optconvstep_tool = FloatTool(self,'opt_convstep','Step Norm.',mini=0.0 )
-        self.preopt_tool = BooleanTool( self,'preopt', 'Pre-optimise structure', self.__preopt )
+        self.optconvE_tool = tools.FloatTool(self,'opt_convE','Energy',mini=0.0, maxi = 1.0E-6)
+        self.optconvgrad_tool = tools.FloatTool(self,'opt_convgrad','Gradient',mini=0.0, maxi = 1.0E-5)
+        self.optconvstep_tool = tools.FloatTool(self,'opt_convstep','Step Norm.',mini=0.0 )
+        self.preopt_tool = tools.BooleanTool( self,'preopt', 'Pre-optimise structure', self.__preopt )
         self.balloon.bind( self.preopt_tool.widget, 'Pre-optimise molecule in a different basis set first' )
-        self.preoptbasis_tool = SelectOptionTool( self, 'preopt_basis', 'with basis:', self.preoptbasis )
+        self.preoptbasis_tool = tools.SelectOptionTool( self, 'preopt_basis', 'with basis:', self.preoptbasis )
         
 
 
@@ -984,15 +994,15 @@ class DALTONCalcEd(QMCalcEd):
 
         #Create the tools used for the Job tab
         #self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
-        self.dalfilename_tool = TextFieldTool(self,'dalfilename','.dal filename')
+        self.dalfilename_tool = tools.TextFieldTool(self,'dalfilename','.dal filename')
         self.balloon.bind( self.dalfilename_tool.widget, 'The name of the .dal file that holds the dalton directives' )
-        self.molfilename_tool = TextFieldTool(self,'molfilename','.mol filename')
+        self.molfilename_tool = tools.TextFieldTool(self,'molfilename','.mol filename')
         self.balloon.bind( self.molfilename_tool.widget, 'The name of the .mol file that holds the molecular coordinates' )
         
-#        self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
+#        self.hostname_tool = tools.SelectOptionTool(self,'hostname',  'Host name',
 #                                              self.hostnames, command=self.__sethost)
         #self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
-#        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+#        self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
 #                                                self.submissionpolicies[self.hostname])
 #        self.username_tool = TextFieldTool(self,'username','User Name')
 #        self.daltonexe_tool = FileTool(self,'dalton_script','Dalton script', action='open', command=self.__update_script )
@@ -1002,15 +1012,15 @@ class DALTONCalcEd(QMCalcEd):
 #jmht
 
 
-        self.setscratch_tool = BooleanTool(self,'setscratch','Change Scratch Directory',command=self.__setscratch)
+        self.setscratch_tool = tools.BooleanTool(self,'setscratch','Change Scratch Directory',command=self.__setscratch)
         self.balloon.bind( self.setscratch_tool.widget, 'Specify the directory where the job will run' )
-        self.scratchdir_tool = ChangeDirectoryTool(self,'scratchdir','Scratch Directory')
-        self.keepscratch_tool = BooleanTool(self,'keepscratch','Keep Scratch')
+        self.scratchdir_tool = tools.ChangeDirectoryTool(self,'scratchdir','Scratch Directory')
+        self.keepscratch_tool = tools.BooleanTool(self,'keepscratch','Keep Scratch')
         self.balloon.bind( self.keepscratch_tool.widget, 'Don\'t delete the scratch directory at the end of the job' )
         
-        self.setbasis_tool = BooleanTool(self,'setbasis','Add Basis Directory',command=self.__setbasis)
+        self.setbasis_tool = tools.BooleanTool(self,'setbasis','Add Basis Directory',command=self.__setbasis)
         self.balloon.bind( self.setbasis_tool.widget, 'Specify an additional directory to be searched for basis sets' )
-        self.basisdir_tool = ChangeDirectoryTool(self,'basisdir','Basis Directory')
+        self.basisdir_tool = tools.ChangeDirectoryTool(self,'basisdir','Basis Directory')
 
         self.inputviewer = Pmw.ScrolledText(self.interior(),
                                             labelpos = 'n',
@@ -1300,7 +1310,7 @@ class DALTONCalcEd(QMCalcEd):
 
         self.submission_frame = Tkinter.Frame(page.jobgroup.interior())
         self.submission_frame.pack()
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+        self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
                                                 self.submission_policies)
         self.submission_config_button = Tkinter.Button(self.submission_frame,
                                                        text='Configure...',
@@ -1551,40 +1561,57 @@ def copycontents(to,fro):
     for k in d2.keys():
         to.__dict__[k] = fro.__dict__[k]
 
-            
+##########################################
+#
+# Unittesting stuff
+# 
+##########################################
+
+class DaltonCalcEdTestCases(unittest.TestCase):
+
+    exdir=gui_path+os.sep+'examples'+os.sep
+
+    def testOpt(self):
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+        calc = DALTONCalc()
+        m = objects.zmatrix.Zmatrix(file=self.exdir+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = DALTONCalcEd(tkroot,calc,None,job_editor=je)
+        vt.Run()
+
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(DaltonCalcEdTestCases)
+
+
 if __name__ == "__main__":
 
-    # This bit is needed if you would like to run dalton.py as a standalone - i.e. for
-    # testing purposes - and sets up a 'dummy environment' so that all the relevant
-    # dependancies are satisfied
+    tkroot=Tkinter.Tk()
 
-    from dalton import *
-    from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H1'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
-
-    root=Tk()
-    calc = DALTONCalc()
-    calc.set_input('mol_obj',model)
-    jm = JobManager()
-    je = JobEditor(root,jm)
-
-    calc2 = copy.deepcopy(calc)
-
-    vt = DALTONCalcEd(root,calc,None,job_editor=je)
-    root.mainloop()
-
+    if 0:
+        unittest.main()
+    else:
+        #
+        # Test editor in standalone mode
+        #
+        calc = DALTONCalc()
+        m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = DALTONCalcEd(tkroot,calc,None,job_editor=je)
+        #vt.Run()
+        #calc.WriteInput()
+        tkroot.mainloop()

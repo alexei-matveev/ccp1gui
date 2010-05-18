@@ -17,19 +17,38 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-import tkFileDialog
-from   qm import *
-from   filepunch import *
-import os
+
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
+
+
+# import python modules
 import string
+
+# Import our modules
+import  qm
+import tools
+import jobmanager
 from viewer.paths import root_path,find_exe
+from   filepunch import *
+
+# Import external modules
+import Pmw
+import tkFileDialog
+
 homolumoa = 0
 
-class MopacCalc(QMCalc):
+class MopacCalc(qm.QMCalc):
     """Mopac specifics"""
 
     def __init__(self,**kw):
-        apply(QMCalc.__init__,(self,),kw)
+        qm.QMCalc.__init__(self,**kw)
 
         #self.debug=1
         self.set_program('MOPAC')
@@ -106,8 +125,8 @@ class MopacCalc(QMCalc):
 
         job.name = job_name
 
-        job.add_step(DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename=self.infile,kill_on_error=0)
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename=self.infile,kill_on_error=0)
 
         mopac_exe = self.get_executable(job=job)
         if not mopac_exe:
@@ -117,11 +136,11 @@ class MopacCalc(QMCalc):
         # Clear out steps in case we are reusing the job
         job.clear_steps()
         
-        job.add_step(RUN_APP,
+        job.add_step(jobmanager.job.RUN_APP,
                      'run mopac',
                      local_command=mopac_exe,
                      local_command_args=[job_name])
-        job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
         job.add_tidy(self.endjob)
         return job
 
@@ -280,11 +299,11 @@ class MopacCalc(QMCalc):
     def get_editor_class(self):
         return MopacCalcEd
 
-class MopacCalcEd(QMCalcEd):
+class MopacCalcEd(qm.QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
 
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        qm.QMCalcEd.__init__(self,root,calc,graph,**kw)
 
 #      self.tasks = ["energy", 
 #                    "optimise internal coord.", 
@@ -298,30 +317,30 @@ class MopacCalcEd(QMCalcEd):
 
         self.theories["optimise"] = self.theories["energy"]
         self.basissets = ["STO"]
-        self.submission_policies = [ LOCALHOST ]
+        self.submission_policies = [ jobmanager.job.LOCALHOST ]
 
-        self.task_tool = SelectOptionTool(self,"task","Task",self.tasks,command=self.__taskupdate)
+        self.task_tool = tools.SelectOptionTool(self,"task","Task",self.tasks,command=self.__taskupdate)
 
         #Used to specify task
         self.tasktoolvalue = self.task_tool.widget.getvalue() 
-        self.theory_tool = SelectOptionTool(self,"theory","Hamiltonian",self.theories[self.tasktoolvalue],command=self.__theoryupdate)
-        self.keywords_tool = TextTool(self,"keywords","Keywords")
+        self.theory_tool = tools.SelectOptionTool(self,"theory","Hamiltonian",self.theories[self.tasktoolvalue],command=self.__theoryupdate)
+        self.keywords_tool = tools.TextTool(self,"keywords","Keywords")
 
         self.checkspin_widget = Tkinter.Button(self.interior(),
                                              text = 'Check Spin',
                                              command = self.calc.CheckSpin)
 
         #Create the tools used for the Job tab
-#        self.hostname_tool = SelectOptionTool(self,'hostname','Host name',self.hostnames,command=self.__sethost)
+#        self.hostname_tool = tools.SelectOptionTool(self,'hostname','Host name',self.hostnames,command=self.__sethost)
 #        self.hostname = self.hostname_tool.widget.getvalue()# line to get the hostname for the below tool      
-#        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+#        self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
 #                                                      self.submissionpolicies['localhost'])
 
         #self.username_tool = TextFieldTool(self,'username','User Name')
         #self.workingdirectory_tool = TextFieldTool(self,'directory','Working Directory')
-        self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
+        self.jobname_tool = tools.TextFieldTool(self,'job_name','Job Name')
         self.balloon.bind(self.jobname_tool.widget, 'Specify the prefix for all output files')
-        self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+        self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
                                                 self.submission_policies)
 
         self.LayoutToolsTk()
@@ -389,7 +408,7 @@ class MopacCalcEd(QMCalcEd):
 
 
     def TaskPage(self,page,action):
-        QMCalcEd.TaskPage(self,page,action)
+        qm.QMCalcEd.TaskPage(self,page,action)
         # Create a group for the checkboxes
         if action == Create:
             page.group = Pmw.Group(page,tag_text="Analysis options")
@@ -426,26 +445,57 @@ class MopacCalcEd(QMCalcEd):
         else: 
             page.keywords.settext(self.calc.get_parameter("keywords"))
 
+##########################################
+#
+# Unittesting stuff
+# 
+##########################################
+
+class MopacCalcEdTestCases(unittest.TestCase):
+
+    exdir=gui_path+os.sep+'examples'+os.sep
+
+    def testOpt(self):
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+        calc = MopacCalc()
+        m = objects.zmatrix.Zmatrix(file=self.exdir+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = MopacCalcEd(tkroot,calc,None,job_editor=je)
+        vt.Run()
+
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(MopacCalcEdTestCases)
+
+
 if __name__ == "__main__":
 
-    from mopac import *
-    from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C0'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'P'
-    atom.name = 'P'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
+    import Tkinter
+    tkroot=Tkinter.Tk()
 
-    root=Tk()
-    calc = MopacCalc()
-    calc.set_input('mol_obj',model)
-    jm = JobManager()
-    je = JobEditor(root,jm)
-    vt = MopacCalcEd(root,calc,None,job_editor=je)
-    root.mainloop()
+    if 0:
+        unittest.main()
+    else:
+        #
+        # Test editor in standalone mode
+        #
+        calc = MopacCalc()
+        m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
+        calc.set_input('mol_obj',m)
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = MopacCalcEd(tkroot,calc,None,job_editor=je)
+        #vt.Run()
+        #calc.WriteInput()
+        tkroot.mainloop()

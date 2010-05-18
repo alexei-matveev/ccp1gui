@@ -17,14 +17,29 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-import os
-import string
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+else:
+    from viewer.paths import gui_path
 
-import tkFileDialog
+# Import python modules
+import unittest
 
-from qm import *
-from filepunch import *
+# Import our modules
+import qm
+import tools
+import viewer
+import objects
+import jobmanager
 from objects.periodic import z_to_el
+
+# Import external modules
+import Tkinter
+import Pmw
 
 homolumoa = 0
 
@@ -32,11 +47,11 @@ MENU_ENER  = "Energy"
 MENU_GRAD  = "Gradient"
 MENU_OPT   = "Geometry Optimisation"
 
-class MNDOCalc(QMCalc):
+class MNDOCalc(qm.QMCalc):
     """MNDO specific calculation class"""
 
     def __init__(self,**kw):
-        apply(QMCalc.__init__,(self,),kw)
+        qm.QMCalc.__init__(self,**kw)
         self.set_parameter("task",MENU_ENER)
         self.set_parameter("theory","AM1")
         self.set_parameter("symmetry",1)
@@ -305,9 +320,9 @@ class MNDOCalc(QMCalc):
 
         # Delete old vectors
         if self.chk == 0:
-            job.add_step(DELETE_FILE,'remove old vectors',remote_filename="fort.11",kill_on_error=0)
-        job.add_step(DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
-        job.add_step(COPY_OUT_FILE,'transfer input',local_filename=self.infile)
+            job.add_step(jobmanager.job.DELETE_FILE,'remove old vectors',remote_filename="fort.11",kill_on_error=0)
+        job.add_step(jobmanager.job.DELETE_FILE,'remove old output',remote_filename=self.outfile,kill_on_error=0)
+        job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename=self.infile)
 
         # Local windows job, search for local executable
         if sys.platform[:3] == 'win' and hostname == 'localhost':
@@ -318,21 +333,21 @@ class MNDOCalc(QMCalc):
             except KeyError:
                 mndo_exe=root_path+'/exe/mndo.exe'
             print 'Using MNDO path ' + mndo_exe
-            job.add_step(RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=None,stdout_file=None)
+            job.add_step(jobmanager.job.RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=None,stdout_file=None)
         elif sys.platform[:3] == 'mac':
             pass
         else:
             mndo_exe="mndo"
-            job.add_step(RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=self.infile,stdout_file=self.outfile)
+            job.add_step(jobmanager.job.RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=self.infile,stdout_file=self.outfile)
 
-        job.add_step(COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
+        job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
 
         #if sys.platform[:3] == 'win':
         #    job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
         #else:
         #    job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
 
-        job.add_step(PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
+        job.add_step(jobmanager.job.PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
         return job
 
@@ -419,10 +434,10 @@ class MNDOCalc(QMCalc):
     def check_direct(self):
         return 0
 
-class MNDOCalcEd(QMCalcEd):
+class MNDOCalcEd(qm.QMCalcEd):
 
     def __init__(self,root,calc,graph,**kw):
-        apply(QMCalcEd.__init__, (self,root,calc,graph), kw)
+        qm.QMCalcEd.__init__(self,root,calc,graph,**kw)
 
         self.tasks = [MENU_ENER, MENU_GRAD, MENU_OPT]
 ##        self.tasks = ["energy", 
@@ -431,7 +446,9 @@ class MNDOCalcEd(QMCalcEd):
 
         self.theories["energy"] = ["AM1", "PM3" ]
         self.basissets = ["STO"]
-        self.AddPage("SCFPage","SCF")
+
+        # Don't do this until there is something in there to show...
+        #self.AddPage("SCFPage","SCF")
 
         self.scf_methods = {}
         tmp =  ["rhf","rohf","uhf"]
@@ -447,14 +464,14 @@ class MNDOCalcEd(QMCalcEd):
         self.frequencies = Tkinter.BooleanVar()
 
         #Create the tools used in the Molecule tab - spin & charge created in QM.
-        self.task_tool = SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
+        self.task_tool = tools.SelectOptionTool(self,'task','Task',self.tasks,command=self.__taskupdate)
         #Used to specify task
         self.tasktoolvalue = self.task_tool.widget.getvalue() 
 
         self.checkspin_widget = Tkinter.Button(self.interior(),
                                              text = 'Check Spin',
                                              command = self.__CheckSpin)
-        self.symmetry_tool = BooleanTool(self,'symmetry','Use Symmetry')
+        self.symmetry_tool = tools.BooleanTool(self,'symmetry','Use Symmetry')
 
         mol_obj = self.calc.get_input('mol_obj')
 
@@ -468,42 +485,42 @@ class MNDOCalcEd(QMCalcEd):
 ##         self.guessoption_tool = SelectOptionTool(self,'guess_method','Vectors',self.guess_options,
 ##                                                  self.__guesstype)
 ##         self.guessatoms_tool = SelectOptionTool(self,'guess_comp',None,self.compute_options)
-##         self.guesssection1_tool = IntegerTool(self,'guess_sect1','Section a',0)
-##         self.guesssection2_tool = IntegerTool(self,'guess_sect2','Section b',0)
-##         self.guessgetqblock1_tool = IntegerTool(self,'getq_block1','File Block a',0)
-##         self.guessgetqblock2_tool = IntegerTool(self,'getq_block2','File Block b',0)
-##         self.guessgetqsection1_tool = IntegerTool(self,'getq_sect1','File Section a',0)
-##         self.guessgetqsection2_tool = IntegerTool(self,'getq_sect2','File Section b',0)
+##         self.guesssection1_tool = tools.IntegerTool(self,'guess_sect1','Section a',0)
+##         self.guesssection2_tool = tools.IntegerTool(self,'guess_sect2','Section b',0)
+##         self.guessgetqblock1_tool = tools.IntegerTool(self,'getq_block1','File Block a',0)
+##         self.guessgetqblock2_tool = tools.IntegerTool(self,'getq_block2','File Block b',0)
+##         self.guessgetqsection1_tool = tools.IntegerTool(self,'getq_sect1','File Section a',0)
+##         self.guessgetqsection2_tool = tools.IntegerTool(self,'getq_sect2','File Section b',0)
         
 
-        self.scfmethod_tool = SelectOptionTool(self,'scf_method',
+        self.scfmethod_tool = tools.SelectOptionTool(self,'scf_method',
                                                'SCF Method',
                                                self.scf_methods[self.tasktoolvalue],
                                                self.__scfmethod)
 
-        self.hamiltonian_tool = SelectOptionTool(self,'hamiltonian',
+        self.hamiltonian_tool = tools.SelectOptionTool(self,'hamiltonian',
                                                  'Hamiltonian',
                                                  self.hamiltonians)
 
-        self.scfmaxcycles_tool = IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
-        self.scfthreshold_tool = IntegerTool(self,'scf_threshold','Threshold',3)
+        self.scfmaxcycles_tool = tools.IntegerTool(self,'scf_maxcyc','Max. Cycles',1)
+        self.scfthreshold_tool = tools.IntegerTool(self,'scf_threshold','Threshold',3)
 
 ##         self.scfbypass_tool = BooleanTool(self,'scf_bypass', 'Bypass SCF')
 
 ##         self.scflevelinit_tool = FloatTool(self,'scf_level_init','Initial Levelshifter Value',0.0)
-##         self.scflevelit_tool = IntegerTool(self,'scf_level_it','Cycle to change on',1)
+##         self.scflevelit_tool = tools.IntegerTool(self,'scf_level_it','Cycle to change on',1)
 ##         self.scflevelfinal_tool = FloatTool(self,'scf_level_final','Final Levelshifter Value',0.0)
         
 
-##         self.postscfmethod_tool = SelectOptionTool(self,'postscf_method',
+##         self.postscfmethod_tool = tools.SelectOptionTool(self,'postscf_method',
 ##                                                    'Method',
 ##                                                    self.postscf_methods[self.tasktoolvalue])
 
 
 ##         #Create the tools for the DFT tab
-##         self.dftfunctional_tool = SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
-##         self.dftaccuracy_tool = SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
-##         self.dftweightscheme_tool = SelectOptionTool(self,'dft_weights',
+##         self.dftfunctional_tool = tools.SelectOptionTool(self,'dft_functional','Functional',self.dft_functionals)
+##         self.dftaccuracy_tool = tools.SelectOptionTool(self,'dft_grid','Grid setting',self.dft_grids)
+##         self.dftweightscheme_tool = tools.SelectOptionTool(self,'dft_weights',
 ##                                                      'DFT weighting scheme',
 ##                                                      self.dft_weights)
 
@@ -531,8 +548,8 @@ class MNDOCalcEd(QMCalcEd):
 ##         self.angulargrid = self.dftangular_tool.firstmenu.getvalue()
 
 ##         self.dftjfit_tool = BooleanTool(self,'dft_jfit','Use Coulomb Fitting',self.__dftjbasselect)
-##         self.dftjbas_tool = SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
-##         self.dftschwarz_tool = IntegerTool(self,'dft_schwarz','Schwarz cutoff')
+##         self.dftjbas_tool = tools.SelectOptionTool(self,'dft_jbas','Fitting Basis',self.dft_jbas)
+##         self.dftschwarz_tool = tools.IntegerTool(self,'dft_schwarz','Schwarz cutoff')
 
 ##         #Create the tools used in the Properties tab
 ##         self.homolumo_tool = BooleanTool(self, 'ana_homolumo', 'HOMO/LUMO')
@@ -552,13 +569,13 @@ class MNDOCalcEd(QMCalcEd):
 
 ##         #Create the tools used in the Optimisation tab
 
-##         self.optcoords_tool = SelectOptionTool(self,'optimiser', 'Opt. Coords',
+##         self.optcoords_tool = tools.SelectOptionTool(self,'optimiser', 'Opt. Coords',
 ##                                                self.optcoord_opts, self.__selectcoords)
 ##         self.find_ts_tool = BooleanTool(self,"find_ts","Locate Transition State",self.__findts)
-##  #       self.optmethod_tool = SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
+##  #       self.optmethod_tool = tools.SelectOptionTool(self,'optimiser_method','Method',self.optmethodopts)
 
-##         self.optmaxcyc1_tool = IntegerTool(self,'max_opt_step','Energy evaluations',0)
-##         self.optmaxcyc2_tool = IntegerTool(self,'max_opt_line','Line searches',0)
+##         self.optmaxcyc1_tool = tools.IntegerTool(self,'max_opt_step','Energy evaluations',0)
+##         self.optmaxcyc2_tool = tools.IntegerTool(self,'max_opt_line','Line searches',0)
 ##         self.optxtol_tool = FloatTool(self,'opt_conv_thsld','Convergence Thresh.',0.0)        
 ##         self.optstepmax_tool = FloatTool(self,'max_opt_step_len','Max. Step size',0.0)        
 ##         self.optvalue_tool = FloatTool(self,'opt_value','Turning Point Accuracy',0.0)
@@ -566,7 +583,7 @@ class MNDOCalcEd(QMCalcEd):
 ##         self.optjorg_tool = BooleanTool(self,'opt_jorgensen','Use Jorgensen-Simons Algorithm',
 ##                                         self.__optjorgensen)
 ##         self.optpowell_tool = BooleanTool(self,'opt_powell','Use Powell Hessian update')
-##         self.optbfgs_tool = SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
+##         self.optbfgs_tool = tools.SelectOptionTool(self,'opt_hess_update', 'Hessian Update Procedure',
 ##                                              self.optbfgs_opts)
 ##         self.optminhess_tool = FloatTool(self,'opt_min_hess','Min. Hessian Eigenvalue')
 ##         self.optmaxhess_tool = FloatTool(self,'opt_max_hess','Max. Hessian Eigenvalue')
@@ -576,10 +593,10 @@ class MNDOCalcEd(QMCalcEd):
 
 ##         #Create the tools used for the Job tab
 ##         self.jobname_tool = TextFieldTool(self,'job_name','Job Name')
-##         self.hostname_tool = SelectOptionTool(self,'hostname',  'Host name',
+##         self.hostname_tool = tools.SelectOptionTool(self,'hostname',  'Host name',
 ##                                               self.hostnames, command=self.__sethost)
 ##         self.hostname = self.hostname_tool.widget.getvalue()# get the hostname for the below tool      
-##         self.submission_tool = SelectOptionTool(self,'submission','Job Submission',
+##         self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
 ##                                                 self.submissionpolicies[self.hostname])
 ##         self.username_tool = TextFieldTool(self,'username','User Name')
 ##         self.workingdirectory_tool = ChangeDirectoryTool(self,'directory','Working Directory')
@@ -625,10 +642,10 @@ class MNDOCalcEd(QMCalcEd):
         """
         self.scfmethod_tool.SetItems(self.scf_methods[task])
 ####        self.postscfmethod_tool.SetItems(self.postscf_methods[task])
-        if task != 'Geometry Optimisation':
-            self.notebook.tab('Optimisation').configure(state="disabled")
-        else:
-            self.notebook.tab('Optimisation').configure(state="active")
+#        if task != MENU_OPT:
+#            self.notebook.tab('Optimisation').configure(state="disabled")
+#        else:
+#            self.notebook.tab('Optimisation').configure(state="active")
 
     def LayoutToolsTk(self):
         """Place the widgets belonging to the tools (ChargeTool etc)
@@ -785,12 +802,12 @@ class MNDOCalcEd(QMCalcEd):
 ##                          page.editgrid_button])
 
 
-        #Add Optimisation tab
-        page = self.notebook.add('Optimisation',tab_text='Optimisation')
+##        #Add Optimisation tab
+##        page = self.notebook.add('Optimisation',tab_text='Optimisation')
         
-        # Associate helpfile with notebook frame
-        tab = self.notebook.tab('Optimisation')
-        viewer.help.sethelp(tab,'Optimisation Tab')
+##        # Associate helpfile with notebook frame
+##        tab = self.notebook.tab('Optimisation')
+##        viewer.help.sethelp(tab,'Optimisation Tab')
         
 ##         page.rungroup = Pmw.Group(page,tag_text="Runtype")
 ##         page.rungroup.pack(expand='yes',fill='both')
@@ -922,8 +939,8 @@ class MNDOCalcEd(QMCalcEd):
             page.group.pack(expand='yes',fill='x')
 
     def SCFPage(self,page,action):
-        """Maintain the SCF page."""
-        labels = []
+       """Maintain the SCF page."""
+       labels = []
 
     def DirectivesPage(self,page,action):
         """Entry for various directives not covered by GUI yet"""
@@ -950,34 +967,57 @@ class MNDOCalcEd(QMCalcEd):
         #guess = self.calc.get_parameter("guess_method")
         #self.__guesstype("")
 
+##########################################
+#
+# Unittesting stuff
+# 
+##########################################
+
+class MNDOCalcEdTestCases(unittest.TestCase):
+
+    exdir=gui_path+os.sep+'examples'+os.sep
+
+    def testOpt(self):
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+        calc = MNDOCalc()
+        m = objects.zmatrix.Zmatrix(file=self.exdir+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = MNDOCalcEd(tkroot,calc,None,job_editor=je)
+        vt.Run()
+
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(MNDOCalcEdTestCases)
+
+
 if __name__ == "__main__":
-    from mndo import *
-    from objects.zmatrix import *
-    from jobmanager import *
-    model = Zmatrix()
-    atom = ZAtom()
-    atom.symbol = 'C'
-    atom.name = 'C'
-    model.insert_atom(0,atom)
-    atom = ZAtom()
-    atom.symbol = 'Cl'
-    atom.name = 'Cl'
-    atom.coord = [ 1.,0.,0. ]
-    model.insert_atom(1,atom)
-    atom = ZAtom()
-    atom.symbol = 'H'
-    atom.name = 'H'
-    atom.coord = [ 1.,1.,0. ]
-    model.insert_atom(1,atom)
 
-    root=Tk()
-    calc = MNDOCalc()
-    calc.set_input('mol_obj',model)
-    calc.set_parameter('task',MENU_OPT)
-    jm = JobManager()
-    je = JobEditor(root,jm)
-    vt = MNDOCalcEd(root,calc,None,job_editor=je)
-    vt.Run()
-    #calc.WriteInput()
+    tkroot=Tkinter.Tk()
 
-    root.mainloop()
+    if 0:
+        unittest.main()
+    else:
+        #
+        # Test editor in standalone mode
+        #
+        calc = MNDOCalc()
+        m = objects.zmatrix.Zmatrix(file=gui_path+os.sep+'examples'+os.sep+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+        jm = jobmanager.JobManager()
+        je = jobmanager.jobeditor.JobEditor(tkroot,jm)
+        vt = MNDOCalcEd(tkroot,calc,None,job_editor=je)
+        #vt.Run()
+        #calc.WriteInput()
+        tkroot.mainloop()
