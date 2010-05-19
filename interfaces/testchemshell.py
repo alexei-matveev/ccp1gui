@@ -18,8 +18,14 @@ import jobmanager
 
 exdir=gui_path+os.sep+'examples'+os.sep
 
-class ChemShellCalcTestCase(unittest.TestCase):
+class ChemShellCalcTests(unittest.TestCase):
     """ Batch tests of the ChemShell interface """
+
+
+    def SetUp(self):
+        """Need to wait inbetween running tests that drive external codes in order to give
+        the external processes time to clean up after themselves"""
+        time.sleep(2)
 
     def testMolproOptim(self):
         calc = interfaces.chemshell.ChemShellCalc()        
@@ -37,11 +43,11 @@ class ChemShellCalcTestCase(unittest.TestCase):
         ret = job.run()
         
         # Check the job ran
-        self.assertEqual(ret,0,"Failed to run job!")
+        self.assertEqual(ret,0,"Failed to run job!\n%s" % job.msg )
 
-        job.tidy(0)
 
         # Check the results
+        job.tidy(0)
         dist=m.get_distance(m.atom[0],m.atom[1])
         ref=0.9892
         self.assertEqual(abs(dist-ref)<0.0001,1,"Molpro opt Failed to give O-H dist: "+str(dist))
@@ -63,7 +69,7 @@ class ChemShellCalcTestCase(unittest.TestCase):
         ret=job.run()
 
         # Check we ran o.k. first
-        self.assertEqual(ret,0,"Failed to run job!")
+        self.assertEqual(ret,0,"Failed to run job!\n%s" % job.msg )
         job.tidy(0)
 
         # Check the results
@@ -80,10 +86,15 @@ class ChemShellCalcTestCase(unittest.TestCase):
         self.assertEqual(check,1,"No 3dgridfile generated")
 
 
-class ChemShellCalcEdTestCases(unittest.TestCase):
+class ChemShellCalcEdTests(unittest.TestCase):
     
     """We just check we can fire up the calculation editor and run a calculation.
        We don't check for results, just that there are no exceptions raised"""
+
+    def SetUp(self):
+        """Need to wait inbetween running tests that drive external codes in order to give
+        the external processes time to clean up after themselves"""
+        time.sleep(2)
 
     def testGAMESSUKOptim(self):
         """GAMESSUK Optimisation"""
@@ -107,10 +118,11 @@ class ChemShellCalcEdTestCases(unittest.TestCase):
         jm = jobmanager.JobManager()
         je = jobmanager.jobeditor.JobEditor(tkroot,jm)
         vt = interfaces.chemshell.ChemShellCalcEd(tkroot,calc,None,job_editor=je)
+        #vt.mainloop()
         vt.Run()
 
 
-class ChemShellModeVis(unittest.TestCase):
+class ChemShellModeVisTests(unittest.TestCase):
     """ Batch tests of the ChemShell Mode visualiser (reader part  not the actual visualistion)"""
 
     cdir=exdir+os.sep+'chemsh_mode_visualisation'
@@ -142,9 +154,9 @@ class ChemShellModeVis(unittest.TestCase):
 
 def testMe():
         suite = unittest.TestSuite()
-        suite.addTest(ChemShellTestCase("testGAMESSUKOptim"))
-        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
-        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTestCases))
+        suite.addTest(ChemShellCalcTests("testGAMESSUKOptim"))
+        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVisTets))
+        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTests))
         return suite
 
 if __name__ == "__main__":
@@ -153,7 +165,7 @@ if __name__ == "__main__":
     # Set the paths to scripts/executables here:
     #
     chemsh_script_dir='/c/ccg/share/software/ChemShell/ChemShell-3.4.dev/scripts'
-    rungamess_dir='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev/rungamess'
+    rungamess_dir='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev_pgf/rungamess'
 
     #
     # Set up to run
@@ -166,15 +178,15 @@ if __name__ == "__main__":
     tkroot=Tkinter.Tk()
     tkroot.withdraw()
 
-    if 0:
+    if 1:
         # Run all tests in this module automatically
         unittest.main()
     else:
         # Build a test suite with required cases and run it
         myTestSuite = unittest.TestSuite()
-        myTestSuite.addTest(ChemShellCalcTestCase("testGAMESSUKOptim"))
-        #myTestSuite.addTest(ChemShellCalcTestCase("testMolproOptim"))
-        myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVis))
-        myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTestCases))
+        #myTestSuite.addTest(ChemShellCalcTests("testGAMESSUKOptim"))
+        #myTestSuite.addTest(ChemShellCalcTests("testMolproOptim"))
+        #myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVisTests))
+        #myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTests))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)
