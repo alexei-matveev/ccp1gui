@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # Make sure we can find the exectuable
     molpro_dir='/c/ccg/share/software/molpro/molpro2008.2/bin'
-    os.environ['PATH']=os.environ['PATH']+os.pathsep+molpro_dir
+    os.environ['PATH']+=os.pathsep+molpro_dir
 
     if 1:
         # Run all tests in this module automatically

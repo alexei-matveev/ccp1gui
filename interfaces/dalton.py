@@ -27,18 +27,16 @@ if __name__ == "__main__":
     gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
     sys.path.append(gui_path)
 else:
-    from viewer.paths import gui_path
+    from viewer.paths import gui_path, find_exe
 
 # Import python modules
 import unittest
 import string
 import copy
+import time
 
-import Tkinter
-import Pmw
-import tkFileDialog
+# Import our modules
 import viewer.help
-
 import qm
 import calc
 import tools
@@ -51,6 +49,11 @@ from viewer.paths import paths,find_exe
 from viewer.defaults import defaults
 
 from objects.periodic import *
+
+# Import external modules
+import Tkinter
+import Pmw
+import tkFileDialog
 
 
 MENU_ENER  = "Energy"
@@ -173,7 +176,8 @@ class DALTONCalc(qm.QMCalc):
         ed = self.get_editor()
 
         # Read all the widgets ( method from calced.py)
-        ed.ReadWidgets()
+        if ed:
+            ed.ReadWidgets()
 
         self.GetModel()
         mol_name = self.get_input("mol_name")
@@ -317,11 +321,13 @@ class DALTONCalc(qm.QMCalc):
         dalfilename = self.get_parameter('dalfilename')
         molfilename = self.get_parameter('molfilename')
 
-        dalton_script = job.get_parameter('executable')
-        print "got script from job: ",dalton_script
         # Get the script to run the job
+        dalton_script = job.get_parameter('executable')
+        #print "got script from job: ",dalton_script
         if not dalton_script:
-            raise calc.CalcError("Cannot run the calculation as no executable!\nPlease either put the dalton script in your path or use the job tab to set the path")
+            dalton_script=find_exe('dalton')
+            if not dalton_script:
+                raise calc.CalcError("Cannot run the calculation as no executable!\nPlease either put the dalton script in your path or use the job tab to set the path")
 
         try:
             os.chdir(workdir) #Run job in the specified directory
@@ -354,7 +360,7 @@ class DALTONCalc(qm.QMCalc):
 
         args += [ dalfilename, molfilename]
 
-        job.add_step(RUN_APP,
+        job.add_step(jobmanager.job.RUN_APP,
                      'run dalton shell-script',
                      local_command=dalton_script,
                      local_command_args=args,
@@ -1567,9 +1573,45 @@ def copycontents(to,fro):
 # 
 ##########################################
 
-class DaltonCalcEdTestCases(unittest.TestCase):
+
+class DaltonCalcTests(unittest.TestCase):
 
     exdir=gui_path+os.sep+'examples'+os.sep
+
+    def setUp(self):
+        """Need to wait as otherwise the tests run so quickly the dalton script can't delete
+        the files between runs and we hit all sorts of errors"""
+        time.sleep(2)
+
+    def testOpt(self):
+
+        # tkroot either created in this module if we run standalone, or passed in by the
+        # testall script if run as part of all the tests
+        global tkroot
+
+        calc = DALTONCalc()
+        m = objects.zmatrix.Zmatrix(file=self.exdir+'water.zmt')
+        calc.set_input('mol_obj',m)
+        calc.set_parameter('task',MENU_OPT)
+
+        job = calc.makejob(writeinput=1)
+        #job.debug = 1
+        ret=job.run()
+        self.assertEqual(0,ret,"Error running dalton job:\n%s" % job.msg )
+
+        #print calc.results
+        #self.assertEqual(len(calc.results),4,"Failed to return Structure+2*List+File")
+
+
+class DaltonCalcEdTests(unittest.TestCase):
+
+    exdir=gui_path+os.sep+'examples'+os.sep
+
+    def setUp(self):
+        """Need to wait as otherwise the tests run so quickly the dalton script can't delete
+        the files between runs and we hit all sorts of errors"""
+
+        time.sleep(2)
 
     def testOpt(self):
 
@@ -1592,15 +1634,22 @@ def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
     gui testing framework."""
 
-    return  unittest.TestLoader().loadTestsFromTestCase(DaltonCalcEdTestCases)
+    return  unittest.TestLoader().loadTestsFromTestCase(DaltonCalcEdTests)
 
 
 if __name__ == "__main__":
 
+    dalton_dir='/c/ccg/share/software/dalton/dalton-2.0_intel/bin/'
+    os.environ['PATH']+=os.pathsep+dalton_dir
+
     tkroot=Tkinter.Tk()
 
-    if 0:
+    if 1:
         unittest.main()
+        #myTestSuite = unittest.TestSuite()
+        #myTestSuite.addTest(DaltonCalcEdTests("testOpt"))
+        #runner = unittest.TextTestRunner()
+        #runner.run(myTestSuite)        
     else:
         #
         # Test editor in standalone mode
