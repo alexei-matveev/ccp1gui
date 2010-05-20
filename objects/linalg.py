@@ -51,7 +51,7 @@ def usingNumpy():
 
 def isAvailable():
     """Return True or False depending on whether we have linear algebra functionality"""
-    if usingNumeric or usingNumpy: return True
+    if usingNumeric() or usingNumpy(): return True
     return False
 
     
