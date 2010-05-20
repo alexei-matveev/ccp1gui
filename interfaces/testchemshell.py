@@ -156,7 +156,9 @@ def testMe():
         suite = unittest.TestSuite()
         suite.addTest(ChemShellCalcTests("testGAMESSUKOptim"))
         suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVisTets))
-        suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTests))
+        # Don't add calced tests as if the calculation generates an exception (such as when a binary
+        # can't be found, the whole testsuite seg-faults
+        #suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTests))
         return suite
 
 if __name__ == "__main__":
@@ -186,7 +188,7 @@ if __name__ == "__main__":
         myTestSuite = unittest.TestSuite()
         #myTestSuite.addTest(ChemShellCalcTests("testGAMESSUKOptim"))
         #myTestSuite.addTest(ChemShellCalcTests("testMolproOptim"))
-        #myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVisTests))
+        myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellModeVisTests))
         #myTestSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(ChemShellCalcEdTests))
         runner = unittest.TextTestRunner()
         runner.run(myTestSuite)

@@ -80,13 +80,17 @@ def testMe():
     gui testing framework."""
 
     suite = unittest.TestLoader().loadTestsFromTestCase(GAMESSUKCalcTests)
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(GAMESSUKCalcEdTests))
+    # Don't add calced tests as if the calculation generates an exception (such as when a binary
+    # can't be found, the whole testsuite seg-faults
+    #suite.addTests(unittest.TestLoader().loadTestsFromTestCase(GAMESSUKCalcEdTests))
     return suite
 
 if __name__ == "__main__":
 
     # Make sure we can find the exectuable
-    os.environ['GAMESS_EXE']='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev_pgf/bin/gamess'
+    #os.environ['GAMESS_EXE']='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev_pgf/bin/gamess'
+    rungamess_dir='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev_pgf/rungamess'
+    os.environ['PATH']=os.environ['PATH']+os.pathsep+rungamess_dir
 
     import Tkinter
     tkroot = Tkinter.Tk()

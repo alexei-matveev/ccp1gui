@@ -1634,7 +1634,7 @@ def testMe():
     """Return a unittest test suite with all the testcases that should be run by the main 
     gui testing framework."""
 
-    return  unittest.TestLoader().loadTestsFromTestCase(DaltonCalcEdTests)
+    return  unittest.TestLoader().loadTestsFromTestCase(DaltonCalcTests)
 
 
 if __name__ == "__main__":
