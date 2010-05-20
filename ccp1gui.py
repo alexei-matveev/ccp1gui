@@ -2,6 +2,7 @@
 #
 # Script to run the ccp1gui and inform the user if they don't have the required modules installed.
 #
+
 import os,sys
 if __name__ == "__main__":
     # Need to add the gui directory to the python path so 
