@@ -110,6 +110,7 @@ http://public.kitware.com/VTK/get-software.php"""
     print "CCP1GUI directory: ",paths['gui']
     print
 
+import Tkinter
 import stat
 import math
 from tkFileDialog import *
@@ -131,17 +132,17 @@ from viewer.initialisetk import initialiseTk
 from viewer.shell import env, mypyshell
 
 #print dir()
-from interfaces.calc import *
-from interfaces.calced import *
-from interfaces.gamessuk import *
-from interfaces.molpro import *
-from interfaces.chemshell import *
-from interfaces.dl_poly import *
-from interfaces.mopac import *
-from interfaces.mndo import *
-from interfaces.dalton import *
-from interfaces.charmm import *
-from interfaces.smeagol import *
+#from interfaces.calc import *
+#from interfaces.calced import *
+from interfaces.gamessuk import GAMESSUKCalc, GAMESSUKCalcEd
+from interfaces.molpro import MOLPROCalc, MOLPROCalcEd
+from interfaces.chemshell import ChemShellCalc, ChemShellCalcEd
+from interfaces.dl_poly import DLPOLYCalc
+from interfaces.mopac import MopacCalc
+from interfaces.mndo import MNDOCalc
+from interfaces.dalton import DALTONCalc
+#from interfaces.charmm import *
+from interfaces.smeagol import SMEAGOLCalc
 import interfaces.am1calc
 
 import viewer.selections2
@@ -151,8 +152,8 @@ import objects
 from objects.zme            import *
 from objects.periodic       import sym2no, z_to_el, name_to_element
 
-from viewer.slavethread import *
-from jobmanager.jobeditor import *
+from viewer.slavethread import SlaveThread
+import jobmanager.jobeditor
 from viewer.toolpanel import *
 
 from objects import symed
