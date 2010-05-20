@@ -11,8 +11,7 @@ import viewer.defaults
 #
 # GAMESS-UK
 #
-#os.environ['GAMESS_EXE']='/home/jmht/Documents/GAMESS-UK.gnu/bin/gamess'
-rungamess_dir='/home/jmht/Documents/GAMESS-UK.gnu/rungamess'
+rungamess_dir='/c/ccg/share/software/gamess-uk/GAMESS-UK_dev_pgf/rungamess'
 os.environ['PATH']=os.environ['PATH']+os.pathsep+rungamess_dir
 #
 # ChemShell
@@ -20,6 +19,11 @@ os.environ['PATH']=os.environ['PATH']+os.pathsep+rungamess_dir
 chemsh_script_dir='/c/ccg/share/software/ChemShell/ChemShell-3.4.dev/scripts'
 viewer.defaults.defaults.set_value('chemsh_script_dir', chemsh_script_dir)
 
+#
+# Dalton
+#
+dalton_dir='/c/ccg/share/software/dalton/dalton-2.0_intel/bin/'
+os.environ['PATH']+=os.pathsep+dalton_dir
 
 #
 import unittest
@@ -50,6 +54,8 @@ tkroot=Tkinter.Tk()
 #
 import objects.zmatrix
 testsuite.addTests(objects.zmatrix.testMe())
+import objects.am1
+testsuite.addTests(objects.am1.testMe())
 
 #
 # jobmanager
@@ -62,38 +68,44 @@ testsuite.addTests(jobmanager.ccp1gui_subprocess.testMe())
 #
 # interfaces
 #
-import interfaces.fileio
-testsuite.addTests(interfaces.fileio.testMe())
-import interfaces.smeagolio
-testsuite.addTests(interfaces.smeagolio.testMe())
-import interfaces.gamessukio
-testsuite.addTests(interfaces.gamessukio.testMe())
-import interfaces.charmm
-testsuite.addTests(interfaces.charmm.testMe())
-import interfaces.filepunch
-testsuite.addTests(interfaces.filepunch.testMe())
-#import interfaces.cubereader
-#testsuite.addTests(interfaces.cubereader.testMe())
 import interfaces.am1calc
 testsuite.addTests(interfaces.am1calc.testMe())
 
-# interfaces with graphical tests
-import interfaces.testgamessuk
-interfaces.testgamessuk.tkroot=tkroot
-testsuite.addTests(interfaces.testgamessuk.testMe())
+import interfaces.charmm
+testsuite.addTests(interfaces.charmm.testMe())
 
-#import interfaces.dalton
-#interfaces.dalton.tkroot=tkroot
-#testsuite.addTests(interfaces.dalton.testMe())
+import interfaces.chemshell
+testsuite.addTests(interfaces.chemshell.testMe())
+
+#import interfaces.cubereader
+#testsuite.addTests(interfaces.cubereader.testMe())
+
+import interfaces.dalton
+testsuite.addTests(interfaces.dalton.testMe())
+
+import interfaces.fileio
+testsuite.addTests(interfaces.fileio.testMe())
+
+import interfaces.filepunch
+testsuite.addTests(interfaces.filepunch.testMe())
+
+import interfaces.gamessukio
+testsuite.addTests(interfaces.gamessukio.testMe())
 
 import interfaces.mndo
+# Poke root Tk instance into mndo module
 interfaces.mndo.tkroot=tkroot
 testsuite.addTests(interfaces.mndo.testMe())
+
+import interfaces.smeagolio
+testsuite.addTests(interfaces.smeagolio.testMe())
+
+import interfaces.testgamessuk
+testsuite.addTests(interfaces.testgamessuk.testMe())
 
 # Below still to do:
 #interfaces/testmolpro.py
 #interfaces/testmolden.py
-#interfaces/testchemshell.py
 
 
 ###############################################################
