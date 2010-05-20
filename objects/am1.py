@@ -1,9 +1,19 @@
 # By Patrik Jakobsson and Ulf Ekstrom 2005-2007.
 from __future__ import generators
+import os,sys
+if __name__ == "__main__":
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
 
+# Import python modules
+import math
+import unittest
+
+# Import our modules
 import objects.numeric
 import objects.linalg
-import math
 
 # Evaluation variables
 get_E_calls = 0
@@ -750,8 +760,9 @@ class Molecule:
 
   def get_P(self,F):
     Fp = F+self.H
-    Energy , C = objects.linalg.Heigenvectors(Fp)
-    C = objects.numeric.transpose(C)
+    Energy , C = objects.linalg.eigh(Fp)
+    # jmht no longer need the transpose as we use the same format as numpy
+    #C = objects.numeric.transpose(C)
     if 0:
       print 'Eigenvalues:',Energy
       print 'Orbitals:'
@@ -1298,3 +1309,77 @@ def norm(g):
   for i in range(len(g)):
     s += float(g[i])**2
   return math.sqrt(s)
+
+
+##########################################
+#
+# Unittesting stuff
+# 
+##########################################
+
+class AM1TestCases(unittest.TestCase):
+
+    def testCH2(self):
+        
+        # Create the molecule
+        Am1Mol = Molecule()
+
+        Am1Mol.add( 'C','C',0.0,0.0,0.0 )
+        Am1Mol.add( 'H','H',1.0,0.0,0.0 )
+        Am1Mol.add( 'H','H',1.0,1.0,0.0 )
+
+        max_iter=100
+        gradient_threshold=1e-6
+        energy_threshold=1e-3
+
+        generator = Am1Mol.conjugategradient( max_iter,
+                                              gradient_threshold,
+                                             energy_threshold )
+        done=0
+        while not done:
+            try:
+                atoms,energy = generator.next()
+            except StopIteration:
+                done=1
+                break
+        
+        self.assertAlmostEqual(energy,-150.72230108)
+            
+
+
+    def testH2O(self):
+        
+        # Create the molecule
+        Am1Mol = Molecule()
+
+        Am1Mol.add( 'O','O',0.0,0.0,0.0 )
+        Am1Mol.add( 'H','H',0.0,0.0,1.05 )
+        Am1Mol.add( 'H','H',0.934609,0.0,-0.224954 )
+
+        max_iter=100
+        gradient_threshold=1e-6
+        energy_threshold=1e-3
+
+        generator = Am1Mol.conjugategradient( max_iter,
+                                              gradient_threshold,
+                                             energy_threshold )
+        done=0
+        while not done:
+            try:
+                atoms,energy = generator.next()
+            except StopIteration:
+                done=1
+                break
+        
+        self.assertAlmostEqual(energy,-348.40642501570665)
+
+def testMe():
+    """Return a unittest test suite with all the testcases that should be run by the main 
+    gui testing framework."""
+
+    return  unittest.TestLoader().loadTestsFromTestCase(AM1TestCases)
+
+
+if __name__ == "__main__":
+
+    unittest.main()

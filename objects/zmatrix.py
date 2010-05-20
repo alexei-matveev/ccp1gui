@@ -4318,7 +4318,15 @@ class Zmatrix(Indexed):
         """Return a matrix with the eigenvectors of the
         inertial tensor, calculated with the given origin."""
         I = self.inertialTensor( origin )
-        valvec = objects.linalg.Heigenvectors(I)
+
+        #valvec = objects.linalg.Heigenvectors(I)
+        eigval,eigvec = objects.linalg.eigh(I)
+
+        # Need to add in a transpose eigenvectors as numpy in C-ordering
+        eigvec=objects.numeric.transpose(eigvec)
+        valvec=(eigval,eigvec)
+        
+
         res = []
         for i in range(3):
             res.append([valvec[0][i],[valvec[1][i][0],
@@ -4339,7 +4347,13 @@ class Zmatrix(Indexed):
     def getMomentsOfInertia(self):
         """ Get the eigenvalues of the axes. """
         I = self.inertialTensor()
-        valvec = objects.linalg.eigenvectors(I)
+        #valvec = objects.linalg.eigenvectors(I)
+        eigval,eigvec = objects.linalg.eig(I)
+
+        # Need to add in a transpose as numpy in C-ordering
+        eigvec=objects.numeric.transpose(eigvec)
+        valvec=(eigval,eigvec)
+        
         res = []
         for i in range(3):
             res.append(valvec[0][i])

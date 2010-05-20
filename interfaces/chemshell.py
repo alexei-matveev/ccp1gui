@@ -2033,7 +2033,17 @@ def chemshell_z_modes(directory=None):
     #print h.array
 
     # Generate evals and evecs
-    eval,evec = objects.linalg.eigenvectors(h.array)
+    eval,evec = objects.linalg.eig(h.array)
+
+    # As numpy uses C-order arrays and we are adopting the numpy convention
+    # we need to transpose the eigenvectors
+    evec=objects.numeric.transpose(evec)
+
+    # Need to convert to python arrays if using numpy
+    if objects.linalg.usingNumpy():
+        eval=eval.tolist()
+        evec=evec.tolist()
+
     #print 'eval',eval
     #print 'evec',evec
 
@@ -2128,7 +2138,16 @@ def chemshell_c_modes(directory=None):
     #print h.array
 
     # Generate evals and evecs
-    eval,evec = objects.linalg.eigenvectors(h.array)
+    eval,evec = objects.linalg.eig(h.array)
+
+    # As numpy uses C-order arrays and we are adopting the numpy convention
+    # we need to transpose the eigenvectors
+    evec=objects.numeric.transpose(evec)
+
+    # Need to convert to python arrays if using numpy
+    if objects.linalg.usingNumpy():
+        eval=eval.tolist()
+        evec=evec.tolist()
     #print 'eval',eval
     #print 'evec',evec
 
