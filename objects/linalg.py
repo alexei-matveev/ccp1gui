@@ -92,7 +92,11 @@ class LinalgTestCases(unittest.TestCase):
     """Test cases to check that both our Numeric and numpy wrappers give the same result
     These will only work if both Numeric and numpy are installed"""
 
-    import Numeric, numpy
+    try:
+        import Numeric, numpy
+    except ImportError:
+        Numeric=None
+        numpy=None
 
     # Symmetric matrix for testing
     symmat = [
@@ -105,8 +109,9 @@ class LinalgTestCases(unittest.TestCase):
         ]
 
 
-    numeric_symmat = Numeric.array(symmat)
-    numpy_symmat = numpy.array(symmat)
+    if Numeric:
+        numeric_symmat = Numeric.array(symmat)
+        numpy_symmat = numpy.array(symmat)
 
 
     def testEigh(self):
