@@ -100,8 +100,9 @@ class CCP1GUI_Vector:
       return CCP1GUI_Vector(c*self[0],c*self[1],c*self[2])
 
 
-try:
-   from  Scientific.Geometry.VectorModule import Vector
-except ImportError:
-   Vector = CCP1GUI_Vector
+#try:
+#   from  Scientific.Geometry.VectorModule import Vector
+#except ImportError:
+# For time being, we go with our own
+Vector = CCP1GUI_Vector
    
