@@ -24,11 +24,14 @@ render the molecule into the main window, for this see the derived
 classes in files (e.g. vtkgraph.py and openglgraph.py)
 """
 
-# Required so we can exit...
 import os,sys
-
 if __name__ == "__main__":
-    
+    # Need to add the gui directory to the python path so 
+    # that all the modules can be imported
+    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+    sys.path.append(gui_path)
+
+
     # Before we do owt else, make sure we can import the modules that we need
     # and give the user a helpful messsage if we can't (apparently some people
     # don't like reading tracebacks...)
@@ -97,12 +100,6 @@ http://public.kitware.com/VTK/get-software.php"""
         print whereget
         sys.exit(-1)
 
-    # Append the gui directory to the PYTHONPATH
-    # 
-    me=os.path.abspath(__file__)
-    guidir=os.path.split( os.path.split(me)[0] )[0]
-    sys.path.append( guidir )
-    
     from viewer.paths import paths
     
     print
