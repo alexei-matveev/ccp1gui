@@ -39,6 +39,7 @@ from viewer.paths import root_path,find_exe
 from   filepunch import *
 
 # Import external modules
+import Tkinter
 import Pmw
 import tkFileDialog
 
@@ -481,7 +482,6 @@ def testMe():
 
 if __name__ == "__main__":
 
-    import Tkinter
     tkroot=Tkinter.Tk()
 
     if 0:
