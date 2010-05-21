@@ -97,9 +97,6 @@ import interfaces.mndo
 interfaces.mndo.tkroot=tkroot
 testsuite.addTests(interfaces.mndo.testMe())
 
-import interfaces.smeagolio
-testsuite.addTests(interfaces.smeagolio.testMe())
-
 import interfaces.testgamessuk
 testsuite.addTests(interfaces.testgamessuk.testMe())
 
