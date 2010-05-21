@@ -19,8 +19,8 @@ except ImportError:
 
 # Start root here and withdraw, otherwise we have the root Tk window hanging around looking lost
 # when we fire up any dialogues
-root = Tkinter.Tk()
-root.withdraw()
+tkroot = Tkinter.Tk()
+tkroot.withdraw()
 
 try:
     import vtk
@@ -36,11 +36,11 @@ Alternatively a packaged version of Python with vtk, numpy and scipy is availabl
 
 http://www.enthought.com/products/epd.php
 
-If using Christoph's binaries, extract the zip file into:
+If using Christoph's binaries, extract the zip file and then copy the folder called "vtk" into:
 
 C:\Python26\Lib\site-packages
 
-(or similar for your system).
+(or similar for your system). You will also need to add the full path to this folder ("C:\Python26\Lib\site-packages\vtk") to your PATH environment variable.
 
 If you can't, or have done that and are still seeing this message, click "Ok" to point us at where the zip file has been extracted.
 
@@ -66,7 +66,9 @@ Otherwise click "Cancel" to close this dialog."""
         # Linux/OSX branch for trying to import vtk
         pass
 
-
+#
+# Final checks under windows
+#
 if sys.platform[:3]=='win':
     # Here we should have Tkinter and vtk - Pmw we hope is in our directory so it's just
     # Mark Hammond's win32 extensions.
@@ -82,15 +84,45 @@ if sys.platform[:3]=='win':
     Please install them and then try again."""
         tkMessageBox.showinfo(message=msg)
         sys.exit(1)
+
+    #
+    # Finally, make sure we can load the vtkRenderingPythonTkWidgets.dll
+    #
+    r=None
+    try:
+        import viewer.vtkTkRenderWidgetCCP1GUI
+        r=viewer.vtkTkRenderWidgetCCP1GUI.vtkTkRenderWidgetCCP1GUI(tkroot)
+    except Tkinter.TclError,e:
+        #
+        # See if the vtkRenderingPythonTkWidgets.dll is in the vtk directory
+        #
+        dllname='vtkRenderingPythonTkWidgets.dll'
+        vtkdir=os.path.dirname(vtk.__file__)
+        dllfile=vtkdir+os.sep+dllname
+        if os.access(dllfile,os.X_OK):
+            # Found the dll file so add to the system path
+            os.environ['PATH']+=os.pathsep+vtkdir
+            print "Added: %s to PATH environment variable." % vtkdir
+        else:
+            msg="""Sorry, but the CCP1GUI cannot start as the vtk dll %s cannot be loaded.
+This file needs to be in your system path. If you can find this file, please add the directory to the PATH environment variable and restart the CCP1GUI.
+""" % dllname
+            tkMessageBox.showinfo(message=msg)
+            sys.exit(1)
+
+    # We might still have the r vtkTkRenderWidgetCCP1GUI hanging around - it doesn't seem to cause problems
+    # but destroy anyway
+    if r:
+        r.destroy()
         
 
 # Everything should be set up now so run and pray...        
 import viewer.vtkgraph
 
-vt = viewer.vtkgraph.VtkGraph(root)
+vt = viewer.vtkgraph.VtkGraph(tkroot)
 for file in sys.argv[1:]:
     print 'loading',file
     vt.load_from_file(file)
     
 vt.mainloop()  
-    
+
