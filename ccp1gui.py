@@ -3,30 +3,37 @@
 # Script to run the ccp1gui and inform the user if they don't have the required modules installed.
 #
 
-import os,sys
-if __name__ == "__main__":
-    # Need to add the gui directory to the python path so 
-    # that all the modules can be imported
-    gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
-    sys.path.append(gui_path)
+import os,sys,platform
 
-try:
-    import Tkinter
-    import tkMessageBox, tkFileDialog
-except ImportError:
-    # Need to work out something sensible to do here - fire up Windows gui etc
-    sys.exit(1)
 
-# Start root here and withdraw, otherwise we have the root Tk window hanging around looking lost
-# when we fire up any dialogues
-tkroot = Tkinter.Tk()
-tkroot.withdraw()
+def get_install_info():
+    """Return a message telling the user what they need to install on a particular platform"""
 
-try:
-    import vtk
-except ImportError:
-    if sys.platform[:3]=='win':
-        msg="""Sorry but the CCP1GUI cannot run because you do not appear to have a python-enabled vtk installed. Binaries can be downloaded from those kindly made available by Christoph Gohlke:
+
+    #
+    # Dictionary mapping system->advice
+    #
+    install_info = {
+
+#
+# OpenSuse
+#
+        'openSUSE' : """Sorry but the CCP1GUI cannot run on your system as some additional Python modules are not available.
+
+Under OpenSuse, the following rpm files will need to installed:
+
+python-tk
+vtk-python
+
+In addition, to access the full functionality of the CCP1GUI you should also install:
+
+python-numpy
+python-scipy""",
+
+#
+# Windows
+#
+        'Windows' : """Sorry but the CCP1GUI cannot run because you do not appear to have a python-enabled vtk installed. Binaries can be downloaded from those kindly made available by Christoph Gohlke:
 
 http:///www.lfd.uci.edu/~gohlke/pythonlibs/
 
@@ -45,7 +52,50 @@ C:\Python26\Lib\site-packages
 If you can't, or have done that and are still seeing this message, click "Ok" to point us at where the zip file has been extracted.
 
 Otherwise click "Cancel" to close this dialog."""
-                
+
+
+        }
+
+    # Work out the platform and return the message
+    if platform.system() == 'Windows':
+        return install_info['Windows']
+    elif platform.system() == 'Linux':
+        if platform.linux_distribution()[0].strip() == 'openSUSE':
+            return install_info['openSUSE']
+    
+    return "Please email ccp1gui-users@lists.sourceforge.net for advice on how to get the CCP1GUI working on your system!"
+
+
+# Need to add the gui directory to the python path so 
+# that all the modules can be imported
+gui_path = os.path.split(os.path.dirname( os.path.realpath( __file__ ) ))[0]
+sys.path.append(gui_path)
+
+try:
+    import Tkinter
+    import tkMessageBox, tkFileDialog
+except ImportError:
+    # Need to work out something sensible to do here - e.g. fire up native gui on Windows gui etc.
+    msg = get_install_info()
+    print "\n"
+    print msg
+    sys.exit(1)
+
+
+# Start root here and withdraw, otherwise we have the root Tk window hanging around looking lost
+# when we fire up any dialogues
+tkroot = Tkinter.Tk()
+tkroot.withdraw()
+
+try:
+    import vtk
+except ImportError:
+    if platform.system=='Windows':
+        #
+        # Windows somewhat special - if they couldn't install the vtk stuff into their Python installation
+        # or aren't too sure how to set environment variables etc, we try and help them.
+        #
+        msg = get_install_info()
         if not tkMessageBox.askokcancel(message=msg):
             sys.exit(1)
 
@@ -63,11 +113,12 @@ Otherwise click "Cancel" to close this dialog."""
         sys.path.append(vtkroot)
 
     else:
-        # Linux/OSX branch for trying to import vtk
-        pass
+        msg=get_install_info()
+        tkMessageBox.showinfo(message=msg)
+        sys.exit(1)
 
 #
-# Final checks under windows
+# Final checks under Windows
 #
 if sys.platform[:3]=='win':
     # Here we should have Tkinter and vtk - Pmw we hope is in our directory so it's just
