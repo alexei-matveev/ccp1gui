@@ -325,27 +325,20 @@ class MNDOCalc(qm.QMCalc):
         job.add_step(jobmanager.job.COPY_OUT_FILE,'transfer input',local_filename=self.infile)
 
         # Local windows job, search for local executable
-        if sys.platform[:3] == 'win' and hostname == 'localhost':
+        if sys.platform[:3] == 'win':
             # Name of executable, assume install of exe into exe subdirectory
             try:
                 install_dir = os.environ['MNDO_BIN']
                 mndo_exe=install_dir+'\mndo.exe'
             except KeyError:
-                mndo_exe=root_path+'/exe/mndo.exe'
+                mndo_exe=gui_path+'/exe/mndo.exe'
             print 'Using MNDO path ' + mndo_exe
             job.add_step(jobmanager.job.RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=None,stdout_file=None)
-        elif sys.platform[:3] == 'mac':
-            pass
         else:
             mndo_exe="mndo"
             job.add_step(jobmanager.job.RUN_APP,'run MNDO',local_command=mndo_exe,stdin_file=self.infile,stdout_file=self.outfile)
 
         job.add_step(jobmanager.job.COPY_BACK_FILE,'recover log',remote_filename=self.outfile)
-
-        #if sys.platform[:3] == 'win':
-        #    job.add_step(COPY_BACK_FILE,'fetch punch',local_filename=job_name+'.pun',remote_filename='ftn058')
-        #else:
-        #    job.add_step(COPY_BACK_FILE,'recover punch',remote_filename=job_name+'.pun')
 
         job.add_step(jobmanager.job.PYTHON_CMD,'load results',proc=lambda s=self,g=graph: s.endjob(g))
         job.add_tidy(self.endjob2)
