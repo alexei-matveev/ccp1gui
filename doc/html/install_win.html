@@ -12,58 +12,52 @@ under Windows</h1>
 
 <h2>Base Packages</h2>
 
-<p>The installation of the CCP1GUI on Windows has been made
-considerably easier thanks to the nice people at <a
-href="http://www.enthought.com">Enthought</a> who have
-created a Python distribution that contains most of the software dependancies
-required by the CCP1GUI.</p>
+<p>The easiest way to run the CCP1GUI under windows is to use the Python
+  distribution
+  from <a href="http://www.enthought.com/products/getepd.php">Enthought</a>. This
+  is free to students and those in academic institutions.</p>
 
-<p>Their Python installation program can be downloaded from:</p>
+<p>This provides all the components needed by the CCP1GUI, so if you have this
+  installed you can just download the latest version of the CCP1GUI
+  from <a href="http://sourceforge.net/projects/ccp1gui/files/">sourceforge</a>, unzip it and then run it by double-clicking on the <b>ccp1gui.py</b> file.</p>
 
-<a
-href="http://www.enthought.com/python/">http://www.enthought.com/python/</a>
+<p>If you do not wish to use Enthought, or it is not free for you, then Windows
+  binaries for Python can be downloaded from
+  the <a href="http://www.python.org/download/">Python website</a></p>
 
-<p><b>IMPORTANT!:</b> Please make sure that you use the latest
-(version 1.0.0 as of this writing) of Enthought Python, as versions
-from 0.9.2 up until 1.0.0 did not include Tk and so did not work with the
-CCP1GUI.</p>
+<p>Once you have Python installed, binaries of VTK, numpy, Scientific and Numeric python can be downloaded from
+  those kindly made available on Christoph Gohlke's <a href="http:///www.lfd.uci.edu/~gohlke/pythonlibs/">website</a>.
 
-<p>Save the installatation program to somewhere on your computer (e.g
-your Desktop) and then run it by double-clicking on it.</p>
+<p>If using Christoph's binaries, extract the VTK zip file and then copy the
+  folder in there called <b>vtk</b> into:</p>
 
-<p>It is important to let Enthought install the python in the default
-location of C:\Python24 - otherwise you will need to edit the
-ccp1gui.bat file to point it at your Python installation or set a
-PYTHON environment variable to point at excutable.</p>
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>C:\Python26\Lib\site-packages</b></tt>
+</td></tr>
+</table>
 
-<p>When prompted to "Select Components" for the install "Python
-interpreter and Libraries" as well as "Tcl/Tk (Tkinter, IDLE, pydoc)"
-should be selected by default, but if for any reason they are not,
-make sure that they are selected.</p>
+</p>(or similar for the version of Python you are using). You will also need to add the full path to
+the folder:</p>
 
-<p>Once you have installed Python, you will need to reboot.</p>
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>C:\Python26\Lib\site-packages\vtk</b></tt>
+</td></tr>
+</table>
 
-<!--
-<p>Next, install Mark Hammond's Python for Windows extensions from:</p>
+<p>to your <b>PATH</b> environment variable.</p>
 
-<a href="https://sourceforge.net/projects/pywin32/">https://sourceforge.net/projects/pywin32/</a>
+<p>The packages for Numeric and/or Scientific are self-installing, so just
+  double-click on the .exe file</p>
 
-<p>You will need to ensure that you download the extensions for the
-version of Python you downloaded from Enthought. For the latest
-version of Enthought Python (2.3) you should download the file:</p>
+<p>You can now just download the latest version of the CCP1GUI
+  from <a href="http://sourceforge.net/projects/ccp1gui/files/">sourceforge</a>,
+  unzip it and then run it by double-clicking on the <b>ccp1gui.py</b>
+  file.</p>
 
-<tt><b>pywin32-205.win32-py2.3.exe</b></tt>
 
-<p>and then run it by double-clicking on it. The installer will ask you
-where to install the extensions, and you should ensure that it has
-selected the directory that holds your Enthought Python
-installation.</p>
-
---!>
-
-<p>At this point you have the base packages installed and so can
-download a bundle, so only read on if you are installing the
-additional packages individually.</p>
+<p>Information on installing the additional packages individually follows below.</p>
 
 <hr/>
 
@@ -103,12 +97,33 @@ Pmw folder to:</p>
 
 <table border="0" bgcolor="#E0E0E0" width="100%">
 <tr><td>
-<tt><b>C:\Python2.3\Lib\site-packages</b></tt>
+<tt><b>C:\Python26\Lib\site-packages</b></tt>
 </td></tr>
 </table>
 
 <a name="vtk"></a><h3>VTK</h3>
-<p>Use the Enthought Python version. No really, do.</p>
+<p>Binaries of VTK, numpy, Scientific and Numeric python can be downloaded from
+  those kindly made available on Christoph Gohlke's <a href="http:///www.lfd.uci.edu/~gohlke/pythonlibs/">website</a>.
+
+<p>If using Christoph's binaries, extract the VTK zip file and then copy the
+  folder in there called <b>vtk</b> into:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>C:\Python26\Lib\site-packages</b></tt>
+</td></tr>
+</table>
+
+</p>(or similar for the version of Python you are using). You will also need to add the full path to
+the folder:</p>
+
+<table border="0" bgcolor="#E0E0E0" width="100%">
+<tr><td>
+<tt><b>C:\Python26\Lib\site-packages\vtk</b></tt>
+</td></tr>
+</table>
+
+<p>to your <b>PATH</b> environment variable.</p>
 
 </body>
 </html>

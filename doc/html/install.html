@@ -11,41 +11,60 @@ Installation notes for the CCP1 GUI
 
 <p>All of the packages needed to get the ccp1gui running are freely
 available on the web and many come pre-installed on most modern
-operating systems. The main packages that the ccp1gui uses are quite
+operating systems.</p>
+
+<p>The main packages that the ccp1gui uses are quite
 common and are available for most operating systems - usually
-supplied on the installation disks or available via the Operating
+pre-installed or available via the Operating
 System's package managment system. These main packages are:</p>
 
 <ul>
 <li><a href="http://www.python.org">Python</a></li>
-<li><a href="http://tcl.sourceforge.net/">Tcl (Tool Command Language)
-and Tk (Tk Toolkit)</a></li>
-<li><a href="http://wiki.python.org/moin/TkInter">Tkinter</a> ( aka Python-tk )</li>
+<li><a href="http://wiki.python.org/moin/TkInter">Tkinter</a> ( aka python-tk),
+  which is the Python interface to the <a href="http://tcl.sourceforge.net/">Tcl (Tool Command Language)
+and Tk (Tk Toolkit)</a> and usually installed as standard with Python.</li>
 </ul>
-
 
 <p>In addition, the CCP1GUI relies on a number of packages that are
 not standard and so are unlikely to be installed on your computer
-unless you put them there. These packages are:</p>
+unless you put them there. The only required package is:</p>
 
 <ul>
-<li><a href="http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351">Numerical Python</a> ( aka python-numeric or numpy )</li>
-<li><a href="http://dirac.cnrs-orleans.fr/plone/software/scientificpython/">Scientific Python</a> ( aka python-scientific )</li>
-<li><a href="http://pmw.sourceforge.net/">Python Megawidgets</a> ( aka Pmw )</li>
 <li>The <a href="http://public.kitware.com/VTK/">Visualistation Tool Kit</a> (VTK)</li>
 </ul>
 
 
-<p>In order to simplify the installation of the ccp1gui, we have
-created software bundles that contain all of the additional packages
-required. To use a bundle you just need to ensure that you have the
-base packages installed (see the table below for links to instructions
-on how to do this), after which, you can
-download a bundle and run the ccp1gui from there.</p>
+<p>With Python, Tkinter and VTK installed, the CCP1GUI will run on your system,
+  although additional functionality can be accessed by installing the following
+  packages:</p>
 
-<p>If a bundle is not available, or you would prefer to install all of
-the additional packages yourself, there are links in the table below
-to instructions on how to install the additional packages.</p>
+<ul>
+<li>One of <a href="http://numpy.scipy.org/">numpy</a> or <a href="http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351">Numerical Python</a></li>
+<li><a href="http://dirac.cnrs-orleans.fr/plone/software/scientificpython/">Scientific
+    Python</a> ( aka python-scientific ), which requires the installation of Numeric.</li>
+<li></li>
+<li>The Python-bindings for <a href="http://openbabel.org/">Open Babel</a> - there are installation
+  instructions for these available on the OpenBabel <a href="http://openbabel.org/wiki/Install_Python_bindings">wiki</a>.</li>
+</ul>
+
+
+<small><b>NB:</b> The CCP1GUI also uses <a href="http://pmw.sourceforge.net/">Python
+    Megawidgets</a> ( aka Pmw ), but we normally package this up so you will
+  only need this if running from a CVS checkout.</small>
+
+
+<p>If you don't <i>do</i> documentation, then you can always download the latest
+  version of the CCP1GUI
+  from <a href="http://sourceforge.net/projects/ccp1gui/files/">sourceforge</a>. Unzip
+  the zip/tar.gz file and run the <b>ccp1gui.py</b> file in the main directory. The CCP1GUI will try
+  to work out what is missing and tell you what you need to install.</p>
+
+
+<p>Depending on what system you are running, we may have pre-packaged software
+  bundles for your system that will work once you have the base packages
+  installed. The table below provides links to bundles if they are available
+  and installation documentation for the base and additional packages for the
+  different platforms we know are supported.</p>
 
 <br/>
 
@@ -56,7 +75,7 @@ to instructions on how to install the additional packages.</p>
 <thead>
 <tr><th rowspan="2">Operating System</th><th rowspan="2">Architecture</th><th rowspan="2">Bundle</th><th
 colspan="5" bgcolor="gray">Installation Instructions</th></tr>
-<tr><th>Base Packages</th><th>Numeric</th><th>Scientific</th><th>Pmw</th><th>VTK</th></tr>
+<tr><th>Base Packages</th><th>VTK</th><th>Numeric</th><th>Scientific</th><th>Pmw</th></tr>
 
 <tbody>
 <!-- Windows -->
@@ -65,10 +84,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>Pentium</td>
 <td<a href="http://sourceforge.net/project/platformdownload.php?group_id=138504">y</a></td>
 <td><a href="./install_win.html">Base</a></td>
+<td><a href="./install_win.html#vtk">VTK</a></td>
 <td><a href="./install_win.html#numeric">Numeric</a></td>
 <td><a href="./install_win.html#scientific">Scientific</a></td>
 <td><a href="./install_win.html#pmw">Pmw</a></td>
-<td><a href="./install_win.html#vtk">VTK</a></td>
 </tr>
 
 <!-- Mac OSX -->
@@ -77,10 +96,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>Intel/PowerPC</td>
 <td><a href="http://sourceforge.net/project/platformdownload.php?group_id=138504">y</a></td>
 <td><a href="./install_mac.html">Base</a></td>
+<td><a href="./install_mac.html#vtk">VTK</a></td>
 <td><a href="./install_mac.html#numeric">Numeric</a></td>
 <td><a href="./install_mac.html#scientific">Scientific</a></td>
 <td><a href="./install_mac.html#pmw">Pmw</a></td>
-<td><a href="./install_mac.html#vtk">VTK</a></td>
 </tr>
 
 
@@ -90,10 +109,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>Power5</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/aix/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <!-- Tru 64 -->
@@ -102,10 +121,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>Alpha EV6</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/tru64/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <!-- Solaris  -->
@@ -114,10 +133,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>Ultrasparc 3</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/solaris/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <!-- Debian/Ubuntu  -->
@@ -126,10 +145,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>x86, x86_64</td>
 <td><a href="./install_unix.html#apt-get">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <!-- SuSE  -->
@@ -138,10 +157,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>x86, x86_64</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <!-- Redhat  -->
@@ -150,10 +169,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>x86</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 <tr>
@@ -161,10 +180,10 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <td>x86_64</td>
 <td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/centos/">y</a></td>
 <td><a href="./install_unix.html">Base</a></td>
+<td><a href="./install_unix.html#vtk">VTK</a></td>
 <td><a href="./install_unix.html#numeric">Numeric</a></td>
 <td><a href="./install_unix.html#scientific">Scientific</a></td>
 <td><a href="./install_unix.html#pmw">Pmw</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
 </tr>
 
 
@@ -181,8 +200,9 @@ the software bundles.</p>
 packages it depends on, either follow the links in the <b>bundle</b>
 column of the above table, or go the to ccp1gui <a
 href="ftp://ftp.dl.ac.uk/qcg/ccp1gui">ftp site</a>. You should be able to
-do this by just openening the url with your browser.</p>
+do this by just opening the url with your browser.</p>
 
+<!--
 <p> If that doesn't work, you can use a command-line ftp
 client. To do this open a terminal on Linux / Unix / MacOSX or fire up the
 Windows command-prompt and type:</p>
@@ -202,6 +222,7 @@ by typing.</p>
 <tt>cd qcg/ccp1gui</tt>
 </td></tr>
 </table>
+-->
 
 <p>The packages in the ccp1gui directory are organised according to
 Operating System (OS), OS version and processor-type ( if applicable ). The
@@ -247,7 +268,7 @@ ccp1gui_bundle/---|--ccp1gui.sh ( or ccp1gui.bat )
 		  <font color="red">|--vtk/</font>
 		  |
 		  |           |-- basis/
-		  |           |-- ccp1gui.sh
+		  |           |-- ccp1gui.py
 		  |--ccp1gui/-|-- chempy/
 		              |-- CVS/
 			      |-- doc/------|--html/
@@ -302,7 +323,7 @@ of any new features or bugfixes, see <a href="#upgrade">here</a>.</p>
 <p>The latest ccp1gui source code is available as a tarred an gzipped archive
 from the <a
 href="http://sourceforge.net/projects/ccp1gui/">sourceforge site</a> or the
-ccp1gui <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/ccp1gui-latest_release.tar.gz">ftp site</a>.
+ccp1gui <a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/ccp1gui.tar.gz">ftp site</a>.
 
 <p>Once you have downloaded the source code, you will need to unpack it. To do
 this on unix systems, use the tar and gzip utilties ( see the <a
@@ -314,7 +335,7 @@ following directory structure:</p>
 
 <pre>
          |-- basis/
-         |-- ccp1gui.sh
+         |-- ccp1gui.py
 ccp1gui/-|-- chempy/
          |-- CVS/
 	 |-- doc/------|--html/
@@ -332,29 +353,15 @@ ccp1gui/-|-- chempy/
 
 
 <p>The ccp1gui itself is just python code, so can be invoked from the
-command-line, by running the ccp1gui.sh script in the main
-directory. You will need to make the script excutable with the
-command:</p>
+command-line, by running the ccp1gui.py script - either by itself or with
+  python, as in:</p>
 
 <table border="0" bgcolor="#E0E0E0" width="100%">
 <tr><td>
-<tt>chmod +x ccp1gui.sh</tt>
+<tt>python ccp1gui.py</tt>
 </td></tr>
 </table>
 
-<p>Alternatively, you can eschew the script and run the python code
-directly with the interpeter (which is all the shell script does),
-with the command:</p>
-
-<table border="0" bgcolor="#E0E0E0" width="100%">
-<tr><td>
-<tt>python viewer/main.py</tt>
-</td></tr>
-</table>
-
-<p>in a terminal, whilst sat in the ccp1gui directory. Provided you
-have all the additional packages installed and an X-server running,
-then the ccp1gui should launch.
 
 <a name="upgrade"></a><h3>Upgrading</h3>
 
