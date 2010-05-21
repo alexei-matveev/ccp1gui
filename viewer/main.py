@@ -4256,7 +4256,7 @@ you would like to extract the frame from."""
             except AttributeError:
                 pass
             data.append('%3d  %2s  %-6s  %10.4f %10.4f %10.4f   %8.3f  %s\n' % ( a.get_index()+1,  a.symbol, a.name,  a.coord[0],a.coord[1],a.coord[2], a.partial_charge, txt))
-        self.infoeditor = Editor(self.interior(),title="Model List",data=data)
+        self.infoeditor = interfaces.inputeditor.Editor(self.interior(),title="Model List",data=data)
         return
             
     def list_geom(self,model):
@@ -4266,7 +4266,7 @@ you would like to extract the frame from."""
         data.append('Geometrical Info for %s\n' % model.title)
         for t in model.bonds_and_angles():
             data.append(t+"\n")
-        self.infoeditor = Editor(self.interior(),title="Geometry List",data=data,directory=paths['user'])
+        self.infoeditor = interfaces.inputeditor.Editor(self.interior(),title="Geometry List",data=data,directory=paths['user'])
 
     def ask_watch_file(self):
         """Ask for a file to monitor for appended data"""
