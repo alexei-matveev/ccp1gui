@@ -90,7 +90,7 @@ tkroot.withdraw()
 try:
     import vtk
 except ImportError:
-    if platform.system=='Windows':
+    if platform.system() =='Windows':
         #
         # Windows somewhat special - if they couldn't install the vtk stuff into their Python installation
         # or aren't too sure how to set environment variables etc, we try and help them.
@@ -120,7 +120,7 @@ except ImportError:
 #
 # Final checks under Windows
 #
-if sys.platform[:3]=='win':
+if platform.system() =='Windows':
     # Here we should have Tkinter and vtk - Pmw we hope is in our directory so it's just
     # Mark Hammond's win32 extensions.
     try:
