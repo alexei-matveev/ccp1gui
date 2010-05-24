@@ -31,6 +31,24 @@ python-numpy
 python-scipy""",
 
 #
+# Ubuntu
+#
+        'Ubuntu' : """Sorry but the CCP1GUI cannot run on your system as some additional Python modules are not available.
+
+Under Ubuntu, the following packages need to installed:
+
+python-tk
+python-vtk
+python-pmw
+python-numeric
+python-numeric-ext
+
+These packages can be installed using apt-get or synaptic if the Universe repositories have been enabled. For advice on how to do this see:
+
+http://help.ubuntu.com/community/Repositories/Ubuntu
+""",
+
+#
 # Windows
 #
         'Windows' : """Sorry but the CCP1GUI cannot run because you do not appear to have a python-enabled vtk installed. Binaries can be downloaded from those kindly made available by Christoph Gohlke:
@@ -62,6 +80,8 @@ Otherwise click "Cancel" to close this dialog."""
     elif platform.system() == 'Linux':
         if platform.linux_distribution()[0].strip() == 'openSUSE':
             return install_info['openSUSE']
+        elif platform.linux_distribution()[0].strip() == 'Ubuntu':
+            return install_info['Ubuntu']
     
     return "Please email ccp1gui-users@lists.sourceforge.net for advice on how to get the CCP1GUI working on your system!"
 
