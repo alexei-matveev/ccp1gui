@@ -9,17 +9,14 @@ Installation notes for the CCP1 GUI
 <body>
 <h1 align=center>The CCP1 Graphical User Interface</h1>
 
-<p>All of the packages needed to get the ccp1gui running are freely
-available on the web and many come pre-installed on most modern
-operating systems.</p>
-
-<p>The main packages that the ccp1gui uses are quite
-common and are available for most operating systems - usually
-pre-installed or available via the Operating
-System's package managment system. These main packages are:</p>
+<p>All of the packages needed to get the CCP1GUI running are freely available
+on the web as open source software. The main packages often come pre-installed
+on most modern operating systems or are available via their package managment
+system. The main packages required by the CCP1GUI are:</p>
 
 <ul>
-<li><a href="http://www.python.org">Python</a></li>
+<li><a href="http://www.python.org">Python</a> - a popular open-source
+  programming language.</li>
 <li><a href="http://wiki.python.org/moin/TkInter">Tkinter</a> ( aka python-tk),
   which is the Python interface to the <a href="http://tcl.sourceforge.net/">Tcl (Tool Command Language)
 and Tk (Tk Toolkit)</a> and usually installed as standard with Python.</li>
@@ -30,7 +27,8 @@ not standard and so are unlikely to be installed on your computer
 unless you put them there. The only required package is:</p>
 
 <ul>
-<li>The <a href="http://public.kitware.com/VTK/">Visualistation Tool Kit</a> (VTK)</li>
+<li>The <a href="http://public.kitware.com/VTK/">Visualistation Tool Kit</a>
+  (VTK) - a poweful open-souce scientific visualisation package.</li>
 </ul>
 
 
@@ -63,8 +61,8 @@ unless you put them there. The only required package is:</p>
 <p>Depending on what system you are running, we may have pre-packaged software
   bundles for your system that will work once you have the base packages
   installed. The table below provides links to bundles if they are available
-  and installation documentation for the base and additional packages for the
-  different platforms we know are supported.</p>
+  and installation documentation for the base packages. Links are also provided
+  to documentation on how to install additional packages if a bundle is not available.</p>
 
 <br/>
 
@@ -92,15 +90,28 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 
 <!-- Mac OSX -->
 <tr>
-<td>Mac OSX (Darwin)</td>
-<td>Intel/PowerPC</td>
-<td><a href="http://sourceforge.net/project/platformdownload.php?group_id=138504">y</a></td>
-<td><a href="./install_mac.html">Base</a></td>
-<td><a href="./install_mac.html#vtk">VTK</a></td>
+<td>Mac OSX 10.6 (Snow Leopard)</td>
+<td>PowerPC/i386/x86_64</td>
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/macosx/10.6">y</a></td>
+<td><a href="./install_mac.html#base10.6">Base</a></td>
+<td><a href="./install_mac.html#vtk10.6">VTK</a></td>
 <td><a href="./install_mac.html#numeric">Numeric</a></td>
 <td><a href="./install_mac.html#scientific">Scientific</a></td>
 <td><a href="./install_mac.html#pmw">Pmw</a></td>
 </tr>
+
+<tr>
+<td>Mac OSX 10.5 (Leopard)</td>
+<td>Intel/PowerPC</td>
+<!--<td><a href="http://sourceforge.net/project/platformdownload.php?group_id=138504">y</a></td> -->
+<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/macosx/10.5">y</a></td>
+<td><a href="./install_mac.html#base10.5">Base</a></td>
+<td><a href="./install_mac.html#vtk10.5">VTK</a></td>
+<td><a href="./install_mac.html#numeric">Numeric</a></td>
+<td><a href="./install_mac.html#scientific">Scientific</a></td>
+<td><a href="./install_mac.html#pmw">Pmw</a></td>
+</tr>
+
 
 
 <!-- AIX -->
@@ -143,24 +154,24 @@ colspan="5" bgcolor="gray">Installation Instructions</th></tr>
 <tr>
 <td>Linux: Debian/Ubuntu</td>
 <td>x86, x86_64</td>
-<td><a href="./install_unix.html#apt-get">y</a></td>
-<td><a href="./install_unix.html">Base</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
-<td><a href="./install_unix.html#numeric">Numeric</a></td>
-<td><a href="./install_unix.html#scientific">Scientific</a></td>
-<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#ubuntu">n</a></td>
+<td><a href="./install_unix.html#ubuntu">Base</a></td>
+<td><a href="./install_unix.html#ubuntu">VTK</a></td>
+<td><a href="./install_unix.html#ubuntu">Numeric</a></td>
+<td><a href="./install_unix.html#ubuntu">Scientific</a></td>
+<td><a href="./install_unix.html#ubuntu">Pmw</a></td>
 </tr>
 
 <!-- SuSE  -->
 <tr>
 <td>Linux: Suse</td>
 <td>x86, x86_64</td>
-<td><a href="ftp://ftp.dl.ac.uk/qcg/ccp1gui/suse/">y</a></td>
-<td><a href="./install_unix.html">Base</a></td>
-<td><a href="./install_unix.html#vtk">VTK</a></td>
-<td><a href="./install_unix.html#numeric">Numeric</a></td>
-<td><a href="./install_unix.html#scientific">Scientific</a></td>
-<td><a href="./install_unix.html#pmw">Pmw</a></td>
+<td><a href="./install_unix.html#suse">n</a></td>
+<td><a href="./install_unix.html#suse">Base</a></td>
+<td><a href="./install_unix.html#suse">VTK</a></td>
+<td><a href="./install_unix.html##suse">Numeric</a></td>
+<td><a href="./install_unix.html#suse">Scientific</a></td>
+<td><a href="./install_unix.html#suse">Pmw</a></td>
 </tr>
 
 <!-- Redhat  -->
@@ -335,7 +346,7 @@ following directory structure:</p>
 
 <pre>
          |-- basis/
-         |-- ccp1gui.py
+         |-- <b>ccp1gui.py</b>
 ccp1gui/-|-- chempy/
          |-- CVS/
 	 |-- doc/------|--html/
@@ -345,9 +356,9 @@ ccp1gui/-|-- chempy/
 	 |-- interfaces/
 	 |-- jobmanager/
 	 |-- LICENCE
-	 |-- objects
-	 |-- scripts
-	 |-- viewer/-|--main.py
+	 |-- objects/
+	 |-- scripts/
+	 |-- viewer/
 
 </pre>
 
