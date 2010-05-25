@@ -388,7 +388,7 @@ class testCHARMM_IO(unittest.TestCase):
         """ """
 
         molecules = self.reader.GetObjects(
-            filepath='/c/qcg/jmht/Documents/codes/OpenBabel/fileformats/original-linear-path.crd',
+            filepath=gui_path+os.sep+'examples'+os.sep+'original-linear-path.crd',
             otype = 'molecules'
             )
 
