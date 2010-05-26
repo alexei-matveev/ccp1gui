@@ -39,11 +39,11 @@ SCRIPTS = glob.glob('scripts/*.py')
 setup(
       name='ccp1gui',
       
-      version='0.7',
+      version='0.8',
       
       author='Paul Sherwood, Huub van Dam and Jens Thomas',
       
-      author_email='j.m.h.thomas@dl.ac.uk',
+      author_email='paul.sherwood@stfc.ac.uk',
       
       url='http://www.cse.clrc.ac.uk/qcg/ccp1gui/index.shtml',
       
