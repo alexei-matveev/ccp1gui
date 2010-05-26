@@ -1,0 +1,67 @@
+#####################################################################################
+#                                                                                   #
+#                                    CHANGES                                        #
+#                                                                                   #
+#####################################################################################
+
+This file documents the changes that were implemented with each new
+release of the CCP1GUI.
+
+
+Release 0.8
+===========
+Date: 26th May 2010
+
+1. Removal of the reliance on Numeric/Scientific Python - wrappers have
+been written so that wen can use either numpy or Numeric if they are
+available, and it is no longer a fatal error if neither of them are
+present - although certain functionality will not be available.
+
+2. Tools have been added to change the lengths of bonds and to rotate
+fragments of molecules about a bond.
+
+3. An interface to the iPython shell has been added, to allow an
+iPython shell to be opened from within the CCP1GUI.
+
+4. Images can now be saved as TIFF files.
+
+5. The molecular rendering code has been updated so that it is now
+possible to view all the different renderers separately; previously
+the sticks representation relied on the wireframe representation being
+present.
+
+6. "Data summary" widgets have been added to the vector visualiser
+classes so that information on the numerical data being visualised can
+be seen.
+
+7. The GAMESS-UK output reader now returns trajectory objects and
+vibration visualisers instead of just molecule objects.
+
+8. A single instance of FileIO objects can now read in multiple
+files.
+
+9. The CCP1GUI should now be started by the ccp1gui.py file in the
+main directory. This script checks for any import errors and displays
+information on what modules need to be installed for the CCP1GUI to
+function properly. This replaces the ccp1gui.sh file under unix and
+ccp1gui.bat file under Windows.
+
+10. The unittesting framework has been updated and new tests
+added. There is now a testall.py script in the main directory that
+cycles through a number of these tests and provides a quick way to
+check that the basic functionality is working.
+
+11. The documentation and project website have been updated.
+
+12. Additional examples have been added to the examples directory to
+increase unittesting coverage.
+
+13. The molecular picking code has been updated so that it is now
+possible to select atoms in the sphere representation without the
+wireframe representation being present.
+
+14. Bug 2992807 with the "add fragment" tool has been fixed.
+
+15. Bug 2292810 with the MNDO calculation editor has ben fixed.
+
+Plus countless other small bug fixes...
