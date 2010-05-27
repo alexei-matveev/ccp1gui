@@ -7,61 +7,130 @@
 This file documents the changes that were implemented with each new
 release of the CCP1GUI.
 
+The html version is mainted in doc/html/changes.html
 
-Release 0.8
-===========
-Date: 26th May 2010
 
-1. Removal of the reliance on Numeric/Scientific Python - wrappers have
-been written so that wen can use either numpy or Numeric if they are
-available, and it is no longer a fatal error if neither of them are
-present - although certain functionality will not be available.
+Version 0.8 - release date: 28th May 2010
 
-2. Tools have been added to change the lengths of bonds and to rotate
-fragments of molecules about a bond.
+    * Removal of the reliance on Numeric/Scientific Python - wrappers
+      have been written so that we can use either numpy or Numeric if
+      they are available, and it is no longer a fatal error if neither
+      of them are present (although certain functionality will not be
+      available).
+    * Tools have been added to change the lengths of bonds and to
+      rotate fragments of molecules about a bond.
+    * An interface to the iPython shell has been added, to allow an
+      iPython shell to be opened from within the CCP1GUI.
+    * Images can now be saved as TIFF files.
+    * The molecular rendering code has been updated so that it is now
+      possible to view all the different renderers separately;
+      previously the sticks representation relied on the wireframe
+      representation being present.
+    * "Data summary" widgets have been added to the vector visualiser
+      classes so that information on the numerical data being
+      visualised can be seen.
+    * The GAMESS-UK output reader now returns trajectory objects and
+      vibration visualisers instead of just molecule objects.
+    * A single instance of FileIO objects can now read in multiple
+      files.
+    * The CCP1GUI should now be started by the ccp1gui.py file in the
+      main directory. This script checks for any import errors and
+      displays information on what modules need to be installed for
+      the CCP1GUI to function properly. This replaces the ccp1gui.sh
+      file under unix and ccp1gui.bat file under Windows.
+    * The unittesting framework has been updated and new tests
+      added. There is now a testall.py script in the main directory
+      that cycles through a number of these tests and provides a quick
+      way to check that the basic functionality is working.
+    * The documentation and project website have been updated.
+    * Additional examples have been added to the examples directory to
+      increase unittesting coverage.
+    * The molecular picking code has been updated so that it is now
+      possible to select atoms in the sphere representation without
+      the wireframe representation being present.
+    * Added the option to edit a grid that has been read in.
+    * Added menu option to get bond length and angle listing
+    * Save as now supports .res format.
+    * Load from file can now load GAMESS-UK output format.
+    * Improved handling of GAMESS-UK restarts (including a better
+      choice for directory defaults)
+    * Molecular editing now includes addition of fragments (a
+      selection of R groups and pi-bound ligands is added)
+    * Bug 2992807 with the "add fragment" tool has been fixed.
+    * Bug 2292810 with the MNDO calculation editor has ben fixed.
 
-3. An interface to the iPython shell has been added, to allow an
-iPython shell to be opened from within the CCP1GUI.
 
-4. Images can now be saved as TIFF files.
+Version 0.7 - release date: 11th May 2004
 
-5. The molecular rendering code has been updated so that it is now
-possible to view all the different renderers separately; previously
-the sticks representation relied on the wireframe representation being
-present.
+    * Errors when generating output files are displayed in Tk dialog
+      boxes.
+    * Imporoved Geometry optimisation and DFT options for GAMESS-UK.
+    * Individual help files for each of the GAMESS-UK tabs.
+    * Calculation objects and basis managers can now be pickled.
+    * Removed the 'Copy Calculation' option.
+    * Added option to select for symmetry in a GAMESS-UK calculation.
+    * Added options to calculate HOMO/LUMOs 3-5 for GAMESS-UK.
+    * Basis manager now updates when the molecule is edited in the
+      main window.
+    * Tool to calculate and display non-bonded contacts.
+    * Molecules can now be deleted.
+    * Added a 'select by bonds' option to select all of a molecular
+      fragment.
+    * Delete option for both selected and unselected atoms.
+    * Scale and tolerance for bonds and non-bonded contacts can be set
+      in options panel now.
+    * Implemented basic restart functionality for GAMESS-UK calculations.
+    * sv 6-31G, cc-pvdz, cc-pvtz, cc-pvqz and cc-pv5z basis sets added
+      for GAMESS-UK.
+    * Hybridise tool now made more reliable.
+    * 'Write Input' method added for Mopac calculations.
+    * Right-clicking in the Grid Editor now brings up a menu to output
+      different formats of the grids.
+    * Enabled error trapping of stderr for some calculations so that
+      the errors can be reported in dialog widgets.
 
-6. "Data summary" widgets have been added to the vector visualiser
-classes so that information on the numerical data being visualised can
-be seen.
 
-7. The GAMESS-UK output reader now returns trajectory objects and
-vibration visualisers instead of just molecule objects.
+Version 0.6 - release date: 19th March 2004
 
-8. A single instance of FileIO objects can now read in multiple
-files.
+    * Many minor enhancements and bug fixes.
+    * Load up GAMESS-UK internal basis set information.
+    * Change handling of atom selection in Z-matrix editor.
+    * Z-matrix editor now has a close button.
+    * Fix autoz anomaly for CX4 molecules.
+    * Z-matrix reader now works from main menu.
+    * Removed bulky examples (download data directory).
+    * Built complete Suse, RedHat and Windows downloadable
+    * distributions.
+    * Enabled output of DFT options from GAMESS-UK.
+    * Fixes to CML reader (# atoms, atom ordering).
+    * CML(1) and MSI output routines.
+    * Simple animation tool.
+    * Reader for Gaussian format z-matrices.
 
-9. The CCP1GUI should now be started by the ccp1gui.py file in the
-main directory. This script checks for any import errors and displays
-information on what modules need to be installed for the CCP1GUI to
-function properly. This replaces the ccp1gui.sh file under unix and
-ccp1gui.bat file under Windows.
 
-10. The unittesting framework has been updated and new tests
-added. There is now a testall.py script in the main directory that
-cycles through a number of these tests and provides a quick way to
-check that the basic functionality is working.
+Version 0.5 - release date: 3rd March 2004
 
-11. The documentation and project website have been updated.
+    * Added links to idle shell and pydoc, F1 help
+    * Ballon help on main window
+    * Reorganised views menus
+    * new modules to figure out pathnames
+    * Many changes relating to use of ChemShell on windows
+    * Update of module documentation
+    * Correction to lanl2dz sample ecp basis file
 
-12. Additional examples have been added to the examples directory to
-increase unittesting coverage.
 
-13. The molecular picking code has been updated so that it is now
-possible to select atoms in the sphere representation without the
-wireframe representation being present.
+Version 0.4 - release date: 10th Feb 2003
 
-14. Bug 2992807 with the "add fragment" tool has been fixed.
+    * Reorganisation of directories.
+    * Significant reorganisation of calculation editor codes (tools.py
+    * etc).
+    * BasisManager and associated classes added.
+    * Introduced cut slice visualiser, grid editors, 2D window etc.
+    * doc/html directory added.
 
-15. Bug 2292810 with the MNDO calculation editor has ben fixed.
 
-Plus countless other small bug fixes...
+Version 0.3 - release date: 11th June 2003
+
+    * fix paste of atoms with variable references.
+    * add angstroms key to output zmatrix.
+    * Initial implementation of VTK graphics back end.
