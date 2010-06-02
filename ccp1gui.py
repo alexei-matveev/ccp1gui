@@ -4,6 +4,7 @@
 #
 
 import os,sys,platform
+import traceback
 
 
 def get_install_info():
@@ -16,11 +17,11 @@ def get_install_info():
     install_info = {
 
 #
-# OpenSuse
+# SuSE
 #
-        'openSUSE' : """Sorry but the CCP1GUI cannot run on your system as some additional Python modules are not available.
+        'SuSE' : """Sorry but the CCP1GUI cannot run on your system as some additional Python modules are not available.
 
-Under OpenSuse, the following rpm files will need to installed:
+Under SuSE, the following rpm files will need to installed:
 
 python-tk
 vtk-python
@@ -78,12 +79,16 @@ Otherwise click "Cancel" to close this dialog."""
     if platform.system() == 'Windows':
         return install_info['Windows']
     elif platform.system() == 'Linux':
-        if platform.linux_distribution()[0].strip() == 'openSUSE':
-            return install_info['openSUSE']
-        elif platform.linux_distribution()[0].strip() == 'Ubuntu':
+        # In future use platform.linux_distribution, but for now keep backwards compatibility
+        if platform.dist()[0].strip() == 'SuSE':
+            return install_info['SuSE']
+        elif platform.dist()[0].strip() == 'Ubuntu':
             return install_info['Ubuntu']
     
-    return "Please email ccp1gui-users@lists.sourceforge.net for advice on how to get the CCP1GUI working on your system!"
+    return """\
+Sorry, we haven't tested the CCP1GUI on your type of system so don't know the names of the modules you need to install.
+
+Please email ccp1gui-users@lists.sourceforge.net for advice on how to get the CCP1GUI working on your system."""
 
 
 # Need to add the gui directory to the python path so 
@@ -96,6 +101,12 @@ try:
     import tkMessageBox, tkFileDialog
 except ImportError:
     # Need to work out something sensible to do here - e.g. fire up native gui on Windows gui etc.
+    #
+    # print traceback
+    #
+    traceback.print_exc()
+    #
+    # Now our message
     msg = get_install_info()
     print "\n"
     print msg
@@ -133,7 +144,10 @@ except ImportError:
         sys.path.append(vtkroot)
 
     else:
-        msg=get_install_info()
+        # Get traceback string
+        msg=traceback.format_exc()+"\n"
+        # Add our message to it
+        msg+=get_install_info()
         tkMessageBox.showinfo(message=msg)
         sys.exit(1)
 
