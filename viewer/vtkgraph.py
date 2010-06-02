@@ -1183,8 +1183,8 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 
                 if t.get_index() > a.get_index() and draw:
 
-                    start = Vector(a.coord)
-                    end = Vector(t.coord)
+                    start = objects.vector.Vector(a.coord)
+                    end = objects.vector.Vector(t.coord)
                     mid = 0.5*(start+end)
 
                     try:
@@ -1314,8 +1314,8 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
             for t in c:
                 if t.get_index() > a.get_index():
 
-                    start = Vector(a.coord)
-                    end = Vector(t.coord)
+                    start = objects.vector.Vector(a.coord)
+                    end = objects.vector.Vector(t.coord)
                     mid = 0.5*(start+end)
 
                     try:
@@ -1931,10 +1931,10 @@ class VtkCmapVis_:
 
         # Set up the scalarbar
         if not self.colourmap_actor:
-            print "add colourmap widget create new actor"
+            if self.debug: print "add colourmap widget create new actor"
             self.colourmap_actor = vtk.vtkScalarBarActor()
         else:
-            print "add colourmap widget reusing actor"
+            if self.debug: print "add colourmap widget reusing actor"
             
             
         # Get a lookuptable - the default should have been
@@ -2131,7 +2131,7 @@ class VtkIsoSurf(VtkCmapVis):
             #
             self.data = vtk.vtkStructuredPoints()
             data = self.data
-            npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
+            npts = objects.vector.Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
             xspacing = self.field.grid[0]
             yspacing = self.field.grid[1]
@@ -2256,7 +2256,7 @@ class VtkIsoSurf(VtkCmapVis):
             cmap_obj = self.colourer.get_value('cmap_obj')
             # There is an additional field to colour by
             data_array2 = vtk.vtkFloatArray()
-            npts = Vector(cmap_obj.dim[0],cmap_obj.dim[1],cmap_obj.dim[2])
+            npts = objects.vector.Vector(cmap_obj.dim[0],cmap_obj.dim[1],cmap_obj.dim[2])
             bigsize = npts[0]*npts[1]*npts[2]
             data_array2.SetNumberOfValues(bigsize)
             offset=0
@@ -2548,7 +2548,7 @@ class VtkGridVisualiser(generic.visualiser.GridVisualiser,VtkVis):
             ax2 = self.field.axis[1]
         else:
             ny = 1
-            ax2 = Vector(0.,0.,0.)
+            ax2 = objects.vector.Vector(0.,0.,0.)
             
         ny = self.field.dim[1]
         if len(self.field.dim) > 2:
@@ -2556,7 +2556,7 @@ class VtkGridVisualiser(generic.visualiser.GridVisualiser,VtkVis):
             ax3 = self.field.axis[2]
         else:
             nz = 1
-            ax3 = Vector(0.,0.,0.)
+            ax3 = objects.vector.Vector(0.,0.,0.)
 
         app = vtk.vtkAppendPolyData()
         for i,j in self.lines:
@@ -3063,7 +3063,7 @@ class VtkCutSliceVisualiser(generic.visualiser.CutSliceVisualiser,VtkSlice,VtkVi
             #
             self.vtkgrid3d = vtk.vtkStructuredPoints()
             data = self.vtkgrid3d
-            npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
+            npts = objects.vector.Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
             xspacing = self.field.grid[0]
             yspacing = self.field.grid[1]
@@ -3293,7 +3293,7 @@ class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
             #
             self.vtkgrid3d = vtk.vtkStructuredPoints()
             data = self.vtkgrid3d
-            npts = Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
+            npts = objects.vector.Vector(self.field.dim[0],self.field.dim[1],self.field.dim[2])
 
             xspacing = self.field.grid[0]
             yspacing = self.field.grid[1]
