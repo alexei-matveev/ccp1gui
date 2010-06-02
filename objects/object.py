@@ -1,7 +1,7 @@
 #
 # Base class to hold any methods used by all CCP1GUI Data objects
 #
-class CCP1GUI_Data():
+class CCP1GUI_Data:
     
     def __init__(self):
         pass
