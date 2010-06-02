@@ -24,15 +24,15 @@ Include this section in your ~/.ccp1guirc.py file to add the additional menus
 # tools for loading ChemShell hessian eigenmode information from
 # the newopt optimiser
 #
-from interfaces.chemshell import chemshell_z_modes, chemshell_c_modes
-
 global get_chemshell_z_modes
 def get_chemshell_z_modes(gui):
+    from interfaces.chemshell import chemshell_z_modes
     o=chemshell_z_modes()
     gui.import_view_objects(o, name=None, display=1 )
 
 global get_chemshell_c_modes
 def get_chemshell_c_modes(gui):
+    from interfaces.chemshell import chemshell_c_modes
     o=chemshell_c_modes()
     gui.import_view_objects(o, name=None, display=1 )
 
