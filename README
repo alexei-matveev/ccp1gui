@@ -4,7 +4,7 @@
 #                                                                                   #
 #                 Paul Sherwood, Huub van Dam and Jens Thomas                       #
 #                                                                                   #
-#                            Daresbury Laboratory, 2007                             #
+#                            Daresbury Laboratory, 2010                             #
 #                                                                                   #
 #####################################################################################
 
@@ -26,49 +26,27 @@ homepage on Sourceforge at:
 
 	 http://sourceforge.net/projects/ccp1gui/
 
-This folder contains the Python sourcecode for the CCP1GUI. In order
-to run the CCP1GUI, you will be required to have Python installed on
-your computer. Python is available from:
+The CCP1GUI is written in the Python programming language, and this
+folder contains the Python sourcecode for the CCP1GUI.
 
+If you have Python installed, the you can try running the CCP1GUI
+by executing the ccp1gui.py script in this directory. On windows, just
+double-click the file, or on unix execute the command:
 
-     http://www.python.org/
+python ./ccp1gui.py
 
-Currently, the CCP1GUI also has some external depenancies, so that
-there are a few additional packages that you will need to install in
-order to run the CCP1GUI. These packages are:
+With any luck the CCP1GUI will start, or should at least be able to
+tell you what libraries are missing in order for you to get it
+working.
 
-Tcl/TK
-	http://tcl.sourceforge.net/
+If you have any problems using the CCP1GUI, either send a mail to the
+usergroup at:
 
-Tkinter
-	http://wiki.python.org/moin/TkInter
+https://lists.sourceforge.net/mailman/listinfo/ccp1gui-users
 
-The Visualisation Toolkit (VTK)
-    http://public.kitware.com/VTK/
+or read the installation documentation at:
 
-Numerical Python
-	  http://sourceforge.net/projects/numpy
-
-Scientific Python
-	   http://starship.python.net/~hinsen/ScientificPython/
-
-Python Mega Widgets (Pmw)
-       http://pmw.sourceforge.net/
-
-These are all freely available, and often available as RPM packages
-for Linux machines. There are detailed instructions on how to install
-these packages on the CCP1GUI website at:
-
-       http://www.cse.scitech.ac.uk/ccg/software/ccp1gui/install.shtml
-
-Once you have these packages installed, you should be able to run the
-CCP1GUI on Unix/Linux/MacOSX machines, by executing the ccp1gui.sh
-script in this directory as shown below:
-
-./ccp1gui.sh
-
-or by double-clicking on the ccp1gui.bat file (also in this directory)
-under Windows.
+http://www.cse.scitech.ac.uk/ccg/software/ccp1gui/install.shtml
 
 
 Customising / scripting the CCP1GUI
@@ -94,9 +72,9 @@ from the command line, which can be useful for automating tasks
 If you have any problems or queries relating to the CCP1GUI, please
 send an email to either of:
 
-Jens Thomas: j.m.h.thomas@dl.ac.uk
+Jens Thomas: jens.thomas@stfc.ac.uk
 
-Paul Sherwood: p.sherwood@dl.ac.uk
+Paul Sherwood: paul.sherwood@stfc.ac.uk
 
 
 We hope you enjoy using the CCP1GUI!
