@@ -53,7 +53,7 @@ class MopacCalc(qm.QMCalc):
 
         #self.debug=1
         self.set_program('MOPAC')
-        self.set_parameter('job_name','untitled')
+        self.set_name('untitled')
         self.set_parameter("task","energy")
         self.set_parameter("theory","AM1")
         self.set_parameter("basis","STO")
@@ -67,17 +67,21 @@ class MopacCalc(qm.QMCalc):
     def get_editor_class(self):
         return MopacCalcEd
 
-    def WriteInput(self):
+    def WriteInput(self,filename=None):
         """Write the MOPAC input file"""
         self.GetModel()
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
-        job_name = self.get_parameter('job_name')
-        self.infile=job_name+'.dat'
+        job_name = self.get_name()
+        directory = self.get_parameter("directory")
+        
+        if filename:
+            self.infile=filename
+        else:
+            self.infile=job_name+'.dat'
+
         self.outfile=job_name+'.out'
 
-        directory = self.get_parameter("directory")
-       
         file = open(self.infile,'w')
         self.__WriteInput(mol_obj,file)
         file.close()
@@ -97,7 +101,7 @@ class MopacCalc(qm.QMCalc):
 
         self.GetModel()
         mol_obj = self.get_input("mol_obj")
-        job_name = self.get_parameter('job_name')
+        job_name = self.get_name()
         self.infile=job_name+'.dat'
         self.outfile=job_name+'.out'
 
@@ -339,7 +343,7 @@ class MopacCalcEd(qm.QMCalcEd):
 
         #self.username_tool = TextFieldTool(self,'username','User Name')
         #self.workingdirectory_tool = TextFieldTool(self,'directory','Working Directory')
-        self.jobname_tool = tools.TextFieldTool(self,'job_name','Job Name')
+        self.jobname_tool = tools.TextFieldTool(self,'name','Job Name')
         self.balloon.bind(self.jobname_tool.widget, 'Specify the prefix for all output files')
         self.submission_tool = tools.SelectOptionTool(self,'submission','Job Submission',
                                                 self.submission_policies)

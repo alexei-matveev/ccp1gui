@@ -275,9 +275,12 @@ class TextFieldTool(Tool):
     """A tool for single line text entry
     """
     def __init__(self,editor,parameter,label_text,command=None,width=None,**kw):
-        apply(Tool.__init__, (self,editor), kw)
+        Tool.__init__(self,editor,**kw)
 
-        value = self.editor.calc.get_parameter(parameter)
+        if parameter=="name":
+            value = self.editor.calc.get_name()
+        else:
+            value = self.editor.calc.get_parameter(parameter)
         self.parameter=parameter
         self.packparent = None
         self.command = command
@@ -302,11 +305,17 @@ class TextFieldTool(Tool):
 
     def ReadWidget(self,arg=None):
         value = self.widget.getvalue()
-        self.editor.calc.set_parameter(self.parameter,value)
+        if self.parameter=="name":
+            self.editor.calc.set_name( value )
+        else:
+            self.editor.calc.set_parameter(self.parameter,value)
         return value
 
     def UpdateWidget(self):
-        value = self.editor.calc.get_parameter(self.parameter)
+        if self.parameter=="name":
+            value = self.editor.calc.get_name()
+        else:
+            value = self.editor.calc.get_parameter(self.parameter)
         self.widget.setvalue(value)
 
     def SetParent(self,packparent):
@@ -435,7 +444,7 @@ class ChangeDirectoryTool(Tool):
         # askdirectory() cant create new directories so use asksaveasfilename is used instead
         # and the filename  is discarded - also fixes problem with no askdirectory in Python2.1
         olddir = self.editor.calc.get_parameter(self.parameter)
-        dummyfile=str(self.editor.calc.get_parameter("job_name"))+'.in'
+        dummyfile=str(self.editor.calc.get_name())+'.in'
         lendummy=(len(dummyfile)+1)
         path=tkFileDialog.asksaveasfilename(initialfile=dummyfile, initialdir=olddir)
         if len(path) == 0:

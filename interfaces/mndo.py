@@ -52,6 +52,7 @@ class MNDOCalc(qm.QMCalc):
 
     def __init__(self,**kw):
         qm.QMCalc.__init__(self,**kw)
+        self.set_name('unnamed')
         self.set_parameter("task",MENU_ENER)
         self.set_parameter("theory","AM1")
         self.set_parameter("symmetry",1)
@@ -62,28 +63,31 @@ class MNDOCalc(qm.QMCalc):
         self.set_parameter("restart","0")
         self.set_parameter("accuracy","medium")
         self.set_output("ana_frequencies",0)
-        self.set_parameter('job_name','unnamed')
         # need to replace with MNDO's accuracy parameter
         self.set_parameter("scf_threshold",6)
 
         # this stuff almost certainly shouldnt be here
         # but it enables WriteInput to run
         directory = self.get_parameter("directory")
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
         self.infile = directory+os.sep+job_name+'.in'
         self.outfile = directory+os.sep+job_name+'.out'
 
     def get_editor_class(self):
         return MNDOCalcEd
 
-    def WriteInput(self):
+    def WriteInput(self,filename=None):
 
         mol_name = self.get_input("mol_name")
         mol_obj  = self.get_input("mol_obj")
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
         directory = self.get_parameter("directory")
 
-        filename = self.infile
+        if filename:
+            self.infile=filename
+        else:
+            filename = self.infile
+
         writeinput_err = self.__WriteInput(mol_obj,filename)
         if writeinput_err:
             return
@@ -300,7 +304,6 @@ class MNDOCalc(qm.QMCalc):
         job_name = self.get_name()
 
         directory = self.get_parameter("directory")
-        job_name = self.get_parameter("job_name")
         self.infile = directory+os.sep+job_name+'.in'
         self.outfile = directory+os.sep+job_name+'.out'
 
@@ -363,7 +366,7 @@ class MNDOCalc(qm.QMCalc):
         # load contents of listing for viewing
         if self.debug_slave:
             print 'endjob....'
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
         directory = self.get_parameter("directory")
 
         #file = open(directory+'/'+job_name+'.out','r')

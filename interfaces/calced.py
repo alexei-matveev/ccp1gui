@@ -341,13 +341,24 @@ class CalcEd(Pmw.MegaToplevel):
     def WriteInput(self):
 
         self.ReadWidgets()
+
+        filepath = tkFileDialog.asksaveasfilename(
+            initialfile = self.calc.get_name(),
+            #initialdir = paths['user'],
+            defaultextension='',
+            filetypes=[]
+            )
+
+        if not filepath:
+            return
+
         try:
-            filename = self.calc.WriteInput()
+            self.calc.WriteInput(filename=filepath)
         except Exception,e:
             self.Error("Error writing input file!\n%s" % e)
             return None
 
-        self.Info("Wrote input file to disk:\n%s" % filename)
+        self.Info("Wrote input file to disk:\n%s" % filepath)
         return
     
     def ReadWidgets(self):

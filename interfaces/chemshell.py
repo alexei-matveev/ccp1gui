@@ -58,7 +58,7 @@ class ChemShellCalc(Calc):
         Calc.__init__(self,**kw)
 
         self.set_program('ChemShell')
-        self.set_name('ChemShell Calculation')
+        self.set_name('unnamed')
 
         self.qmcalc = None
         self.mmcalc = None
@@ -71,7 +71,7 @@ class ChemShellCalc(Calc):
         self.set_parameter('conn_scale',1.0)
         self.set_parameter('conn_toler',0.5)
         self.set_parameter('export_connectivity',1)
-        self.set_parameter('job_name','unnamed')
+        #self.set_parameter('job_name','unnamed')
 
         # Q M / M M
         self.set_parameter('qmcode','gamess')
@@ -136,7 +136,7 @@ class ChemShellCalc(Calc):
             print 'ID',id(mol_obj)
             print mol_obj.atom
 
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
 
         #print 'JOB_NAME',job_name
 
@@ -258,7 +258,7 @@ class ChemShellCalc(Calc):
         """
         if self.debug: print 'endjob code=',job_status_code
 
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
 
         if self.debug: print 'self.outfile is',self.outfile
         file = open(self.outfile,'r')
@@ -315,7 +315,7 @@ class ChemShellCalc(Calc):
         #mol_obj  = self.get_input("mol_obj")
         #job_name = self.get_name()
         file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
         self._ReadChemShellPunch(file)
         # PAUL - need to add more code here
 
@@ -337,7 +337,7 @@ class ChemShellCalc(Calc):
     def getInputFilename(self):
         """
         """
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
         
         # see if there is a job object we can query to
         # get any parameters that may have changed
@@ -410,7 +410,7 @@ class ChemShellCalc(Calc):
         file.write("set ecpfile        undefined\n")
         file.write("set basisspec      undefined\n")
 
-        file.write("set root       " + self.get_parameter("job_name") + '\n')
+        file.write("set root       " + self.get_name() + '\n')
         file.write('set chemsh_default_connectivity_toler ' + str(self.get_parameter('conn_toler')) + '\n')
         file.write('set chemsh_default_connectivity_scale ' + str(self.get_parameter('conn_scale')) + '\n')
         file.write("set c2_conn    " + str(self.get_parameter('export_connectivity')) + '\n')

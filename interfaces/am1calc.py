@@ -86,7 +86,7 @@ class AM1Calc(QMCalc):
         self.set_parameter('energy_threshold', 1e-6)
         self.set_parameter('gradient_threshold', 1e-3)
         self.set_parameter('opt_method','Conjugate-gradient')
-        self.set_parameter('job_name','am1 cleanup')
+        self.set_name('am1 cleanup')
         
     def check_avail_parameters(self):
         """Check if we have parameters for all the atoms."""
@@ -133,7 +133,7 @@ class AM1Calc(QMCalc):
 
         self.GetModel()
         mol_name = self.get_input("mol_name")
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name()
 
         # connect up the monitor to load structure back
         if ed:

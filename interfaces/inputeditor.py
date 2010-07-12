@@ -163,12 +163,7 @@ class InputEd(Editor):
                 raise AttributeError,"No input file!"
           
 
-       # Use the job_name if one set, else the calc name
-       try:
-          self.edtitle = self.calc.get_parameter("job_name")
-       except KeyError, e:
-          self.edtitle= self.calc.get_name()
-
+       self.edtitle = self.calc.get_name()
        self.settext()
 
         

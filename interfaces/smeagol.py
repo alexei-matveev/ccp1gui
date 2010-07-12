@@ -62,10 +62,10 @@ class SMEAGOLCalc(calc.Calc):
             directory,filename = os.path.split( smeagol_input )
             self.set_parameter("local_directory",directory)
             name = os.path.splitext( filename )[0]
-            self.set_parameter("job_name",name)
+            self.set_name(name)
         else:
             # Just use some sensible defaults
-            self.set_parameter("job_name","unknown")
+            self.set_name("unknown")
             self.set_parameter("input_files",[])
             self.set_parameter("local_directory",paths['user'])
 
@@ -100,7 +100,7 @@ class SMEAGOLCalc(calc.Calc):
         print "job running from directory: %s" % directory
 
         # Default values for all jobs - may be changed below
-        job_name = self.get_parameter("job_name")
+        job_name = self.get_name("name")
         job.name    = job_name
 
         # Block of code to tweak the job depending on how it is being run
@@ -210,7 +210,7 @@ class SMEAGOLCalcEd(calced.CalcEd):
 
 
         
-        self.jobname_tool = tools.TextFieldTool(self,'job_name','Job Name')
+        self.jobname_tool = tools.TextFieldTool(self,'name','Job Name')
         self.balloon.bind( self.jobname_tool.widget, 'Specify the prefix for all output files' )
 
         
