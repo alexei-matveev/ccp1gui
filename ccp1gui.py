@@ -29,7 +29,9 @@ vtk-python
 In addition, to access the full functionality of the CCP1GUI you should also install:
 
 python-numpy
-python-scipy""",
+python-scipy
+
+If you have problems getting any of the above to work, please send an email describing your problems to the user list at ccp1gui-users@lists.sourceforge.net""",
 
 #
 # Ubuntu
@@ -47,7 +49,8 @@ python-numeric-ext
 These packages can be installed using apt-get or synaptic if the Universe repositories have been enabled. For advice on how to do this see:
 
 http://help.ubuntu.com/community/Repositories/Ubuntu
-""",
+
+If you have problems getting any of the above to work, please send an email describing your problems to the user list at ccp1gui-users@lists.sourceforge.net""",
 
 #
 # Windows
@@ -70,7 +73,9 @@ C:\Python26\Lib\site-packages
 
 If you can't, or have done that and are still seeing this message, click "Ok" to point us at where the zip file has been extracted.
 
-Otherwise click "Cancel" to close this dialog."""
+Otherwise click "Cancel" to close this dialog.
+
+If you have problems getting any of the above to work, please send an email describing your problems to the user list at ccp1gui-users@lists.sourceforge.net"""
 
 
         }
@@ -166,7 +171,9 @@ if platform.system() =='Windows':
 
     http://sourceforge.net/projects/pywin32
 
-    Please install them and then try again."""
+    Please install them and then try again.
+
+    If you continue to experience problems, please send an email describing your problems to the user list at ccp1gui-users@lists.sourceforge.net"""
         tkMessageBox.showinfo(message=msg)
         sys.exit(1)
 
@@ -191,7 +198,8 @@ if platform.system() =='Windows':
         else:
             msg="""Sorry, but the CCP1GUI cannot start as the vtk dll %s cannot be loaded.
 This file needs to be in your system path. If you can find this file, please add the directory to the PATH environment variable and restart the CCP1GUI.
-""" % dllname
+
+If you continue to experience problems, please send an email describing your problems to the user list at ccp1gui-users@lists.sourceforge.net""" % dllname
             tkMessageBox.showinfo(message=msg)
             sys.exit(1)
 
