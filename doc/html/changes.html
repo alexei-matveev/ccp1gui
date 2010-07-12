@@ -6,55 +6,86 @@
 <h2 align=center>Changes to the CCP1GUI</h2>
 <br>
 
-<p>This file contains a concise listing of changes</p>
+<p>This file contains a concise listing of changes to the CCP1GUI that were
+  made with each release.</p>
 
-<h4>Version 0.01</h4>
+<br/>
+<hr/>
+<br/>
 
-<h4>Version 0.3 - release date: 11th June 2003</h4>
+<h4>Version 0.8 - release date: 28th May 2010</h4>
+
 <ul>
-<li>7th june fix paste of atoms with variable references.</li>
-<li>7th june add angstroms key to output zmatrix.</li>
-<li>Initial implementation of VTK graphics back end.</li>
-</ul>
-<br>
+<li>Removal of the reliance on Numeric/Scientific Python - wrappers have
+been written so that we can use either numpy or Numeric if they are
+available, and it is no longer a fatal error if neither of them are
+present (although certain functionality will not be available).</li>
 
-<h4>Version 0.4 - release date: 10th Feb 2003</h4>
-<ul>
-<li>Reorganisation of directories.</li>
-<li>Significant reorganisation of calculation editor codes (tools.py etc).</li>
-<li>BasisManager and associated classes added.</li>
-<li>Introduced cut slice visualiser, grid editors, 2D window etc.</li>
-<li>doc/html directory added.</li>
-</ul>
-<br>
+<li>Tools have been added to change the lengths of bonds and to rotate
+fragments of molecules about a bond.</li>
 
-<h4>Version 0.5 - release date:  3rd March 2004</h4>
-<ul>
-<li>Added links to idle shell and pydoc, F1 help</li>
-<li>Ballon help on main window</li>
-<li>Reorganised views menus</li>
-<li>new modules to figure out pathnames</li>
-<li>Many changes relating to use of ChemShell on windows</li>
-<li>Update of module documentation</li>
-<li>Correction to lanl2dz sample ecp basis file</li>
-</ul>
+<li>An interface to the iPython shell has been added, to allow an
+iPython shell to be opened from within the CCP1GUI.</li>
 
-<h4>Version 0.6 - release date: 19th March 2004</h4>
-<ul>
-<li>Many minor enhancements and bug fixes.</li>
-<li>Load up GAMESS-UK internal basis set information.</li>
-<li>Change handling of atom selection in Z-matrix editor.</li>
-<li>Z-matrix editor now has a close button.</li>
-<li>Fix autoz anomaly for CX4 molecules.</li>
-<li>Z-matrix reader now works from main menu.</li>
-<li>Removed bulky examples (download data directory).</li>
-<li>Built complete Suse, RedHat and Windows downloadable distributions.</li>
-<li>Enabled output of DFT options from GAMESS-UK.</li>
-<li>Fixes to CML reader (# atoms, atom ordering).</li>
-<li>CML(1) and MSI output routines.</li>
-<li>Simple animation tool.</li>
-<li>Reader for Gaussian format z-matrices.</li>
+<li>Images can now be saved as TIFF files.</li>
+
+<li>The molecular rendering code has been updated so that it is now
+possible to view all the different renderers separately; previously
+the sticks representation relied on the wireframe representation being
+present.</li>
+
+<li>&quot;Data summary&quot; widgets have been added to the vector visualiser
+classes so that information on the numerical data being visualised can
+be seen.</li>
+
+<li>The GAMESS-UK output reader now returns trajectory objects and
+vibration visualisers instead of just molecule objects.</li>
+
+<li>A single instance of FileIO objects can now read in multiple
+files.</li>
+
+<li>The CCP1GUI should now be started by the ccp1gui.py file in the
+main directory. This script checks for any import errors and displays
+information on what modules need to be installed for the CCP1GUI to
+function properly. This replaces the ccp1gui.sh file under unix and
+ccp1gui.bat file under Windows.</li>
+
+<li>The unittesting framework has been updated and new tests
+added. There is now a testall.py script in the main directory that
+cycles through a number of these tests and provides a quick way to
+check that the basic functionality is working.</li>
+
+<li>The documentation and project website have been updated.</li>
+
+<li>Additional examples have been added to the examples directory to
+increase unittesting coverage.</li>
+
+<li>The molecular picking code has been updated so that it is now
+possible to select atoms in the sphere representation without the
+wireframe representation being present.</li>
+
+<li>Added the option to edit a grid that has been read in.</li>
+
+<li>Added menu option to get bond length and angle listing</li>
+
+<li>Save as now supports .res format.</li>
+
+<li>Load from file can now load GAMESS-UK output format.</li>
+
+<li>Improved handling of GAMESS-UK restarts (including a better choice for 
+directory defaults)</li>
+
+<li>Molecular editing now includes addition of fragments (a selection of R groups
+and pi-bound ligands is added)</li>
+
+<li><a href="http://sourceforge.net/tracker/?func=detail&aid=2992807&group_id=138504&atid=740862">Bug 2992807</a> with the "add fragment" tool has been fixed.</li>
+
+<li><a href="http://sourceforge.net/tracker/?func=detail&aid=2992810&group_id=138504&atid=740862">Bug 2292810</a> with the MNDO calculation editor has ben fixed.</li>
+
+
 </ul>
+<br/>
+
 
 <h4>Version 0.7 - release date: 11th May 2004</h4>
 <ul>
@@ -72,7 +103,6 @@
 <li>Delete option for both selected and unselected atoms.</li>
 <li>Scale and tolerance for bonds and non-bonded contacts can be set
 in options panel now.</li>
-
 <li>Implemented basic restart functionality for GAMESS-UK calculations.</li>
 <li>sv 6-31G, cc-pvdz, cc-pvtz, cc-pvqz and cc-pv5z basis sets added
 for GAMESS-UK.</li>
@@ -83,18 +113,61 @@ different formats of the grids.</li>
 <li>Enabled error trapping of stderr for some calculations so that the
 errors can be reported in dialog widgets.</li>
 </ul>
+<br/>
 
-<h4>Version 0.8 - release date: 18th June 2004</h4>
+
+<h4>Version 0.6 - release date: 19th March 2004</h4>
 <ul>
-<li>Added the option to edit a grid that has been read in.</li>
-<li>Added menu option to get bond length and angle listing</li>
-<li>Save as now supports .res format.</li>
-<li>Load from file can now load GAMESS-UK output format.</li>
-<li>Improved handling of GAMESS-UK restarts (including a better choice for 
-directory defaults)</li>
-<li>Molecular editing now includes addition of fragments (a selection of R groups
-and pi-bound ligands is added)</li>
+<li>Many minor enhancements and bug fixes.</li>
+<li>Load up GAMESS-UK internal basis set information.</li>
+<li>Change handling of atom selection in Z-matrix editor.</li>
+<li>Z-matrix editor now has a close button.</li>
+<li>Fix autoz anomaly for CX4 molecules.</li>
+<li>Z-matrix reader now works from main menu.</li>
+<li>Removed bulky examples (download data directory).</li>
+<li>Built complete Suse, RedHat and Windows downloadable distributions.</li>
+<li>Enabled output of DFT options from GAMESS-UK.</li>
+<li>Fixes to CML reader (# atoms, atom ordering).</li>
+<li>CML(1) and MSI output routines.</li>
+<li>Simple animation tool.</li>
+<li>Reader for Gaussian format z-matrices.</li>
 </ul>
+<br/>
+
+
+<h4>Version 0.5 - release date:  3rd March 2004</h4>
+<ul>
+<li>Added links to idle shell and pydoc, F1 help</li>
+<li>Ballon help on main window</li>
+<li>Reorganised views menus</li>
+<li>new modules to figure out pathnames</li>
+<li>Many changes relating to use of ChemShell on windows</li>
+<li>Update of module documentation</li>
+<li>Correction to lanl2dz sample ecp basis file</li>
+</ul>
+<br/>
+
+<h4>Version 0.4 - release date: 10th Feb 2003</h4>
+<ul>
+<li>Reorganisation of directories.</li>
+<li>Significant reorganisation of calculation editor codes (tools.py etc).</li>
+<li>BasisManager and associated classes added.</li>
+<li>Introduced cut slice visualiser, grid editors, 2D window etc.</li>
+<li>doc/html directory added.</li>
+</ul>
+<br>
+
+
+<h4>Version 0.3 - release date: 11th June 2003</h4>
+<ul>
+<li>fix paste of atoms with variable references.</li>
+<li>add angstroms key to output zmatrix.</li>
+<li>Initial implementation of VTK graphics back end.</li>
+</ul>
+<br>
+
+
+<h4>Version 0.01</h4>
 
 <p align="center">Return to the CCP1GUI <a href="index.html">homepage</a></p>
 
