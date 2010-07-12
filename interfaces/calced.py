@@ -666,7 +666,7 @@ class CalcEd(Pmw.MegaToplevel):
             self.inputeditor.show()
             return
         else:
-            self.inputeditor = InputEd(self.interior(),self.calc,self,data=data)
+            self.inputeditor = interfaces.inputeditor.InputEd(self.interior(),self.calc,self,data=data)
             return 
        
 
