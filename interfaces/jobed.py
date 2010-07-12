@@ -580,6 +580,8 @@ class JobEditor(Pmw.MegaToplevel):
                                                       initialdir=olddir)
                 if len(exepath) == 0:
                     exepath = oldfile
+                else:
+                    exepath=str(exepath)
 
                 self.values['executable'] = exepath
                 self.executableWidget.setentry( exepath )

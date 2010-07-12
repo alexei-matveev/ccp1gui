@@ -3200,6 +3200,10 @@ you would like to extract the frame from."""
         if not filepath:
             print "No file selected"
             return None
+        
+        # As of python 2.6, askopenfilename returns unicode, so we need to convert the string
+        # Thanks to Noel O'Boyle for pointing this out
+        filepath=str(filepath)
 
         self.load_from_file( filepath )
 
@@ -3862,6 +3866,8 @@ you would like to extract the frame from."""
             initialdir=paths['user'],
             filetypes=[("Calc File","*.clc"),] )
 
+        ofile=str(ofile)
+
         if len(ofile):
             fobj = open(ofile,'r')
             u = pickle.Unpickler(fobj)
@@ -4277,6 +4283,9 @@ you would like to extract the frame from."""
                        ('All', '*')])
         if not file:
             return
+
+        # Need to convert from unicode to standard str
+        file=str(file)
 
         words2 = string.split(file,'/')
         name = words2[-1]

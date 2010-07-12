@@ -249,6 +249,7 @@ class SMEAGOLCalcEd(calced.CalcEd):
             # User didn't select owt
             return None
         else:
+            filepath=str(filepath)
             all = self.fileList.get()
             # convert from list to tuple
             files = []

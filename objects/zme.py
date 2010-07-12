@@ -2357,8 +2357,8 @@ class ZME(Pmw.MegaToplevel):
                                              filetypes=[("Zmatrix File","*.zmt"),
                                                         ("All Files","*.*")])
         if len(ofile):
-            self.filename = ofile
-            self.read_zmat_file(ofile)
+            self.filename = str(ofile)
+            self.read_zmat_file(self.filename)
 
     def save_to_file(self):
        """ Save to file, GAMESS-UK zmatrix format"""
@@ -2373,9 +2373,9 @@ class ZME(Pmw.MegaToplevel):
                                             initialdir = calcdir,
                                             filetypes=[("Zmatrix File","*.zmt"),("All Files","*.*")])
        if len(ofile):
-          self.filename = ofile
+          self.filename = str(ofile)
           txt = self.model.output_zmat()
-          fobj = open(ofile,'w')
+          fobj = open(self.filename,'w')
           for rec in txt:
              fobj.write(rec + '\n')
           fobj.close()         

@@ -1838,6 +1838,7 @@ or use the existing file (No)?" % inputfile )
     def scan(self):
         """Extract and Store results from a punchfile"""
         file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
+        file=str(file)
         job_name = self.get_name()
         self.__ReadPunch(file)
         # reflect changes in the visible page
@@ -2564,6 +2565,7 @@ class GAMESSUKCalcEd(interfaces.qm.QMCalcEd):
                                                  filetypes=[("Output Files","*.out"),])
             if len(fname) == 0:
                 return
+            fname=str(fname)
 
         try:
             if self.summaryeditor:

@@ -368,16 +368,20 @@ class FileTool(Tool):
         oldfile = self.value
         if self.action == "open":
             if self.filetypes:
-                self.browsevalue=tkFileDialog.askopenfilename(initialfile=self.value,
+                browsevalue=tkFileDialog.askopenfilename(initialfile=self.value,
                                                           filetypes=self.filetypes)
+                self.browsevalue=str(browsevalue)
             else:
-                self.browsevalue=tkFileDialog.askopenfilename(initialfile=self.value)
+                browsevalue=tkFileDialog.askopenfilename(initialfile=self.value)
+                self.browsevalue=str(browsevalue)
         else: # elif self.action == "save":
             if self.filetypes:
-                self.browsevalue=tkFileDialog.asksaveasfilename(initialfile=self.value,
+                browsevalue=tkFileDialog.asksaveasfilename(initialfile=self.value,
                                                                 filetypes=self.filetypes)
+                self.browsevalue=str(browsevalue)
             else:
-                self.browsevalue=tkFileDialog.asksaveasfilename(initialfile=self.value)
+                browsevalue=tkFileDialog.asksaveasfilename(initialfile=self.value)
+                self.browsevalue=str(browsevalue)
         if len(self.browsevalue) == 0:
             self.browsevalue = oldfile
         if self.command:

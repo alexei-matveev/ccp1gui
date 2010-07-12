@@ -1172,6 +1172,9 @@ class DALTONCalcEd(qm.QMCalcEd):
             if len(fname) == 0:
                 # User didn't select a file
                 return 1
+            
+            # convert from unicode string
+            fname=str(fname)
 
             #summary = DaltonOutputReader( ofile = fname )
             summary = ['THIS NEEDS TO BE FIXED']
@@ -1190,7 +1193,7 @@ class DALTONCalcEd(qm.QMCalcEd):
                     print "Help! I\'ve lost my summary editor!"
             else:
                 data = summary.list_summary()
-                self.summaryeditor = Editor(self.interior(),title="summary",data=data)
+                self.summaryeditor = interfaces.inputeditor.Editor(self.interior(),title="summary",data=data)
                 return
             
         except AttributeError,e :

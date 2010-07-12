@@ -315,6 +315,9 @@ class ChemShellCalc(Calc):
         #mol_obj  = self.get_input("mol_obj")
         #job_name = self.get_name()
         file = tkFileDialog.askopenfilename(filetypes=[("Punch File","*.pun"),("All Files","*.*")])
+        if file:
+            # convert string from unicode
+            file=str(file)
         job_name = self.get_name()
         self._ReadChemShellPunch(file)
         # PAUL - need to add more code here

@@ -94,6 +94,7 @@ class CADPACCalc(QMCalc):
     def scan(self):
         '''Extract and Store results from a punchfile'''
         file = tkFileDialog.askopenfilename(filetypes=[("Molden File","*.mdn"),("All Files","*.*")])
+        file=str(file)
         job_name = self.get_name()
         self.__RdCADPACPunch(file)
         

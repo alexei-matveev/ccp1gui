@@ -811,6 +811,7 @@ class CalcEd(Pmw.MegaToplevel):
                                              initialdir = calcdir,
                                              filetypes=[("Calc File","*.clc")] )
         if len(ofile):
+            ofile=str(ofile)
             self.filename = ofile
             fobj = open(ofile,'r')
             u = cPickle.Unpickler(fobj)

@@ -238,6 +238,7 @@ class GenericCalcEd(CalcEd):
             # User didn't select owt
             return None
         else:
+            filepath=str(filepath)
             all = self.inputFileList.get()
             # convert from list to tuple
             files = []
