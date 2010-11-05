@@ -86,7 +86,7 @@ class vtkTkRenderWidgetCCP1GUI(vtk.tk.vtkTkRenderWidget.vtkTkRenderWidget):
         #self.UpdateRenderer(x,y)
         #
 
-        #print 'start motion'
+        #print 'start motion ',e,but
         self.old_x = e.x
         self.old_y = e.y
         self.picked_mol = None
@@ -99,9 +99,21 @@ class vtkTkRenderWidgetCCP1GUI(vtk.tk.vtkTkRenderWidget.vtkTkRenderWidget):
         #self.GetRenderWindow().SetDesiredUpdateRate(self._StillUpdateRate)
         #
 
-        #print 'end motion'
-        if e.x == self.old_x and e.y == self.old_y:
-            self.PickActor(e.x,e.y,but)
+        #print 'end motion ',e,but
+
+        # Dirty hack to deal with VTK 5.6 & mouse scoll-wheel
+        # EndMotion under these circumstances is called with e.x and e.y
+        if type(e) == int:
+            # It's the x and but is y
+            x=e
+            y=but
+            but=None
+        else:
+            x=e.x
+            y=e.y
+            
+        if x == self.old_x and y == self.old_y:
+            self.PickActor(x,y,but)
                 
         if self._CurrentRenderer:
             self.Render()
