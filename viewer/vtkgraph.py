@@ -1898,6 +1898,7 @@ class VtkCmapVis_:
         where multiple inheritance doesn't give us a graph"""
         #print "VtkCmapVis_ __init__"
         self.graph=graph
+        self.debug=0
 
     def add_colourmap_actor(self,colourer,title=None):
         """Add a colourmap widget
