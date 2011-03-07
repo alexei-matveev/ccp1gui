@@ -296,7 +296,7 @@ class Field(objects.object.CCP1GUI_Data):
         summary+='Data:\n'
         imin,imax = self.minmax()
         summary+='     min: %s\n' % imin
-        summary+='     min: %s\n' % imax
+        summary+='     max: %s\n' % imax
         return summary
     
     def list(self):
