@@ -1907,7 +1907,6 @@ class VtkCmapVis_:
                constructed from the map object and colourmap name)
         """
 
-        #print "add_colourmap_actor self.colourmap_actor is ",self.colourmap_actor
 
         # Just a quick hack - use a list of length 2 for left and right
         if (self.graph.colourmap_actors[0] and self.graph.colourmap_actors[1]):
@@ -2019,7 +2018,6 @@ class VtkCmapVis_:
     def show_colourmap_actor(self):
         """Show the colourmap actor if we have one"""
 
-        #print "show_colourmap_actor ",
         if (self.colourmap_actor and self.colourer.get_value(
             "show_colourmap_actor")):
             #print "got actor"
@@ -2076,16 +2074,12 @@ class VtkCmapVis(VtkCmapVis_,VtkVis):
         
     def _show(self):
         VtkVis._show(self)
-        #print "calling show_colourmap_actor"
 
         # See if we are displaying a scalar bar to show the
         # colourmap we are using
-        if ( self.colourer.get_value('show_colourmap_actor') and \
-             self.colourer.cmap_by_object() ):
+        if self.colourer.get_value('show_colourmap_actor'):
             self.add_colourmap_actor(self.colourer)
-            #print "added colourmap_actor in _show"
-        
-        self.show_colourmap_actor()
+            self.show_colourmap_actor()
         
     def _delete(self):
         VtkVis._delete(self)
@@ -2646,7 +2640,7 @@ class VtkColourSurfaceVisualiser(generic.visualiser.ColourSurfaceVisualiser,VtkI
             self.add_outline()
         self.status = generic.visualiser.BUILT
 
-class VtkIrVis(generic.visualiser.IrregularDataVisualiser,VtkVis):
+class VtkIrVis(generic.visualiser.IrregularDataVisualiser,VtkCmapVis):
     """ Viewer for Irregular Data
     """
 
@@ -2702,6 +2696,10 @@ class VtkIrVis(generic.visualiser.IrregularDataVisualiser,VtkVis):
 
         m.SetScalarRange(self.colourer.get_value("cmap_low"),
                          self.colourer.get_value("cmap_high"))
+
+        # Get default vtk lookup table from the mapper
+        lut = m.GetLookupTable()
+        self.set_default_lut(lut)
         lut = self.colourer.get_lut()
         if lut:
             m.SetLookupTable(lut)
@@ -3281,7 +3279,6 @@ class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
         This is then stored as vtkgrid3d.
         
         """
-
         # Policy here should depend on whether data is axis aligned or not
         axis_aligned = 0
 
@@ -3605,6 +3602,8 @@ class VtkVectorVisualiser(generic.visualiser.VectorVisualiser,VtkSlice,VtkVis):
             newGrid=vtk.vtkStructuredGrid()
         elif gridType == 'vtkUnstructuredGrid':
             newGrid=vtk.vtkUnstucturedGrid()
+        elif gridType == 'vtkPolyData':
+            newGrid=vtk.vtkPolyData()
         else:
             raise Exception,"get_grid unknown gridType: %s" % gridType
         
