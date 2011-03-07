@@ -397,7 +397,7 @@ class ColourChooser:
         
         # Counter to configure the lower bound
         low=self.colourer.get_value("cmap_low")
-        if not low:
+        if low==None:
             # Trap this here cos it's a bugger to work out why it's crashing otherwise...
             raise AttributeError,"visualiser.py:ColourChooser need a cmap_low value!"
         self.w_cmap_low = Pmw.Counter(
@@ -451,7 +451,6 @@ class ColourChooser:
     def toggle_colourmap(self):
         """Update the colourer to show or hide the scalarbar"""
         show = self.w_cmap_show_var.get()
-        #print "setting show_colourmap_actor to ",show
         self.colourer.set_value("show_colourmap_actor",show)
 
 #     def set_cmap_low(self,low):
@@ -2857,13 +2856,14 @@ class IrregularDataVisualiser(DataVisualiser):
     currently only offers coloured dots.
     """
     def __init__(self, root, graph, obj, **kw):
-        DataVisualiser.__init__(self, root, graph, obj,**kw)
+        DataVisualiser.__init__(self, root, graph, obj, data_summary=1, **kw)
         self.field = obj
 
         self.colourer = Colourer(graph)
         # Seem to need this (no read_widgets before first build?)
-        self.colourer.set_value("cmap_low",-50)
-        self.colourer.set_value("cmap_high",-50)
+        mini,maxi = self.field.minmax()
+        self.colourer.set_value("cmap_low",mini)
+        self.colourer.set_value("cmap_high",maxi)
 
         self.point_size = graph.field_point_size
         self.opacity = 1.0
