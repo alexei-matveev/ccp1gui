@@ -1915,9 +1915,9 @@ you would like to extract the frame from."""
                                 ix = reslist.index(resno)
                             except ValueError:
                                 reslist.append(resno)
-                            print a.get_index(), "      ", a.resno, a.symbol, sqrt(r2)
+                            print a.get_index(), "      ", a.resno, a.symbol, math.sqrt(r2)
                         except AttributeError:
-                            print a.get_index(), "      ", a.symbol, sqrt(r2)
+                            print a.get_index(), "      ", a.symbol, math.sqrt(r2)
                         break
 
                 else:
@@ -1982,9 +1982,9 @@ you would like to extract the frame from."""
                         ix = reslist.index(resno)
                     except ValueError:
                         reslist.append(resno)
-                    print a.get_index(), "      ", a.resno, a.symbol, sqrt(r2)
+                    print a.get_index(), "      ", a.resno, a.symbol, math.sqrt(r2)
                 except AttributeError:
-                    print a.get_index(), "      ", a.symbol, sqrt(r2)
+                    print a.get_index(), "      ", a.symbol, math.sqrt(r2)
 
         sel.clear()
         print 'residues selected',reslist
@@ -2047,9 +2047,9 @@ you would like to extract the frame from."""
                             ix = reslist.index(resno)
                         except ValueError:
                             reslist.append(resno)
-                        print a.get_index(), "      ", a.resno, a.symbol, sqrt(r2)
+                        print a.get_index(), "      ", a.resno, a.symbol, math.sqrt(r2)
                     except AttributeError:
-                        print a.get_index(), "      ", a.symbol, sqrt(r2)
+                        print a.get_index(), "      ", a.symbol, math.sqrt(r2)
 
             sel.clear()
             print 'residues selected',reslist
