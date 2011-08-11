@@ -106,6 +106,7 @@ class VtkGraph(viewer.main.TkMolView,Graph):
         self.capabilities['spheres']=1
         self.capabilities['labels']=1
         self.capabilities['contacts']=1
+        self.capabilities['cell']=1
         self.capabilities['hedgehog']=1
         self.capabilities['orientedglyphs']=1
         self.capabilities['streamlines']=1
@@ -534,6 +535,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         self.label_actors = []
         self.selection_actors = []
         self.contact_actors = []
+        self.cell_actors = []
 
         self.wire_visible = 0
         self.spheres_visible = 0
@@ -541,6 +543,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         self.labels_visible = 0
         self.selection_visible = 0
         self.contacts_visible = 0
+        self.cell_visible = 0
         
         self.debug = 0
         self.debug_selection = 0
@@ -662,6 +665,10 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         if self.show_contacts:
             self._build_contacts()
 
+        # Unit Cell Representation
+        if self.show_cell:
+            self._build_cell()
+
         #
         if self.show_wire and self.line_type == 2:
             # Apply selection highlighting by poking into zvals array
@@ -703,6 +710,7 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         self.labels_visible  = 0
         self.selection_visible  = 0
         self.contacts_visible  = 0
+        self.cell_visible  = 0
 
         # set current visibility
         self.status = generic.visualiser.BUILT
@@ -1602,6 +1610,115 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
 ####    def sel_show(self,atoms):
 
 
+    def _build_cell(self):
+        """Build Unit Cell representation"""
+
+        if not self.show_cell:
+            return	
+
+        if  len(self.molecule.cell) == 3:
+            o = objects.vector.Vector(0.,0.,0.)
+            vx = self.molecule.cell[0]
+            vy = self.molecule.cell[1]
+            vz = self.molecule.cell[2]
+
+
+            red = 1.0
+            green = 1.0
+            blue = 1.0
+            scale = 1
+
+            # labelling
+            for lab,pos in [("o",o),("a",vx),("b",vy),("c",vz)]:
+
+                # Now got the label as txt
+                if self.label_type == 0:
+                    # 3D Actors
+                    s = vtk.vtkVectorText()
+                    s.SetText(lab)
+
+                    m = vtk.vtkPolyDataMapper()
+                    m.SetInput(s.GetOutput())
+
+                    act = vtk.vtkFollower()
+                    self.cell_actors.append(act)
+                    act.SetMapper(m)
+
+                    act.GetProperty().SetColor(red,green,blue)
+                    act.SetCamera(self.graph.pane._CurrentCamera)
+                    act.SetScale(scale,scale,scale)
+
+                    act.PickableOn()
+                    act.SetPosition(pos[0],pos[1],pos[2])
+
+                elif self.label_type == 1:
+                    # 2D Actors
+                    # create the mapper
+                    m = vtk.vtkTextMapper()
+                    m.SetInput(lab)
+                    #print 'label scale',self.label_scale
+                    #size = int(20.0*self.label_scale)
+                    #m.SetFontSize(size)
+
+                    # create the actor
+                    #act = vtkScaledTextActor() # deprecated
+                    act = vtk.vtkTextActor()
+                    act.ScaledTextOn()
+                    self.cell_actors.append(act)
+                    act.SetMapper(m)
+                    act.GetPositionCoordinate().SetCoordinateSystemToWorld();
+
+                    # Set the label size
+                    h = scale/3
+                    w = scale/3
+                    act.SetHeight(h) #Defaults seems to be 0.5
+                    act.SetWidth(w) #Defaults seems to be 0.5
+
+                    # Try and centre the labels
+                    #act.SetAlignmentPoint(2)
+                    #x = a.coord[0] - w
+                    #y = a.coord[1] - h
+                    x = pos[0]
+                    y = pos[1]
+                    zz = pos[2]
+
+                    act.GetPositionCoordinate().SetValue(x,y,zz);
+                    #act.SetScale(self.label_scale,self.label_scale,self.label_scale)
+                    act.PickableOff()
+                    # act.AddObserver(
+                    #    'PickEvent', \
+                    #    lambda x,y,s=self,obj=self.molecule,atom=a : s.graph.mypick(obj,atom,x,y) )
+                    act.GetTextProperty().SetColor(red,green,blue)
+
+            app = vtk.vtkAppendPolyData()
+
+            s = vtk.vtkLineSource()
+            s.SetPoint1(o)
+            s.SetPoint2(o+vx)
+            app.AddInput(s.GetOutput())
+
+            s = vtk.vtkLineSource()
+            s.SetPoint1(o)
+            s.SetPoint2(o+vy)
+            app.AddInput(s.GetOutput())
+
+            s = vtk.vtkLineSource()
+            s.SetPoint1(o)
+            s.SetPoint2(o+vz)
+            app.AddInput(s.GetOutput())
+
+
+            # create the mapper
+            m = vtk.vtkPolyDataMapper()
+            m.SetInput(app.GetOutput())
+
+            # create the actor
+            act = vtk.vtkActor()
+            act.SetMapper(m)
+            self.cell_actors.append(act)
+
+
+
     def sel_upd(self,mol):
         """Display the listed atoms as selected"""
 
@@ -1742,6 +1859,9 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         for a in self.selection_actors:
             #print 'rem selection actor',id(a)
             self.graph.ren.RemoveActor(a)
+        for a in self.cell_actors:
+            #print 'rem cell actor',id(a)
+            self.graph.ren.RemoveActor(a)
         for a in self.contact_actors:
             #print 'rem selection actor',id(a)
             self.graph.ren.RemoveActor(a)
@@ -1755,12 +1875,13 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
         self.label_actors = []
         self.selection_actors = []
         self.contact_actors = []
+        self.cell_actors = []
     
     def _hide(self):
         """remove all actors from the renderer"""
         if self.debug:
-            print 'hide_', self.show_wire, self.show_spheres, self.show_sticks, \
-                  self.wire_visible, self.spheres_visible, self.sticks_visible, self.contacts_visible
+            print 'hide_', self.show_wire, self.show_spheres, self.show_sticks, self.show_contacts, self.show_cell, \
+                  self.wire_visible, self.spheres_visible, self.sticks_visible, self.contacts_visible, self.cell_visible
 
         if self.show_spheres and self.spheres_visible:
             for a in self.sphere_actors:
@@ -1791,6 +1912,12 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                 self.graph.ren.RemoveActor(a)
                 print 'rem contact'
             self.contacts_visible = 0
+
+        if self.show_cell and self.cell_visible:
+            for a in self.cell_actors:
+                self.graph.ren.RemoveActor(a)
+                print 'rem cell'
+            self.cell_visible = 0
 
         if self.selection_visible:
             for a in self.selection_actors:
@@ -1868,6 +1995,20 @@ class VtkMoleculeVisualiser(generic.visualiser.MoleculeVisualiser):
                     #print 'rem contact'
                     self.graph.ren.RemoveActor(a)
                 self.contacts_visible = 0
+
+        if self.show_cell:
+            if not self.cell_visible:
+                for a in self.cell_actors:
+                    #print 'add cell'
+                    self.graph.ren.AddActor(a)
+                self.cell_visible = 1
+        else:
+            if self.cell_visible:
+                for a in self.cell_actors:
+                    #print 'rem cell'
+                    self.graph.ren.RemoveActor(a)
+                self.cell_visible = 0
+
                 
         # Always show selection
         if not self.selection_visible:
