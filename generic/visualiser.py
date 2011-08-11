@@ -859,6 +859,13 @@ class MoleculeVisualiser(Visualiser):
         else:
             self.show_spheres = self.graph.check_capability('spheres')
             self.show_sticks = self.graph.check_capability('sticks')
+
+        print "cell",obj.cell
+	if obj and len(obj.cell) == 3:
+            self.show_cell = 1
+        else:
+            self.show_cell = 0
+
         self.show_labels = 0
         self.show_contacts = 0
         self.sphere_scale = 0.5
@@ -895,6 +902,8 @@ class MoleculeVisualiser(Visualiser):
         self.wire_var.set(0)
         self.contact_var = Tkinter.BooleanVar()
         self.contact_var.set(0)
+        self.cell_var = Tkinter.BooleanVar()
+        self.cell_var.set(0)
 
         if self.graph.check_capability('wire'):
             self.wire_var.set(self.show_wire)
@@ -921,6 +930,16 @@ class MoleculeVisualiser(Visualiser):
                 self.contact.pack(side='top')
                 self.contact_frame.pack(side='left')
                 labels.append(self.contact_frame)
+
+            if 1:
+                self.cell_var.set(self.show_cell)
+                self.cell_frame = Pmw.LabeledWidget(f,labelpos='w',label_text='Unit Cell Axes')
+                self.cell = Tkinter.Checkbutton(self.cell_frame.interior())
+                self.cell.config(variable=self.cell_var)
+                self.cell.config(command=lambda s=self: s.__read_buttons() )
+                self.cell.pack(side='top')
+                self.cell_frame.pack(side='left')
+                labels.append(self.cell_frame)
 
             wire_group.pack(side='top',fill='x')
 
@@ -1102,6 +1121,7 @@ class MoleculeVisualiser(Visualiser):
         self.show_labels = self.labels_var.get()
         self.show_sticks = self.stick_var.get()
         self.show_contacts = self.contact_var.get()
+        self.show_cell = self.cell_var.get()
         self.colour_cyl = self.stick_col_byat_var.get()
 
         txt = self.radii_var.get()
@@ -2969,6 +2989,7 @@ class AllMoleculeVisualiser( MoleculeVisualiser ):
         vis.cyl_width = self.cyl_width
         
         vis.show_contacts = self.show_contacts
+        vis.show_cell = self.show_cell
         
 
     def View(self):
