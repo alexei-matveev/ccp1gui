@@ -860,7 +860,6 @@ class MoleculeVisualiser(Visualiser):
             self.show_spheres = self.graph.check_capability('spheres')
             self.show_sticks = self.graph.check_capability('sticks')
 
-        print "cell",obj.cell
 	if obj and len(obj.cell) == 3:
             self.show_cell = 1
         else:
