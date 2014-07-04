@@ -1,22 +1,22 @@
-#####################################################################################
-#                                                                                   #
-#                                  The CCP1GUI                                      #
-#                                                                                   #
-#                 Paul Sherwood, Huub van Dam and Jens Thomas                       #
-#                                                                                   #
-#                            Daresbury Laboratory, 2010                             #
-#                                                                                   #
-#####################################################################################
+######################################################################
+#                                                                    #
+#                          The CCP1GUI                               #
+#                                                                    #
+#         Paul Sherwood, Huub van Dam and Jens Thomas                #
+#                                                                    #
+#                    Daresbury Laboratory, 2010                      #
+#                                                                    #
+######################################################################
 
 
-This is the CCP1GUI: a free, extensible Graphical User Interface to
-various computational chemistry codes developed by the worldwide
-academic community, with an emphasis on ab initio Quantum Chemistry
-codes. The CCP1GUI is still at the prototype stage, but is certainly
+This is  the CCP1GUI: a  free, extensible Graphical User  Interface to
+various  computational  chemistry  codes  developed by  the  worldwide
+academic community,  with an emphasis  on ab initio  Quantum Chemistry
+codes. The CCP1GUI  is still at the prototype  stage, but is certainly
 usable for running and visualising simple calculations with GAMESS-UK,
 ChemShell, Molpro and Dalton.
 
-For more information on the CCP1GUI, please visit the GUI's homepage
+For more information  on the CCP1GUI, please visit  the GUI's homepage
 at:
 
 	http://www.cse.clrc.ac.uk/ccg/software/ccp1gui
@@ -26,20 +26,20 @@ homepage on Sourceforge at:
 
 	 http://sourceforge.net/projects/ccp1gui/
 
-The CCP1GUI is written in the Python programming language, and this
+The CCP1GUI  is written in  the Python programming language,  and this
 folder contains the Python sourcecode for the CCP1GUI.
 
-If you have Python installed, the you can try running the CCP1GUI
-by executing the ccp1gui.py script in this directory. On windows, just
+If you have  Python installed, the you can try  running the CCP1GUI by
+executing the  ccp1gui.py script in  this directory. On  windows, just
 double-click the file, or on unix execute the command:
 
 python ./ccp1gui.py
 
-With any luck the CCP1GUI will start, or should at least be able to
-tell you what libraries are missing in order for you to get it
+With any  luck the CCP1GUI will start,  or should at least  be able to
+tell  you what  libraries  are missing  in  order for  you  to get  it
 working.
 
-If you have any problems using the CCP1GUI, either send a mail to the
+If you have any problems using  the CCP1GUI, either send a mail to the
 usergroup at:
 
 https://lists.sourceforge.net/mailman/listinfo/ccp1gui-users
@@ -52,24 +52,24 @@ http://www.cse.scitech.ac.uk/ccg/software/ccp1gui/install.shtml
 Customising / scripting the CCP1GUI
 ===================================
 
-As it is written in Python, is possible to customise the CCP1GUI to
+As it  is written in Python,  is possible to customise  the CCP1GUI to
 your own needs. The simplest way to do this is to place a ccp1guirc.py
-file in your home directory to set defaults for various variables
-(e.g. the background colour) or even to add functionality to the
+file  in your  home directory  to set  defaults for  various variables
+(e.g.  the background  colour) or  even  to add  functionality to  the
 CCP1GUI.
 
-There is an example ccp1guirc.py file in the scripts directory, that
-you can copy to the root of your home directory (as specified by the
-$HOME environment variable under *nix or %USERPROFILE% under Windows)
+There is an  example ccp1guirc.py file in the  scripts directory, that
+you can copy  to the root of your home directory  (as specified by the
+$HOME environment variable under  *nix or %USERPROFILE% under Windows)
 and experiment with.
 
 In addition there are several example scripts in the scripts directory
 that demonstrate how to use the functionality available in the CCP1GUI
-from the command line, which can be useful for automating tasks
+from  the command  line,  which  can be  useful  for automating  tasks
 (e.g. running multiple calcluations for a parameter sweep).
 
 
-If you have any problems or queries relating to the CCP1GUI, please
+If you  have any problems or  queries relating to  the CCP1GUI, please
 send an email to either of:
 
 Jens Thomas: jens.thomas@stfc.ac.uk
